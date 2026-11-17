@@ -92,6 +92,11 @@ export type LogItem =
     }
   | { id: string; kind: "system"; text: string };
 
+export type CompactionState =
+  | { status: "running"; startedAt: number }
+  | { status: "done"; text: string }
+  | null;
+
 export interface ChatState {
   planMode: boolean;
   acceptEdits: boolean;
@@ -124,6 +129,7 @@ export interface ChatState {
    * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
+  compaction: CompactionState;
   /** When the running turn started (ms since the epoch), as the server said on connect. */
   turnStartedAt: number | null;
   /** The message the person will probably send next, offered in the message box after a reply. */
@@ -188,6 +194,7 @@ export const initialChatState: ChatState = {
   totalTokens: 0,
   cacheStats: null,
   turnInFlight: false,
+  compaction: null,
   turnStartedAt: null,
   suggestion: null,
   saveOffer: null,
@@ -203,6 +210,7 @@ export const initialChatState: ChatState = {
  * answers), handled here because they change the same state. */
 export type LocalAction =
   | { type: "local_user_message"; text: string; instant: boolean; images?: string[]; files?: string[] }
+  | { type: "local_compact_started"; startedAt: number }
   | ({ type: "local_steer" } & NewSteer)
   | { type: "local_steers_withdrawn"; ids: string[] }
   | { type: "local_suggestion_dismissed" }
@@ -364,7 +372,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_connection_reset":
       // The server's paging cursor lives on the session, so a new connection starts it over:
       // keeping olderItems would show a stale "no_more" or reveal a batch twice.
-      return { ...state, historyReceived: false, olderItems: [], olderStatus: "none" };
+      return { ...state, historyReceived: false, olderItems: [], olderStatus: "none",
+        compaction: state.compaction?.status === "running" ? null : state.compaction };
 
     case "local_switch_thread":
       // model/workspace stay on screen until the new thread's "state" replaces them, not blank.
@@ -385,11 +394,15 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_request_older_messages":
       return state.olderStatus === "loading" ? state : { ...state, olderStatus: "loading" };
 
+    case "local_compact_started":
+      return { ...state, compaction: { status: "running", startedAt: action.startedAt } };
+
     case "local_user_message":
       return {
         ...state,
         // Instant commands (/plan, /clear, ...) run no turn, so there is nothing to stop.
         turnInFlight: action.instant ? state.turnInFlight : true,
+        compaction: action.text.trim().toLowerCase() === "/compact" ? state.compaction : null,
         suggestion: null, saveOffer: null,
         error: null,
         items: [
@@ -657,6 +670,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         error: action.message,
         turnInFlight: false,
+        compaction: null,
         items: closeStreamingBubble(state.items),
       };
 
@@ -664,14 +678,10 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         turnInFlight: false,
-        items: [
-          ...state.items,
-          {
-            id: genId(),
-            kind: "system",
-            text: `Compacted ${action.before} messages down to ${action.after} · ${formatDuration(action.elapsed_ms)}.`,
-          },
-        ],
+        compaction: {
+          status: "done",
+          text: `Compacted ${action.before} messages down to ${action.after} · ${formatDuration(action.elapsed_ms)}`,
+        },
       };
 
     case "cleared":

@@ -96,6 +96,7 @@ type ConversationPanel = Exclude<PanelId, "task">;
 
 function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
+  const [investigatingThread, setInvestigatingThread] = useState<string | null>(null);
   const socketRef = useRef<AgentSocket | null>(null);
   const [threadId, setThreadId] = useState(resolveThreadId);
   useSessionSignals(threadId, state.turnInFlight, state.items);
@@ -404,6 +405,7 @@ function App() {
     state.items.length === 0 &&
     state.olderItems.length === 0 &&
     !state.turnInFlight &&
+    investigatingThread !== threadId &&
     !isScheduledTaskThread &&
     threadWorkflow === null;
   const taskPanelShown =
@@ -539,6 +541,7 @@ function App() {
   const investigateWorkflow = async (task: ScheduledTask, run: ScheduledRun, model: string | null) => {
     const result = await investigateWorkflowRun(task.trigger_id, run.run_id, model);
     if ("error" in result) return result.error;
+    setInvestigatingThread(result.thread_id);
     goToThread(result.thread_id);
     return null;
   };
@@ -624,9 +627,12 @@ function App() {
   /** Sends a bare user_message with no chat-log bubble -- for commands the
    * UI issues on the user's behalf (the mode pill toggling /plan or
    * /accept-edits), mirroring app.js's sendRaw(). */
-  const sendRaw = (text: string) => socketRef.current?.send({ type: "user_message", text });
+  const sendRaw = (text: string) => {
+    if (state.compaction?.status !== "running") socketRef.current?.send({ type: "user_message", text });
+  };
 
   const onSend = (payload: ComposerSendPayload) => {
+    if (state.compaction?.status === "running") return;
     const saveWorkflow = /^\/saveworkflow(?:\s+([\s\S]*))?$/i.exec(payload.displayText.trim());
     if (saveWorkflow) {
       startWorkflowDraft((saveWorkflow[1] ?? "").trim());
@@ -652,6 +658,9 @@ function App() {
         images: payload.images,
         files: payload.files,
       });
+      if (payload.outgoingText.trim().toLowerCase() === "/compact") {
+        dispatch({ type: "local_compact_started", startedAt: Date.now() });
+      }
       socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, ...artifactStart.take(payload.displayText) });
     });
   };
@@ -785,7 +794,7 @@ function App() {
 
   const composer = (
     <Composer
-      turnInFlight={state.turnInFlight} turnStartedAt={state.turnStartedAt}
+      turnInFlight={state.turnInFlight} compaction={state.compaction} turnStartedAt={state.turnStartedAt}
       suggestion={state.suggestion}
       onSuggestionDismiss={() => dispatch({ type: "local_suggestion_dismissed" })}
       totalTokens={state.totalTokens}

@@ -11,7 +11,7 @@ import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
 import type { ScheduledRun } from "../../types/settings";
 import type { StepRecord, WorkflowInput } from "../../types/workflow";
 import { CopyButton } from "../CopyButton";
-import { CheckIcon, ClockIcon, FileTextIcon, SparkIcon, StopIcon, XCircleIcon } from "../icons";
+import { CheckIcon, ClockIcon, FileTextIcon, SparkIcon, XCircleIcon } from "../icons";
 import { FailedCard, type FailedContext } from "./FailedCard";
 import { InvestigationLink } from "./InvestigationLink";
 import type { AnswerValues } from "./PauseCards";
@@ -58,11 +58,8 @@ const SPINNER = (
 
 function StopButton({ busy, onStop }: { busy: boolean; onStop: () => void }) {
   return (
-    <button type="button" className={secondaryButton} disabled={busy} onClick={onStop}>
-      <span className="flex items-center gap-1.5">
-        <StopIcon className="h-3.5 w-3.5" />
-        Stop
-      </span>
+    <button type="button" aria-label="Stop run" title="Stop run" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] disabled:opacity-40" disabled={busy} onClick={onStop}>
+      <span aria-hidden="true" className="h-3.5 w-3.5 rounded-[2px] bg-current" />
     </button>
   );
 }

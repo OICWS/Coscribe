@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { pickGreeting } from "../lib/greetings";
 import { getConfig } from "../lib/rest";
 
+/** Quiet placeholder while an investigation conversation receives its first turn. */
 export function EmptyState() {
-  const greeting = pickGreeting(new Date(), "");
   return (
     <div className="flex h-full items-center justify-center px-4">
-      <h1 className="gradient-text text-xl font-semibold">{greeting}</h1>
+      <p className="text-sm text-[var(--muted)]">Starting conversation…</p>
     </div>
   );
 }

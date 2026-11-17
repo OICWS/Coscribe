@@ -16,6 +16,7 @@ import type { PptxShapeCapture } from "./PptxShapeOverlay";
 import { RunStatus } from "./RunStatus";
 import { TextLightbox } from "./TextLightbox";
 import type { ComposerDraft, SteerDraft } from "../lib/steerNotes";
+import type { CompactionState } from "../state/reducer";
 
 /** Commands that get an instant "state" reply and never run an agent
  * turn (see session.py's _handle_user_message_locked). */
@@ -83,6 +84,7 @@ const MAX_ATTACHED_FILES = 5;
 
 interface ComposerProps {
   turnInFlight: boolean;
+  compaction: CompactionState;
   turnStartedAt: number | null;
   totalTokens: number;
   workflowTest?: { done: number; total: number } | null;
@@ -144,6 +146,7 @@ function useReportDraft(report: ((hasDraft: boolean) => void) | undefined, hasDr
 
 export function Composer({
   turnInFlight,
+  compaction,
   turnStartedAt, totalTokens,
   workflowTest = null,
   commands,
@@ -256,10 +259,12 @@ export function Composer({
   };
 
   const hasAttachments = pendingImages.length > 0 || pendingFiles.length > 0 || pendingPastes.length > 0;
+  const isCompacting = compaction?.status === "running";
 
   const ghost = suggestion && !value && !turnInFlight && !hasAttachments && !artifact && !autocompleteOpen ? suggestion : null;
 
   const submit = (override?: string) => {
+    if (isCompacting) return;
     const text = override ?? value;
     if (
       !text.trim() &&
@@ -454,7 +459,7 @@ export function Composer({
     setPendingFiles((prev) => [...prev, { name: file.name, path: result.path }]);
   };
 
-  const dropping = useWindowFileDrop((files) => files.forEach((file) => void onFileChosen(file)), true);
+  const dropping = useWindowFileDrop((files) => files.forEach((file) => void onFileChosen(file)), !isCompacting);
 
   let sendTitle = "Send";
   if (turnInFlight) sendTitle = "Add to the reply in progress";
@@ -561,6 +566,7 @@ export function Composer({
           ref={textareaRef}
           className={`max-h-40 min-w-0 flex-1 resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none ${artifact ? "mt-[3px]" : ""}`}
           rows={1}
+          disabled={isCompacting}
           value={value}
           placeholder={ghost ?? ((artifact && PAGE_KINDS[artifact].placeholder) || "Type / for commands")}
           onChange={(event) => {
@@ -590,7 +596,7 @@ export function Composer({
             title={sendTitle}
             className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent"
             onClick={performSend}
-            disabled={!canSend}
+            disabled={!canSend || isCompacting}
           >
             <ReturnIcon className="h-[15px] w-[15px]" />
           </button>
@@ -613,6 +619,7 @@ export function Composer({
           <button
             type="button"
             title="Attach a file or photo"
+            disabled={isCompacting}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -621,7 +628,7 @@ export function Composer({
           {environmentPicker}
           {modePill}
         </div>
-        <RunStatus key={threadId} threadId={threadId} turnInFlight={turnInFlight} serverStartedAt={turnStartedAt} totalTokens={totalTokens} workflowTest={workflowTest} stopping={stopping} />
+        <RunStatus key={threadId} threadId={threadId} turnInFlight={turnInFlight} compaction={compaction} serverStartedAt={turnStartedAt} totalTokens={totalTokens} workflowTest={workflowTest} stopping={stopping} />
         <div className="flex min-w-0 items-center gap-1.5">
           {modelPicker}
           {effortPicker}

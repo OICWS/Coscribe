@@ -107,17 +107,19 @@ export function SessionsPage({ threads }: { threads: ThreadSummary[] }) {
 }
 
 function SessionRow({ thread, environment, now }: { thread: ThreadSummary; environment: string; now: number }) {
+  const title = threadLabel(thread);
   return (
     <button
       type="button"
       role="listitem"
       data-testid="session-row"
-      className="flex w-full items-center gap-4 border-b border-[var(--border)] px-1 py-4 text-left last:border-b-0 hover:bg-[var(--card-bg)]"
+      className="grid w-full grid-cols-[minmax(0,1fr)_5rem_5rem_6rem] items-center gap-2 border-b border-[var(--border)] px-1 py-4 text-left last:border-b-0 hover:bg-[var(--card-bg)] sm:grid-cols-[minmax(0,1fr)_9rem_9rem_8rem] sm:gap-4"
       onClick={() => goToThread(thread.thread_id)}
     >
-      <span className="min-w-0 flex-1 truncate text-[15px]">{threadLabel(thread)}</span>
-      <span className="max-w-[40%] shrink-0 truncate text-[13px] text-[var(--muted)]">{environment}</span>
-      <span className="w-32 shrink-0 text-right text-[15px] text-[var(--muted)]">{timeAgo(thread.updated_at, now)}</span>
+      <span className="min-w-0 truncate text-[15px]" title={title}>{title}</span>
+      <span className="min-w-0 truncate text-[13px] text-[var(--muted)]" title={thread.group ?? undefined}>{thread.group}</span>
+      <span className="min-w-0 truncate text-[13px] text-[var(--muted)]" title={environment}>{environment}</span>
+      <span className="min-w-0 truncate text-right text-[15px] text-[var(--muted)]">{timeAgo(thread.updated_at, now)}</span>
     </button>
   );
 }

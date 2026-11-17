@@ -300,7 +300,7 @@ export function RunPanel({
               {sortMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-10 mt-1 w-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
+                  className="absolute inset-x-0 top-full z-10 mt-1 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
                 >
                   {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
                     <button

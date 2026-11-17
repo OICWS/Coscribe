@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { formatElapsed, formatTokenCount } from "../lib/format";
+import type { CompactionState } from "../state/reducer";
 
 interface RunStatusProps {
   threadId: string;
   turnInFlight: boolean;
+  compaction: CompactionState;
   /** When the server says the running turn started, for a page that opened mid-turn. */
   serverStartedAt: number | null;
   totalTokens: number;
@@ -29,7 +31,7 @@ const starts = new Map<string, { at: number; tokens: number }>();
  * "Editing Fundamentals.md ▾" running action list Claude Code's own
  * status line also shows -- that needs a live list of in-progress
  * actions coscribe doesn't track yet, a separate, larger piece of work. */
-export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens, workflowTest = null, stopping = false }: RunStatusProps) {
+export function RunStatus({ threadId, turnInFlight, compaction, serverStartedAt, totalTokens, workflowTest = null, stopping = false }: RunStatusProps) {
   const [start, setStart] = useState<{ at: number; tokens: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const wasRunning = useRef(false);
@@ -58,6 +60,23 @@ export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens
     // Not keyed on totalTokens: it ticks during the turn being timed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, turnInFlight, serverStartedAt]);
+
+  useEffect(() => {
+    if (compaction?.status !== "running") return;
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [compaction]);
+
+  if (compaction) {
+    return (
+      <span className="min-w-0 truncate text-xs tabular-nums text-[var(--muted)]" data-testid="compact-status">
+        {compaction.status === "running"
+          ? `Compacting conversation… ${formatElapsed(now - compaction.startedAt)}`
+          : compaction.text}
+      </span>
+    );
+  }
 
   if (!turnInFlight || start === null) return null;
   const tokenDelta = Math.max(0, totalTokens - start.tokens);
