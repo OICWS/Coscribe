@@ -70,8 +70,7 @@ const SCROLL_LOAD_OLDER_THRESHOLD_PX = 150;
 
 export function ChatLog({
   items,
-  suppressEmptyState = false,
-  onApprove,
+  suppressEmptyState = false, onApprove,
   onAnswerPlan, onOpenPlan,
   onEditMessage,
   onRewindMessage,
