@@ -31,7 +31,7 @@ Last reviewed: 2026-11-06.
    program on the machine sends (#853, decision 0040), and a run asking before its models use
    more tokens, with nothing to set (#862, decision 0043), whose budget now counts llm steps'
    tokens (`docs/log/2026-11-15-llm-step-tokens.md`). A high or full step's agent hands parts of
-   its task to sub-agents held to the step's rules (decision 0051 proposed,
+   its task to sub-agents held to the step's rules (decision 0051,
    `docs/log/2026-11-18-workflow-step-sub-agents.md`). Open: adding steps when nothing failed.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
