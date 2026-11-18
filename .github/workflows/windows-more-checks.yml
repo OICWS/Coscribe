@@ -19,6 +19,8 @@ name: Windows more checks
       - "office-agent/src/coscribe/tools/exec/command_sandbox.py"
       - "office-agent-sandbox/**"
       - "office-agent/src/coscribe/code_runtime/_pins.py"
+      - "office-agent/src/coscribe/code_runtime/thread.py"
+      - "office-agent/src/coscribe/runtime_lg/code_agent.py"
       - "office-agent/src/coscribe/tools/bookkeeping/background_tasks.py"
       - "office-agent/src/coscribe/tools/libreoffice*.py"
       - ".github/CODEOWNERS"

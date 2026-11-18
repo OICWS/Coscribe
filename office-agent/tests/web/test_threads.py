@@ -25,6 +25,22 @@ from .helpers import (
 )
 
 
+def test_closed_outputs_survive_restart_and_other_metadata_updates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        for closed in [{"deck.pptx": "v1"}, {"chart.png": "v2"}, {"deck.pptx": "v3"}]:
+            response = client.post("/api/threads/outputs/meta", json={"closed_outputs": closed})
+            assert response.status_code == 200
+        client.post("/api/threads/outputs/meta", json={"archived": True})
+
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        activity = client.get("/api/threads/outputs/activity").json()
+        assert activity["closed_outputs"] == {"deck.pptx": "v3", "chart.png": "v2"}
+        assert client.get("/api/threads/other/activity").json()["closed_outputs"] == {}
+
+
 def test_threads_can_be_grouped_archived_and_their_groups_renamed_and_deleted_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -686,6 +702,7 @@ def test_the_title_comes_from_the_side_job_model_and_from_the_main_one_when_it_f
 
     assert titled["title"] == "Q3 销售汇总"
     assert built == ["fake:small"]
+
     def asked_for_a_title(model: _TitlingModel) -> bool:
         return any("Name this" in str(m[0].content) for m in model.received)
 

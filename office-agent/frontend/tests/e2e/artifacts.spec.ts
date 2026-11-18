@@ -38,6 +38,43 @@ async function openOptions(page: Page, name: string) {
   return menu;
 }
 
+test("the current conversation returns from Artifacts without reconnecting or losing its history", async ({ page }) => {
+  const path = freshThreadPath("return-artifacts");
+  const id = new URL(path, "http://localhost").searchParams.get("thread");
+  await page.route("**/api/threads", (route) => route.fulfill({ json: [{
+    thread_id: id, preview: "Current conversation", message_count: 1,
+    updated_at: new Date().toISOString(), workspace_root: "", environment: "default",
+    group: null, archived: false, status: "idle",
+  }] }));
+  await page.route("**/api/artifacts", (route) => route.fulfill({ json: LISTED }));
+  await page.addInitScript(() => localStorage.setItem("coscribe.toolbar.pinned", JSON.stringify(["sidebar", "artifacts"])));
+  let connections = 0;
+  await page.routeWebSocket("**/ws/**", (socket) => {
+    connections++;
+    const server = socket.connectToServer();
+    socket.onMessage((message) => server.send(message));
+    server.onMessage((message) => {
+      const event = JSON.parse(String(message));
+      if (event.type === "history") event.entries = [{ kind: "user", text: "Keep this conversation history" }];
+      socket.send(JSON.stringify(event));
+    });
+  });
+  await page.goto(path);
+  await waitForConnected(page);
+  const history = page.getByText("Keep this conversation history", { exact: true });
+  await expect(history).toBeVisible();
+  const before = connections;
+  await page.getByTitle("Artifacts", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Artifacts", exact: true })).toBeVisible();
+  await page.getByTitle("Pin navigation open").click();
+  await page.getByTestId("thread-row").filter({ hasText: "Current conversation" }).click();
+  await expect(page).not.toHaveURL(/view=artifacts/);
+  await expect(page).toHaveURL(new RegExp(`thread=${id}`));
+  await expect(history).toBeVisible();
+  await expect(page.getByPlaceholder("Type / for commands")).toBeVisible();
+  expect(connections).toBe(before);
+});
+
 test("the sidebar opens the Artifacts page, which lists, searches, filters and pins", async ({ page }) => {
   await openPage(page);
   const cards = page.getByRole("button", { name: /^Open / });

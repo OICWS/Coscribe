@@ -37,6 +37,7 @@ class ThreadMetaStore:
         except (OSError, ValueError):
             data = {}
         return {
+            "closed_outputs": data.get("closed_outputs", {}),
             "group": data.get("group") or None,
             "archived": bool(data.get("archived", False)),
             "unseen": bool(data.get("unseen", False)),
@@ -47,7 +48,13 @@ class ThreadMetaStore:
     def update(self, thread_id: str, **fields: Any) -> dict[str, Any]:
         meta = self.get(thread_id)
         meta.update(fields)
-        if meta == {"group": None, "archived": False, "unseen": False, "kept": False}:
+        if meta == {
+            "group": None,
+            "archived": False,
+            "unseen": False,
+            "kept": False,
+            "closed_outputs": {},
+        }:
             self._path(thread_id).unlink(missing_ok=True)
         else:
             self._write(self._path(thread_id), meta)

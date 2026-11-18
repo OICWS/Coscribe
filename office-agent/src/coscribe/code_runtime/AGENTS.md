@@ -50,9 +50,10 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
 `tests/web/test_settings.py` (the Settings > Code routes).
 
 ## Verify by hand
-The whole module on a real Windows machine: first-use download of Codex, a task that runs a
-PowerShell command and edits a file, an approval card for each, "allow" in Settings > Code, and
-the shared app-server stopping when idle. No test starts a real Codex.
+On Windows, check first download, plain reads and Manual/Ask edits: Deny leaves the file,
+Allow edits it. Ordinary commands stay off; for an exec_command-only model, use the patch
+heredoc in `runtime_lg/code_agent.py`, not a quoted multiline argument. Check ten-minute idle
+shutdown. `tests/test_windows_real.py` checks real Codex patch approval with a keyless stub API.
 
 ## Reviewed
 2026-10-13 (first card).

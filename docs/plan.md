@@ -57,6 +57,13 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Composer draft across pages:** opening Artifacts discards unsent text when the composer
+  unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
+
+- **Code module manual checks** (#844): native patch approvals are scripted without API keys;
+  first-use, real-model behavior and idle service exit still need Windows use
+  (`docs/log/2026-11-18-code-patch-approval.md`).
+
 - **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
   The reported apparent change to an investigation title is not reproduced; confirm against
   the affected conversation (`docs/log/2026-11-17-compact-history-paging.md`).
