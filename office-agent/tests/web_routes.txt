@@ -10,6 +10,7 @@ DELETE /api/mcp/servers/{name}
 DELETE /api/node-env/packages/{name}
 DELETE /api/providers/{name}
 DELETE /api/scheduled-tasks/{trigger_id}
+DELETE /api/scheduled-tasks/{trigger_id}/folders
 DELETE /api/script-env/packages/{name}
 DELETE /api/secrets/{name}
 DELETE /api/skills/{name}
@@ -55,6 +56,7 @@ GET /api/providers/catalog
 GET /api/scheduled-tasks
 GET /api/scheduled-tasks/{trigger_id}/memory
 GET /api/scheduled-tasks/{trigger_id}/notes
+GET /api/scheduled-tasks/{trigger_id}/reach
 GET /api/scheduled-tasks/{trigger_id}/runs/{run_id}/report
 GET /api/scheduled-tasks/{trigger_id}/versions
 GET /api/scheduled-tasks/{trigger_id}/webhook
@@ -133,7 +135,9 @@ POST /api/mcp/servers/{name}/signin
 POST /api/memory
 POST /api/node-env/packages
 POST /api/providers
+POST /api/reach/check
 POST /api/scheduled-tasks
+POST /api/scheduled-tasks/{trigger_id}/folders
 POST /api/scheduled-tasks/{trigger_id}/overview
 POST /api/scheduled-tasks/{trigger_id}/pause
 POST /api/scheduled-tasks/{trigger_id}/resume

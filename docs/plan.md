@@ -50,7 +50,8 @@ Last reviewed: 2026-11-06.
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
    The edit dialog on one page, called a workspace in the UI, is in
    `docs/log/2026-11-18-workspace-dialog.md`. A browser level per site (decision 0050) is in
-   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. Next: a task
+   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. The server
+   part of a task's reach is in `docs/log/2026-11-18-task-reach-server.md`. Next: a task
    showing what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
    the spot.
 
