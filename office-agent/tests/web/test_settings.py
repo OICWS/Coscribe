@@ -333,6 +333,69 @@ def test_post_and_delete_provider_round_trip(
         assert "deepseek" not in providers
 
 
+def test_post_provider_with_a_blank_key_keeps_the_saved_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Changing only a provider's default model must not need its key typed again."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        client.post(
+            "/api/providers",
+            json={
+                "name": "deepseek",
+                "base_url": "https://api.deepseek.com/v1",
+                "api_key": "sk-ds",
+            },
+        )
+        client.post("/api/providers", json={"name": "gemini", "api_key": "g-key"})
+
+        kept_custom = client.post(
+            "/api/providers",
+            json={
+                "name": "deepseek",
+                "base_url": "https://api.deepseek.com/v1",
+                "api_key": "",
+                "default_model": "deepseek-chat",
+            },
+        )
+        kept_builtin = client.post(
+            "/api/providers",
+            json={"name": "gemini", "api_key": " ", "default_model": "gemini-2.5-pro"},
+        )
+        assert kept_custom.json() == {"restart_required": False, "rejected": {}}
+        assert kept_builtin.json() == {"restart_required": False, "rejected": {}}
+
+        providers = client.get("/api/providers").json()
+        assert providers["deepseek"]["default_model"] == "deepseek-chat"
+        assert providers["deepseek"]["masked_key"].endswith("-ds")
+        assert providers["gemini"]["default_model"] == "gemini-2.5-pro"
+        assert providers["gemini"]["masked_key"].endswith("key")
+
+    assert os.environ["GEMINI_API_KEY"] == "g-key"
+
+
+def test_post_provider_with_a_blank_key_is_rejected_for_a_new_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        custom = client.post(
+            "/api/providers",
+            json={"name": "glm", "base_url": "https://open.bigmodel.cn/api/paas/v4", "api_key": ""},
+        )
+        builtin = client.post("/api/providers", json={"name": "gemini", "api_key": ""})
+        assert custom.json()["rejected"] == {"glm": "api_key cannot be blank"}
+        assert builtin.json()["rejected"] == {"gemini": "api_key cannot be blank"}
+        assert "glm" not in client.get("/api/providers").json()
+    assert not (tmp_path / "providers.json").exists()
+
+
 def test_get_providers_falls_back_to_the_global_default_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
