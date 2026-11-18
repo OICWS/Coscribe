@@ -243,6 +243,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/subagents",
     "/api/threads/{thread_id}/tasks",
     "/api/tools",
+    "/api/workspace/first",
     "/internal/browser-host",
     "/internal/events",
 }
