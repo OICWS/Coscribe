@@ -32,6 +32,39 @@ from ...state import AppState
 from ..shared import _read_providers_raw
 
 
+def _save_builtin_key(env_key: str, api_key: str) -> bool:
+    """Store a built-in provider's new key, or keep the saved one when `api_key` is blank.
+    False when it is blank and nothing is saved."""
+    if not api_key.strip():
+        return bool(os.environ.get(env_key))
+    set_key(".env", env_key, env_value_for_storage(f"builtin-provider:{env_key}", api_key))
+    harden_file_permissions(Path(".env"))
+    # os.environ gets the real value, not whatever .env just got (a keyring ref sentinel
+    # there) -- this live process needs the actual key now, not after the next
+    # resolve_env_keyring_refs() startup pass.
+    os.environ[env_key] = api_key
+    return True
+
+
+def _custom_key(
+    name: str, payload: ProviderUpdate, existing: dict[str, Any] | None
+) -> tuple[Any, str] | str:
+    """(what providers.json stores, the real key) for a custom provider, keeping the saved
+    key when the payload's is blank; a rejection reason when the form can't be saved."""
+    api_key = payload.api_key
+    if not payload.base_url.strip():
+        return "base_url cannot be blank"
+    if api_key.strip():
+        return store_secret(f"custom-provider:{name}", api_key), api_key
+    stored = (existing or {}).get("api_key")
+    if not stored:
+        return "api_key cannot be blank"
+    try:
+        return stored, resolve_secret(stored) or ""
+    except RuntimeError:
+        return "the saved key can't be read here; enter it again"
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
@@ -57,25 +90,11 @@ def router(state: AppState) -> APIRouter:
             return {"restart_required": False, "rejected": {"name": "cannot be blank"}}
         # A blank key on a provider already added keeps the saved one, so changing only its
         # default model or base URL doesn't make the person type the key again.
-        new_key = payload.api_key.strip()
         blank_key = {"restart_required": False, "rejected": {name: "api_key cannot be blank"}}
 
         builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
         if builtin is not None:
-            env_key = builtin["api_key_env"]
-            if new_key:
-                set_key(
-                    ".env",
-                    env_key,
-                    env_value_for_storage(f"builtin-provider:{env_key}", payload.api_key),
-                )
-                harden_file_permissions(Path(".env"))
-                # os.environ gets the real value, not whatever .env just got
-                # (a keyring ref sentinel there) -- this live process needs the
-                # actual key now, not after the next resolve_env_keyring_refs()
-                # startup pass.
-                os.environ[env_key] = payload.api_key
-            elif not os.environ.get(env_key):
+            if not _save_builtin_key(builtin["api_key_env"], payload.api_key):
                 return blank_key
             if payload.default_model:
                 set_key(".env", builtin["default_model_env"], payload.default_model)
@@ -83,26 +102,12 @@ def router(state: AppState) -> APIRouter:
             # both build their client fresh on every call.
             return {"restart_required": False, "rejected": {}}
 
-        if not payload.base_url.strip():
-            return {"restart_required": False, "rejected": {name: "base_url cannot be blank"}}
-
         path = settings.providers_config_path or Path("./providers.json").resolve()
         raw = _read_providers_raw(path)
-        existing = raw["providers"].get(name)
-        if new_key:
-            api_key = payload.api_key
-            stored_key = store_secret(f"custom-provider:{name}", api_key)
-        elif existing is not None and existing.get("api_key"):
-            stored_key = existing["api_key"]
-            try:
-                api_key = resolve_secret(stored_key) or ""
-            except RuntimeError:
-                return {
-                    "restart_required": False,
-                    "rejected": {name: "the saved key can't be read here; enter it again"},
-                }
-        else:
-            return blank_key
+        keys = _custom_key(name, payload, raw["providers"].get(name))
+        if isinstance(keys, str):
+            return {"restart_required": False, "rejected": {name: keys}}
+        stored_key, api_key = keys
 
         # Stored on disk via store_secret (keyring ref when available, the
         # real value as a hardened-permission fallback otherwise) --
