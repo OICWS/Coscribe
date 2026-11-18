@@ -31,7 +31,7 @@ Last reviewed: 2026-11-06.
    program on the machine sends (#853, decision 0040), and a run asking before its models use
    more tokens, with nothing to set (#862, decision 0043), whose budget now counts llm steps'
    tokens (`docs/log/2026-11-15-llm-step-tokens.md`). A high or full step's agent hands parts of
-   its task to sub-agents held to the step's rules (decision 0051 proposed,
+   its task to sub-agents held to the step's rules (decision 0051,
    `docs/log/2026-11-18-workflow-step-sub-agents.md`). Open: adding steps when nothing failed.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
@@ -58,6 +58,10 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
+  messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.
+  Needs a time on the AI message that no provider is sent.
+
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
 
@@ -79,6 +83,12 @@ Last reviewed: 2026-11-06.
   at once, and a background task started with the plan item it belongs to (the task card now
   guesses it from timing, which goes wrong when several items run at once;
   `docs/log/2026-11-15-plan-review-edits.md`).
+- **Task list across unrelated requests:** a conversation has one task list that is never
+  cleared, so a later, unrelated multi-step request appends to the finished one (a live
+  DeepSeek run showed "10 steps done" for a 3-step request that followed a 7-step one) and a
+  note sent mid-plan lands in the same list. Possible fix: start a new list when `task_create`
+  follows a list that is all done, or let `task_create` start one explicitly
+  (`docs/log/2026-11-18-plan-strike.md`).
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding

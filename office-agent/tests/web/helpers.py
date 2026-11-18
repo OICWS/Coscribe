@@ -401,6 +401,15 @@ def _client_lg(
         yield client
 
 
+def _unstamped(value: Any) -> Any:
+    """A replayed history without the time each message was sent, which differs on every run."""
+    if isinstance(value, list):
+        return [_unstamped(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _unstamped(v) for k, v in value.items() if k != "sent_at"}
+    return value
+
+
 def _receive_until(ws: Any, target_type: str) -> list[dict[str, Any]]:
     messages = []
     while True:

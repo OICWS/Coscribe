@@ -1,7 +1,8 @@
 # 0051: A workflow step's sub-agents keep its rules and never wait for a person
 
-Status: proposed (2026-11-18, OICWS; needs the maintainer's acceptance). Narrows 0028: how an
-L3 step's agent uses sub-agents. Counts their tokens under 0043's step budget. Part of #843.
+Status: accepted (2026-11-18, by the maintainer; proposed the same day by OICWS in #954).
+Narrows 0028: how an L3 step's agent uses sub-agents. Counts their tokens under 0043's step
+budget. Part of #843.
 
 ## Context
 0028 gives an L3 step (`autonomy: high`, and `full` above it) "the environment's tools and
