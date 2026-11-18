@@ -5,6 +5,7 @@ from collections.abc import Iterator
 
 import pytest
 
+from coscribe.runtime import secret_store
 from coscribe.tools import _office_com
 
 # The flaky-test policy (tests/flaky_policy.py): the hooks and the quarantine fixture
@@ -15,6 +16,15 @@ from .flaky_policy import (  # noqa: F401
     pytest_runtest_logreport,
     pytest_terminal_summary,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_carried_over_blanking(monkeypatch: pytest.MonkeyPatch) -> None:
+    """What a connector's credentials or sign-in tokens add to the redaction lives for the
+    process (`SecretStore.blank_also`); each test starts without what an earlier one connected,
+    so no result depends on the order tests run in."""
+    monkeypatch.setattr(secret_store, "_OTHER_FORMS", {})
+    monkeypatch.setattr(secret_store, "_FORMS_CACHE", {})
 
 
 @pytest.fixture(autouse=True)
