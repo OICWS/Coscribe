@@ -1,20 +1,14 @@
-import { useContext, useState, type ReactNode } from "react";
+import { useContext, useState } from "react";
 import { type LogItem } from "../../state/reducer";
-import { CloseIcon, PencilIcon, RewindIcon } from "../icons";
+import { CloseIcon, RewindIcon } from "../icons";
 import { CopyButton } from "../CopyButton";
 import { attachedFilesNote, attachmentKind, type AttachmentView } from "../../lib/attachments";
-import { SteerActionsContext, ViewFile } from "./contexts";
+import { MessageActionsContext, SteerActionsContext, ViewFile } from "./contexts";
 import { AttachmentCard, AttachmentDialog } from "../Attachments";
 import { ThreadIdContext } from "../threadContext";
+import { HoverTip, MESSAGE_ICON_BUTTON } from "./HoverTip";
+import { EditBox, SentMessageActions } from "./SentMessageActions";
 
-/** A user bubble with a hover-revealed edit affordance -- clicking it
- * swaps the bubble for an inline textarea; submitting truncates the
- * conversation at this turn and regenerates from the edited text (see
- * EditMessageOut's docstring in wire.ts and _handle_edit_message_locked
- * in conversation/session.py for what happens server-side). Its own useState (not
- * lifted into ChatState) mirrors ToolCallRow/ToolRunGroupView's existing
- * pattern of local, ephemeral UI state that doesn't need to survive a
- * remount or be visible to any other component. */
 // A user bubble past this length collapses behind "Show more" -- mainly
 // hit by a pasted-content turn (Composer.tsx's submit() now puts the real
 // pasted text in displayText instead of dropping it), where the raw text
@@ -68,27 +62,6 @@ function SentAttachments({ files, images }: { files: string[]; images: string[] 
   );
 }
 
-/** A dark label above a control while the pointer is on it. It sits on a wrapper rather than the
- * button, so a disabled button still says why it is disabled. */
-function HoverTip({ label, align = "center", children }: { label: string; align?: "center" | "end"; children: ReactNode }) {
-  return (
-    <span className="group/tip relative inline-flex">
-      {children}
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute bottom-full z-20 mb-1.5 whitespace-nowrap rounded-md bg-[var(--primary)] px-2 py-1 text-xs text-[var(--primary-fg)] opacity-0 shadow-md transition-opacity delay-150 group-hover/tip:opacity-100 ${
-          align === "end" ? "right-0" : "left-1/2 -translate-x-1/2"
-        }`}
-      >
-        {label}
-      </span>
-    </span>
-  );
-}
-
-const STEER_ICON_BUTTON =
-  "flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)]";
-
 /** A note added while the reply was being worked on: a user bubble, with
  * whether the model has read it yet. */
 export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> }) {
@@ -111,11 +84,11 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
         <div className="flex items-center gap-0.5 text-xs text-[var(--muted)]">
           {item.text.trim() !== "" && (
             <HoverTip label="Copy">
-              <CopyButton getText={() => item.text} title="" className={STEER_ICON_BUTTON} />
+              <CopyButton getText={() => item.text} title="" className={MESSAGE_ICON_BUTTON} />
             </HoverTip>
           )}
           <HoverTip label="Rewind is unavailable while working" align="end">
-            <button type="button" aria-label="Rewind" disabled className={STEER_ICON_BUTTON}>
+            <button type="button" aria-label="Rewind" disabled className={MESSAGE_ICON_BUTTON}>
               <RewindIcon className="h-3.5 w-3.5" />
             </button>
           </HoverTip>
@@ -127,7 +100,7 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
               type="button"
               aria-label="Cancel and edit message"
               disabled={editBlocked}
-              className={STEER_ICON_BUTTON}
+              className={MESSAGE_ICON_BUTTON}
               onClick={() => actions.withdraw(item.id)}
             >
               <CloseIcon className="h-3.5 w-3.5" />
@@ -151,93 +124,46 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
   );
 }
 
-export function UserMessageView({
-  item,
-  onEditMessage,
-}: {
-  item: Extract<LogItem, { kind: "user" }>;
-  onEditMessage?: (turnIndex: number, text: string) => void;
-}) {
+/** A sent message, with its time, Rewind, Edit and Copy under it while the pointer is on it. Both
+ * Rewind and Edit take this message and every turn after it out of the conversation; Edit then
+ * sends the new text as the latest message. */
+export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user" }> }) {
+  const actions = useContext(MessageActionsContext);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(item.text);
+  // Read on hover, so "2 minutes ago" is current when it shows.
+  const [now, setNow] = useState(() => Date.now());
   const files = item.files ?? [];
   const hasAttachments = files.length > 0 || (item.images?.length ?? 0) > 0;
   const [textExpanded, setTextExpanded] = useState(false);
   const isLongText = item.text.length > LONG_MESSAGE_COLLAPSE_CHARS;
   const shownText =
     isLongText && !textExpanded ? `${item.text.slice(0, LONG_MESSAGE_COLLAPSE_CHARS)}…` : item.text;
+  const leavesChanges = actions?.leavesChanges.has(item.turnIndex) ?? false;
 
-  const cancel = () => {
-    setDraft(item.text);
-    setEditing(false);
-  };
-
-  const submit = () => {
-    if (!draft.trim() || !onEditMessage) return;
-    // The note naming the files goes back with the text: it is how the model knows them.
-    onEditMessage(item.turnIndex, files.length > 0 ? `${draft}\n\n${attachedFilesNote(files)}` : draft);
-    setEditing(false);
-  };
-
-  if (editing) {
+  if (editing && actions) {
     return (
-      <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1.5">
-        <textarea
-          autoFocus
-          className="w-full resize-none rounded-2xl border border-[var(--accent)] bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] outline-none"
-          rows={Math.min(10, draft.split("\n").length)}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              cancel();
-            } else if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              submit();
-            }
-          }}
-        />
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs hover:bg-[var(--card-bg)]"
-            onClick={cancel}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-xs text-[var(--accent-fg)] disabled:opacity-40"
-            onClick={submit}
-            disabled={!draft.trim()}
-          >
-            Save &amp; submit
-          </button>
-        </div>
-      </div>
+      <EditBox
+        text={item.text}
+        blocked={actions.blocked}
+        leavesChanges={leavesChanges}
+        onCancel={() => setEditing(false)}
+        onSave={(draft) => {
+          setEditing(false);
+          // The note naming the files goes back with the text: it is how the model knows them.
+          actions.edit(item.turnIndex, files.length > 0 ? `${draft}\n\n${attachedFilesNote(files)}` : draft);
+        }}
+      />
     );
   }
 
   return (
-    <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1.5">
+    <div className="group/msg ml-auto flex max-w-[96%] flex-col items-end gap-1.5" onMouseEnter={() => setNow(Date.now())}>
       <SentAttachments files={files} images={item.images ?? []} />
-      <div className="group/msg flex items-center gap-1">
-        {onEditMessage && (
-          <button
-            type="button"
-            title="Edit message"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--muted)] opacity-0 transition-opacity hover:bg-[var(--card-bg)] hover:text-[var(--fg)] group-hover/msg:opacity-100"
-            onClick={() => setEditing(true)}
-          >
-            <PencilIcon className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {(item.text.trim() !== "" || !hasAttachments) && (
-          <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
-            {shownText}
-          </div>
-        )}
-      </div>
+      {(item.text.trim() !== "" || !hasAttachments) && (
+        <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
+          {shownText}
+        </div>
+      )}
       {isLongText && (
         <button
           type="button"
@@ -247,6 +173,15 @@ export function UserMessageView({
           {textExpanded ? "Show less" : "Show more"}
         </button>
       )}
+      <SentMessageActions
+        text={item.text}
+        sentAt={item.sentAt}
+        now={now}
+        blocked={actions ? actions.blocked : undefined}
+        leavesChanges={leavesChanges}
+        onRewind={() => actions?.rewind(item.turnIndex, item.text)}
+        onEdit={() => setEditing(true)}
+      />
     </div>
   );
 }

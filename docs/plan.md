@@ -58,6 +58,10 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
+  messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.
+  Needs a time on the AI message that no provider is sent.
+
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
 
