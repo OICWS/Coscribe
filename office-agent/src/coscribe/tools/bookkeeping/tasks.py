@@ -81,6 +81,11 @@ class TaskToolkit:
 
     def create(self, content: str) -> dict[str, Any]:
         def add(tasks: list[dict[str, Any]], ids: _NextId) -> dict[str, Any]:
+            # A list whose every task is done was a request that is over; a new task starts the
+            # next request's list, so the two don't show as one plan. Ids keep counting, so a
+            # stale task_update can't land on the new list.
+            if tasks and all(task["status"] == "completed" for task in tasks):
+                tasks.clear()
             task = {"id": ids.take(), "content": content, "status": "pending"}
             tasks.append(task)
             return task
