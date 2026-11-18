@@ -265,6 +265,8 @@ class WorkflowAgentActivity(TypedDict):
     tokens: NotRequired[int]
     cached_tokens: NotRequired[int]
     tools_used: NotRequired[list[str]]
+    # The sub-agents a high or full step started (decision 0051); counted in the numbers above.
+    sub_agents: NotRequired[int]
     pending: NotRequired[WorkflowAgentCall]
     added: NotRequired[WorkflowAddedSteps]
 
