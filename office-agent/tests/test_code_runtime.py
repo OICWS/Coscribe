@@ -170,6 +170,24 @@ async def test_the_thread_runs_unsandboxed_with_every_action_coming_back(
     assert started["config"] == {"model_context_window": 1048576}
 
 
+async def test_a_resumed_thread_gets_the_current_patch_instructions(
+    host: CodexHost, workdir: Path, tmp_path: Path
+) -> None:
+    first = _thread(host, workdir, developer_instructions="old instructions")
+    await first.run_turn("basic", _Approvals(True))
+    resumed = _thread(
+        host,
+        workdir,
+        thread_id=first.thread_id,
+        developer_instructions="updated patch instructions",
+    )
+    await resumed.run_turn("basic", _Approvals(True))
+    params = next(r["params"] for r in _requests(tmp_path) if r.get("method") == "thread/resume")
+    assert resumed.resumed
+    assert params["developerInstructions"] == "updated patch instructions"
+    assert params["approvalPolicy"] == "untrusted"
+
+
 async def test_a_command_is_refused_without_asking(host: CodexHost, workdir: Path) -> None:
     approvals = _Approvals(True)
     events: list[CodexEvent] = []

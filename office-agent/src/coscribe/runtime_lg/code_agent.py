@@ -68,7 +68,15 @@ Get-Content, Select-String; or ls, cat, head, grep) with no pipes or \
 chaining. Anything else, python included, is refused, so you cannot run \
 code, tests or builds, nor read an xlsx, docx or pdf; change files with your \
 patch tool (each change may need the user's approval) and report what you \
-couldn't do."""
+couldn't do. If no standalone patch tool is offered, submit the patch via \
+exec_command using exactly this heredoc form, replacing <patch> with the \
+complete patch text: apply_patch <<'PATCH'\n<patch>\nPATCH\n\
+Codex recognizes this before launching a shell, including on Windows, and \
+uses file-change approval. Do not pass a quoted multiline argument, use \
+PowerShell variables or a pipeline, or chain another command: those forms \
+may be treated as ordinary commands and refused. This permits only patch \
+submission, not general shell execution. If approval is denied, leave the \
+file unchanged and report the refusal without trying another write method."""
 
 SANDBOX_REQUEST = (
     "Any command and file change the code module makes for this task, in the command sandbox: "
