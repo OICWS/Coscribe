@@ -388,13 +388,17 @@ def overlay_env(base: Mapping[str, str], extra: Mapping[str, str] | None) -> dic
 _PYTHON_COMMANDS = frozenset({"python", "python3", "py"})
 
 
-def resolve_python_command(command: str, state_dir: Path | None) -> str:
+def resolve_python_command(
+    command: str, state_dir: Path | None, *, refuse_stub: bool = False
+) -> str:
     """The command to launch for a connector configured as a bare `python`,
     `python3` or `py`. A packaged app's PATH often lacks the user's Python,
     or finds the Windows Store stub that exits at once, which showed up as
     "Connection closed" with nothing to act on. A name that already runs is
     left alone; only a broken one is replaced, by the interpreter chosen in
-    Settings > Capabilities if it works, else the first one detected."""
+    Settings > Capabilities if it works, else the first one detected. With `refuse_stub`, a name
+    that is found but runs nothing, with no other Python to use, raises RuntimeError saying so:
+    started anyway it only ever reads as "Connection closed"."""
     if command.lower().removesuffix(".exe") not in _PYTHON_COMMANDS:
         return command
     found = shutil.which(command)
@@ -403,4 +407,12 @@ def resolve_python_command(command: str, state_dir: Path | None) -> str:
     override = get_interpreter_override(state_dir) if state_dir is not None else None
     candidates = [*([override] if override else []), *fallbacks_for_platform()]
     working = working_interpreters(candidates)
-    return working[0] if working else command
+    if working:
+        return working[0]
+    if refuse_stub and found:
+        raise RuntimeError(
+            f"{command!r} on this computer doesn't run a Python (on Windows it is often only the "
+            "Microsoft Store shortcut). Install Python, or pick one under Settings > Capabilities "
+            "> Python for scripts, then reconnect."
+        )
+    return command

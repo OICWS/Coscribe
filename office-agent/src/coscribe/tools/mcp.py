@@ -172,7 +172,7 @@ def prepare_for_connect(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
             prepared[field] = {k: resolve_secret(v) or "" for k, v in values.items()}
     ready = with_secrets(cast(MCPConfig, prepared), state_dir)
     _blank_credentials(ready)
-    return with_interpreter(ready, state_dir)
+    return with_interpreter(ready, state_dir, refuse_stub=True)
 
 
 # Parts of an env or header name that say its value is a credential, so a server that echoes
@@ -215,13 +215,16 @@ def _blank_credentials(config: MCPConfig) -> None:
     SecretStore.blank_also(f"mcp:{config['name']}", sent)
 
 
-def with_interpreter(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
+def with_interpreter(
+    config: MCPConfig, state_dir: Path | None, *, refuse_stub: bool = False
+) -> MCPConfig:
     """`config` with a bare `python` command pointed at a Python that runs;
-    the saved connector keeps the name it was added with."""
+    the saved connector keeps the name it was added with. `refuse_stub`: see
+    `resolve_python_command`."""
     command = config.get("command")
     if not command:
         return config
-    resolved = resolve_python_command(command, state_dir)
+    resolved = resolve_python_command(command, state_dir, refuse_stub=refuse_stub)
     if resolved == command:
         return config
     logger.info("Connector command %s resolved to %s", command, resolved)
