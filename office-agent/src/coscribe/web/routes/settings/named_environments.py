@@ -125,15 +125,6 @@ def _suggested_folder() -> Path:
     return Path.home() / "Documents" / "Coscribe"
 
 
-def _holds_files(folder: Path) -> bool:
-    """Whether the hidden folder conversations used until now holds anything of the person's:
-    `.coscribe` alone is coscribe's own."""
-    try:
-        return any(entry.name != ".coscribe" for entry in folder.iterdir())
-    except OSError:
-        return False
-
-
 def _chosen_folder(text: Any) -> Path | str:
     """The folder the person picked, made if it isn't there yet (its parent must be); a reason
     otherwise."""
@@ -158,12 +149,7 @@ def _first_workspace_routes(router: APIRouter, state: AppState) -> None:
 
     async def first_workspace() -> dict[str, Any]:
         default = Environments(settings.state_dir).get(DEFAULT_ENVIRONMENT) or {}
-        earlier = Path(settings.workspace_root).resolve()
-        return {
-            "needed": not default.get("folders"),
-            "suggested": str(_suggested_folder()),
-            "earlier": str(earlier) if _holds_files(earlier) else None,
-        }
+        return {"needed": not default.get("folders"), "suggested": str(_suggested_folder())}
 
     async def choose_first_workspace(payload: dict[str, Any]) -> Any:
         folder = _chosen_folder(payload.get("folder"))
@@ -172,27 +158,12 @@ def _first_workspace_routes(router: APIRouter, state: AppState) -> None:
         sessions = _open_sessions(state, {DEFAULT_ENVIRONMENT})
         if any(s.turn_running for s in sessions):
             return _refused("A conversation is replying. Choose once it has finished.", 409)
-        earlier = Path(settings.workspace_root).resolve()
-        checkpointer = state.checkpointer_holder["checkpointer"]
-        await checkpointer.setup()
-        cursor = await checkpointer.conn.execute("SELECT DISTINCT thread_id FROM checkpoints")
-        rows = await cursor.fetchall()
-        # A task's conversations keep their own folders.
-        threads = [row[0] for row in rows if not row[0].startswith(SCHEDULED_THREAD_PREFIX)]
         try:
-            earlier_id = Environments(settings.state_dir).first_workspace(
-                str(folder), str(earlier) if _holds_files(earlier) else None, threads
-            )
+            Environments(settings.state_dir).first_workspace(str(folder))
         except EnvironmentRefused as exc:
             return _refused(exc.reason, 409)
-        if earlier_id:
-            store = ScheduledTriggerStore(settings.state_dir)
-            for trigger in store.list_all():
-                if trigger.environment == DEFAULT_ENVIRONMENT:
-                    trigger.environment = earlier_id
-                    store.save(trigger)
         await _move_folders(settings.state_dir, sessions)
-        return {"folder": str(folder), "earlier": earlier_id}
+        return {"folder": str(folder)}
 
     router.add_api_route("/api/workspace/first", first_workspace, methods=["GET"])
     router.add_api_route("/api/workspace/first", choose_first_workspace, methods=["POST"])

@@ -54,8 +54,7 @@ Last reviewed: 2026-11-18.
    `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. A task's
    reach (what it reaches, its folder inputs picked from it, a folder outside it allowed on the
    spot) is in `docs/log/2026-11-18-task-reach-server.md` and `-ui.md`. B is in
-   `docs/log/2026-11-18-uploads-in-workspace.md`. C's server part (the first workspace, earlier
-   work moved to "Earlier workspace") is in `docs/log/2026-11-18-first-workspace-server.md`.
+   `docs/log/2026-11-18-uploads-in-workspace.md`. C's server part (the first workspace) is in `docs/log/2026-11-18-first-workspace-server.md`.
    Next: the first-start dialog, then a conversation with no workspace only chats, then D.
 
 ## Open, smaller

@@ -409,33 +409,18 @@ class Environments:
                 data["threads"][thread_id] = by_settings[key]
             self._write(data)
 
-    def first_workspace(
-        self, folder: str, earlier: str | None, thread_ids: list[str]
-    ) -> str | None:
+    def first_workspace(self, folder: str) -> None:
         """The first start's workspace (decision 0048): Default works in `folder` from now on,
-        named for it. When `earlier`, the hidden folder conversations used until now, holds files,
-        it becomes a workspace of its own with Default's other settings, and the conversations
-        on Default move to it, so each keeps the files it made. Nothing on disk moves. Returns
-        that workspace's id."""
+        named for it."""
         with _LOCK:
             data = self._read()
             default = data["environments"][DEFAULT_ID]
             if default["folders"]:
                 raise EnvironmentRefused("The workspace is already chosen.")
-            earlier_id = None
-            if earlier:
-                earlier_id = f"env_{uuid.uuid4().hex[:12]}"
-                moved = json.loads(json.dumps(default))
-                moved["name"] = self._free_name(data, "Earlier workspace")
-                moved["folders"] = [earlier]
-                data["environments"][earlier_id] = moved
-                for thread_id in thread_ids:
-                    data["threads"].setdefault(thread_id, earlier_id)
             default["folders"] = [folder]
             default["name"] = ""
             default["name"] = self._free_name(data, Path(folder).name or "Workspace")
             self._write(data)
-            return earlier_id
 
     @staticmethod
     def _free_name(data: dict[str, Any], wanted: str) -> str:

@@ -286,65 +286,30 @@ def test_a_folder_allowed_on_default_gets_the_conversation_an_environment_of_its
     assert added["folders"] == [str(tmp_path / "workspace"), str(allowed)]
 
 
-def test_the_first_start_asks_for_a_workspace_and_keeps_earlier_work_where_it_was(
+def test_the_first_start_asks_for_a_workspace_and_new_conversations_work_there(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Decision 0048: the hidden folder becomes "Earlier workspace" with the conversations and
-    tasks that used it; new conversations work in the folder the person chose."""
+    """Decision 0048: Default works in the folder the person chose, named for it."""
     monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
     (tmp_path / "home" / "Documents").mkdir(parents=True)
-    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="done")])
+    fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_before") as ws:
-            ws.receive_json()
-            ws.receive_json()
-            ws.send_json({"type": "user_message", "text": "hello"})
-            _receive_until(ws, "tasks_changed")
-        task = client.post(
-            "/api/scheduled-tasks", json={"name": "x", "kind": "manual", "at": "", "prompt": "p"}
-        ).json()["trigger_id"]
-        (tmp_path / "workspace" / "report.docx").write_bytes(b"x")
-
         asked = client.get("/api/workspace/first").json()
+        refused = [
+            client.post("/api/workspace/first", json={"folder": folder}).status_code
+            for folder in ["", "relative", str(tmp_path / "no" / "such"), str(tmp_path / "home")]
+        ]
         chosen = client.post("/api/workspace/first", json={"folder": asked["suggested"]})
         again = client.post("/api/workspace/first", json={"folder": asked["suggested"]})
         after = client.get("/api/workspace/first").json()
-        envs = {e["id"]: e for e in client.get("/api/environments").json()["environments"]}
-        threads = {t["thread_id"]: t for t in client.get("/api/threads").json()}
-        task_env = client.get(f"/api/scheduled-tasks/{task}/reach").json()["workspace"]
+        envs = client.get("/api/environments").json()["environments"]
+        reach = client.get("/api/threads/t_new/workspace").json()
 
     suggested = tmp_path / "home" / "Documents" / "Coscribe"
-    assert asked == {
-        "needed": True,
-        "suggested": str(suggested),
-        "earlier": str((tmp_path / "workspace").resolve()),
-    }
-    assert chosen.status_code == 200 and suggested.is_dir()
+    assert asked == {"needed": True, "suggested": str(suggested)}
+    assert refused == [422, 422, 422, 422]
+    assert chosen.json() == {"folder": str(suggested.resolve())} and suggested.is_dir()
     assert again.status_code == 409
     assert after["needed"] is False
-    earlier = chosen.json()["earlier"]
-    assert envs["default"]["folders"] == [str(suggested.resolve())]
-    assert envs["default"]["name"] == "Coscribe"
-    assert envs[earlier]["name"] == "Earlier workspace"
-    assert envs[earlier]["folders"] == [str((tmp_path / "workspace").resolve())]
-    assert threads["t_before"]["environment"] == earlier
-    assert task_env["id"] == earlier
-    assert (tmp_path / "workspace" / "report.docx").exists()
-
-
-def test_a_first_workspace_with_nothing_earlier_moves_nothing_and_refuses_a_bad_folder(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fake_model = FakeToolCallingChatModel(responses=[])
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        assert client.get("/api/workspace/first").json()["earlier"] is None
-        refused = [
-            client.post("/api/workspace/first", json={"folder": folder}).status_code
-            for folder in ["", "relative", str(tmp_path / "no" / "such"), str(Path.home())]
-        ]
-        chosen = client.post("/api/workspace/first", json={"folder": str(tmp_path / "Work")})
-        envs = client.get("/api/environments").json()["environments"]
-
-    assert refused == [422, 422, 422, 422]
-    assert chosen.json() == {"folder": str((tmp_path / "Work").resolve()), "earlier": None}
-    assert [e["name"] for e in envs] == ["Work"]
+    assert [(e["name"], e["folders"]) for e in envs] == [("Coscribe", [str(suggested.resolve())])]
+    assert str(suggested.resolve()) in json.dumps(reach)
