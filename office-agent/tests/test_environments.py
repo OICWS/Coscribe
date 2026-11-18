@@ -201,3 +201,78 @@ def test_a_folder_that_holds_home_is_too_broad(monkeypatch: pytest.MonkeyPatch) 
     assert Environments.too_broad(Path("/"))
     assert not Environments.too_broad(home / "Contracts")
     assert not Environments.too_broad(Path("/srv/other"))
+
+
+def test_a_site_keeps_its_browser_level_and_ask_is_left_out(tmp_path: Path) -> None:
+    environments = Environments(tmp_path)
+    network = {
+        "mode": "limited",
+        "domains": ["example.com"],
+        "browser": {
+            "https://www.example.com/a": "allow",
+            "docs.example.com": "ask",
+            "b.org": "off",
+        },
+    }
+    env = environments.create({"name": "Sites", "network": network}, set())
+    assert env["network"] == {
+        "mode": "limited",
+        "domains": ["example.com"],
+        "browser": {"example.com": "allow", "b.org": "off"},
+    }
+    assert (
+        "browser"
+        not in environments.create(
+            {"name": "Off", "network": {**network, "mode": "none", "domains": []}}, set()
+        )["network"]
+    )
+    assert "needs a browser level" in _refusal(
+        environments, {"network": {"mode": "full", "domains": [], "browser": {"a.com": "yes"}}}
+    )
+    assert "isn't a site" in _refusal(
+        environments, {"network": {"mode": "full", "domains": [], "browser": {"*": "allow"}}}
+    )
+
+
+def test_always_allow_adds_the_site_to_the_conversations_workspace_only(tmp_path: Path) -> None:
+    environments = Environments(tmp_path)
+    listed = environments.create(
+        {"name": "Listed", "network": {"mode": "limited", "domains": ["example.com"]}}, set()
+    )
+    environments.assign("t1", listed["id"])
+
+    assert environments.set_browser_level("t1", "https://docs.example.com/x", "allow") == (
+        "docs.example.com"
+    )
+    with pytest.raises(EnvironmentRefused, match="outside the sites Listed may reach"):
+        environments.set_browser_level("t1", "other.org", "allow")
+    assert environments.for_thread("t1")["network"]["browser"] == {"docs.example.com": "allow"}
+    assert "browser" not in environments.for_thread("t2")["network"]
+
+    environments.set_browser_level("t1", "docs.example.com", "ask")
+    assert "browser" not in environments.for_thread("t1")["network"]
+
+
+def test_the_global_list_moves_into_each_workspace_that_reaches_the_site(tmp_path: Path) -> None:
+    environments = Environments(tmp_path)
+    environments.create(
+        {
+            "name": "Listed",
+            "network": {
+                "mode": "limited",
+                "domains": ["example.com"],
+                "browser": {"example.com": "off"},
+            },
+        },
+        set(),
+    )
+    environments.create({"name": "Offline", "network": {"mode": "none", "domains": []}}, set())
+
+    assert environments.import_browser_sites(["example.com", "news.org", "not a site"]) == 2
+    levels = {e["name"]: e["network"].get("browser") for e in environments.all()}
+    # Default reaches any site; Listed keeps its own choice and doesn't list news.org.
+    assert levels == {
+        "Default": {"example.com": "allow", "news.org": "allow"},
+        "Listed": {"example.com": "off"},
+        "Offline": None,
+    }
