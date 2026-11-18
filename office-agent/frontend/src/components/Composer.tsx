@@ -51,6 +51,18 @@ interface PendingImage {
    * BrowserCapture (the original "from the browser panel" wording, kept
    * as the default so that call site didn't need touching). */
   source?: "pptx" | "annotation";
+  /** Where a picture attached from the computer was saved in the workspace, for the note that
+   * tells the model; absent when it couldn't be saved, and the picture is still sent. */
+  path?: string;
+}
+
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function pickNote(img: PendingImage): string {
@@ -277,8 +289,9 @@ export function Composer({
     // "stop" message, not "user_message") -- App.tsx's onSend special-cases
     // displayText for this, same as it already does for the Stop button.
     let outgoingText = text;
-    if (pendingFiles.length > 0) {
-      const note = attachedFilesNote(pendingFiles.map((f) => f.path));
+    const savedPaths = [...pendingFiles.map((f) => f.path), ...pendingImages.flatMap((img) => (img.path ? [img.path] : []))];
+    if (savedPaths.length > 0) {
+      const note = attachedFilesNote(savedPaths);
       outgoingText = text ? `${text}\n\n${note}` : note;
     }
     // Unlike pendingFiles above, a paste has no workspace path to point
@@ -323,7 +336,7 @@ export function Composer({
       displayText: displayText || (pendingImages.length > 0 || pendingFiles.length > 0 ? "" : "(attachment sent)"),
       outgoingText,
       images: pendingImages.length > 0 ? pendingImages.map((f) => f.dataUrl) : undefined,
-      files: pendingFiles.length > 0 ? pendingFiles.map((f) => f.path) : undefined,
+      files: savedPaths.length > 0 ? savedPaths : undefined,
     };
     // While a reply is being worked on, a message goes to it as a note, attachments and all (or
     // answers the card it waits on), rather than queuing behind it; "/stop" still stops it.
@@ -425,7 +438,8 @@ export function Composer({
     // path drag-and-drop already uses.
     if (event.clipboardData.files.length > 0) {
       event.preventDefault();
-      for (const file of Array.from(event.clipboardData.files)) void onFileChosen(file);
+      // A picture copied to the clipboard (a screenshot) arrives as "image.png"; a copied file keeps its name.
+      for (const file of Array.from(event.clipboardData.files)) void onFileChosen(file, file.name === "image.png");
       return;
     }
     const text = event.clipboardData.getData("text/plain");
@@ -436,19 +450,17 @@ export function Composer({
     setPendingPastes((prev) => [...prev, { text, charCount: text.length }]);
   };
 
-  const onFileChosen = async (file: File) => {
+  const onFileChosen = async (file: File, pasted = false) => {
     if (pendingImages.length + pendingFiles.length >= MAX_ATTACHED_FILES) {
       onLocalError(`Up to ${MAX_ATTACHED_FILES} attachments at a time -- remove one first.`);
       return;
     }
     if (file.type.startsWith("image/")) {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      setPendingImages((prev) => [...prev, { name: file.name, dataUrl }]);
+      const [dataUrl, saved] = await Promise.all([
+        readDataUrl(file),
+        uploadFile(file, threadId, pasted).catch(() => null),
+      ]);
+      setPendingImages((prev) => [...prev, { name: file.name, dataUrl, path: saved && !("error" in saved) ? saved.path : undefined }]);
       return;
     }
     const result = await uploadFile(file, threadId);

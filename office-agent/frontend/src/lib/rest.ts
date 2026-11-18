@@ -607,10 +607,12 @@ export const getCommands = () => getJson<CommandsResponse>("/api/commands");
 // -- Uploads --------------------------------------------------------------
 
 /** `threadId`: the file lands in that conversation's own folder. */
-export async function uploadFile(file: File, threadId: string): Promise<UploadResult> {
+/** `pasted` names a picture from the clipboard by the date and time instead of its own name. */
+export async function uploadFile(file: File, threadId: string, pasted = false): Promise<UploadResult> {
   const form = new FormData();
   form.append("thread_id", threadId);
   form.append("file", file);
+  if (pasted) form.append("pasted", "true");
   const res = await fetch("/api/upload", { method: "POST", body: form });
   return res.json() as Promise<UploadResult>;
 }
