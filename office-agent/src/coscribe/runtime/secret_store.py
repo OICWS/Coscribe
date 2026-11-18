@@ -118,6 +118,13 @@ class SecretStore:
     def names(self) -> set[str]:
         return set(self._read())
 
+    @staticmethod
+    def blank_also(owner: str, values: Iterable[str]) -> None:
+        """Have every `redactor` blank `values` too: keys kept like a secret but stored
+        elsewhere (a connector's own env and header values, its sign-in tokens). Replaces what
+        `owner` gave before; none clears it."""
+        _blank_also(owner, values)
+
     def hosts_of(self, name: str) -> list[str] | None:
         entry = self._read().get(name)
         return None if entry is None else list(entry.get("hosts", []))
@@ -252,10 +259,9 @@ _other_version = 0
 _AUTH_SCHEME = re.compile(r"(?i)(?:bearer|basic|token|bot)\s+(\S+)")
 
 
-def blank_also(owner: str, values: Iterable[str]) -> None:
-    """Have every `redactor` blank `values` too, replacing what `owner` gave before (none clears
-    it). A header value such as `Bearer abc...` also has its token blanked on its own, as a
-    server would echo the token, not the header."""
+def _blank_also(owner: str, values: Iterable[str]) -> None:
+    """`SecretStore.blank_also`. A header value such as `Bearer abc...` also has its token
+    blanked on its own, as a server would echo the token, not the header."""
     global _other_version
     forms: set[str] = set()
     for value in values:

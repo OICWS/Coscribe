@@ -14,7 +14,7 @@ Secrets: `store_secret`, `resolve_secret`, `delete_secret`, `harden_file_permiss
 `env_value_for_storage`, `env_resolve_secret_for_display`, `env_delete_secret_if_ref`,
 `resolve_env_keyring_refs`; the secret store: `SecretStore`, `SessionEnvironments`, `SecretError`,
 `KeychainUnavailable`, `keychain_available`, `MIN_VALUE`, `host_allowed`, `placeholders_in`,
-`substitute`, `redactor`, `blank_also`. Environments: `Environments`, `EnvironmentRefused`, `DEFAULT_ENVIRONMENT`. Network: `NetworkAccess`, `NetworkGuard`, `NetworkError`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
+`substitute`, `redactor` (and `SecretStore.blank_also` for keys kept elsewhere). Environments: `Environments`, `EnvironmentRefused`, `DEFAULT_ENVIRONMENT`. Network: `NetworkAccess`, `NetworkGuard`, `NetworkError`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
 `run_hook`. Types: `Agent`, `ToolMetadata`, `tool_metadata`, `get_tool_metadata`. Other:
 `LLMClient`, `load_custom_providers`, `COMPACT_INSTRUCTIONS`; the proxy setting (`proxy.py`):
 `configured_proxy`, `ProxySetting`, `ProxyError`, `PROXY_MODES`, `PROXY_ENV_VARS`, `DEFAULT_BYPASS`,
@@ -35,7 +35,7 @@ No other coscribe package.
   password may fall back to a plaintext file with owner-only permissions (`tests/test_secrets.py`). The promise is only
   that the model cannot see a value, not that code that digs cannot find it.
 - `redactor` blanks a stored value (and its common encodings) out of text, best effort
-  (`tests/test_secret_redaction_properties.py`), and so every key handed to `blank_also`: a
+  (`tests/test_secret_redaction_properties.py`), and so every key handed to `SecretStore.blank_also`: a
   connector's own env and header values and its sign-in tokens (`tests/test_connector_secrets.py`).
 
 ## Tests

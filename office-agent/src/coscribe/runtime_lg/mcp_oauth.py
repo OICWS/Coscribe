@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from ..runtime import (
-    blank_also,
+    SecretStore,
     delete_secret,
     harden_file_permissions,
     resolve_secret,
@@ -163,7 +163,8 @@ class _Storage:
 
     def _blank(self, tokens: OAuthToken) -> None:
         # A server that echoes the token it was sent must not show it to the model.
-        blank_also(f"mcp-oauth:{self._name}", [tokens.access_token, tokens.refresh_token or ""])
+        sent = [tokens.access_token, tokens.refresh_token or ""]
+        SecretStore.blank_also(f"mcp-oauth:{self._name}", sent)
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
         data = self._read()

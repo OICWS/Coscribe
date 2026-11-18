@@ -7,7 +7,7 @@ database. `SECURITY.md` promises connector tokens the same as secrets; `redactor
 Settings > Secrets.
 
 ## Shipped
-- `runtime.blank_also(owner, values)`: keys kept like a secret but stored elsewhere; every
+- `SecretStore.blank_also(owner, values)` (`runtime/secret_store.py`): keys kept like a secret but stored elsewhere; every
   `redactor` blanks them and their encodings too (values under 8 characters are skipped, as for a
   secret). A header such as `Bearer <token>` also blanks the token alone.
 - `tools.mcp.prepare_for_connect` hands it every env and header value a connector is started with;
