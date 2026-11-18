@@ -757,11 +757,13 @@ any words you wrote on it.
   browser level (decision 0050): Use without asking goes ahead, Not in the
   browser is refused, and for any other site, the first time the AI's
   browser tools touch it in a conversation, the Browser panel asks -- Don't
-  allow, Allow for this chat, or Always allow. ⋮ → "Manage allowed sites…" lists the
-  always-allowed ones (add, remove, clear all); pre-allowing a site is
-  how an unattended scheduled task gets through without a prompt (an
-  unanswered prompt counts as no after three minutes). Kept by the
-  desktop app in `browser-settings.json` in its user-data folder.
+  allow, Allow for this chat, or Always allow. Always allow sets the site to
+  Use without asking in that conversation's workspace; ⋮ → "Manage allowed
+  sites…" opens the workspace, where Sites holds every level. A site set to
+  Use without asking is how an unattended scheduled task gets through
+  without a prompt (an unanswered prompt counts as no after three minutes).
+  The app's older global list is moved once into the workspaces that reach
+  each site, then emptied.
 - Up to 9 tabs, as in Claude's browser: past that "+" is disabled, a link
   that would open a new tab loads in the current one, and the AI is told
   to close or reuse a tab.

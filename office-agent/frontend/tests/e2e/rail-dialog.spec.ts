@@ -116,15 +116,22 @@ test("a workspace's Sites limit its conversations to the sites listed", async ({
     await site.fill("docs.python.org");
     await dialog.getByRole("button", { name: "Add site" }).click();
     await expect(dialog.getByRole("cell", { name: "example.com", exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "example.com in the browser" }).click();
+    await page.getByRole("menuitemradio", { name: "Use without asking" }).click();
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
     expect((await environmentNamed(request, name))?.network).toEqual({
       mode: "limited",
       domains: ["example.com", "docs.python.org"],
+      browser: { "example.com": "allow" },
     });
 
+    // The Browser panel's prompt keeps a level the same way, in the conversation's workspace.
+    const kept = await request.post(`/api/threads/${threadId}/browser-site`, { data: { site: "docs.python.org", level: "off" } });
+    expect(kept.ok()).toBe(true);
     await editEnvironment(page, name);
     await expect(dialog.getByRole("button", { name: "Listed sites", pressed: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "docs.python.org in the browser" })).toHaveText("Not in the browser");
     await dialog.getByRole("button", { name: "Remove docs.python.org" }).click();
     await dialog.getByRole("button", { name: "None", exact: true }).click();
     await expect(dialog.getByLabel("Add a site")).toHaveCount(0);

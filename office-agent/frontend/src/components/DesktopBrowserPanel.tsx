@@ -12,7 +12,7 @@ import {
   PencilIcon,
   StopIcon,
 } from "./icons";
-import { AllowedSitesDialog } from "./AllowedSitesDialog";
+import { DEFAULT_ENVIRONMENT, EnvironmentDialog } from "./EnvironmentDialog";
 import { BrowserAnnotator, type PageCapture } from "./BrowserAnnotator";
 import {
   browserPanelBack,
@@ -43,6 +43,7 @@ import {
   type BrowserPermissionAnswer,
   type BrowserPermissionRequest,
 } from "../lib/electron";
+import { getThreads, setThreadBrowserSite } from "../lib/rest";
 import { useOverlayOverlap } from "../lib/useOverlayOverlap";
 import { useBackdropOpen } from "../lib/titleBar";
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
@@ -129,15 +130,30 @@ function TabButton({
 
 /** What the desktop app tells the panel: which conversation's tabs it shows
  * (the others keep working unseen), a site asking for permission, and the
- * allowed-sites menu entry. */
+ * menu entry that opens the sites of this conversation's workspace. */
 function useHostEvents(
   threadId: string,
   setPermission: (r: BrowserPermissionRequest | null) => void,
-  setSitesOpen: (open: boolean) => void,
+  setWorkspace: (environmentId: string) => void,
 ) {
   useEffect(() => void browserPanelViewGroup(threadId), [threadId]);
   useEffect(() => onBrowserPermission(setPermission), [setPermission]);
-  useEffect(() => onShowAllowedSites(() => setSitesOpen(true)), [setSitesOpen]);
+  useEffect(
+    () =>
+      onShowAllowedSites(() => {
+        void getThreads()
+          .then((threads) => setWorkspace(threads.find((thread) => thread.thread_id === threadId)?.environment ?? DEFAULT_ENVIRONMENT))
+          .catch(() => setWorkspace(DEFAULT_ENVIRONMENT));
+      }),
+    [threadId, setWorkspace],
+  );
+}
+
+/** Always allow keeps the site in the asking conversation's workspace, which every later step
+ * carries to the desktop app; this step goes ahead as allowed for the conversation. */
+async function answerAlways(permission: BrowserPermissionRequest): Promise<void> {
+  const saved = await setThreadBrowserSite(permission.threadId, permission.host, "allow").catch(() => ({ error: "" }));
+  await answerBrowserPermission(permission.requestId, "error" in saved ? "always" : "once");
 }
 
 /** The desktop app's Browser panel: real tabs (native views the desktop
@@ -162,7 +178,7 @@ export function DesktopBrowserPanel({
   const [agent, setAgent] = useState<{ threadId: string; tabId?: number; busy: boolean } | null>(null);
   const [annotation, setAnnotation] = useState<PageCapture | null>(null);
   const [permission, setPermission] = useState<BrowserPermissionRequest | null>(null);
-  const [allowedSitesOpen, setAllowedSitesOpen] = useState(false);
+  const [workspace, setWorkspace] = useState<string | null>(null);
   const dock = useDockPanel();
   const repositionRef = useRef<() => void>(() => {});
   // While panels are dragged or a menu is open the live page, drawn by the
@@ -284,11 +300,11 @@ export function DesktopBrowserPanel({
     if (agent?.busy && agent.tabId === activeId) setAnnotation(null);
   }, [agent, activeId]);
 
-  useHostEvents(threadId, setPermission, setAllowedSitesOpen);
+  useHostEvents(threadId, setPermission, setWorkspace);
 
   const answerPermission = (answer: BrowserPermissionAnswer) => {
     if (!permission) return;
-    void answerBrowserPermission(permission.requestId, answer);
+    void (answer === "always" ? answerAlways(permission) : answerBrowserPermission(permission.requestId, answer));
     setPermission(null);
   };
 
@@ -512,7 +528,7 @@ export function DesktopBrowserPanel({
         </div>
       </div>
 
-      {allowedSitesOpen && <AllowedSitesDialog onClose={() => setAllowedSitesOpen(false)} />}
+      {workspace !== null && <EnvironmentDialog environmentId={workspace} onSaved={() => undefined} onClose={() => setWorkspace(null)} />}
       {picked && <PickedPreview picked={picked} onDiscard={() => setPicked(null)} onSendToChat={onSendToChat} />}
     </div>
   );

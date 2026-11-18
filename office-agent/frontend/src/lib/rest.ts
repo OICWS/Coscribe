@@ -12,6 +12,7 @@ import type {
   CapabilityFolders,
   CommandSandbox,
   CommandSandboxMode,
+  BrowserLevel,
   Environment,
   EnvironmentFields,
   BrowseDirsResponse,
@@ -628,6 +629,10 @@ export const updateEnvironment = (id: string, fields: EnvironmentFields) =>
   sendForResult<Environment & { warning?: string }>(`/api/environments/${encodeURIComponent(id)}`, "PUT", fields);
 export const deleteEnvironment = (id: string) =>
   sendForResult<{ moved: number }>(`/api/environments/${encodeURIComponent(id)}`, "DELETE", undefined);
+/** The built-in browser's level for a site, kept in the workspace this conversation uses. */
+export const setThreadBrowserSite = (threadId: string, site: string, level: BrowserLevel) =>
+  sendForResult<{ site: string; environment: string }>(`/api/threads/${encodeURIComponent(threadId)}/browser-site`, "POST", { site, level });
+export const importBrowserSites = (sites: string[]) => sendForResult<{ added: number }>("/api/environments/import-browser-sites", "POST", { sites });
 
 /** Settings › Capabilities: what coscribe may run on this computer. */
 export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");

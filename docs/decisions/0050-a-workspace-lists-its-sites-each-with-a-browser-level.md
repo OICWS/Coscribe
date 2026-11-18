@@ -30,3 +30,5 @@ still fails. Secrets add a third list: the hosts each one may be sent to.
 One place answers "where may this workspace go, and does it ask": Settings › Workspaces. A
 scheduled task runs unattended on a site only if its workspace says Use without asking. A site
 pre-allowed for one workspace no longer opens silently in another.
+
+Retired wording: "always-allowed ones"
