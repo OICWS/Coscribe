@@ -9,7 +9,7 @@ import {
   renameThreadGroup,
   setThreadMeta,
 } from "../lib/rest";
-import { goToThread, showSessions } from "../lib/nav";
+import { goToThread, readPage, showSessions } from "../lib/nav";
 import { saveBlob } from "../lib/slides";
 import { readStored, writeStored } from "../lib/storage";
 import {
@@ -302,7 +302,7 @@ function ThreadRow({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onClick={() => (selecting ? onToggleSelect() : !isCurrent && goToThread(thread.thread_id))}
+      onClick={() => (selecting ? onToggleSelect() : (!isCurrent || readPage().view !== "chat") && goToThread(thread.thread_id))}
       onContextMenu={(e) => {
         e.preventDefault();
         if (selecting) return;
