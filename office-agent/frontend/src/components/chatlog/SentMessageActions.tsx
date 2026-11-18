@@ -5,17 +5,19 @@ import { CopyButton } from "../CopyButton";
 import { AlertCircleIcon, PencilIcon, RewindIcon } from "../icons";
 import { HoverTip, MESSAGE_ICON_BUTTON } from "./HoverTip";
 
-const LEAVES_CHANGES =
-  "Files changed, commands run and messages sent after this message stay as they are: only the conversation goes back.";
+const LEAVES_CHANGES = " Files changed and commands run after it stay as they are.";
+const REWIND_TAKES_OUT = "Takes this message and everything after it out of the conversation.";
 const EDIT_RESTARTS = "Saving sends this as your latest message and restarts from here.";
 
 /** The row under a sent message: when it was sent, Rewind and Edit (absent where `blocked` is
- * undefined, disabled with the reason where it is a string) and Copy. */
+ * undefined, disabled with the reason where it is a string) and Copy. `leavesChanges` adds to
+ * their tooltips that what later turns did outside the conversation stays. */
 export function SentMessageActions({
   text,
   sentAt,
   now,
   blocked,
+  leavesChanges,
   onRewind,
   onEdit,
 }: {
@@ -23,24 +25,25 @@ export function SentMessageActions({
   sentAt?: string;
   now: number;
   blocked: string | null | undefined;
+  leavesChanges: boolean;
   onRewind: () => void;
   onEdit: () => void;
 }) {
   return (
     <div className="flex items-center gap-0.5 text-xs text-[var(--muted)] opacity-0 transition-opacity focus-within:opacity-100 group-hover/msg:opacity-100">
       {sentAt && (
-        <HoverTip label={fullTime(sentAt)}>
+        <HoverTip below label={fullTime(sentAt)}>
           <span className="mr-1 cursor-default">{timeAgo(sentAt, now)}</span>
         </HoverTip>
       )}
       {blocked !== undefined && (
         <>
-          <HoverTip label={blocked ?? "Rewind to here"} detail={blocked ? undefined : "Takes this message and everything after it out of the conversation."}>
+          <HoverTip below label={blocked ?? "Rewind to here"} detail={blocked ? undefined : REWIND_TAKES_OUT + (leavesChanges ? LEAVES_CHANGES : "")}>
             <button type="button" aria-label="Rewind to here" disabled={blocked !== null} className={MESSAGE_ICON_BUTTON} onClick={onRewind}>
               <RewindIcon className="h-3.5 w-3.5" />
             </button>
           </HoverTip>
-          <HoverTip label={blocked ?? "Edit"} detail={blocked ? undefined : EDIT_RESTARTS} align="end">
+          <HoverTip below label={blocked ?? "Edit"} detail={blocked ? undefined : EDIT_RESTARTS + (leavesChanges ? LEAVES_CHANGES : "")} align="end">
             <button type="button" aria-label="Edit" disabled={blocked !== null} className={MESSAGE_ICON_BUTTON} onClick={onEdit}>
               <PencilIcon className="h-3.5 w-3.5" />
             </button>
@@ -48,34 +51,10 @@ export function SentMessageActions({
         </>
       )}
       {text.trim() !== "" && (
-        <HoverTip label="Copy" align="end">
+        <HoverTip below label="Copy" align="end">
           <CopyButton getText={() => text} title="" className={MESSAGE_ICON_BUTTON} />
         </HoverTip>
       )}
-    </div>
-  );
-}
-
-/** Asked before a rewind past turns that changed things outside the conversation. */
-export function RewindConfirm({ blocked, onCancel, onRewind }: { blocked: string | null; onCancel: () => void; onRewind: () => void }) {
-  return (
-    <div role="alertdialog" aria-label="Rewind to here" className="flex max-w-[460px] flex-col items-end gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-xs">
-      <p className="text-right">
-        <span className="font-medium">Rewind to here?</span> <span className="text-[var(--muted)]">{LEAVES_CHANGES}</span>
-      </p>
-      <div className="flex gap-1.5 text-sm">
-        <button type="button" className="rounded-md px-2.5 py-1 hover:bg-[var(--bg)]" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="rounded-md bg-[var(--primary)] px-2.5 py-1 text-[var(--primary-fg)] disabled:opacity-40"
-          disabled={blocked !== null}
-          onClick={onRewind}
-        >
-          Rewind
-        </button>
-      </div>
     </div>
   );
 }
@@ -117,9 +96,8 @@ export function EditBox({
           }
         }}
       />
-      {leavesChanges && <p className="max-w-[640px] text-right text-xs text-[var(--warning)]">{LEAVES_CHANGES}</p>}
       <div className="flex items-center gap-1.5 text-sm">
-        <HoverTip label={EDIT_RESTARTS} align="end">
+        <HoverTip label={EDIT_RESTARTS + (leavesChanges ? LEAVES_CHANGES : "")} align="end">
           <span className="flex h-7 w-7 items-center justify-center text-[var(--muted)]">
             <AlertCircleIcon className="h-4 w-4 rotate-180" />
           </span>

@@ -9,9 +9,9 @@ recent message. A stopped turn also ended in a square icon and "Stopped", which 
   any message after the last /compact: Rewind takes it and every later turn out and puts its text
   back in the message box; Edit (Cancel / Save, Save once the text changed) does the same and
   sends the new text as the latest message.
-- When a turn being removed wrote a file, ran a command or acted on a connector, Rewind asks first
-  and Edit says so: those changes stay, only the conversation goes back
-  (`frontend/src/lib/messageActions.ts`, matched by the call's verb).
+- When a turn being removed wrote a file, ran a command or acted on a connector, the Rewind and
+  Edit tooltips (and the edit box's info icon) add that those changes stay; Rewind still acts on
+  one click (`frontend/src/lib/messageActions.ts`, matched by the call's verb).
 - Disabled, with the reason, while a reply runs or an approval, question or plan waits (the server
   refuses both then).
 - The server keeps each user message's send time (`sent_at`, in the message's

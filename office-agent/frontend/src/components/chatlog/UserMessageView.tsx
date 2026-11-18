@@ -7,7 +7,7 @@ import { MessageActionsContext, SteerActionsContext, ViewFile } from "./contexts
 import { AttachmentCard, AttachmentDialog } from "../Attachments";
 import { ThreadIdContext } from "../threadContext";
 import { HoverTip, MESSAGE_ICON_BUTTON } from "./HoverTip";
-import { EditBox, RewindConfirm, SentMessageActions } from "./SentMessageActions";
+import { EditBox, SentMessageActions } from "./SentMessageActions";
 
 // A user bubble past this length collapses behind "Show more" -- mainly
 // hit by a pasted-content turn (Composer.tsx's submit() now puts the real
@@ -129,7 +129,7 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
  * sends the new text as the latest message. */
 export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user" }> }) {
   const actions = useContext(MessageActionsContext);
-  const [mode, setMode] = useState<"shown" | "editing" | "confirmingRewind">("shown");
+  const [editing, setEditing] = useState(false);
   // Read on hover, so "2 minutes ago" is current when it shows.
   const [now, setNow] = useState(() => Date.now());
   const files = item.files ?? [];
@@ -140,21 +140,15 @@ export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user
     isLongText && !textExpanded ? `${item.text.slice(0, LONG_MESSAGE_COLLAPSE_CHARS)}…` : item.text;
   const leavesChanges = actions?.leavesChanges.has(item.turnIndex) ?? false;
 
-  const rewind = () => {
-    if (!actions || actions.blocked) return;
-    setMode("shown");
-    actions.rewind(item.turnIndex, item.text);
-  };
-
-  if (mode === "editing" && actions) {
+  if (editing && actions) {
     return (
       <EditBox
         text={item.text}
         blocked={actions.blocked}
         leavesChanges={leavesChanges}
-        onCancel={() => setMode("shown")}
+        onCancel={() => setEditing(false)}
         onSave={(draft) => {
-          setMode("shown");
+          setEditing(false);
           // The note naming the files goes back with the text: it is how the model knows them.
           actions.edit(item.turnIndex, files.length > 0 ? `${draft}\n\n${attachedFilesNote(files)}` : draft);
         }}
@@ -179,18 +173,15 @@ export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user
           {textExpanded ? "Show less" : "Show more"}
         </button>
       )}
-      {mode === "confirmingRewind" && actions ? (
-        <RewindConfirm blocked={actions.blocked} onCancel={() => setMode("shown")} onRewind={rewind} />
-      ) : (
-        <SentMessageActions
-          text={item.text}
-          sentAt={item.sentAt}
-          now={now}
-          blocked={actions ? actions.blocked : undefined}
-          onRewind={() => (leavesChanges ? setMode("confirmingRewind") : rewind())}
-          onEdit={() => setMode("editing")}
-        />
-      )}
+      <SentMessageActions
+        text={item.text}
+        sentAt={item.sentAt}
+        now={now}
+        blocked={actions ? actions.blocked : undefined}
+        leavesChanges={leavesChanges}
+        onRewind={() => actions?.rewind(item.turnIndex, item.text)}
+        onEdit={() => setEditing(true)}
+      />
     </div>
   );
 }
