@@ -7,7 +7,7 @@ index of the older history); why things are the way they are lives in
 PR that changes the picture, and take a line out when its work is done; keep it under about 150
 lines.
 
-Last reviewed: 2026-11-06.
+Last reviewed: 2026-11-18.
 
 ## Next, in order
 
@@ -234,8 +234,6 @@ Last reviewed: 2026-11-06.
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
   joins (decision 0009).
-
-- Conversations reading and messaging each other (records 0008 and 0023, built: every non-archived conversation is reachable; the Edit environment dialog still has its old messages section until the redesign in issue 560 lands).
 
 - A callback helper so a script can use a secret (needs its own local
   authentication).
