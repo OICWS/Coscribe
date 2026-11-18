@@ -8,6 +8,8 @@ Providers pages do not. That shifted the Skills search field and Add button left
   the same available width when switching pages or changing search results.
 - Full Electron app measurements reproduced the 12 px shift before the fix and verified
   identical search/Add bounds afterward, using the actual three settings pages.
+- The Allowed folders browser test creates its own temporary directory and removes it
+  afterward, so it exercises access controls rather than the missing-folder notice.
 
 ## Not verified
 - A real Windows desktop locally; screenshots and layout checks used Electron on Linux.
