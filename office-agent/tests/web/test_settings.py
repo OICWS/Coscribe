@@ -1003,3 +1003,27 @@ def test_the_side_job_model_is_checked_saved_and_cleared_without_a_restart_lg(
     assert shown == "anthropic:claude-haiku-5-5"
     assert cleared.json() == {"restart_required": False, "rejected": {}}
     assert not dotenv_values(tmp_path / ".env")["COSCRIBE_SIDE_MODEL"]
+
+
+def test_the_browser_prompts_always_allow_and_the_old_list_reach_the_workspaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        allowed = client.post(
+            "/api/threads/t1/browser-site",
+            json={"site": "https://www.example.com/x", "level": "allow"},
+        )
+        bad = client.post("/api/threads/t1/browser-site", json={"site": "x", "level": "allow"})
+        imported = client.post(
+            "/api/environments/import-browser-sites", json={"sites": ["news.org"]}
+        )
+        not_a_list = client.post("/api/environments/import-browser-sites", json={"sites": "a"})
+        [default] = client.get("/api/environments").json()["environments"]
+
+    assert allowed.json() == {"site": "example.com", "environment": "default"}
+    assert bad.status_code == not_a_list.status_code == 422
+    assert imported.json() == {"added": 1}
+    assert default["network"]["browser"] == {"example.com": "allow", "news.org": "allow"}
