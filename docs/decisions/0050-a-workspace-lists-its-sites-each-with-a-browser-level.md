@@ -1,7 +1,7 @@
 # 0050: A workspace lists its sites, each with a browser level
 
 ## Status
-Proposed. Narrows [0048](0048-a-workspace-is-a-folder-the-person-picks.md), sites only. Issue #926.
+Accepted (2026-11-18, OICWS). Narrows [0048](0048-a-workspace-is-a-folder-the-person-picks.md), sites only. Issue #926.
 
 ## Context
 Two lists decide where the AI goes on the web. A workspace's Sites (`network.domains`) bound every
