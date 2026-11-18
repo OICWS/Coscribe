@@ -480,3 +480,71 @@ def test_a_url_without_credentials_stays_readable(tmp_path: Path) -> None:
     blank = redactor(tmp_path)
     for url in plain:
         assert blank(f"read {url} back") == f"read {url} back"
+
+
+def test_a_broken_url_in_one_connector_does_not_stop_the_others_loading(tmp_path: Path) -> None:
+    config = tmp_path / "mcp.json"
+    config.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "broken": {"command": "npx", "env": {"HOST": "http://[fe80::1"}},
+                    "db": {"command": "npx", "env": {"DB": "postgres://app:ok-pass-3v5b@db/app"}},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_mcp_server_configs(config, tmp_path)
+
+    assert set(loaded) == {"broken", "db"}
+    assert "ok-pass-3v5b" not in redactor(tmp_path)("echoed ok-pass-3v5b")
+
+
+def test_a_key_file_path_or_an_ordinary_key_option_stays_readable(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path,
+        args=[
+            "--ssl-key", "/etc/ssl/private/client.key",
+            "--key-file", "C:\\certs\\client-key.pem",
+            "--password-file", "/run/secrets/db_password",
+            "--sort-key=created_at_desc",
+        ],
+    )  # fmt: skip
+
+    blank = redactor(tmp_path)
+    for value in ("/etc/ssl/private/client.key", "C:\\certs\\client-key.pem", "created_at_desc"):
+        assert blank(f"read {value} back") == f"read {value} back"
+    assert blank("/run/secrets/db_password") == "/run/secrets/db_password"
+
+
+def test_an_ado_password_with_spaces_or_a_semicolon_is_blanked(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path,
+        env={
+            "SQL": "Server=db;User Id=app;Password=my secret pw;Encrypt=true",
+            "ODBC": "Driver={ODBC Driver 18};Uid=app;Pwd={semi;colon-pw};",
+        },
+    )
+
+    blank = redactor(tmp_path)
+    assert "my secret pw" not in blank("login failed: my secret pw")
+    assert "semi;colon-pw" not in blank("login failed: semi;colon-pw")
+    assert blank("Encrypt=true;Driver={ODBC Driver 18}") == "Encrypt=true;Driver={ODBC Driver 18}"
+
+
+def test_every_url_in_a_list_and_a_password_with_a_slash_are_blanked(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path,
+        env={
+            "NODES": "redis://a:first-pass-1@h1,redis://b:second-pass-2@h2",
+            "SLASHED": "postgres://app:pa/ss-w0rd@db/app",
+            "TINY": "mysql://u:pw@db/shop",
+        },
+    )
+
+    blank = redactor(tmp_path)
+    for secret in ("first-pass-1", "second-pass-2", "pa/ss-w0rd"):
+        assert secret not in blank(f"echoed {secret}")
+    assert blank("dsn mysql://u:pw@db/shop") == "dsn [REDACTED SECRET]db/shop"
