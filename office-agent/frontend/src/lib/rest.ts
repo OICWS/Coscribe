@@ -105,6 +105,40 @@ export async function exportThread(threadId: string): Promise<Blob> {
   return res.blob();
 }
 
+/** A failed turn as its file would hold it (decision 0051): the turn's numbers and the start of
+ * its tool errors, never the conversation's words. */
+export interface FailedTurn {
+  turn: {
+    started: string;
+    kind?: string;
+    model?: string;
+    outcome?: string;
+    error?: string | null;
+    model_calls?: number;
+    tools?: Record<string, { calls: number; errors: number }>;
+  };
+  tool_errors: { tool: string; text: string }[];
+}
+
+export async function listFailedTurns(threadId: string): Promise<FailedTurn[]> {
+  const body = await getJson<{ turns: FailedTurn[] }>(`/api/threads/${encodeURIComponent(threadId)}/failed-turns`);
+  return body.turns;
+}
+
+/** The one turn the person chose, with what they wrote about it, as a file to save. */
+export async function exportFailedTurn(
+  threadId: string,
+  choice: { started: string; asked: string; went_wrong: string },
+): Promise<Blob> {
+  const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/failed-turns/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(choice),
+  });
+  await checkOk(res);
+  return res.blob();
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",

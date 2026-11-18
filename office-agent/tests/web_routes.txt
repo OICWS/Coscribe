@@ -86,6 +86,7 @@ GET /api/threads/{thread_id}/doc/asset
 GET /api/threads/{thread_id}/doc/blocks
 GET /api/threads/{thread_id}/doc/comments
 GET /api/threads/{thread_id}/export
+GET /api/threads/{thread_id}/failed-turns
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
@@ -164,6 +165,7 @@ POST /api/threads/{thread_id}/doc/comments/{comment_id}
 POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/doc/export
 POST /api/threads/{thread_id}/doc/restore
+POST /api/threads/{thread_id}/failed-turns/export
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/folder-brief
 POST /api/threads/{thread_id}/meta

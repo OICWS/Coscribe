@@ -82,3 +82,41 @@ def test_a_command_that_runs_no_model_leaves_no_line(
             assert ws.receive_json()["type"] == "state"
 
     assert not turns_path(tmp_path / "state").exists()
+
+
+def test_a_stopped_turn_is_exported_as_a_file_without_its_words(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_trace_export") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the quarterly secret to note.txt"})
+            assert ws.receive_json()["type"] == "approval_required"
+            ws.send_json({"type": "stop"})
+            _receive_until(ws, "tasks_changed")
+
+        [turn] = client.get("/api/threads/t_trace_export/failed-turns").json()["turns"]
+        started = turn["turn"]["started"]
+        saved = client.post(
+            "/api/threads/t_trace_export/failed-turns/export",
+            json={"started": started, "asked": "Write a short note", "went_wrong": "I stopped it"},
+        )
+        gone = client.post(
+            "/api/threads/t_trace_export/failed-turns/export", json={"started": "2000-01-01"}
+        )
+        other = client.get("/api/threads/t_other/failed-turns").json()
+
+    assert turn["turn"]["outcome"] == "stopped" and turn["asked"] == ""
+    assert saved.status_code == 200
+    assert saved.headers["content-disposition"].startswith('attachment; filename="failed-turn-')
+    exported = saved.json()
+    assert exported["turn"]["started"] == started
+    assert (exported["asked"], exported["went_wrong"]) == ("Write a short note", "I stopped it")
+    assert "quarterly secret" not in saved.text and "t_trace_export" not in saved.text
+    assert gone.status_code == 404
+    assert other == {"turns": []}

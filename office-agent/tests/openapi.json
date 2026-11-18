@@ -566,6 +566,30 @@
         "title": "ElementUndo",
         "type": "object"
       },
+      "FailedTurnExport": {
+        "description": "The turn the person picked, by its start time, and what they chose to write about it.",
+        "properties": {
+          "asked": {
+            "default": "",
+            "title": "Asked",
+            "type": "string"
+          },
+          "started": {
+            "title": "Started",
+            "type": "string"
+          },
+          "went_wrong": {
+            "default": "",
+            "title": "Went Wrong",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started"
+        ],
+        "title": "FailedTurnExport",
+        "type": "object"
+      },
       "FolderBriefRequest": {
         "properties": {
           "path": {
@@ -7692,6 +7716,96 @@
           }
         },
         "summary": "Export Thread"
+      }
+    },
+    "/api/threads/{thread_id}/failed-turns": {
+      "get": {
+        "description": "What each failed turn's file would hold, so the person sees it before saving it.",
+        "operationId": "list_failed_turns_api_threads__thread_id__failed_turns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Failed Turns Api Threads  Thread Id  Failed Turns Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Failed Turns"
+      }
+    },
+    "/api/threads/{thread_id}/failed-turns/export": {
+      "post": {
+        "description": "The person's press of Save is the consent decision 0051 asks for: one turn, sent to\ntheir own browser as a file, never anywhere else.",
+        "operationId": "export_failed_turn_api_threads__thread_id__failed_turns_export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailedTurnExport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Failed Turn"
       }
     },
     "/api/threads/{thread_id}/files/download": {

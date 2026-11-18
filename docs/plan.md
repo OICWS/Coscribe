@@ -39,9 +39,9 @@ Last reviewed: 2026-11-06.
    run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
-   Next: a nightly replay of the three that write Office files;
-   a failed turn exported as an evaluation task with
-   the person's consent.
+   A failed turn saved by the person as a file, which `evals/agentic/candidate.py` turns into a
+   task to finish by hand (decision 0051, `docs/log/2026-11-18-failed-turn-export.md`).
+   Next: a nightly replay of the three that write Office files.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks

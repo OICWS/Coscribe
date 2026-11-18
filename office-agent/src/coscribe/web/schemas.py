@@ -244,6 +244,14 @@ class WorkflowDraftRequest(BaseModel):
     name: str = ""
 
 
+class FailedTurnExport(BaseModel):
+    """The turn the person picked, by its start time, and what they chose to write about it."""
+
+    started: str
+    asked: str = ""
+    went_wrong: str = ""
+
+
 class WorkflowCheck(BaseModel):
     workflow: dict[str, Any]
 

@@ -99,7 +99,8 @@ Every decision goes to an audit log, and Hooks (`PreToolUse`,
 `PostToolUse`, `SessionStart`/`End`, `UserPromptSubmit`, compaction and
 interrupt events) let a user add their own checks. How each turn went (its model
 calls, tokens and failed tools, never its words) is kept in a file on the machine
-(decision 0045).
+(decision 0045); one failed turn leaves it only as a file the person saves from the
+conversation's menu (decision 0051).
 
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in

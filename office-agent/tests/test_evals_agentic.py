@@ -13,7 +13,7 @@ from docx import Document
 from openpyxl import Workbook
 from pptx import Presentation
 
-from evals.agentic import run, tasks
+from evals.agentic import candidate, run, tasks
 
 
 def _outcome(tmp_path: Path, *replies: list[str], memory: str = "") -> tasks.Outcome:
@@ -181,3 +181,38 @@ def test_the_summary_counts_completion_with_and_without_a_nudge(tmp_path: Path) 
     assert totals["cost"] == 0.01
     assert "| 02-b | no | yes |" in text
     assert "Completed 1/2 without help, 1 more after one nudge" in text
+
+
+def test_an_exported_failed_turn_becomes_a_task_to_finish_by_hand(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    exported = {
+        "format": "coscribe-failed-turn/1",
+        "coscribe": "0.1.0",
+        "turn": {
+            "started": "2026-11-18T10:30:00+00:00",
+            "model": "fake:model",
+            "outcome": "completed",
+            "model_calls": 3,
+            "tools": {
+                "read_file": {"calls": 2, "errors": 0},
+                "edit_docx": {"calls": 3, "errors": 2},
+            },
+        },
+        "tool_errors": [{"tool": "edit_docx", "text": "No paragraph 9\nin report.docx"}],
+        "asked": "Fix the heading's 'typo' in the report",
+        "went_wrong": "It edited the wrong\nparagraph.",
+    }
+    path = tmp_path / "failed-turn.json"
+    path.write_text(json.dumps(exported), encoding="utf-8")
+
+    assert candidate.main([str(path)]) == 0
+    source = capsys.readouterr().out
+    task = eval(source, {"AgenticTask": tasks.AgenticTask})  # noqa: S307 - the source is this test's own
+    assert task.name == "failed-edit-docx"
+    assert task.turns == ("Fix the heading's 'typo' in the report",)
+    assert "#   edit_docx said: No paragraph 9 in report.docx" in source
+    assert "# What went wrong, in the person's words: It edited the wrong paragraph." in source
+
+    path.write_text(json.dumps({"format": "other"}), encoding="utf-8")
+    assert candidate.main([str(path)]) == 1
