@@ -65,7 +65,7 @@ Scripted: save, read back from a new process, find the entry with `cmdkey /list`
 behind the app's back (the error says "re-enter it via Settings"), and a hook under cmd and
 under PowerShell.
 By hand:
-1. Settings > Secrets: add a secret named `check_1` with value `abcd1234` and host `example.com`
+1. Settings > Secrets: add a secret named "check_1" with value `abcd1234` and host `example.com`
    (a name is letters, digits and underscores; a value is at least 8 characters; a secret needs a
    host). Open Windows Credential
    Manager (Start, type "Credential Manager", Windows Credentials). Expected: an entry whose name
