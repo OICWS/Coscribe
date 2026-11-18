@@ -42,7 +42,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Any, TypedDict, cast
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from ..runtime import (
     SecretError,
@@ -189,29 +189,104 @@ _CREDENTIAL_ENDINGS = ("key", "token", "secret", "password")
 _TOKEN_SHAPED = re.compile(r"[A-Za-z0-9_\-.+=]{20,}")
 
 
-def _is_credential(name: str, value: str) -> bool:
-    """Whether a connector's env or header value is kept like a secret: its name says so,
-    or the value itself looks like a token (long, letters and digits, no path or URL)."""
+def _name_parts(name: str) -> list[str]:
     words = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-    parts = [part for part in re.split(r"[^a-z0-9]+", words) if part]
-    if any(part in _CREDENTIAL_PARTS or part.endswith(_CREDENTIAL_ENDINGS) for part in parts):
-        return True
+    return [part for part in re.split(r"[^a-z0-9]+", words) if part]
+
+
+def _looks_like_token(value: str) -> bool:
     return bool(
         _TOKEN_SHAPED.fullmatch(value) and re.search(r"[A-Za-z]", value) and re.search(r"\d", value)
     )
 
 
+def _is_credential(name: str, value: str) -> bool:
+    """Whether a connector's env or header value is kept like a secret: its name says so,
+    or the value itself looks like a token (long, letters and digits, no path or URL)."""
+    parts = _name_parts(name)
+    if any(part in _CREDENTIAL_PARTS or part.endswith(_CREDENTIAL_ENDINGS) for part in parts):
+        return True
+    return _looks_like_token(value)
+
+
+# A connection string carries its password inside a value whose name says nothing (DATABASE_URL,
+# a command-line argument), and a server that cannot connect tends to print that string back.
+# Only a URL's `user:password`, a token used as its user name, and `name=value` parts named like
+# a credential are taken out; the host, path, a user name on its own and other options stay
+# readable.
+_URL_IN_TEXT = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s\"'<>]+")
+_NAMED_PART = re.compile(
+    r"(?:^|[;&?#\s-])([A-Za-z][A-Za-z0-9_.]*)\s*=\s*(\"[^\"]*\"|'[^']*'|[^;&#\s\"']+)"
+)
+# Narrower than _CREDENTIAL_PARTS: an option such as authSource=admin, authMechanism=SCRAM-SHA-256
+# or sslkey=/path/to/client.key names no value worth hiding.
+_PART_NAMES = frozenset(
+    {"password", "passwd", "pwd", "pass", "secret", "token", "key", "apikey", "sig", "signature"}
+)
+_PART_ENDINGS = ("password", "secret", "token")
+_FLAG = re.compile(r"-{1,2}([A-Za-z][A-Za-z0-9_-]*)")
+
+
+def _names_a_credential_part(name: str) -> bool:
+    return any(part in _PART_NAMES or part.endswith(_PART_ENDINGS) for part in _name_parts(name))
+
+
+def _with_decoded(value: str) -> list[str]:
+    return [value, unquote(value)] if value else []
+
+
+def _embedded_credentials(value: str) -> list[str]:
+    """The secrets written inside a connection string or URL: the `user:password` of a URL
+    (the pair, so a password too short to blank alone is still blanked where the URL is
+    echoed, and the password alone, for an error that prints only it), a token in the
+    user-name place, and `password=...`-style parts."""
+    found: list[str] = []
+    for match in _URL_IN_TEXT.finditer(value):
+        netloc = urlsplit(match.group()).netloc
+        if "@" not in netloc:
+            continue
+        userinfo = netloc.rpartition("@")[0]
+        user, has_password, password = userinfo.partition(":")
+        if has_password and password:
+            found += _with_decoded(userinfo) + _with_decoded(password)
+        elif _looks_like_token(unquote(user)):
+            found += _with_decoded(user)
+    for name, raw in _NAMED_PART.findall(value):
+        if _names_a_credential_part(name):
+            found += _with_decoded(raw.strip("\"'"))
+    return found
+
+
+def _sent_args(args: list[str]) -> list[str]:
+    """Each argument's embedded credentials, and the argument after a flag such as
+    `--password` or `--api-token`, which is the credential itself."""
+    found: list[str] = []
+    for i, arg in enumerate(args):
+        found += _embedded_credentials(arg)
+        flag = _FLAG.fullmatch(arg)
+        if flag and i + 1 < len(args) and _names_a_credential_part(flag.group(1)):
+            found += _with_decoded(args[i + 1])
+    return found
+
+
 def _blank_credentials(config: MCPConfig) -> None:
     """Have every redactor blank the credentials `config` is connected with, typed into the
-    connector or picked from Settings > Secrets. Called wherever the plaintext is produced
-    for connecting: at startup and when one connector is (re)connected."""
+    connector or picked from Settings > Secrets, including a password written inside a
+    connection string. Called wherever the plaintext is produced for connecting: at startup
+    and when one connector is (re)connected."""
     fields = cast(dict[str, Any], config)
-    sent = [
-        value
-        for field in ("env", "headers")
-        for name, value in (fields.get(field) or {}).items()
-        if isinstance(value, str) and _is_credential(name, value)
-    ]
+    sent: list[str] = []
+    for field in ("env", "headers"):
+        for name, value in (fields.get(field) or {}).items():
+            if not isinstance(value, str):
+                continue
+            if _is_credential(name, value):
+                sent.append(value)
+            sent += _embedded_credentials(value)
+    args = fields.get("args") or []
+    sent += _sent_args([arg for arg in args if isinstance(arg, str)])
+    if isinstance(url := fields.get("server_url"), str):
+        sent += _embedded_credentials(url)
     SecretStore.blank_also(f"mcp:{config['name']}", sent)
 
 

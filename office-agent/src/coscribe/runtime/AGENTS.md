@@ -36,7 +36,8 @@ No other coscribe package.
   that the model cannot see a value, not that code that digs cannot find it.
 - `redactor` blanks a stored value (and its common encodings) out of text, best effort
   (`tests/test_secret_redaction_properties.py`), and so every key handed to `SecretStore.blank_also`: a
-  connector's credentials (env and header values whose name or shape says so) and its sign-in
+  connector's credentials (env and header values whose name or shape says so, and a password
+  written inside a connection string in its env, headers, arguments or URL) and its sign-in
   tokens, kept for the life of the process (`tests/test_connector_secrets.py`).
 
 ## Tests

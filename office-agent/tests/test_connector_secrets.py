@@ -391,3 +391,92 @@ def test_a_refreshed_sign_in_keeps_the_previous_token_blanked(tmp_path: Path) ->
 
     text = redactor(tmp_path)("first-access-4r6t8y0u then second-access-1q3w5e7r")
     assert "first-access" not in text and "second-access" not in text
+
+
+def _connect_local(tmp_path: Path, **fields: Any) -> None:
+    prepare_for_connect(
+        validate_mcp_config({"type": "mcp", "name": "local", "command": "npx", **fields}), tmp_path
+    )
+
+
+def test_a_password_in_a_connection_string_is_blanked_and_the_rest_stays(tmp_path: Path) -> None:
+    _connect_local(tmp_path, env={"DATABASE_URL": "postgres://app:hunter2secretpw@db.local/app"})
+
+    blank = redactor(tmp_path)
+    assert blank("could not connect to postgres://app:hunter2secretpw@db.local/app") == (
+        "could not connect to postgres://[REDACTED SECRET]@db.local/app"
+    )
+    assert blank('password hunter2secretpw for user "app"') == (
+        'password [REDACTED SECRET] for user "app"'
+    )
+
+
+def test_a_short_password_is_blanked_with_its_user_name(tmp_path: Path) -> None:
+    _connect_local(tmp_path, env={"DB": "mysql://admin:pw12@db.local:3306/shop"})
+
+    text = redactor(tmp_path)("dsn mysql://admin:pw12@db.local:3306/shop failed")
+    assert "pw12" not in text and "db.local:3306/shop" in text
+
+
+def test_a_percent_encoded_password_is_blanked_as_written_and_decoded(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path, env={"MONGO": "mongodb://app:s3cr%40t-pass-1@h1,h2/db?authSource=admin"}
+    )
+
+    blank = redactor(tmp_path)
+    assert "s3cr%40t-pass-1" not in blank("uri mongodb://app:s3cr%40t-pass-1@h1,h2/db")
+    assert "s3cr@t-pass-1" not in blank("password s3cr@t-pass-1 rejected")
+    assert blank("authSource=admin on h1,h2") == "authSource=admin on h1,h2"
+
+
+def test_a_connection_string_in_the_command_line_is_blanked(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path,
+        args=[
+            "-y",
+            "@modelcontextprotocol/server-postgres",
+            "postgresql://app:arg-pass-7k2m@db/app",
+        ],
+    )
+
+    assert "arg-pass-7k2m" not in redactor(tmp_path)("connecting with arg-pass-7k2m")
+
+
+def test_a_token_used_as_the_user_name_of_a_url_is_blanked(tmp_path: Path) -> None:
+    token = "ghp_a1B2c3D4e5F6g7H8i9J0k1L2"
+    _connect_local(tmp_path, env={"REPO": f"https://{token}@github.com/acme/app.git"})
+
+    assert redactor(tmp_path)(f"clone https://{token}@github.com/acme/app.git") == (
+        "clone https://[REDACTED SECRET]@github.com/acme/app.git"
+    )
+
+
+def test_a_credential_named_part_of_a_connection_string_is_blanked(tmp_path: Path) -> None:
+    _connect_local(
+        tmp_path,
+        env={"SQL": "Server=db.local;Database=shop;User Id=app;Password=Ado-Pass-9x;Encrypt=true"},
+        args=["--db-password=flag-pass-4h6j", "--api-token", "split-flag-tok-8"],
+    )
+    prepare_for_connect(
+        _remote({}, url="https://mcp.example.com/sse?api_key=query-key-5t1u"), tmp_path
+    )
+
+    blank = redactor(tmp_path)
+    for secret in ("Ado-Pass-9x", "flag-pass-4h6j", "split-flag-tok-8", "query-key-5t1u"):
+        assert secret not in blank(f"echoed {secret}")
+    assert blank("Server=db.local;Database=shop;User Id=app") == (
+        "Server=db.local;Database=shop;User Id=app"
+    )
+
+
+def test_a_url_without_credentials_stays_readable(tmp_path: Path) -> None:
+    plain = [
+        "https://api.example.com/v2?version=2024-01-01&mode=production",
+        "postgres://db.local:5432/app?sslmode=require&sslkey=/home/app/client.key",
+        "https://someone@example.com/profile",
+    ]
+    _connect_local(tmp_path, env={f"URL{i}": url for i, url in enumerate(plain)}, args=plain)
+
+    blank = redactor(tmp_path)
+    for url in plain:
+        assert blank(f"read {url} back") == f"read {url} back"
