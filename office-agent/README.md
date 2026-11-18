@@ -753,9 +753,11 @@ any words you wrote on it.
   everyday browser (⋮ → "Clear browsing data…" clears it; ⋮ → "Save
   screenshot…" saves the page as a PNG). Sites get no
   camera, microphone, location or notification permission.
-- **Site permission**: the first time the AI's browser tools touch a
-  site in a conversation, the Browser panel asks -- Don't allow, Allow
-  for this chat, or Always allow. ⋮ → "Manage allowed sites…" lists the
+- **Site permission**: each site in the conversation's workspace has a
+  browser level (decision 0050): Use without asking goes ahead, Not in the
+  browser is refused, and for any other site, the first time the AI's
+  browser tools touch it in a conversation, the Browser panel asks -- Don't
+  allow, Allow for this chat, or Always allow. ⋮ → "Manage allowed sites…" lists the
   always-allowed ones (add, remove, clear all); pre-allowing a site is
   how an unattended scheduled task gets through without a prompt (an
   unanswered prompt counts as no after three minutes). Kept by the

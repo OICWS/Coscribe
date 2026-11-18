@@ -3,9 +3,10 @@
  * sidecar: they only mean anything where the browser lives), and the
  * per-site permission the AI needs before its browser tools touch a site.
  *
- * A site on the allowed list, or allowed for the current conversation,
- * goes ahead; any other gets a prompt in the Browser panel. Pre-allowing
- * sites is how an unattended scheduled task gets through without one.
+ * The conversation's workspace sets each site's level (decision 0050): Use without asking goes
+ * ahead, Not in the browser is refused, and any other site goes ahead when it is on the app's own
+ * allowed list or was allowed for this conversation, else it gets a prompt in the Browser panel.
+ * The app's own list is what the UI moves into the workspaces once; until then it still counts.
  */
 
 import { app, ipcMain, type BrowserWindow, type WebContents } from "electron";
@@ -96,12 +97,12 @@ export function inSites(host: string, sites: string[]): boolean {
   });
 }
 
-/** The conversation's network setting (Edit environment > Network), sent with each step when it
+/** The conversation's network setting (Edit workspace > Sites), sent with each step when it
  * limits the domains: no site permission widens it. */
 export function checkNetworkSites(host: string, networkSites: unknown): void {
   if (!Array.isArray(networkSites) || inSites(host, networkSites.map(String))) return;
   throw new Error(
-    `${normalizeSite(host) ?? host} is outside the domains this conversation may reach. The user can add it under Edit environment > Network.`,
+    `${normalizeSite(host) ?? host} is outside the domains this conversation may reach. The user can add it under Edit workspace > Sites.`,
   );
 }
 
@@ -124,9 +125,41 @@ export function checkNetworkLanding(page: WebContents | undefined, networkSites:
   }
 }
 
-export function isAllowed(host: string, threadId: string): boolean {
+export type SiteLevel = "allow" | "ask" | "off";
+
+/** A site's level in the conversation's workspace: the most specific site that covers `host`,
+ * "ask" when none does. */
+export function siteLevel(host: string, browserSites: unknown): SiteLevel {
+  const site = normalizeSite(host);
+  if (!site || !browserSites || typeof browserSites !== "object") return "ask";
+  let best: [string, SiteLevel] | null = null;
+  for (const [key, level] of Object.entries(browserSites as Record<string, unknown>)) {
+    const listed = normalizeSite(key);
+    if (!listed || !covers(listed, site) || (level !== "allow" && level !== "off")) continue;
+    if (!best || listed.length > best[0].length) best = [listed, level];
+  }
+  return best ? best[1] : "ask";
+}
+
+/** Refuses a site outside the workspace's sites, or one it keeps out of the browser (its other
+ * tools may still reach that one). */
+export function checkSite(host: string, networkSites: unknown, browserSites: unknown): void {
+  checkNetworkSites(host, networkSites);
+  checkBrowserLevel(host, browserSites);
+}
+
+function checkBrowserLevel(host: string, browserSites: unknown): void {
+  if (siteLevel(host, browserSites) !== "off") return;
+  throw new Error(
+    `${normalizeSite(host) ?? host} isn't used in the browser in this workspace. Use a web request instead, or ` +
+      "the user can change it under Edit workspace > Sites.",
+  );
+}
+
+export function isAllowed(host: string, threadId: string, browserSites?: unknown): boolean {
   const site = normalizeSite(host);
   if (!site) return false;
+  if (siteLevel(site, browserSites) === "allow") return true;
   if (browserSettings().allowedSites.some((allowed) => covers(allowed, site))) return true;
   return [...(allowedForThread.get(threadId) ?? [])].some((allowed) => covers(allowed, site));
 }
@@ -137,10 +170,10 @@ function sendPending(win: BrowserWindow | undefined): void {
 }
 
 /** Native permission prompts share one foreground answer UI. */
-export function requestPermission(host: string, threadId: string, win: BrowserWindow | undefined): Promise<void> {
+export function requestPermission(host: string, threadId: string, win: BrowserWindow | undefined, browserSites?: unknown): Promise<void> {
   return new Promise((resolve, reject) => enqueue("permissions", async () => {
     try {
-      if (!isAllowed(host, threadId)) await askPermission(host, threadId, win);
+      if (!isAllowed(host, threadId, browserSites)) await askPermission(host, threadId, win);
       resolve();
     } catch (error) { reject(error); }
   }));

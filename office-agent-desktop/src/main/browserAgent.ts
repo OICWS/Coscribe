@@ -24,7 +24,7 @@ import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
-import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
+import { checkNetworkLanding, checkSite, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
   sendAgentEvent,
   setTabActivity,
@@ -829,18 +829,18 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     }
     try {
       const site = siteFor(command);
-      if (site) checkNetworkSites(site, command.args?.network_sites);
+      if (site) checkSite(site, command.args?.network_sites, command.args?.browser_sites);
       // A saved workflow's steps were reviewed and saved by the user -- that's consent to the
       // sites they name -- and a prompt would stall a run no one is watching. Any other site is
       // refused, and the run stops to ask the person instead.
       const savedWorkflow = command.args?.saved_workflow === true;
       const allowedSites = Array.isArray(command.args?.allowed_sites) ? command.args.allowed_sites.map(String) : null;
       if (site && savedWorkflow && allowedSites) {
-        if (!inSites(site, allowedSites) && !isAllowed(site, command.thread_id)) {
+        if (!inSites(site, allowedSites) && !isAllowed(site, command.thread_id, command.args?.browser_sites)) {
           throw new Error(`NEEDS_SITE_PERMISSION:${normalizeSite(site) ?? site}`);
         }
-      } else if (site && !savedWorkflow && !isAllowed(site, command.thread_id)) {
-        await requestPermission(site, command.thread_id, getWindow());
+      } else if (site && !savedWorkflow && !isAllowed(site, command.thread_id, command.args?.browser_sites)) {
+        await requestPermission(site, command.thread_id, getWindow(), command.args?.browser_sites);
       }
     } catch (err) {
       await reply(command.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
