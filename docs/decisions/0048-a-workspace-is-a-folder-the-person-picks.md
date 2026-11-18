@@ -1,7 +1,7 @@
 # 0048: A workspace is a folder the person picks; other folders are allowed when needed
 
 Status: proposed (2026-11-16, OICWS: "like other agents, an office worker picks a workspace the
-way a developer does, and what they make is kept there"). Builds on 0044; held to 0021.
+way a developer does, and what they make is kept there"). Builds on 0044; held to 0021; sites narrowed by 0050.
 
 ## Context
 A conversation with no folder works in a hidden `workspace` under the app's data folder, where
