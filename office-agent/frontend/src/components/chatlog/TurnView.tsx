@@ -1,9 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { foldTaskCard } from "../../lib/taskCard";
 import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
 import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
-import { RetryIcon, RewindIcon } from "../icons";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
 import { PlanCard, type PlanChoice, type PlanItem } from "../PlanCard";
 import { QuestionRecord } from "../QuestionCard";
@@ -30,6 +29,9 @@ import { FileCards } from "./FileCards";
 import { SystemCards } from "./SystemCards";
 import { splitStopped } from "./helpers";
 import { StoppedNote } from "./StoppedNote";
+import { HoverTip } from "./HoverTip";
+import { fullTime } from "../../lib/messageActions";
+import { timeAgo } from "../../lib/sessionList";
 
 /** react-markdown + remark/rehype + katex is the single biggest dependency
  * added to this app (roughly triples the production bundle) -- code-split
@@ -40,65 +42,26 @@ import { StoppedNote } from "./StoppedNote";
  * spinner or blank bubble. */
 const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Markdown })));
 
-/** Renders one turn's items (via the same groupToolRuns pass the whole
- * thread used to go through directly) plus, once the turn is actually
- * done, a bottom-left copy+retry+rewind+relative-time footer -- replaces
- * the old one-CopyButton-per-agent-message placement (see ROADMAP.md's
- * Phase 8am items 7-8). "Done" means: has a final agent reply that isn't
- * still streaming, and no approval in this turn is still waiting on the
- * user -- the same real backend rule handle_edit_message/
- * handle_rewind_message both enforce ("Resolve the pending approval
- * before editing/rewinding"), so neither button is ever offered
- * somewhere it would just come back as a WS error.
- *
- * Retry and Rewind are two different operations, previously conflated
- * under one "Rewind" button that actually retried (real, live-reported
- * bug): Retry truncates the turn and immediately resubmits the same
- * question (onEditMessage with unedited text) -- same question, new
- * answer. Rewind truncates and stops there, handing the original
- * question text back to the composer instead (onRewindMessage) -- an
- * undo, with no new answer generated. Retry gets its own RetryIcon (a
- * two-arrowhead refresh cycle) rather than RewindIcon mirrored --
- * explicit correction: a single arc flipped horizontally still read as
- * "the same arrow, unclear which way" at 14px and was mistaken for
- * Rewind in real use, not a clear inverse.
- *
- * Both restricted to `isLastTurn` -- explicit correction: every past turn
- * used to offer this, but reaching back to an earlier turn while later
- * ones already exist is exactly what "edit an earlier message" (the
- * pencil icon on the user bubble itself, still available on every turn)
- * already does more explicitly; a second, identically-named affordance on
- * every turn read as "jump to any point," which isn't what either of
- * these do (both only ever discard everything *after* the turn clicked,
- * same as edit). The whole footer is also hover-only (opacity-0, revealed
- * via the turn's own group/turn on hover) instead of permanently visible
- * -- matches the rest of this app's hover-reveal convention for secondary
- * actions (ThreadRow's "..." menu, the user bubble's own edit pencil)
- * rather than a footer under every single reply, always on screen. */
+/** One turn's items and, once its reply is done, a hover footer with Copy and when the reply
+ * finished. Rewind and Edit sit on the user's message instead (UserMessageView). */
 export function TurnView({
   turn,
-  isLastTurn = false,
   compactAfter = false,
   onApprove,
   onAnswerPlan,
   onOpenPlan,
-  onEditMessage,
-  onRewindMessage,
   onReviewTaskDraft,
   onDismissTaskDraft,
   live = false,
   onPptxShapePicked,
 }: {
   turn: Turn;
-  isLastTurn?: boolean;
   compactAfter?: boolean;
   /** This turn is the one a reply is still being generated for. */
   live?: boolean;
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
   onOpenPlan?: () => void;
-  onEditMessage?: (turnIndex: number, text: string) => void;
-  onRewindMessage?: (turnIndex: number, text: string) => void;
   onReviewTaskDraft?: (item: TaskDraftItem) => void;
   onDismissTaskDraft?: (item: TaskDraftItem) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
@@ -107,12 +70,17 @@ export function TurnView({
   const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
   const waiting = turn.hasPendingApproval || turn.items.some(asksThePerson);
   const finalAgentItem = turn.finalAgentItem;
-  const userItem = turn.userItem;
   const canFooter =
-    finalAgentItem !== null && userItem !== null && !finalAgentItem.streaming && !turn.hasPendingApproval;
+    finalAgentItem !== null &&
+    turn.userItem !== null &&
+    !finalAgentItem.streaming &&
+    !turn.hasPendingApproval &&
+    splitStopped(finalAgentItem.text).said.trim() !== "";
+  // Read on hover, so "2 minutes ago" is current when the footer shows.
+  const [now, setNow] = useState(() => Date.now());
 
   return (
-    <div className="group/turn relative flex flex-col gap-3">
+    <div className="group/turn relative flex flex-col gap-3" onMouseEnter={() => setNow(Date.now())}>
       {/* groupToolRuns wraps every tool or approval, even a run of one, so neither reaches here bare. */}
       {entries.map((entry) =>
         entry.kind === "tool_run" ? (
@@ -138,7 +106,7 @@ export function TurnView({
         ) : entry.kind === "steer" ? (
           <SteerView key={entry.id} item={entry} />
         ) : (
-          <LogItemView key={entry.id} item={entry} onEditMessage={isLastTurn ? onEditMessage : undefined} />
+          <LogItemView key={entry.id} item={entry} />
         ),
       )}
       <FileCards items={calls} />
@@ -150,25 +118,10 @@ export function TurnView({
             title="Copy reply"
             className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
           />
-          {onEditMessage && isLastTurn && (
-            <button
-              type="button"
-              title="Retry -- ask this again"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              onClick={() => onEditMessage(userItem.turnIndex, userItem.text)}
-            >
-              <RetryIcon className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {onRewindMessage && isLastTurn && (
-            <button
-              type="button"
-              title="Rewind -- undo this question"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              onClick={() => onRewindMessage(userItem.turnIndex, userItem.text)}
-            >
-              <RewindIcon className="h-3.5 w-3.5" />
-            </button>
+          {finalAgentItem.doneAt && (
+            <HoverTip label={fullTime(finalAgentItem.doneAt)}>
+              <span className="ml-1 cursor-default text-xs text-[var(--muted)]">{timeAgo(finalAgentItem.doneAt, now)}</span>
+            </HoverTip>
           )}
         </div>
       )}
@@ -176,13 +129,7 @@ export function TurnView({
   );
 }
 
-export function LogItemView({
-  item,
-  onEditMessage,
-}: {
-  item: Extract<LogItem, { kind: "user" | "agent" | "system" }>;
-  onEditMessage?: (turnIndex: number, text: string) => void;
-}) {
+export function LogItemView({ item }: { item: Extract<LogItem, { kind: "user" | "agent" | "system" }> }) {
   if (item.kind === "user") {
     if (item.text.startsWith(RUN_PROMPT_PREFIX)) return <ScheduledRunCard text={item.text} />;
     if (item.text.startsWith(INVESTIGATION_PREFIX) || item.text.startsWith(REVISION_PREFIX))
@@ -191,7 +138,7 @@ export function LogItemView({
     if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
     if (item.text.startsWith(CONNECTED_NOTE_PREFIX)) return <ConnectorConnectedNote text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
-    return <UserMessageView item={item} onEditMessage={onEditMessage} />;
+    return <UserMessageView item={item} />;
   }
 
   if (item.kind === "agent") {

@@ -30,8 +30,9 @@ Last reviewed: 2026-11-06.
    fails at proactive or above (#861, decision 0042). Merged too: a task that starts on an event a
    program on the machine sends (#853, decision 0040), and a run asking before its models use
    more tokens, with nothing to set (#862, decision 0043), whose budget now counts llm steps'
-   tokens (`docs/log/2026-11-15-llm-step-tokens.md`). Open: an L3 step delegating, and adding
-   steps when nothing failed.
+   tokens (`docs/log/2026-11-15-llm-step-tokens.md`). A high or full step's agent hands parts of
+   its task to sub-agents held to the step's rules (decision 0051,
+   `docs/log/2026-11-18-workflow-step-sub-agents.md`). Open: adding steps when nothing failed.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
@@ -39,9 +40,9 @@ Last reviewed: 2026-11-06.
    run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
-   Next: a nightly replay of the three that write Office files;
-   a failed turn exported as an evaluation task with
-   the person's consent.
+   A failed turn saved by the person as a file, which `evals/agentic/candidate.py` turns into a
+   task to finish by hand (decision 0052, `docs/log/2026-11-18-failed-turn-export.md`).
+   Next: a nightly replay of the three that write Office files.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
@@ -49,12 +50,17 @@ Last reviewed: 2026-11-06.
    `docs/log/2026-11-16-folder-access-card.md`; part 2 (Settings' environments table and the
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
    The edit dialog on one page, called a workspace in the UI, is in
-   `docs/log/2026-11-18-workspace-dialog.md`. Next, one PR each: a browser level per site, merging
-   the browser's Allowed sites into each workspace's sites (decision record first); a task showing
-   what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
+   `docs/log/2026-11-18-workspace-dialog.md`. A browser level per site (decision 0050) is in
+   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. The server
+   part of a task's reach is in `docs/log/2026-11-18-task-reach-server.md`. Next: a task
+   showing what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
    the spot.
 
 ## Open, smaller
+
+- **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
+  messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.
+  Needs a time on the AI message that no provider is sent.
 
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
@@ -77,6 +83,12 @@ Last reviewed: 2026-11-06.
   at once, and a background task started with the plan item it belongs to (the task card now
   guesses it from timing, which goes wrong when several items run at once;
   `docs/log/2026-11-15-plan-review-edits.md`).
+- **Task list across unrelated requests:** a conversation has one task list that is never
+  cleared, so a later, unrelated multi-step request appends to the finished one (a live
+  DeepSeek run showed "10 steps done" for a 3-step request that followed a 7-step one) and a
+  note sent mid-plan lands in the same list. Possible fix: start a new list when `task_create`
+  follows a list that is all done, or let `task_create` start one explicitly
+  (`docs/log/2026-11-18-plan-strike.md`).
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
@@ -145,9 +157,6 @@ Last reviewed: 2026-11-06.
   approval; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
-
-- **Providers page like Connectors** (`docs/log/2026-11-17-providers-page-redesign.md`). Open:
-  changing only a provider's default model still asks for its API key again.
 
 ## For the maintainer (settings and decisions)
 

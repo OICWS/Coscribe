@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Workflow, WorkflowStep } from "../types/workflow";
-import { neededAutonomy, shortPlace } from "./workflowLabels";
+import { agentUsage, neededAutonomy, shortPlace } from "./workflowLabels";
 
 const tool: WorkflowStep = {
   id: "a",
@@ -73,5 +73,14 @@ describe("shortPlace", () => {
   it("leaves other text whole", () => {
     expect(shortPlace("approve and/or send the reply")).toBe("approve and/or send the reply");
     expect(shortPlace("{{summary.text}}")).toBe("{{summary.text}}");
+  });
+});
+
+describe("agentUsage", () => {
+  it("says how many calls a step made, and the sub-agents it started", () => {
+    expect(agentUsage({ tool_calls: 0 })).toBe("Used no tools");
+    expect(agentUsage({ tool_calls: 1 })).toBe("1 tool call");
+    expect(agentUsage({ tool_calls: 5, sub_agents: 2 })).toBe("5 tool calls, with 2 sub-agents");
+    expect(agentUsage({ tool_calls: 3, sub_agents: 1 })).toBe("3 tool calls, with 1 sub-agent");
   });
 });

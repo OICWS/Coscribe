@@ -18,20 +18,39 @@ const STATE_WORDS: Readonly<Record<string, string>> = {
 };
 const FAILED = new Set(["failed", "timed_out"]);
 
-function Steps({ tasks, bound, live, waiting = false }: { tasks: ProgressItem[]; bound: TaskCardEntry["bound"]; live: boolean; waiting?: boolean }) {
+/** A longer list shows this many items until the person opens it. */
+const SHOWN_STEPS = 5;
+/** How many finished items stay in view above the first open one. */
+const DONE_IN_VIEW = 3;
+
+/** The items in view while a long list is closed: a window starting a few finished items above the
+ * first open one, so the card shows what was just done and what comes next. */
+export function stepsInView(tasks: ProgressItem[]): ProgressItem[] {
+  if (tasks.length <= SHOWN_STEPS) return tasks;
+  const firstOpen = tasks.findIndex((task) => task.status !== "completed");
+  const anchor = firstOpen === -1 ? tasks.length : firstOpen;
+  const start = Math.min(Math.max(anchor - DONE_IN_VIEW, 0), tasks.length - SHOWN_STEPS);
+  return tasks.slice(start, start + SHOWN_STEPS);
+}
+
+function Steps({ tasks, bound, live, waiting = false, collapse = false }: { tasks: ProgressItem[]; bound: TaskCardEntry["bound"]; live: boolean; waiting?: boolean; collapse?: boolean }) {
   const background = useContext(BackgroundTasks);
+  const [all, setAll] = useState(false);
+  const shown = collapse && !all ? stepsInView(tasks) : tasks;
+  const hidden = tasks.length - shown.length;
   return (
     <div className="w-full rounded-2xl border border-[var(--border)] px-2 py-2.5 text-[15px]">
-      {tasks.map((task) => {
+      {shown.map((task) => {
         const started = bound[task.id] ?? [];
         const states = started.map((taskId) => background.statuses[taskId]);
         return (
-          <div key={task.id} className="flex items-start gap-2.5 px-2 py-1.5">
+          <div key={task.id} className="group/step flex items-start gap-2.5 px-2 py-1.5">
             <span className="mt-[3px]">
               <TaskStatusIcon status={task.status} live={live} waiting={waiting || states.includes("needs_approval")} />
             </span>
             <span className={`min-w-0 flex-1 leading-6 [overflow-wrap:anywhere] ${task.status === "completed" ? "text-[var(--muted)]" : ""}`}>
-              {task.content}
+              {/* Struck through when done; resting the pointer on the item lifts the line so it reads plainly. */}
+              <span className={task.status === "completed" ? "line-through group-hover/step:no-underline" : ""}>{task.content}</span>
               {states.some((state) => FAILED.has(state)) && <span className="ml-2 text-[13px] text-[var(--danger)]">A background task failed</span>}
               {started.map((taskId, i) => (
                 <button
@@ -48,12 +67,23 @@ function Steps({ tasks, bound, live, waiting = false }: { tasks: ProgressItem[];
           </div>
         );
       })}
+      {collapse && tasks.length > SHOWN_STEPS && (
+        <button
+          type="button"
+          aria-expanded={all}
+          className="mx-2 mt-1 text-sm text-[var(--muted)] hover:text-[var(--fg)]"
+          onClick={() => setAll(!all)}
+        >
+          {all ? "Show less" : `Show ${hidden} more`}
+        </button>
+      )}
     </div>
   );
 }
 
 /** The task list the model keeps, under the latest call that changed it: the items tick off as
- * the work goes, and once all are done it is one line that opens to them. `waiting`: the turn
+ * the work goes (a long list shows a few around the current one and opens to the rest), and once
+ * all are done it is one line that opens to them. `waiting`: the turn
  * is stopped on an approval or a question, so the running items wait on the person. An item
  * lists the background tasks it started; one that waits for approval makes the item wait too. */
 export function TaskCard({ entry, live, waiting = false }: { entry: TaskCardEntry; live: boolean; waiting?: boolean }) {
@@ -81,7 +111,7 @@ export function TaskCard({ entry, live, waiting = false }: { entry: TaskCardEntr
       <div className="mb-1.5 px-1 text-sm text-[var(--muted)]">
         Steps · {done} of {entry.tasks.length} done
       </div>
-      <Steps tasks={entry.tasks} bound={entry.bound} live={live} waiting={waiting} />
+      <Steps tasks={entry.tasks} bound={entry.bound} live={live} waiting={waiting} collapse />
     </div>
   );
 }

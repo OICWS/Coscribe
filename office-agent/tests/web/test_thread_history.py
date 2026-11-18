@@ -24,6 +24,7 @@ from .helpers import (
     _client_lg,
     _receive_until,
     _tool_call,
+    _unstamped,
 )
 
 
@@ -296,7 +297,7 @@ def test_edit_message_truncates_history_and_regenerates_from_the_edit(
 
     agent_message = next(m for m in messages if m["type"] == "agent_message")
     assert agent_message["text"] == "edited reply"
-    assert history["entries"] == [
+    assert _unstamped(history["entries"]) == [
         {"kind": "user", "text": "hello"},
         {"kind": "agent", "text": "hi there!"},
         {"kind": "user", "text": "how are you, edited"},
@@ -313,7 +314,7 @@ def test_history_is_empty_for_a_brand_new_thread_lg(
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert history == {"type": "history", "entries": [], "has_older": False}
+    assert _unstamped(history) == {"type": "history", "entries": [], "has_older": False}
 
 
 def test_history_reports_has_older_true_after_reconnecting_to_a_compacted_thread(
@@ -380,7 +381,7 @@ def test_reconnect_replays_conversation_history_lg(
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert history == {
+    assert _unstamped(history) == {
         "type": "history",
         "entries": [
             {"kind": "user", "text": "what does note.txt say?"},
@@ -421,7 +422,7 @@ def test_history_omits_a_call_still_pending_approval_lg(
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert history == {
+    assert _unstamped(history) == {
         "type": "history",
         "entries": [{"kind": "user", "text": "write hi to note.txt"}],
         "has_older": False,

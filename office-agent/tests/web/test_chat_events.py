@@ -24,6 +24,7 @@ from .helpers import (
     _receive_until,
     _structured,
     _tool_call,
+    _unstamped,
     _wait_for_run_status,
     _wait_until,
 )
@@ -53,7 +54,7 @@ def test_reconnect_replays_a_sent_images_data_urls_lg(
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert history == {
+    assert _unstamped(history) == {
         "type": "history",
         "entries": [
             {"kind": "user", "text": "what's in this?", "images": [data_url]},
@@ -78,7 +79,7 @@ def test_a_message_that_starts_an_artifact_keeps_the_note_out_of_the_replayed_hi
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert history["entries"][0] == {"kind": "user", "text": "a deck about tea"}
+    assert _unstamped(history["entries"][0]) == {"kind": "user", "text": "a deck about tea"}
 
 
 class _SlowSecondReplyModel(FakeToolCallingChatModel):

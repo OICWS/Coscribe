@@ -85,6 +85,42 @@ def _audit(
         )
 
 
+def _browser_site_routes(router: APIRouter, state_dir: Path) -> None:
+    """The built-in browser's site levels (decision 0050): its prompt's Always allow, and the
+    one-time move of the desktop app's old global list."""
+
+    async def set_browser_level(thread_id: str, payload: dict[str, Any]) -> Any:
+        try:
+            site = Environments(state_dir).set_browser_level(
+                thread_id, str(payload.get("site", "")), str(payload.get("level", ""))
+            )
+        except EnvironmentRefused as exc:
+            return _refused(exc.reason)
+        env_id = Environments(state_dir).environment_of(thread_id)
+        record_decision(
+            AuditLog(state_dir),
+            thread_id=thread_id,
+            tool_name="set_environment",
+            arguments={"environment": env_id, "browser": {site: payload.get("level")}},
+            decision="approve",
+            reason="human",
+        )
+        return {"site": site, "environment": env_id}
+
+    async def import_browser_sites(payload: dict[str, Any]) -> Any:
+        sites = payload.get("sites")
+        if not isinstance(sites, list) or not all(isinstance(s, str) for s in sites):
+            return _refused("sites must be a list of sites.")
+        return {"added": Environments(state_dir).import_browser_sites(sites)}
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/browser-site", set_browser_level, methods=["POST"]
+    )
+    router.add_api_route(
+        "/api/environments/import-browser-sites", import_browser_sites, methods=["POST"]
+    )
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     state_dir = state.settings.state_dir
@@ -152,4 +188,5 @@ def router(state: AppState) -> APIRouter:
     router.add_api_route("/api/environments", create_environment, methods=["POST"])
     router.add_api_route("/api/environments/{env_id}", update_environment, methods=["PUT"])
     router.add_api_route("/api/environments/{env_id}", delete_environment, methods=["DELETE"])
+    _browser_site_routes(router, state_dir)
     return router

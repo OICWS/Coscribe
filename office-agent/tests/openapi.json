@@ -566,6 +566,30 @@
         "title": "ElementUndo",
         "type": "object"
       },
+      "FailedTurnExport": {
+        "description": "The turn the person picked, by its start time, and what they chose to write about it.",
+        "properties": {
+          "asked": {
+            "default": "",
+            "title": "Asked",
+            "type": "string"
+          },
+          "started": {
+            "title": "Started",
+            "type": "string"
+          },
+          "went_wrong": {
+            "default": "",
+            "title": "Went Wrong",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started"
+        ],
+        "title": "FailedTurnExport",
+        "type": "object"
+      },
       "FolderBriefRequest": {
         "properties": {
           "path": {
@@ -3013,6 +3037,46 @@
         "summary": "Create Environment"
       }
     },
+    "/api/environments/import-browser-sites": {
+      "post": {
+        "operationId": "import_browser_sites_api_environments_import_browser_sites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Import Browser Sites Api Environments Import Browser Sites Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Browser Sites"
+      }
+    },
     "/api/environments/{env_id}": {
       "delete": {
         "operationId": "delete_environment_api_environments__env_id__delete",
@@ -4163,6 +4227,45 @@
         "summary": "Remove Provider"
       }
     },
+    "/api/reach/check": {
+      "post": {
+        "description": "Where a folder an input names falls, for a saved task or a new one in a workspace.",
+        "operationId": "check_path_api_reach_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Path"
+      }
+    },
     "/api/scheduled-tasks": {
       "get": {
         "operationId": "list_scheduled_tasks_endpoint_api_scheduled_tasks_get",
@@ -4347,6 +4450,100 @@
           }
         },
         "summary": "Update Scheduled Task Endpoint"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/folders": {
+      "delete": {
+        "operationId": "remove_folder_api_scheduled_tasks__trigger_id__folders_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Folder"
+      },
+      "post": {
+        "description": "Only this task: its runs may read and write the folder from now on.",
+        "operationId": "allow_folder_api_scheduled_tasks__trigger_id__folders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Allow Folder"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/memory": {
@@ -4641,6 +4838,43 @@
           }
         },
         "summary": "Pause Scheduled Task Endpoint"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/reach": {
+      "get": {
+        "operationId": "task_reach_api_scheduled_tasks__trigger_id__reach_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Reach"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/resume": {
@@ -6494,6 +6728,57 @@
         "summary": "List Background Tasks Endpoint"
       }
     },
+    "/api/threads/{thread_id}/browser-site": {
+      "post": {
+        "operationId": "set_browser_level_api_threads__thread_id__browser_site_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Set Browser Level Api Threads  Thread Id  Browser Site Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Browser Level"
+      }
+    },
     "/api/threads/{thread_id}/canvas": {
       "get": {
         "description": "A Design canvas: its boards (each with the path its page is served by) and notes.",
@@ -7692,6 +7977,96 @@
           }
         },
         "summary": "Export Thread"
+      }
+    },
+    "/api/threads/{thread_id}/failed-turns": {
+      "get": {
+        "description": "What each failed turn's file would hold, so the person sees it before saving it.",
+        "operationId": "list_failed_turns_api_threads__thread_id__failed_turns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Failed Turns Api Threads  Thread Id  Failed Turns Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Failed Turns"
+      }
+    },
+    "/api/threads/{thread_id}/failed-turns/export": {
+      "post": {
+        "description": "The person's press of Save is the consent decision 0052 asks for: one turn, sent to\ntheir own browser as a file, never anywhere else.",
+        "operationId": "export_failed_turn_api_threads__thread_id__failed_turns_export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailedTurnExport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Failed Turn"
       }
     },
     "/api/threads/{thread_id}/files/download": {

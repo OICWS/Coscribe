@@ -333,3 +333,17 @@ went to the background fails with "record again". Before committing a
 tape, replay it on Python 3.11 as well as on the version that recorded it: anything in a run that
 follows scheduling instead of the conversation (a background call the next message cancels,
 calls of one answer whose results depend on which ran first) replays differently there.
+
+### A task from a turn that failed in real use (`agentic/candidate.py`, #867)
+
+A person can save one failed turn of a conversation as a file from the conversation's menu
+("Export a failed turn…", decision 0052). It holds how the turn went (model, outcome, tool calls
+and failures, the start of each tool error) and, if they wrote them, their own words on what they
+asked and what went wrong; never the conversation's words or files.
+
+```bash
+python -m evals.agentic.candidate failed-turn-20261118103000.json
+```
+
+prints an `AgenticTask` with the turn's numbers as comments, to paste into `agentic/tasks.py`. Its
+setup and checks are left to write by hand, and its turn too when the person wrote nothing.

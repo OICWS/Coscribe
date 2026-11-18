@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCapabilities, getScriptIsolation } from "../../lib/rest";
-import type { Capabilities, NetworkAccess, ScriptIsolation } from "../../types/settings";
+import type { BrowserLevel, Capabilities, NetworkAccess, ScriptIsolation } from "../../types/settings";
 
 /** What this computer allows (Settings › Capabilities) and whether its isolation check passed:
  * an environment can only narrow these. */
@@ -32,19 +32,24 @@ export function useNetworkDraft(initial: NetworkAccess) {
   const everySite = initial.mode === "full" || initial.domains.includes("*");
   const [mode, setMode] = useState<SitesMode>(initial.mode === "none" ? "none" : everySite ? "any" : "listed");
   const [scriptsOnline, setScriptsOnline] = useState(initial.mode === "full");
-  // Kept while another mode is chosen, so switching back does not lose the list.
-  const [sites, setSites] = useState(initial.domains.filter((domain) => domain !== "*"));
+  const levelled = Object.keys(initial.browser ?? {});
+  // Kept while another mode is chosen, so switching back does not lose the list. With any site
+  // the list holds only the sites given a browser level.
+  const [sites, setSites] = useState([...new Set([...initial.domains.filter((domain) => domain !== "*"), ...levelled])]);
+  const [levels, setLevels] = useState<Record<string, BrowserLevel>>(initial.browser ?? {});
+  const browser = Object.fromEntries(sites.flatMap((site) => (levels[site] && levels[site] !== "ask" ? [[site, levels[site]]] : [])));
+  const withLevels = (network: NetworkAccess): NetworkAccess => (Object.keys(browser).length > 0 ? { ...network, browser } : network);
   const current: NetworkAccess =
     mode === "none"
       ? { mode: "none", domains: [] }
       : mode === "listed"
-        ? { mode: "limited", domains: sites }
-        : scriptsOnline
-          ? { mode: "full", domains: [] }
-          : { mode: "limited", domains: ["*"] };
+        ? withLevels({ mode: "limited", domains: sites })
+        : withLevels(scriptsOnline ? { mode: "full", domains: [] } : { mode: "limited", domains: ["*"] });
   const add = (site: string) => setSites((list) => (list.includes(site) ? list : [...list, site]));
   const remove = (site: string) => setSites((list) => list.filter((s) => s !== site));
-  return { mode, setMode, scriptsOnline, setScriptsOnline, sites, add, remove, current };
+  const levelOf = (site: string): BrowserLevel => levels[site] ?? "ask";
+  const setLevel = (site: string, level: BrowserLevel) => setLevels((all) => ({ ...all, [site]: level }));
+  return { mode, setMode, scriptsOnline, setScriptsOnline, sites, add, remove, levelOf, setLevel, current };
 }
 
 export type NetworkDraft = ReturnType<typeof useNetworkDraft>;

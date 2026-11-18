@@ -19,7 +19,7 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   const chip = page.locator("p").getByRole("button", { name });
   await expect(chip).toBeVisible();
   await chip.hover();
-  const card = page.getByRole("tooltip");
+  const card = page.getByRole("tooltip").filter({ hasText: "Document" });
   await expect(card).toContainText("Document");
   await expect(card).toContainText(name);
 

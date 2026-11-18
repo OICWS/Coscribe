@@ -99,7 +99,8 @@ Every decision goes to an audit log, and Hooks (`PreToolUse`,
 `PostToolUse`, `SessionStart`/`End`, `UserPromptSubmit`, compaction and
 interrupt events) let a user add their own checks. How each turn went (its model
 calls, tokens and failed tools, never its words) is kept in a file on the machine
-(decision 0045).
+(decision 0045); one failed turn leaves it only as a file the person saves from the
+conversation's menu (decision 0052).
 
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in
@@ -170,7 +171,8 @@ person to let it go on; nobody sets a number (0043).
 - **L2 a bounded agent**: a tool allowlist and declared folders and sites
   (what the person consents to when saving), caps, an output schema, a check
   after it. **L3** an agent with the environment's tools, under the task's
-  approval mode. **L4** the whole task as one agent: today's prompt task,
+  approval mode, that may hand parts of its task to a few sub-agents held to
+  the step's rules, which never wait for a person (0051). **L4** the whole task as one agent: today's prompt task,
   written instructions a fresh assistant works out each run.
 
 The AI drafts a workflow from a conversation, picking the lowest level that

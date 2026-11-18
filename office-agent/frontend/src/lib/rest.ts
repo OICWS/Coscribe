@@ -12,6 +12,7 @@ import type {
   CapabilityFolders,
   CommandSandbox,
   CommandSandboxMode,
+  BrowserLevel,
   Environment,
   EnvironmentFields,
   BrowseDirsResponse,
@@ -101,6 +102,40 @@ async function getJson<T>(url: string): Promise<T> {
 /** The conversation as Markdown, for sending along with a bug report. */
 export async function exportThread(threadId: string): Promise<Blob> {
   const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/export`);
+  await checkOk(res);
+  return res.blob();
+}
+
+/** A failed turn as its file would hold it (decision 0052): the turn's numbers and the start of
+ * its tool errors, never the conversation's words. */
+export interface FailedTurn {
+  turn: {
+    started: string;
+    kind?: string;
+    model?: string;
+    outcome?: string;
+    error?: string | null;
+    model_calls?: number;
+    tools?: Record<string, { calls: number; errors: number }>;
+  };
+  tool_errors: { tool: string; text: string }[];
+}
+
+export async function listFailedTurns(threadId: string): Promise<FailedTurn[]> {
+  const body = await getJson<{ turns: FailedTurn[] }>(`/api/threads/${encodeURIComponent(threadId)}/failed-turns`);
+  return body.turns;
+}
+
+/** The one turn the person chose, with what they wrote about it, as a file to save. */
+export async function exportFailedTurn(
+  threadId: string,
+  choice: { started: string; asked: string; went_wrong: string },
+): Promise<Blob> {
+  const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/failed-turns/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(choice),
+  });
   await checkOk(res);
   return res.blob();
 }
@@ -628,6 +663,10 @@ export const updateEnvironment = (id: string, fields: EnvironmentFields) =>
   sendForResult<Environment & { warning?: string }>(`/api/environments/${encodeURIComponent(id)}`, "PUT", fields);
 export const deleteEnvironment = (id: string) =>
   sendForResult<{ moved: number }>(`/api/environments/${encodeURIComponent(id)}`, "DELETE", undefined);
+/** The built-in browser's level for a site, kept in the workspace this conversation uses. */
+export const setThreadBrowserSite = (threadId: string, site: string, level: BrowserLevel) =>
+  sendForResult<{ site: string; environment: string }>(`/api/threads/${encodeURIComponent(threadId)}/browser-site`, "POST", { site, level });
+export const importBrowserSites = (sites: string[]) => sendForResult<{ added: number }>("/api/environments/import-browser-sites", "POST", { sites });
 
 /** Settings › Capabilities: what coscribe may run on this computer. */
 export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");

@@ -1,10 +1,81 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "../lib/useClickOutside";
-import { ArchiveIcon, FolderIcon, FolderPlusIcon, TrashIcon } from "./icons";
+import { ArchiveIcon, CheckIcon, ChevronRightIcon, FolderIcon, FolderPlusIcon, TrashIcon } from "./icons";
 import { itemClass, menuClass } from "./menuStyle";
 
+/** "Move to group" and its submenu of the conversation's possible groups. */
+export function MoveToGroupItem({
+  groups,
+  current,
+  open,
+  onOpen,
+  flip,
+  width,
+  onMove,
+}: {
+  groups: string[];
+  current: string | null;
+  open: boolean;
+  onOpen: () => void;
+  flip: boolean;
+  width: number;
+  onMove: (group: string) => void;
+}) {
+  return (
+    <div className="relative" onMouseEnter={onOpen}>
+      <button
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`${itemClass} justify-between`}
+        onClick={onOpen}
+      >
+        <span className="flex items-center gap-2">
+          <FolderIcon className="h-3.5 w-3.5" /> Move to group
+        </span>
+        <ChevronRightIcon className="h-3.5 w-3.5 text-[var(--muted)]" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Move to group"
+          className={`${menuClass} absolute top-[-5px] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
+          style={{ width }}
+        >
+          {groups.map((group) => (
+            <button
+              key={group}
+              type="button"
+              role="menuitemradio"
+              aria-checked={current === group}
+              className={`${itemClass} justify-between`}
+              onClick={() => onMove(group)}
+            >
+              <span className="min-w-0 truncate">{group}</span>
+              {current === group && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
+            </button>
+          ))}
+          {groups.length > 0 && <div className="my-1 border-t border-[var(--border)]" />}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={!current}
+            className={`${itemClass} justify-between`}
+            onClick={() => onMove("")}
+          >
+            Ungrouped
+            {!current && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
+          </button>
+          <NewGroupItem onCreate={onMove} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** "New group..." in a menu: a button that turns into a name field. */
-export function NewGroupItem({ onCreate }: { onCreate: (name: string) => void }) {
+function NewGroupItem({ onCreate }: { onCreate: (name: string) => void }) {
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   if (!naming) {

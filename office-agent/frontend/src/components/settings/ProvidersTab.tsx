@@ -37,7 +37,8 @@ export function ProvidersTab({ active }: { active: boolean }) {
   };
 
   const save = async (form: ProviderForm): Promise<boolean> => {
-    const problem = formProblem(form, catalog);
+    const saved = configuredName(form.name.trim());
+    const problem = formProblem(form, catalog, Boolean(saved && configured[saved].masked_key));
     if (problem) {
       setStatus({ text: problem, error: true });
       return false;

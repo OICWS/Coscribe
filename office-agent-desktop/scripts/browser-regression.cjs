@@ -73,7 +73,7 @@ Module._load = function(name, ...rest) {
   };
   if (name === './browserCdp') return cdpMock;
   if (name === './browserPermissions') return {
-    checkNetworkLanding() {}, checkNetworkSites() {}, isAllowed: () => true,
+    checkNetworkLanding() {}, checkSite() {}, isAllowed: () => true,
     browserSettings: () => ({}), normalizeSite: x => x,
   };
   return load.call(this, name, ...rest);
@@ -81,6 +81,8 @@ Module._load = function(name, ...rest) {
 const panel = require('../dist/main/browserPanel');
 const { startBrowserAgent } = require('../dist/main/browserAgent');
 const steps = require('../dist/main/browserAgentSteps');
+// The real module (the agent above gets a stand-in): the workspace's site levels.
+const permissions = require('../dist/main/browserPermissions.js');
 Module._load = load;
 let stream;
 const replies = new Map();
@@ -295,7 +297,19 @@ function download(wc, name, state = 'completed') {
   step.stop = true;
   await assert.rejects(cancelled, /Stopped/);
   for (const thread of ['a', 'b', 'c']) steps.cancelFrameOff(thread);
-  console.log('Browser regressions passed: reuse, popup feedback/select/close, closing several pages, download ownership/cleanup/isolation, cancellation and protocol timeout.');
+
+  const levels = { 'example.com': 'allow', 'admin.example.com': 'off', 'news.org': 'ask' };
+  assert.equal(permissions.siteLevel('https://www.example.com/a', levels), 'allow');
+  assert.equal(permissions.siteLevel('admin.example.com', levels), 'off');
+  assert.equal(permissions.siteLevel('x.admin.example.com', levels), 'off');
+  assert.equal(permissions.siteLevel('notexample.com', levels), 'ask');
+  assert.equal(permissions.siteLevel('news.org', levels), 'ask');
+  assert.equal(permissions.siteLevel('example.com', undefined), 'ask');
+  assert.throws(() => permissions.checkSite('admin.example.com', undefined, levels), /isn't used in the browser/);
+  permissions.checkSite('example.com', ['example.com'], levels);
+  assert.equal(permissions.isAllowed('docs.example.com', 'a', levels), true);
+  assert.equal(permissions.isAllowed('news.org', 'a', levels), false);
+  console.log('Browser regressions passed: reuse, popup feedback/select/close, closing several pages, download ownership/cleanup/isolation, cancellation, protocol timeout and site levels.');
 })().then(() => { rmSync(scratch, { recursive: true, force: true }); process.exit(0); }, error => {
   console.error(error); rmSync(scratch, { recursive: true, force: true }); process.exit(1);
 });

@@ -56,6 +56,11 @@ export interface UserEntry {
   images?: string[];
   /** Workspace paths of the files sent with the message: shown as cards, not as text. */
   files?: string[];
+  /**
+   * When it was sent, ISO 8601 in UTC; absent for a message from before it was
+   * recorded.
+   */
+  sent_at?: string;
 }
 
 /** A note the user added while a reply was being worked on. */
@@ -256,6 +261,11 @@ export interface WorkflowAgentActivity {
   tokens?: number;
   cached_tokens?: number;
   tools_used?: string[];
+  /**
+   * The sub-agents a high or full step started (decision 0051); counted in the
+   * numbers above.
+   */
+  sub_agents?: number;
   pending?: WorkflowAgentCall;
   added?: WorkflowAddedSteps;
 }

@@ -28,6 +28,12 @@ Decision = Literal["approve", "reject", "ask"]
 # The code module never runs inside a workflow (decisions 0005, 0028).
 CODE_TOOLS = frozenset({"run_code_task", "run_code_command"})
 
+# The tool a high or full step's agent hands part of its task to a sub-agent with (decision
+# 0051), and how many it may start in one pass of the step: each costs a run of its own, and a
+# step that needs more is a step to split.
+SUB_AGENT_TOOL = "spawn_agent"
+MAX_SUB_AGENTS = 4
+
 
 @dataclass(frozen=True)
 class CallGuard:
@@ -74,6 +80,8 @@ class AgentRequest:
     max_tokens: int | None = None
     # A person said it may go on after "over_budget".
     go_on: bool = False
+    # How many sub-agents the agent may start (decision 0051); 0 for none.
+    sub_agents: int = 0
 
 
 @dataclass
@@ -90,12 +98,18 @@ class AgentReply:
     tools_used: list[str] = field(default_factory=list)
     # What the agent said it decided on its own (`ASSUMED`).
     assumed: list[str] = field(default_factory=list)
+    # How many sub-agents it started; their calls and tokens are in the counts above.
+    sub_agents: int = 0
 
     def activity(self) -> dict[str, Any]:
         """What the step's run record keeps of the agent's work."""
-        kept = {"tool_calls": self.tool_calls, "tokens": self.tokens, "tools_used": self.tools_used}
+        kept: dict[str, Any] = {
+            "tool_calls": self.tool_calls, "tokens": self.tokens, "tools_used": self.tools_used
+        }  # fmt: skip
         if self.cached_tokens:
             kept["cached_tokens"] = self.cached_tokens
+        if self.sub_agents:
+            kept["sub_agents"] = self.sub_agents
         return {**kept, "assumed": self.assumed} if self.assumed else kept
 
 
@@ -191,10 +205,24 @@ def _fields_line(fields: list[OutputField]) -> str:
     )
 
 
+def sub_agents_for(step: AgentStep) -> int:
+    """How many sub-agents a step's agent may start: none for a bounded step, whose allowlist
+    is its consent (decision 0028), and the same few for a high or full one (decision 0051)."""
+    return 0 if step.autonomy == "bounded" else MAX_SUB_AGENTS
+
+
 def build_task(step: AgentStep, values: dict[str, Any], read_only: bool) -> str:
     parts = [f"Step: {step.title}", "", render_text(step.goal, values)]
     if step.autonomy == "bounded":
         parts += ["", "Tools you may use: " + ", ".join(step.tools) + "."]
+    else:
+        parts += [
+            "",
+            f"You may hand up to {sub_agents_for(step)} self-contained parts of this task to "
+            f"sub-agents with {SUB_AGENT_TOOL}, for example to look into several things "
+            "separately. They keep this step's rules, and a call of theirs that would need a "
+            "person's approval is refused, so make such calls yourself.",
+        ]
     if step.folders:
         parts.append("Folders you may use: " + ", ".join(step.folders) + ".")
     if step.sites:
@@ -315,6 +343,7 @@ async def run_agent_step(
         allows=lambda call: allows(read_only, call) and (guard.allows or bool)(call),
         decide=decide_call,
         max_tokens=max_tokens,
+        sub_agents=sub_agents_for(step),
     )
     while True:
         reply = await runner(request)

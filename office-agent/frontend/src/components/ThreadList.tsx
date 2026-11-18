@@ -2,7 +2,6 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import {
   deleteThreadGroup,
-  exportThread,
   getThreadGroups,
   getThreadStatuses,
   renameThread,
@@ -10,7 +9,6 @@ import {
   setThreadMeta,
 } from "../lib/rest";
 import { goToThread, readPage, showSessions } from "../lib/nav";
-import { saveBlob } from "../lib/slides";
 import { readStored, writeStored } from "../lib/storage";
 import {
   FILTERS,
@@ -29,9 +27,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EyeIcon,
-  DownloadIcon,
   FilterIcon,
-  FolderIcon,
   LockIcon,
   HandIcon,
   ListChecksIcon,
@@ -41,7 +37,8 @@ import {
   SearchIcon,
   TrashIcon,
 } from "./icons";
-import { BatchBar, NewGroupItem } from "./BatchBar";
+import { BatchBar, MoveToGroupItem } from "./BatchBar";
+import { ExportItems, FailedTurnDialog } from "./FailedTurnDialog";
 import { itemClass, menuClass } from "./menuStyle";
 import { ThreadStatusIcon } from "./ThreadStatusIcon";
 
@@ -92,20 +89,6 @@ interface MenuState {
   y: number;
 }
 
-function ExportItem({ thread, onDone }: { thread: ThreadSummary; onDone: () => void }) {
-  const save = () => {
-    onDone();
-    exportThread(thread.thread_id)
-      .then((blob) => saveBlob(blob, `conversation-${thread.thread_id.slice(0, 8)}.md`))
-      .catch(() => window.alert("The conversation could not be exported."));
-  };
-  return (
-    <button type="button" role="menuitem" className={itemClass} onClick={save}>
-      <DownloadIcon className="h-3.5 w-3.5" /> Export conversation
-    </button>
-  );
-}
-
 /** The menu for one conversation, at the pointer for a right-click or under
  * its "..." button. */
 function ThreadMenu({
@@ -115,6 +98,7 @@ function ThreadMenu({
   onSelect,
   onRename,
   onEnvironment,
+  onFailedTurn,
   onMove,
   onArchive,
   onDelete,
@@ -125,6 +109,7 @@ function ThreadMenu({
   onSelect: () => void;
   onRename: () => void;
   onEnvironment: () => void;
+  onFailedTurn: () => void;
   onMove: (group: string) => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -139,9 +124,7 @@ function ThreadMenu({
   }, [onClose]);
 
   const left = Math.max(4, Math.min(menu.x, window.innerWidth - MENU_WIDTH - 4));
-  const top = Math.max(4, Math.min(menu.y, window.innerHeight - 220));
-  const flip = left + MENU_WIDTH * 2 + 8 > window.innerWidth;
-  const current = menu.thread.group;
+  const top = Math.max(4, Math.min(menu.y, window.innerHeight - 250));
 
   return createPortal(
     <div
@@ -162,56 +145,16 @@ function ThreadMenu({
       <button type="button" role="menuitem" className={itemClass} onClick={onEnvironment}>
         <LockIcon className="h-3.5 w-3.5" /> Edit workspace
       </button>
-      <ExportItem thread={menu.thread} onDone={onClose} />
-      <div className="relative" onMouseEnter={() => setSubmenu(true)}>
-        <button
-          type="button"
-          role="menuitem"
-          aria-haspopup="menu"
-          aria-expanded={submenu}
-          className={`${itemClass} justify-between`}
-          onClick={() => setSubmenu(true)}
-        >
-          <span className="flex items-center gap-2">
-            <FolderIcon className="h-3.5 w-3.5" /> Move to group
-          </span>
-          <ChevronRightIcon className="h-3.5 w-3.5 text-[var(--muted)]" />
-        </button>
-        {submenu && (
-          <div
-            role="menu"
-            aria-label="Move to group"
-            className={`${menuClass} absolute top-[-5px] ${flip ? "right-full mr-1" : "left-full ml-1"}`}
-            style={{ width: MENU_WIDTH }}
-          >
-            {groups.map((group) => (
-              <button
-                key={group}
-                type="button"
-                role="menuitemradio"
-                aria-checked={current === group}
-                className={`${itemClass} justify-between`}
-                onClick={() => onMove(group)}
-              >
-                <span className="min-w-0 truncate">{group}</span>
-                {current === group && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
-              </button>
-            ))}
-            {groups.length > 0 && <div className="my-1 border-t border-[var(--border)]" />}
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked={!current}
-              className={`${itemClass} justify-between`}
-              onClick={() => onMove("")}
-            >
-              Ungrouped
-              {!current && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
-            </button>
-            <NewGroupItem onCreate={onMove} />
-          </div>
-        )}
-      </div>
+      <ExportItems thread={menu.thread} onDone={onClose} onFailedTurn={onFailedTurn} />
+      <MoveToGroupItem
+        groups={groups}
+        current={menu.thread.group}
+        open={submenu}
+        onOpen={() => setSubmenu(true)}
+        flip={left + MENU_WIDTH * 2 + 8 > window.innerWidth}
+        width={MENU_WIDTH}
+        onMove={onMove}
+      />
       <div className="my-1 border-t border-[var(--border)]" onMouseEnter={() => setSubmenu(false)} />
       <button
         type="button"
@@ -573,6 +516,7 @@ export function ThreadList({
   const [collapsed, toggle] = useCollapsedGroups();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [failedTurnOf, setFailedTurnOf] = useState<string | null>(null);
   const { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive } = useSelection(threads, setGroups, onChanged);
   const [dragging, setDragging] = useState<ThreadSummary | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
@@ -780,6 +724,10 @@ export function ThreadList({
             onEditEnvironment(menu.thread);
             setMenu(null);
           }}
+          onFailedTurn={() => {
+            setFailedTurnOf(menu.thread.thread_id);
+            setMenu(null);
+          }}
           onMove={(group) => void move(menu.thread, group)}
           onArchive={() => void archive(menu.thread)}
           onDelete={() => {
@@ -788,6 +736,7 @@ export function ThreadList({
           }}
         />
       )}
+      {failedTurnOf && <FailedTurnDialog threadId={failedTurnOf} onClose={() => setFailedTurnOf(null)} />}
     </div>
   );
 }
