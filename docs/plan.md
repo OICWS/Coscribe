@@ -40,9 +40,9 @@ Last reviewed: 2026-11-06.
    run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
-   Next: a nightly replay of the three that write Office files;
-   a failed turn exported as an evaluation task with
-   the person's consent.
+   A failed turn saved by the person as a file, which `evals/agentic/candidate.py` turns into a
+   task to finish by hand (decision 0052, `docs/log/2026-11-18-failed-turn-export.md`).
+   Next: a nightly replay of the three that write Office files.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
@@ -50,9 +50,9 @@ Last reviewed: 2026-11-06.
    `docs/log/2026-11-16-folder-access-card.md`; part 2 (Settings' environments table and the
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
    The edit dialog on one page, called a workspace in the UI, is in
-   `docs/log/2026-11-18-workspace-dialog.md`. Next, one PR each: a browser level per site, merging
-   the browser's Allowed sites into each workspace's sites (decision record first); a task showing
-   what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
+   `docs/log/2026-11-18-workspace-dialog.md`. A browser level per site (decision 0050) is in
+   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. Next: a task
+   showing what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
    the spot.
 
 ## Open, smaller
@@ -146,9 +146,6 @@ Last reviewed: 2026-11-06.
   approval; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
-
-- **Providers page like Connectors** (`docs/log/2026-11-17-providers-page-redesign.md`). Open:
-  changing only a provider's default model still asks for its API key again.
 
 ## For the maintainer (settings and decisions)
 

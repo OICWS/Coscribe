@@ -86,6 +86,7 @@ GET /api/threads/{thread_id}/doc/asset
 GET /api/threads/{thread_id}/doc/blocks
 GET /api/threads/{thread_id}/doc/comments
 GET /api/threads/{thread_id}/export
+GET /api/threads/{thread_id}/failed-turns
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
@@ -121,6 +122,7 @@ POST /api/design-systems
 POST /api/design-systems/{system_id}/assets
 POST /api/design-systems/{system_id}/duplicate
 POST /api/environments
+POST /api/environments/import-browser-sites
 POST /api/libreoffice
 POST /api/mcp/check
 POST /api/mcp/oauth-apps/import
@@ -154,6 +156,7 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/browser-site
 POST /api/threads/{thread_id}/canvas/element/redo
 POST /api/threads/{thread_id}/canvas/element/undo
 POST /api/threads/{thread_id}/canvas/export
@@ -164,6 +167,7 @@ POST /api/threads/{thread_id}/doc/comments/{comment_id}
 POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/doc/export
 POST /api/threads/{thread_id}/doc/restore
+POST /api/threads/{thread_id}/failed-turns/export
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/folder-brief
 POST /api/threads/{thread_id}/meta

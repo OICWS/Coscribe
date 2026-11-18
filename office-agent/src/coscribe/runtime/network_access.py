@@ -16,6 +16,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 MODES = ("none", "limited", "full")
+# How the built-in browser treats a site (decision 0050); a site with no entry asks.
+BROWSER_LEVELS = ("allow", "ask", "off")
+ASK = "ask"
 EVERY_SITE = "*"
 MAX_DOMAINS = 200
 _DOMAIN = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
@@ -43,8 +46,9 @@ def _covers(domains: list[str], host: str) -> bool:
     return any(d == EVERY_SITE or host == d or host.endswith(f".{d}") for d in domains)
 
 
-def clean_network(mode: Any, domains: Any) -> dict[str, Any]:
-    """A network setting as it is kept, or NetworkError worded for the person."""
+def clean_network(mode: Any, domains: Any, browser: Any = None) -> dict[str, Any]:
+    """A network setting as it is kept, or NetworkError worded for the person. `browser` is kept
+    only where it says something: with no network there is no browser, and "ask" is the default."""
     if mode not in MODES:
         raise NetworkError(f"mode must be one of {', '.join(MODES)}.")
     if not isinstance(domains, list) or not all(isinstance(d, str) for d in domains):
@@ -62,7 +66,37 @@ def clean_network(mode: Any, domains: Any) -> dict[str, Any]:
         raise NetworkError(f"At most {MAX_DOMAINS} domains.")
     if mode == "limited" and not cleaned:
         raise NetworkError("Limited needs at least one domain; choose None to turn it off.")
-    return {"mode": mode, "domains": cleaned}
+    network: dict[str, Any] = {"mode": mode, "domains": cleaned}
+    levels = _clean_levels(browser) if mode != "none" else {}
+    if levels:
+        network["browser"] = levels
+    return network
+
+
+def _clean_levels(browser: Any) -> dict[str, str]:
+    if browser is None:
+        return {}
+    if not isinstance(browser, dict):
+        raise NetworkError("browser must map a site to allow, ask or off.")
+    levels: dict[str, str] = {}
+    for text, level in browser.items():
+        site = normalize_domain(str(text))
+        if site is None or site == EVERY_SITE:
+            raise NetworkError(f"{str(text).strip()!r} isn't a site, such as example.com.")
+        if level not in BROWSER_LEVELS:
+            raise NetworkError(f"{site} needs a browser level of allow, ask or off.")
+        if level != ASK:
+            levels[site] = level
+    if len(levels) > MAX_DOMAINS:
+        raise NetworkError(f"At most {MAX_DOMAINS} sites with a browser level.")
+    return levels
+
+
+def reaches(network: dict[str, Any], host: str) -> bool:
+    """Whether a workspace with this setting may reach `host` at all."""
+    if network.get("mode") == "none":
+        return False
+    return network.get("mode") == "full" or _covers(list(network.get("domains", [])), host)
 
 
 class NetworkAccess:
@@ -115,6 +149,11 @@ class NetworkGuard:
                 f"{host or url} is outside the domains this conversation may reach. The user "
                 "can add it in its environment's Network settings."
             )
+
+    def browser_levels(self) -> dict[str, str]:
+        """The built-in browser's level for each site that has one; the desktop app asks for the
+        rest."""
+        return dict(self._setting().get("browser", {}))
 
     def request_hooks(self) -> dict[str, list[Callable[[Any], None]]]:
         """httpx event hooks that check every request, so a redirect can't leave the list."""

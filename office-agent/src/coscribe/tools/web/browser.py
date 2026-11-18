@@ -268,6 +268,8 @@ def _browser_call(
             sites = network.sites()
             if sites is not None:
                 args["network_sites"] = sites
+            # The desktop app asks, allows or refuses each site from these (decision 0050).
+            args["browser_sites"] = network.browser_levels()
         if scope is not None:
             args["download_dir"] = str(scope.root / _DOWNLOADS_FOLDER)
         if saved_workflow:
