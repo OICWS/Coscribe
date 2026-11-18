@@ -83,12 +83,10 @@ Last reviewed: 2026-11-06.
   at once, and a background task started with the plan item it belongs to (the task card now
   guesses it from timing, which goes wrong when several items run at once;
   `docs/log/2026-11-15-plan-review-edits.md`).
-- **Task list across unrelated requests:** a conversation has one task list that is never
-  cleared, so a later, unrelated multi-step request appends to the finished one (a live
-  DeepSeek run showed "10 steps done" for a 3-step request that followed a 7-step one) and a
-  note sent mid-plan lands in the same list. Possible fix: start a new list when `task_create`
-  follows a list that is all done, or let `task_create` start one explicitly
-  (`docs/log/2026-11-18-plan-strike.md`).
+- **Task list and a note sent mid-plan:** a new list starts once every task of the old one is
+  done (`docs/log/2026-11-18-fresh-task-list.md`), but a note the person sends while a plan is
+  still open joins that list if the model makes tasks for it. Whether such a note should get
+  its own list is open.
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
