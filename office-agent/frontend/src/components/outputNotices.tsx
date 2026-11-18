@@ -4,7 +4,7 @@ import { copyImage } from "../lib/copyImage";
 import { getDoc } from "../lib/docFile";
 import { KIND_WORDS } from "../lib/fileMentions";
 import { changedWhen, closeKey, folderOf, isImageFile, madeOutputs, titleOf, type MadeOutput } from "../lib/madeOutputs";
-import { getThreadActivity, openThreadFile, threadFileDownloadUrl } from "../lib/rest";
+import { getThreadActivity, openThreadFile, setThreadMeta, threadFileDownloadUrl } from "../lib/rest";
 import { readStored, writeStored } from "../lib/storage";
 import { isDocMarkdown } from "../lib/viewers";
 import type { ActivityFile } from "../types/session";
@@ -28,7 +28,7 @@ const EXTERNAL_COLOURS: Record<string, string> = {
 const imageSrc = (threadId: string, file: ActivityFile) =>
   `${threadFileDownloadUrl(threadId, file.path)}&v=${encodeURIComponent(file.modified_at ?? "")}`;
 
-function useClosed() {
+function useClosed(threadId: string) {
   const [closed, setClosed] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(readStored(CLOSED_KEY) ?? "[]") as string[]);
@@ -36,12 +36,15 @@ function useClosed() {
       return new Set();
     }
   });
-  const close = (keys: string[]) =>
+  const close = (files: ActivityFile[]) => {
+    const keys = files.map((file) => closeKey(threadId, file));
+    void setThreadMeta(threadId, { closed_outputs: Object.fromEntries(files.map((file) => [file.path, file.modified_at ?? ""])) }).catch(() => undefined);
     setClosed((prev) => {
       const next = new Set([...prev, ...keys]);
       writeStored(CLOSED_KEY, JSON.stringify([...next].slice(-200)));
       return next;
     });
+  };
   return [closed, close] as const;
 }
 
@@ -75,7 +78,11 @@ function useOutputs(threadId: string, refreshKey: string): { outputs: ActivityFi
     const mine = ++request.current;
     const timer = window.setTimeout(() => {
       getThreadActivity(threadId).then(
-        (activity) => mine === request.current && setFetched({ threadId, outputs: activity.outputs, at: new Date() }),
+        (activity) => mine === request.current && setFetched({
+          threadId,
+          outputs: activity.outputs.filter((file) => activity.closed_outputs?.[file.path] !== (file.modified_at ?? "")),
+          at: new Date(),
+        }),
         () => undefined,
       );
     }, REFRESH_DEBOUNCE_MS);
@@ -99,7 +106,7 @@ export function useOutputNotices(
 ): { notices: Notice[]; overlay: ReactNode } {
   const { outputs, at: now } = useOutputs(threadId, refreshKey);
   const docs = useDocs(threadId, outputs);
-  const [closed, close] = useClosed();
+  const [closed, close] = useClosed(threadId);
   const [gallery, setGallery] = useState<{ files: ActivityFile[]; index: number } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -138,7 +145,7 @@ export function useOutputNotices(
         onOpen: () => open(file),
         openTitle: `Open ${file.name}`,
         actions: [],
-        onDismiss: () => close([closeKey(threadId, file)]),
+        onDismiss: () => close([file]),
       });
     } else if (output.kind === "images") {
       const { files } = output;
@@ -157,7 +164,7 @@ export function useOutputNotices(
         actions: one
           ? [{ label: copied === first.path ? "Copied" : "Copy", title: "Copy the picture", onClick: () => copy(first) }]
           : [{ label: "View all", onClick: () => setGallery({ files, index: 0 }) }],
-        onDismiss: () => close(files.map((file) => closeKey(threadId, file))),
+        onDismiss: () => close(files),
       });
     } else {
       const { file, type } = output;
@@ -174,7 +181,7 @@ export function useOutputNotices(
           { label: "Open", title: `Open in its own program`, onClick: () => void openThreadFile(threadId, file.path, false) },
           { label: "Show in folder", icon: <FolderIcon className="h-4 w-4" />, onClick: () => void openThreadFile(threadId, file.path, true) },
         ],
-        onDismiss: () => close([closeKey(threadId, file)]),
+        onDismiss: () => close([file]),
       });
     }
   }
