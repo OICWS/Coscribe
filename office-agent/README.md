@@ -1319,9 +1319,11 @@ The **+** button next to the message box opens three things:
 - **Add files or photos** -- images are attached as real multimodal image
   parts the model actually sees (not just a filename reference) -- see
   `ChatSessionLG.handle_user_message`'s `images` parameter. Anything else
-  (a `.docx`, a `.pdf`, a plain text file, ...) is uploaded straight into
-  the workspace via `POST /api/upload` (capped at 25MB, name collisions
-  auto-renamed rather than overwritten) and referenced by path in your
+  (a `.docx`, a `.pdf`, a plain text file, ...) is uploaded via `POST /api/upload`
+  into the conversation's main folder, under `.coscribe/uploads/<kind>/` (images,
+  documents, data or other, by extension; a pasted picture in `screenshots/`, named by
+  date and time; capped at 25MB, name collisions auto-renamed rather than overwritten;
+  decision 0044) and referenced by path in your
   message, so the Coordinator reaches for `read_docx`/`read_pdf`/
   `read_file` on it like any other workspace file -- both kinds show up
   as removable chips above the message box while queued.
