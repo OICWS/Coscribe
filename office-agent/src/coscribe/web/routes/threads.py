@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,13 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from ...conversation import OPENABLE_EXTENSIONS, open_in_os
+from ...conversation import (
+    OPENABLE_EXTENSIONS,
+    eval_candidate,
+    failed_turns,
+    find_turn,
+    open_in_os,
+)
 from ...runtime import DEFAULT_ENVIRONMENT, Environments
 from ...runtime_lg import (
     extract_text,
@@ -32,6 +39,7 @@ from ...tools import (
 from ...workflows import DraftFailed
 from ..artifact_adoption import ArtifactAdoption
 from ..schemas import (
+    FailedTurnExport,
     FolderBriefRequest,
     GroupRename,
     OpenFileRequest,
@@ -352,6 +360,38 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         return JSONResponse(draft.to_dict())
 
 
+def _failed_turn_routes(router: APIRouter, state: AppState) -> None:
+    """One failed turn saved by the person as a file, to start an evaluation task (0052)."""
+
+    async def list_failed_turns(thread_id: str) -> dict[str, Any]:
+        """What each failed turn's file would hold, so the person sees it before saving it."""
+        return {"turns": failed_turns(state.settings.state_dir, thread_id)}
+
+    async def export_failed_turn(thread_id: str, body: FailedTurnExport) -> Response:
+        """The person's press of Save is the consent decision 0052 asks for: one turn, sent to
+        their own browser as a file, never anywhere else."""
+        line = find_turn(state.settings.state_dir, thread_id, body.started)
+        if line is None:
+            return JSONResponse({"error": "That turn is no longer recorded"}, status_code=404)
+        candidate = eval_candidate(line, asked=body.asked, went_wrong=body.went_wrong)
+        stamp = "".join(ch for ch in body.started[:19] if ch.isdigit())
+        return Response(
+            json.dumps(candidate, ensure_ascii=False, indent=2) + "\n",
+            media_type="application/json; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="failed-turn-{stamp}.json"'},
+        )
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/failed-turns", list_failed_turns, methods=["GET"]
+    )
+    router.add_api_route(
+        "/api/threads/{thread_id}/failed-turns/export",
+        export_failed_turn,
+        methods=["POST"],
+        response_model=None,
+    )
+
+
 def _file_and_context_routes(router: APIRouter, state: AppState) -> None:
     _get_session = state.get_session
 
@@ -467,6 +507,7 @@ def router(state: AppState) -> APIRouter:
     _group_and_lifecycle_routes(router, state)
     _delete_and_rename_routes(router, state)
     _task_and_draft_routes(router, state)
+    _failed_turn_routes(router, state)
     _file_and_context_routes(router, state)
     _subagent_routes(router, state)
     _background_task_routes(router, state)

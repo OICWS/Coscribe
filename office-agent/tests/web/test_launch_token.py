@@ -225,6 +225,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/activity",
     "/api/threads/{thread_id}/background-tasks",
     "/api/threads/{thread_id}/export",
+    "/api/threads/{thread_id}/failed-turns",
     "/api/threads/{thread_id}/context-breakdown",
     "/api/threads/{thread_id}/files/download",
     "/api/threads/{thread_id}/workspace",

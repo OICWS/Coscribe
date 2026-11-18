@@ -38,6 +38,7 @@ from .page_shot import NoBrowser, PageShotError
 from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
+from .turn_export import eval_candidate, failed_turns, find_turn
 
 __all__ = [
     "OPENABLE_EXTENSIONS",
@@ -82,4 +83,7 @@ __all__ = [
     "read_dashboard_data",
     "render_dashboard",
     "open_in_os",
+    "failed_turns",
+    "find_turn",
+    "eval_candidate",
 ]
