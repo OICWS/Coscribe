@@ -62,6 +62,7 @@ from ..schemas import (
     WorkflowRetry,
 )
 from ..state import AppState
+from .task_reach import reach_routes
 
 
 class _NoSocket:
@@ -707,4 +708,5 @@ def router(state: AppState) -> APIRouter:
     _memory_routes(router, state)
     _version_routes(router, state)
     _overview_routes(router, state)
+    reach_routes(router, state)
     return router

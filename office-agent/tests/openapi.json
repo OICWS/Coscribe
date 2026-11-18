@@ -4203,6 +4203,45 @@
         "summary": "Remove Provider"
       }
     },
+    "/api/reach/check": {
+      "post": {
+        "description": "Where a folder an input names falls, for a saved task or a new one in a workspace.",
+        "operationId": "check_path_api_reach_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Path"
+      }
+    },
     "/api/scheduled-tasks": {
       "get": {
         "operationId": "list_scheduled_tasks_endpoint_api_scheduled_tasks_get",
@@ -4387,6 +4426,100 @@
           }
         },
         "summary": "Update Scheduled Task Endpoint"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/folders": {
+      "delete": {
+        "operationId": "remove_folder_api_scheduled_tasks__trigger_id__folders_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Folder"
+      },
+      "post": {
+        "description": "Only this task: its runs may read and write the folder from now on.",
+        "operationId": "allow_folder_api_scheduled_tasks__trigger_id__folders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Allow Folder"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/memory": {
@@ -4681,6 +4814,43 @@
           }
         },
         "summary": "Pause Scheduled Task Endpoint"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/reach": {
+      "get": {
+        "operationId": "task_reach_api_scheduled_tasks__trigger_id__reach_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Reach"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/resume": {
