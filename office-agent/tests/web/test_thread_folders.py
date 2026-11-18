@@ -312,4 +312,4 @@ def test_the_first_start_asks_for_a_workspace_and_new_conversations_work_there(
     assert again.status_code == 409
     assert after["needed"] is False
     assert [(e["name"], e["folders"]) for e in envs] == [("Coscribe", [str(suggested.resolve())])]
-    assert str(suggested.resolve()) in json.dumps(reach)
+    assert [root["path"] for root in reach["roots"]] == [str(suggested.resolve())]
