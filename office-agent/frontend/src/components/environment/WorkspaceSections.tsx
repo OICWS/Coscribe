@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { folderName } from "../../lib/folderName";
-import type { SecretInfo } from "../../types/settings";
+import type { BrowserLevel, SecretInfo } from "../../types/settings";
 import { FolderIcon, PlusIcon } from "../icons";
+import { SelectMenu, type SelectOption } from "../SelectMenu";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
 import { SegmentedControl } from "../settings/SegmentedControl";
 import { fieldClass, secondaryButtonClass } from "../settings/SettingRow";
@@ -128,10 +129,16 @@ function UnreachableSecrets({ network, secrets, chosen }: { network: NetworkDraf
   });
 }
 
+const BROWSER_LEVELS = [
+  { value: "allow", label: "Use without asking" },
+  { value: "ask", label: "Ask each time" },
+  { value: "off", label: "Not in the browser" },
+] as const satisfies readonly SelectOption<BrowserLevel>[];
+
 const MODE_NOTES: Record<SitesMode, string> = {
   none: "No web search, web pages, downloads or browser steps, and scripts stay offline.",
   listed: "It opens, downloads from and uses in the browser only these sites and their subdomains. Search still works; scripts stay offline.",
-  any: "Any site. Secrets still go only to the hosts set for each one.",
+  any: "Any site. List one to choose how the browser uses it. Secrets still go only to the hosts set for each one.",
 };
 
 /** Where the workspace may go on the internet, and which of its secrets each site gets. */
@@ -152,7 +159,7 @@ export function SitesSection({ network, secrets, chosen }: { network: NetworkDra
     secrets.filter((secret) => chosen.has(secret.name) && secret.hosts.some((host) => reachesPattern([site], host))).map((secret) => secret.name);
   return (
     <Section title="Sites" description={MODE_NOTES[network.mode]} action={<SegmentedControl value={network.mode} options={SITE_MODES} onChange={network.setMode} />}>
-      {network.mode === "listed" && (
+      {network.mode !== "none" && (
         <>
           <div className="flex gap-2">
             <input
@@ -173,13 +180,14 @@ export function SitesSection({ network, secrets, chosen }: { network: NetworkDra
           </div>
           {error && <p className="text-[13px] text-[var(--danger)]">{error}</p>}
           {network.sites.length === 0 ? (
-            <p className="text-[13px] text-[var(--muted)]">No sites yet. Add one, or choose None.</p>
+            <p className="text-[13px] text-[var(--muted)]">{network.mode === "listed" ? "No sites yet. Add one, or choose None." : "Add a site to choose how the browser uses it; any other site asks first."}</p>
           ) : (
             <table className="w-full table-fixed border-collapse text-[13px]">
               <thead>
                 <tr className="text-left text-[var(--muted)]">
                   <th className={`${cell} py-1.5 font-normal`}>Site</th>
-                  <th className={`${cell} py-1.5 font-normal`}>Secrets sent</th>
+                  <th className={`${cell} w-[196px] py-1.5 font-normal`}>In the browser</th>
+                  <th className={`${cell} w-[24%] py-1.5 font-normal`}>Secrets sent</th>
                   <th className={`${cell} w-[84px] py-1.5`}>
                     <span className="sr-only">Remove</span>
                   </th>
@@ -191,6 +199,17 @@ export function SitesSection({ network, secrets, chosen }: { network: NetworkDra
                   return (
                     <tr key={site} className="[&:last-child>td]:border-b-0">
                       <td className={`${cell} truncate pr-3`}>{site}</td>
+                      <td className={`${cell} pr-3`}>
+                        <SelectMenu
+                          variant="field"
+                          className="w-[180px]"
+                          triggerClassName="h-8 text-[13px]"
+                          ariaLabel={`${site} in the browser`}
+                          value={network.levelOf(site)}
+                          options={BROWSER_LEVELS}
+                          onChange={(level) => network.setLevel(site, level)}
+                        />
+                      </td>
                       <td className={`${cell} truncate pr-3 ${sent.length ? "font-mono text-xs" : "text-[var(--muted)]"}`}>{sent.length ? sent.join(", ") : "None"}</td>
                       <td className={`${cell} text-right`}>
                         <button type="button" aria-label={`Remove ${site}`} className={smallButton} onClick={() => network.remove(site)}>

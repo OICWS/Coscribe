@@ -670,7 +670,11 @@ export interface NetworkAccess {
   mode: "none" | "limited" | "full";
   /** For limited: a domain covers its subdomains; "*" is every site. */
   domains: string[];
+  /** The built-in browser's level for a site the workspace reaches; a site not named asks. */
+  browser?: Record<string, BrowserLevel>;
 }
+
+export type BrowserLevel = "allow" | "ask" | "off";
 
 /** The optional LibreOffice (decision 0026): coscribe's own copy, one installed on the computer, or none. */
 export interface LibreOfficeStatus {

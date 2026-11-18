@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { getCapabilities, getScriptIsolation, retestScriptIsolation, setCapability } from "../../lib/rest";
-import { isElectron } from "../../lib/electron";
 import { useCodePermissions } from "../../lib/useCodePermissions";
 import { useCodeStatus } from "../../lib/useCodeStatus";
 import type { Capabilities, ScriptIsolation } from "../../types/settings";
-import { AllowedSitesDialog } from "../AllowedSitesDialog";
 import { CHECK_WORDS } from "../environment/checkWords";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { AdvancedSection } from "./AdvancedSection";
 import { CommandRows } from "./CommandRows";
 import { ConfiguredModelSelect } from "./ConfiguredModelSelect";
 import { CODE_MODEL_KEY, CODE_MODULE_ENABLED_KEY } from "./fields";
-import { secondaryButtonClass, SettingRow, SettingRows, SettingsSection, SubRows } from "./SettingRow";
+import { SettingRow, SettingRows, SettingsSection, SubRows } from "./SettingRow";
 import { useCommandSandbox } from "./useCommandSandbox";
 
 function useCapabilities(active: boolean) {
@@ -148,7 +146,6 @@ interface CapabilitiesTabProps {
  * switch needs (a sandbox, a check) itself; a large download is the person's to start, under
  * Advanced. An environment or a mode can only narrow what is on here. */
 export function CapabilitiesTab({ active, values, onChange, onOpenEnvironments }: CapabilitiesTabProps) {
-  const [sitesOpen, setSitesOpen] = useState(false);
   const { capabilities, error, set } = useCapabilities(active);
   const sandbox = useCommandSandbox(active);
   const code = useCodeStatus();
@@ -177,20 +174,8 @@ export function CapabilitiesTab({ active, values, onChange, onOpenEnvironments }
           )}
           <ScriptsRow active={active} on={capabilities.scripts} toggle={() => set("scripts", !capabilities.scripts)} />
           <CommandRows capabilities={capabilities} set={set} control={sandbox} onOpenEnvironments={onOpenEnvironments} />
-          {isElectron() && (
-            <SettingRow
-              label="Allowed sites"
-              description="Sites where Coscribe can use its browser without asking you first."
-              control={
-                <button type="button" className={secondaryButtonClass} onClick={() => setSitesOpen(true)}>
-                  Manage
-                </button>
-              }
-            />
-          )}
           <CodeRows values={values} onChange={onChange} code={code} />
         </SettingRows>
-        {sitesOpen && <AllowedSitesDialog onClose={() => setSitesOpen(false)} />}
       </SettingsSection>
       <AdvancedSection active={active} code={code} codexRunsSandbox={sandbox.sandbox?.source !== "bundled"} />
     </div>

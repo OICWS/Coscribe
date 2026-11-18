@@ -26,7 +26,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   // Its address, bypass list, user name and password show only once a manual proxy is chosen, so
   // they are found through this row.
   { category: "general", label: "Proxy", keywords: "network internet address do not use for bypass user name password" },
-  { category: "workspace", label: "Workspaces", keywords: "folder environment internet access new edit" },
+  { category: "workspace", label: "Workspaces", keywords: "folder environment internet access new edit sites allowed browser websites" },
   { category: "workspace", label: "Allowed folders", keywords: "directory read write" },
   { category: "capabilities", label: "Create and edit files", keywords: "write read only word excel powerpoint pdf" },
   { category: "capabilities", label: "Artifacts", keywords: "docs design dashboard panel" },
@@ -34,7 +34,6 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "capabilities", label: "Run commands", keywords: "shell terminal sandbox" },
   { category: "capabilities", label: "Command sandbox", keywords: "basic full administrator" },
   { category: "capabilities", label: "Private folders", keywords: "documents desktop downloads hide drive users" },
-  { category: "capabilities", label: "Allowed sites", keywords: "browser websites" },
   { category: "capabilities", label: "Chats can hand tasks to Code", keywords: "codex" },
   { category: "capabilities", label: "Model for code", keywords: "codex" },
   { category: "capabilities", label: "Change files without asking", keywords: "codex approval" },
