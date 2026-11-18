@@ -83,7 +83,6 @@ export const DIR_PERMISSION_OPTIONS = [
   { value: "read-write-delete", label: "Read, write and delete" },
 ] as const;
 
-export const DIR_PERMISSION_LABELS = Object.fromEntries(DIR_PERMISSION_OPTIONS.map((o) => [o.value, o.label])) as Record<DirPermission, string>;
 
 /** The .env key each permission is stored under. */
 const DIR_KEYS: Record<DirPermission, string> = {

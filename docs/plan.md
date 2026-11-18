@@ -48,15 +48,20 @@ Last reviewed: 2026-11-06.
    moved over; D `.coscribe/settings.json` and `mcp.json`. A part 1 (the card in chats) is in
    `docs/log/2026-11-16-folder-access-card.md`; part 2 (Settings' environments table and the
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
-   Next, one PR each: the edit dialog with "environment" called workspace in the UI; one site list
-   per workspace with a browser level per site and where each secret is sent (decision record
-   first); a task showing what it reaches, its folder inputs picked from that reach, and a folder
-   outside it allowed on the spot.
+   The edit dialog on one page, called a workspace in the UI, is in
+   `docs/log/2026-11-18-workspace-dialog.md`. Next, one PR each: a browser level per site, merging
+   the browser's Allowed sites into each workspace's sites (decision record first); a task showing
+   what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
+   the spot.
 
 ## Open, smaller
 
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
+
+- **Code module manual checks** (#844): native patch approvals are scripted without API keys;
+  first-use, real-model behavior and idle service exit still need Windows use
+  (`docs/log/2026-11-18-code-patch-approval.md`).
 
 - **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
   The reported apparent change to an investigation title is not reproduced; confirm against

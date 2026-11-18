@@ -18,7 +18,7 @@ test("Settings > Capabilities: scripts on, commands off until confirmed", async 
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(commands).toHaveAttribute("aria-checked", "false");
 
-  await expect(page.getByRole("button", { name: "Environment", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Workspace", exact: true })).toHaveCount(0);
 });
 
 test("Settings > Capabilities: files and artifacts are on, and Artifacts goes with files", async ({ page }) => {

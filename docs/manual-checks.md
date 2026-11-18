@@ -102,10 +102,14 @@ By hand:
 1. Open a code thread on a folder with a binary file. Ask Codex to show the first bytes of it with
    Format-Hex. Expected: no approval card (it is a read), the hex table in the answer is not
    garbled.
-2. Run the "Verify by hand" list on the code-runtime card
-   (`office-agent/src/coscribe/code_runtime/AGENTS.md`): first-use download, a PowerShell command
-   and an edit with an approval card for each, "allow" in Settings > Code, the shared server
-   stopping when idle.
+2. In Manual mode with file changes set to Ask, request a patch to a test file. Reject the
+   file-change card and check it is unchanged; make a new request, allow it and check it changes.
+   If only `exec_command` is offered, the patch must use the heredoc form described on the
+   code-runtime card, not `apply_patch "<multiline patch>"`. Ordinary commands remain refused
+   when commands are disabled; that refusal is not a file-change approval test.
+3. Check first-use download separately from starting an already installed Codex, and wait ten
+   idle minutes to check the shared app-server exits. The Windows job scripts the quoted-patch
+   refusal and both patch-approval decisions using the pinned real Codex and a local stub API.
 
 ## 6. Background commands on Windows (5 min)
 Scripted: a command that starts a child process is stopped with taskkill, and the child is gone.

@@ -24,29 +24,27 @@ export function useMachineLimits() {
 
 export type MachineLimits = ReturnType<typeof useMachineLimits>;
 
-/** How far the environment's conversations may reach the internet; the domains are edited as
- * lines of text. */
+export type SitesMode = "none" | "listed" | "any";
+
+/** How far the workspace's conversations may reach the internet. "Any site" is kept as limited to
+ * every site unless scripts may go online too, which only full allows. */
 export function useNetworkDraft(initial: NetworkAccess) {
-  const [mode, setMode] = useState<NetworkAccess["mode"]>(initial.mode);
-  const [domains, setDomains] = useState(initial.domains.join("\n"));
-
-  const list = domains
-    .split(/[\s,]+/)
-    .map((domain) => domain.trim())
-    .filter(Boolean);
-  // Only limited keeps a list; switching away and back should not lose what was typed.
-  const current: NetworkAccess = { mode, domains: mode === "limited" ? list : [] };
-
-  const summary =
+  const everySite = initial.mode === "full" || initial.domains.includes("*");
+  const [mode, setMode] = useState<SitesMode>(initial.mode === "none" ? "none" : everySite ? "any" : "listed");
+  const [scriptsOnline, setScriptsOnline] = useState(initial.mode === "full");
+  // Kept while another mode is chosen, so switching back does not lose the list.
+  const [sites, setSites] = useState(initial.domains.filter((domain) => domain !== "*"));
+  const current: NetworkAccess =
     mode === "none"
-      ? "None"
-      : mode === "full"
-        ? "Full"
-        : list.includes("*")
-          ? "Limited: any site, scripts offline"
-          : `Limited: ${list.length} domain${list.length === 1 ? "" : "s"}`;
-
-  return { mode, setMode, domains, setDomains, current, summary };
+      ? { mode: "none", domains: [] }
+      : mode === "listed"
+        ? { mode: "limited", domains: sites }
+        : scriptsOnline
+          ? { mode: "full", domains: [] }
+          : { mode: "limited", domains: ["*"] };
+  const add = (site: string) => setSites((list) => (list.includes(site) ? list : [...list, site]));
+  const remove = (site: string) => setSites((list) => list.filter((s) => s !== site));
+  return { mode, setMode, scriptsOnline, setScriptsOnline, sites, add, remove, current };
 }
 
 export type NetworkDraft = ReturnType<typeof useNetworkDraft>;

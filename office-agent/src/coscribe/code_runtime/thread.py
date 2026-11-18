@@ -546,6 +546,8 @@ class CodexThread:
             # refuses one only when it never asks (issue #616).
             "approvalPolicy": "never" if self._permissions else "untrusted",
         }
+        if self._instructions:
+            params["developerInstructions"] = self._instructions
         if self._permissions:
             params["permissions"] = self._permissions
         else:
@@ -575,8 +577,6 @@ class CodexThread:
                 logger.warning("Codex thread %s can't be resumed", self.thread_id, exc_info=True)
         if result is None:
             params = self._thread_params()
-            if self._instructions:
-                params["developerInstructions"] = self._instructions
             result = await server.request("thread/start", params)
         self.thread_id = str(result["thread"]["id"])
         return self.thread_id

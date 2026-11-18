@@ -26,7 +26,7 @@ setting (`runtime/proxy.py`) or secret storage (`runtime/`).
 - Browser commands go to the desktop app's own browser through the internal route; there is no
   remote-debugging port.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
-- A conversation's network setting (`runtime.NetworkGuard`, Edit environment > Network) is checked
+- A conversation's network setting (`runtime.NetworkGuard`, Edit workspace > Sites) is checked
   at each call, and on every request of `read_web_page`, `download_image` and `http_request`, so a
   redirect can't leave the allowed domains; the browser's steps are checked by the desktop app
   against `network_sites` (`tests/test_network_access.py`).

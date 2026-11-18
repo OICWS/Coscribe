@@ -160,7 +160,7 @@ function ThreadMenu({
         <PencilIcon className="h-3.5 w-3.5" /> Rename
       </button>
       <button type="button" role="menuitem" className={itemClass} onClick={onEnvironment}>
-        <LockIcon className="h-3.5 w-3.5" /> Edit environment
+        <LockIcon className="h-3.5 w-3.5" /> Edit workspace
       </button>
       <ExportItem thread={menu.thread} onDone={onClose} />
       <div className="relative" onMouseEnter={() => setSubmenu(true)}>

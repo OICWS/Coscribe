@@ -59,7 +59,7 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
     label: "Settings",
     categories: [
       { id: "general", label: "General", icon: SettingsIcon },
-      { id: "workspace", label: "Environments", icon: FolderIcon },
+      { id: "workspace", label: "Workspaces", icon: FolderIcon },
       { id: "providers", label: "Providers", icon: KeyIcon },
       { id: "capabilities", label: "Capabilities", icon: BriefcaseIcon },
       { id: "secrets", label: "Secrets", icon: LockIcon },

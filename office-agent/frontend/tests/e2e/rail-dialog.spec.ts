@@ -13,8 +13,8 @@ test("a dialog opened from a hover-opened sidebar is not closed with the sidebar
   const row = page.getByTestId("thread-row").first();
   await expect(row).toBeVisible();
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit environment" }).click();
-  const dialog = page.getByRole("dialog", { name: "Edit environment" });
+  await page.getByRole("menuitem", { name: "Edit workspace" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit workspace" });
   await expect(dialog).toBeVisible();
 
   // Into the dialog, well clear of the sidebar, and longer than its delay.
@@ -34,7 +34,7 @@ test("a dialog opened from a hover-opened sidebar is not closed with the sidebar
   await expect(page.getByTestId("thread-row")).toHaveCount(0, { timeout: 3000 });
 });
 
-test("a click beside the Edit environment dialog keeps what was typed", async ({ page }) => {
+test("a click beside the Edit workspace dialog keeps what was typed", async ({ page }) => {
   await page.goto(freshThreadPath("env-dirty"));
   await waitForConnected(page);
   await page.locator("textarea").fill("Reply with just OK.");
@@ -42,15 +42,15 @@ test("a click beside the Edit environment dialog keeps what was typed", async ({
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
   await page.getByTitle("Pin navigation open").click();
   await page.getByTestId("thread-row").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit environment" }).click();
-  const dialog = page.getByRole("dialog", { name: "Edit environment" });
+  await page.getByRole("menuitem", { name: "Edit workspace" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit workspace" });
 
   // Nothing typed: a click beside it closes it.
   await page.mouse.click(1270, 650);
   await expect(dialog).toHaveCount(0);
 
   await page.getByTestId("thread-row").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit environment" }).click();
+  await page.getByRole("menuitem", { name: "Edit workspace" }).click();
   await dialog.getByRole("button", { name: /Environment variables/ }).click();
   await dialog.getByLabel("Environment variables", { exact: true }).fill("MODE=fast");
   await page.mouse.click(1270, 650);
@@ -58,35 +58,35 @@ test("a click beside the Edit environment dialog keeps what was typed", async ({
   await expect(dialog.getByLabel("Environment variables", { exact: true })).toHaveValue("MODE=fast");
 });
 
-test("the environment picker makes, chooses, edits and deletes an environment", async ({ page, request }) => {
+test("the workspace picker makes, chooses, edits and deletes a workspace", async ({ page, request }) => {
   const path = freshThreadPath("env-picker");
   const threadId = path.split("=")[1];
   const name = `E2E env ${Math.random().toString(36).slice(2, 7)}`;
   await page.goto(path);
   await waitForConnected(page);
-  const picker = page.getByTitle("Choose this conversation's environment");
+  const picker = page.getByTitle("Choose this conversation's workspace");
   await expect(picker).toHaveText("Default");
   await newEnvironment(page, name);
 
   await editEnvironment(page, name);
-  const dialog = page.getByRole("dialog", { name: "Edit environment" });
+  const dialog = page.getByRole("dialog", { name: "Edit workspace" });
   await expect(dialog.getByText("Used by 1 conversation")).toBeVisible();
-  for (const page_ of ["Folders", "Network", "Scripts and commands", "Secrets", "Environment variables"]) {
-    await expect(dialog.getByRole("button", { name: new RegExp(page_) })).toBeVisible();
+  for (const section of ["Folder", "More folders for this workspace", "Sites", "Secrets"]) {
+    await expect(dialog.getByRole("heading", { name: section, exact: true })).toBeVisible();
   }
   // Every page keeps the main page's size, so the dialog does not jump while moving between them.
   const mainHeight = (await dialog.boundingBox())?.height;
-  for (const page_ of ["Folders", "Network", "Scripts and commands", "Secrets", "Environment variables"]) {
+  for (const page_ of ["Scripts and commands", "Environment variables"]) {
     await dialog.getByRole("button", { name: new RegExp(page_) }).click();
     expect((await dialog.boundingBox())?.height).toBe(mainHeight);
     await dialog.getByRole("button", { name: "Back" }).click();
   }
-  // Commands are off in Settings › Capabilities, so an environment can't turn them on.
+  // Commands are off in Settings › Capabilities, so a workspace can't turn them on.
   await dialog.getByRole("button", { name: /Scripts and commands/ }).click();
   await expect(dialog.getByRole("switch", { name: "Commands" })).toBeDisabled();
   await dialog.getByRole("button", { name: "Back" }).click();
 
-  await dialog.getByRole("button", { name: "Delete environment" }).click();
+  await dialog.getByRole("button", { name: "Delete workspace" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(picker).toHaveText("Default");
@@ -94,7 +94,7 @@ test("the environment picker makes, chooses, edits and deletes an environment", 
   await request.delete(`/api/threads/${threadId}`);
 });
 
-test("an environment's Network page limits its conversations to the domains given", async ({ page, request }) => {
+test("a workspace's Sites limit its conversations to the sites listed", async ({ page, request }) => {
   const path = freshThreadPath("env-network");
   const threadId = path.split("=")[1];
   const name = `E2E net ${Math.random().toString(36).slice(2, 7)}`;
@@ -103,16 +103,19 @@ test("an environment's Network page limits its conversations to the domains give
   await newEnvironment(page, name);
   try {
     await editEnvironment(page, name);
-    const dialog = page.getByRole("dialog", { name: "Edit environment" });
-    await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: any site, scripts offline");
-    await dialog.getByRole("button", { name: /Network/ }).click();
-    await expect(dialog.getByRole("radio", { name: /Limited/ })).toBeChecked();
+    const dialog = page.getByRole("dialog", { name: "Edit workspace" });
+    await expect(dialog.getByRole("button", { name: "Any site", pressed: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Listed sites" }).click();
 
-    await dialog.getByLabel("Allowed domains").fill("not a domain");
-    await dialog.getByRole("button", { name: "Save changes" }).click();
-    await expect(dialog.getByText("isn't a domain")).toBeVisible();
-
-    await dialog.getByLabel("Allowed domains").fill("https://www.example.com/page\ndocs.python.org");
+    const site = dialog.getByLabel("Add a site");
+    await site.fill("not a domain");
+    await site.press("Enter");
+    await expect(dialog.getByText("isn't a site")).toBeVisible();
+    await site.fill("https://www.example.com/page");
+    await site.press("Enter");
+    await site.fill("docs.python.org");
+    await dialog.getByRole("button", { name: "Add site" }).click();
+    await expect(dialog.getByRole("cell", { name: "example.com", exact: true })).toBeVisible();
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
     expect((await environmentNamed(request, name))?.network).toEqual({
@@ -121,10 +124,10 @@ test("an environment's Network page limits its conversations to the domains give
     });
 
     await editEnvironment(page, name);
-    await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: 2 domains");
-    await dialog.getByRole("button", { name: /Network/ }).click();
-    await dialog.getByRole("radio", { name: /None/ }).check();
-    await expect(dialog.getByLabel("Allowed domains")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Listed sites", pressed: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Remove docs.python.org" }).click();
+    await dialog.getByRole("button", { name: "None", exact: true }).click();
+    await expect(dialog.getByLabel("Add a site")).toHaveCount(0);
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
     expect((await environmentNamed(request, name))?.network).toEqual({ mode: "none", domains: [] });

@@ -49,10 +49,10 @@ function EnvironmentMenu({
       <div className="flex items-center gap-2 px-2.5 py-1.5">
         <SearchIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
         <input
-          aria-label="Search environments"
+          aria-label="Search workspaces"
           autoFocus
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
-          placeholder="Search environments"
+          placeholder="Search workspaces"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
         />
@@ -83,7 +83,7 @@ function EnvironmentMenu({
             </button>
           </li>
         ))}
-        {shown.length === 0 && <li className="px-2.5 py-2 text-sm text-[var(--muted)]">No environment matches.</li>}
+        {shown.length === 0 && <li className="px-2.5 py-2 text-sm text-[var(--muted)]">No workspace matches.</li>}
       </ul>
       <div className="mx-1 my-1 border-t border-[var(--border)]" />
       <button
@@ -92,7 +92,7 @@ function EnvironmentMenu({
         onClick={() => onEdit(null)}
       >
         <PlusIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-        New environment
+        New workspace
       </button>
     </div>
   );
@@ -138,7 +138,7 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
   });
 
   const chosen = environments.find((e) => e.id === current);
-  const label = chosen?.name ?? (current === DEFAULT_ENVIRONMENT ? "Default" : "Environment");
+  const label = chosen?.name ?? (current === DEFAULT_ENVIRONMENT ? "Default" : "Workspace");
   const pick = (id: string) => {
     setOpen(false);
     setQuery("");
@@ -154,10 +154,10 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
         disabled={disabled}
         title={
           forTask
-            ? "Choose the environment this task's runs use"
+            ? "Choose the workspace this task's runs use"
             : disabled
-              ? "The environment can't change while a reply is running"
-              : "Choose this conversation's environment"
+              ? "The workspace can't change while a reply is running"
+              : "Choose this conversation's workspace"
         }
         aria-expanded={open}
         className="flex h-8 max-w-full items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-50 disabled:hover:bg-transparent"
