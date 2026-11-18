@@ -474,6 +474,9 @@ def _user_history_entry(message: Any, text: str) -> dict[str, Any] | None:
         entry["images"] = images
     if files:
         entry["files"] = files
+    sent_at = (getattr(message, "additional_kwargs", None) or {}).get("sent_at")
+    if kind == "user" and isinstance(sent_at, str):
+        entry["sent_at"] = sent_at
     return entry
 
 

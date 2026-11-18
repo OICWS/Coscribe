@@ -430,14 +430,6 @@ class ConversationHistory:
                 {"type": "error", "message": f"No such message to edit (index {index})."}
             )
             return
-        # Editing an older message would silently discard every turn after
-        # it, including work the agent already did on files.
-        if index != len(human_positions) - 1:
-            await websocket.send_json(
-                {"type": "error", "message": "Only your most recent message can be edited."}
-            )
-            return
-
         to_remove = messages[human_positions[index] :]
         if to_remove:
             await self._host.lg_agent.aupdate_state(

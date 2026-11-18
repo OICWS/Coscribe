@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 """Web tests: compaction, paging back, editing and rewinding a message."""
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ from .helpers import (
     GrpcMetadataOverflowThenSuccessModel,
     _client_lg,
     _receive_until,
+    _unstamped,
 )
 
 
@@ -207,7 +209,11 @@ def test_compacted_history_can_be_reloaded_after_switching_threads(
             assert ws.receive_json()["type"] == "compacted"
             ws.send_json({"type": "load_older_messages"})
             original = ws.receive_json()["entries"]
-            assert original[0] == {"kind": "user", "text": "my picture", "images": [image]}
+            assert _unstamped(original[0]) == {
+                "kind": "user",
+                "text": "my picture",
+                "images": [image],
+            }
             ws.send_json({"type": "load_older_messages"})
             assert ws.receive_json()["entries"] == []
 
@@ -261,11 +267,15 @@ def test_edit_and_rewind_after_compaction_use_visible_message_indices(
     ]
 
 
-def test_edit_message_rejects_anything_but_the_latest_message(
+def test_editing_an_earlier_message_drops_every_turn_after_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="hi there!"), AIMessage(content="nice to hear")]
+        responses=[
+            AIMessage(content="hi there!"),
+            AIMessage(content="nice to hear"),
+            AIMessage(content="edited reply"),
+        ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         with client.websocket_connect("/ws/t_edit_old") as ws:
@@ -277,20 +287,13 @@ def test_edit_message_rejects_anything_but_the_latest_message(
             _receive_until(ws, "tasks_changed")
 
             ws.send_json({"type": "edit_message", "index": 0, "text": "hello, edited"})
-            error = ws.receive_json()
+            _receive_until(ws, "tasks_changed")
 
         with client.websocket_connect("/ws/t_edit_old") as ws:
             ws.receive_json()  # state
             history = ws.receive_json()
 
-    assert error["type"] == "error"
-    assert "most recent message" in error["message"]
-    assert [e["text"] for e in history["entries"]] == [
-        "hello",
-        "hi there!",
-        "how are you",
-        "nice to hear",
-    ]
+    assert [e["text"] for e in history["entries"]] == ["hello, edited", "edited reply"]
 
 
 def test_edit_message_rejects_an_out_of_range_index(
@@ -342,7 +345,7 @@ def test_rewind_message_truncates_without_regenerating(
             history = ws.receive_json()
 
     assert rewound == {"type": "rewound", "index": 1}
-    assert history["entries"] == [
+    assert _unstamped(history["entries"]) == [
         {"kind": "user", "text": "hello"},
         {"kind": "agent", "text": "hi there!"},
     ]
@@ -388,3 +391,22 @@ def test_grpc_metadata_overflow_recovers_by_rebuilding_the_agent_and_retrying(
     assert agent_message["text"] == "recovered"
     assert not any(m["type"] == "error" for m in messages)
     assert fake_model.calls == 2
+
+
+def test_a_replayed_message_says_when_it_was_sent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi there!")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_sent_at") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hello"})
+            _receive_until(ws, "tasks_changed")
+        with client.websocket_connect("/ws/t_sent_at") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    user, agent = history["entries"]
+    assert datetime.fromisoformat(user["sent_at"]).tzinfo is not None
+    assert "sent_at" not in agent

@@ -318,7 +318,7 @@ export function CloseIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** ChatLog's per-turn rewind control (feather-icons "rotate-ccw"). */
+/** A user message's "Rewind to here" (feather-icons "rotate-ccw"). */
 export function RewindIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
