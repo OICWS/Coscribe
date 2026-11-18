@@ -4,6 +4,7 @@ connector connects, and only for a host the secret is allowed for."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from typing import Any
 import keyring.errors
 import pytest
 
-from coscribe.runtime import SecretError, SecretStore, secrets
+from coscribe.runtime import SecretError, SecretStore, redactor, secrets
 from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.mcp import (
     load_mcp_server_configs,
@@ -295,3 +296,98 @@ def test_a_keychain_value_that_cannot_be_read_skips_that_connector_only(
     assert set(loaded) == {"plain"}
     assert set(listed) == {"gone", "plain"}
     assert listed["gone"]["env"] == {"TOKEN": ""}
+
+
+def test_a_key_typed_into_a_connector_is_blanked_once_it_connects(tmp_path: Path) -> None:
+    typed = "typed-env-key-9m4n1x8w"
+    local = validate_mcp_config(
+        {"type": "mcp", "name": "local", "command": "npx", "env": {"TOKEN": typed}}
+    )
+    remote = _remote({"Authorization": "Bearer hdr-token-5q7w2e9r"})
+
+    prepare_for_connect(local, tmp_path)
+    prepare_for_connect(remote, tmp_path)
+
+    blank = redactor(tmp_path)
+    assert typed not in blank(f"the server says {typed}")
+    assert "hdr-token-5q7w2e9r" not in blank("echoed hdr-token-5q7w2e9r alone")
+    assert blank("ordinary text") == "ordinary text"
+
+
+def test_a_key_typed_into_a_connector_is_blanked_when_the_app_starts(tmp_path: Path) -> None:
+    typed = "typed-env-key-9m4n1x8w"
+    config = tmp_path / "mcp.json"
+    config.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "local": {"command": "npx", "env": {"TOKEN": typed, "MODE": "production"}}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    load_mcp_server_configs(config, tmp_path)
+
+    assert redactor(tmp_path)(f"TOKEN={typed} MODE=production") == (
+        "TOKEN=[REDACTED SECRET] MODE=production"
+    )
+
+
+def test_a_connector_setting_that_is_not_a_credential_stays_readable(tmp_path: Path) -> None:
+    settings = {
+        "NODE_ENV": "production",
+        "ALLOWED_DIR": "C:\\Users\\someone\\Documents",
+        "API_BASE": "https://api.example.com/v2",
+        "PATH": "/usr/local/bin:/usr/bin",
+    }
+    odd_name = "a1b2c3d4e5f6g7h8i9j0k1l2"
+    local = validate_mcp_config(
+        {"type": "mcp", "name": "local", "command": "npx", "env": {**settings, "GH": odd_name}}
+    )
+    remote = _remote(
+        {
+            "Content-Type": "application/json",
+            "X-Api-Version": "2024-01-01",
+            "X-Api-Key": "k3y-9f8e7d6c",
+        }
+    )
+
+    prepare_for_connect(local, tmp_path)
+    prepare_for_connect(remote, tmp_path)
+
+    blank = redactor(tmp_path)
+    for value in [*settings.values(), "application/json", "2024-01-01"]:
+        assert blank(f"read {value} back") == f"read {value} back"
+    assert odd_name not in blank(f"echoed {odd_name}")
+    assert "k3y-9f8e7d6c" not in blank("echoed k3y-9f8e7d6c")
+
+
+def test_a_connectors_sign_in_tokens_are_blanked(tmp_path: Path) -> None:
+    from mcp.shared.auth import OAuthToken
+
+    from coscribe.runtime_lg import McpOAuth
+
+    storage = McpOAuth(tmp_path)._storage("docs")
+    asyncio.run(
+        storage.set_tokens(
+            OAuthToken(access_token="oauth-access-3k8d1f6g", refresh_token="oauth-refresh-2h5j7l")
+        )
+    )
+
+    text = redactor(tmp_path)("token oauth-access-3k8d1f6g and oauth-refresh-2h5j7l")
+    assert "oauth-access" not in text and "oauth-refresh" not in text
+
+
+def test_a_refreshed_sign_in_keeps_the_previous_token_blanked(tmp_path: Path) -> None:
+    from mcp.shared.auth import OAuthToken
+
+    from coscribe.runtime_lg import McpOAuth
+
+    storage = McpOAuth(tmp_path)._storage("docs")
+    asyncio.run(storage.set_tokens(OAuthToken(access_token="first-access-4r6t8y0u")))
+    asyncio.run(storage.set_tokens(OAuthToken(access_token="second-access-1q3w5e7r")))
+
+    text = redactor(tmp_path)("first-access-4r6t8y0u then second-access-1q3w5e7r")
+    assert "first-access" not in text and "second-access" not in text

@@ -1,5 +1,6 @@
 import { openThreadFile } from "../../lib/rest";
 import { createContext } from "react";
+import type { MessageActions } from "../../lib/messageActions";
 import type { SteerActions } from "../../lib/steerNotes";
 
 export const NO_CONNECTOR_TOOLS: ReadonlySet<string> = new Set();
@@ -19,6 +20,9 @@ export const OpenConnector = createContext<((name: string) => void) | null>(null
 export const DetachScript = createContext<((script: string) => void) | null>(null);
 
 export const SteerActionsContext = createContext<SteerActions | null>(null);
+
+/** Rewind and Edit on a sent message; null where the history can't be cut (before a /compact). */
+export const MessageActionsContext = createContext<MessageActions | null>(null);
 
 /** The files this conversation made or changed, by file name: a reply that names one shows a chip. */
 export const ThreadFiles = createContext<ReadonlyMap<string, string>>(new Map());
