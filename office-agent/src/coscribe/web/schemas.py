@@ -201,6 +201,7 @@ class ThreadMetaPatch(BaseModel):
     # None leaves it; "" takes the conversation out of its group.
     group: str | None = None
     archived: bool | None = None
+    closed_outputs: dict[str, str] | None = None
 
 
 class GroupRename(BaseModel):

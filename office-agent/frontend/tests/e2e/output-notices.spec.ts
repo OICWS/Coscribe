@@ -15,7 +15,7 @@ test("what the conversation made shows as notices above the message box, each ki
   const folder = `made-${id}`;
   mkdirSync(join(workspace, folder), { recursive: true });
   for (const name of ["chart-1.png", "chart-2.png"]) writeFileSync(join(workspace, folder, name), PNG);
-  const now = new Date().toISOString();
+  let now = new Date().toISOString();
   const file = (name: string, openable: boolean) => ({
     path: `${folder}/${name}`,
     name,
@@ -62,10 +62,19 @@ test("what the conversation made shows as notices above the message box, each ki
   await expect(viewer).toBeHidden();
 
   // A closed notice stays closed until its file changes again.
+  const saved = page.waitForResponse((r) => r.url().endsWith("/meta") && r.request().method() === "POST" && r.ok());
   await deck.getByRole("button", { name: "Close" }).click();
+  await saved;
   await expect(notices.filter({ hasText: `review-${id}` })).toHaveCount(0);
+  // A new desktop port has none of the previous origin's browser storage.
+  await page.evaluate(() => localStorage.clear());
   await page.reload();
   await waitForConnected(page);
   await expect(notices.filter({ hasText: `budget-${id}.xlsx` })).toBeVisible();
   await expect(notices.filter({ hasText: `review-${id}` })).toHaveCount(0);
+  now = new Date(Date.now() + 1000).toISOString();
+  await page.reload();
+  await waitForConnected(page);
+  await page.getByRole("button", { name: /Show 1 more/ }).click();
+  await expect(notices.filter({ hasText: `review-${id}` })).toBeVisible();
 });

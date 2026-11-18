@@ -1330,6 +1330,20 @@
             ],
             "title": "Archived"
           },
+          "closed_outputs": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed Outputs"
+          },
           "group": {
             "anyOf": [
               {

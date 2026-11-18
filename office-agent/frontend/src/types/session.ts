@@ -154,6 +154,7 @@ export interface PlanTask {
 }
 
 export interface ThreadActivity {
+  closed_outputs?: Record<string, string>;
   tasks: PlanTask[];
   /** Most recently touched first. */
   outputs: ActivityFile[];

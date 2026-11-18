@@ -493,7 +493,7 @@ export const renameThread = (id: string, title: string) =>
 export const getThreadStatuses = () => getJson<{ statuses: Record<string, ThreadStatus> }>("/api/threads/status");
 export const getThreadGroups = () => getJson<{ groups: string[] }>("/api/thread-groups");
 /** `group`: a name (made if new), or "" to take it out of its group. */
-export const setThreadMeta = (id: string, patch: { group?: string; archived?: boolean }) =>
+export const setThreadMeta = (id: string, patch: { group?: string; archived?: boolean; closed_outputs?: Record<string, string> }) =>
   sendForResult<ThreadMetaResult>(`/api/threads/${encodeURIComponent(id)}/meta`, "POST", patch);
 export const renameThreadGroup = (name: string, newName: string) =>
   sendForResult<{ name: string; groups: string[] }>(

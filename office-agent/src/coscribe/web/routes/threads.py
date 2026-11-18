@@ -213,6 +213,11 @@ def _group_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
         if payload.archived is not None:
             fields["archived"] = payload.archived
             fields["kept"] = not payload.archived
+        if payload.closed_outputs is not None:
+            fields["closed_outputs"] = {
+                **meta_store.get(thread_id).get("closed_outputs", {}),
+                **payload.closed_outputs,
+            }
         meta = meta_store.update(thread_id, **fields)
         return JSONResponse({"thread_id": thread_id, **meta, "groups": meta_store.groups()})
 
@@ -283,7 +288,11 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
     async def get_thread_activity(thread_id: str) -> dict[str, Any]:
         session = _get_session(thread_id)
         activity = await session.get_activity()
-        return {"tasks": TaskToolkit(thread_id, settings.state_dir).list_tasks(), **activity}
+        return {
+            "tasks": TaskToolkit(thread_id, settings.state_dir).list_tasks(),
+            **activity,
+            "closed_outputs": state.meta_store.get(thread_id).get("closed_outputs", {}),
+        }
 
     async def reread_folder_brief(
         thread_id: str, body: FolderBriefRequest
