@@ -20,7 +20,7 @@ import json
 import os
 import re
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -243,28 +243,59 @@ def _forms(value: str) -> set[str]:
 
 
 _REDACTION_MARK = "[REDACTED SECRET]"
-_FORMS_CACHE: dict[str, tuple[tuple[int, int], list[str]]] = {}
+_FORMS_CACHE: dict[str, tuple[tuple[int, int, int], list[str]]] = {}
+# Keys that are not in Settings > Secrets but are kept like one -- a connector's own env and
+# header values, its sign-in tokens -- by owner, as their forms. They live only in this process,
+# put here as each connection is prepared, since the files holding them are not under `state_dir`.
+_OTHER_FORMS: dict[str, frozenset[str]] = {}
+_other_version = 0
+_AUTH_SCHEME = re.compile(r"(?i)(?:bearer|basic|token|bot)\s+(\S+)")
+
+
+def blank_also(owner: str, values: Iterable[str]) -> None:
+    """Have every `redactor` blank `values` too, replacing what `owner` gave before (none clears
+    it). A header value such as `Bearer abc...` also has its token blanked on its own, as a
+    server would echo the token, not the header."""
+    global _other_version
+    forms: set[str] = set()
+    for value in values:
+        if not isinstance(value, str) or not value:
+            continue
+        forms |= _forms(value)
+        if scheme := _AUTH_SCHEME.fullmatch(value.strip()):
+            forms |= _forms(scheme.group(1))
+    with _LOCK:
+        if forms:
+            _OTHER_FORMS[owner] = frozenset(forms)
+        else:
+            _OTHER_FORMS.pop(owner, None)
+        _other_version += 1
 
 
 def _redaction_forms(state_dir: Path) -> list[str]:
-    """Every stored secret's forms, longest first. Re-read when `secrets.json`
-    changes, so a value added a moment ago is already covered."""
+    """Every stored secret's forms and those `blank_also` was given, longest first. Re-read
+    when `secrets.json` changes, so a value added a moment ago is already covered."""
     path = state_dir / "secrets.json"
     try:
         stat = path.stat()
+        stamp = (stat.st_mtime_ns, stat.st_size, _other_version)
     except OSError:
-        return []
-    stamp = (stat.st_mtime_ns, stat.st_size)
+        stat = None
+        stamp = (0, -1, _other_version)
     cached = _FORMS_CACHE.get(str(path))
     if cached is not None and cached[0] == stamp:
         return cached[1]
-    store = SecretStore(state_dir)
     forms: set[str] = set()
-    for name in store.names():
-        try:
-            forms |= _forms(store.resolve(name))
-        except SecretError:
-            continue  # unreadable now, so it can't be in anything either
+    if stat is not None:
+        store = SecretStore(state_dir)
+        for name in store.names():
+            try:
+                forms |= _forms(store.resolve(name))
+            except SecretError:
+                continue  # unreadable now, so it can't be in anything either
+    with _LOCK:
+        for other in _OTHER_FORMS.values():
+            forms |= other
     ordered = sorted(forms, key=len, reverse=True)
     _FORMS_CACHE[str(path)] = (stamp, ordered)
     return ordered

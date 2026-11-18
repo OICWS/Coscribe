@@ -4,6 +4,7 @@ connector connects, and only for a host the secret is allowed for."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from typing import Any
 import keyring.errors
 import pytest
 
-from coscribe.runtime import SecretError, SecretStore, secrets
+from coscribe.runtime import SecretError, SecretStore, redactor, secret_store, secrets
 from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.mcp import (
     load_mcp_server_configs,
@@ -45,6 +46,7 @@ def keychain(monkeypatch: pytest.MonkeyPatch) -> _FakeKeyring:
     fake = _FakeKeyring()
     monkeypatch.setattr(secrets, "keyring", fake)
     monkeypatch.setattr(secrets, "keychain_backend_usable", lambda: True)
+    monkeypatch.setattr(secret_store, "_OTHER_FORMS", {})
     return fake
 
 
@@ -295,3 +297,35 @@ def test_a_keychain_value_that_cannot_be_read_skips_that_connector_only(
     assert set(loaded) == {"plain"}
     assert set(listed) == {"gone", "plain"}
     assert listed["gone"]["env"] == {"TOKEN": ""}
+
+
+def test_a_key_typed_into_a_connector_is_blanked_once_it_connects(tmp_path: Path) -> None:
+    typed = "typed-env-key-9m4n1x8w"
+    local = validate_mcp_config(
+        {"type": "mcp", "name": "local", "command": "npx", "env": {"TOKEN": typed}}
+    )
+    remote = _remote({"Authorization": "Bearer hdr-token-5q7w2e9r"})
+
+    prepare_for_connect(local, tmp_path)
+    prepare_for_connect(remote, tmp_path)
+
+    blank = redactor(tmp_path)
+    assert typed not in blank(f"the server says {typed}")
+    assert "hdr-token-5q7w2e9r" not in blank("echoed hdr-token-5q7w2e9r alone")
+    assert blank("ordinary text") == "ordinary text"
+
+
+def test_a_connectors_sign_in_tokens_are_blanked(tmp_path: Path) -> None:
+    from mcp.shared.auth import OAuthToken
+
+    from coscribe.runtime_lg import McpOAuth
+
+    storage = McpOAuth(tmp_path)._storage("docs")
+    asyncio.run(
+        storage.set_tokens(
+            OAuthToken(access_token="oauth-access-3k8d1f6g", refresh_token="oauth-refresh-2h5j7l")
+        )
+    )
+
+    text = redactor(tmp_path)("token oauth-access-3k8d1f6g and oauth-refresh-2h5j7l")
+    assert "oauth-access" not in text and "oauth-refresh" not in text

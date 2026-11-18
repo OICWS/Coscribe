@@ -46,6 +46,7 @@ from urllib.parse import urlsplit
 from ..runtime import (
     SecretError,
     SecretStore,
+    blank_also,
     host_allowed,
     placeholders_in,
     resolve_secret,
@@ -169,7 +170,14 @@ def prepare_for_connect(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
         values: dict[str, Any] | None = config.get(field)  # type: ignore[assignment]
         if values:
             prepared[field] = {k: resolve_secret(v) or "" for k, v in values.items()}
-    return with_interpreter(with_secrets(cast(MCPConfig, prepared), state_dir), state_dir)
+    ready = with_secrets(cast(MCPConfig, prepared), state_dir)
+    # Every env and header value is kept like a secret, so a server that echoes one must not
+    # put it in front of the model, typed into the connector or picked from Settings > Secrets.
+    sent: list[str] = []
+    for field in ("env", "headers"):
+        sent.extend((ready.get(field) or {}).values())  # type: ignore[attr-defined]
+    blank_also(f"mcp:{config['name']}", sent)
+    return with_interpreter(ready, state_dir)
 
 
 def with_interpreter(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
