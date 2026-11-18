@@ -8,7 +8,7 @@ import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
 import { type DraftCards } from "./workflow/draftCards";
 import { type TaskDraftItem } from "./chatlog/types";
-import { ShowDiffStats, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
+import { NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
 import { ChatContexts } from "./chatlog/ChatContexts";
 import { ToolRunGroupView } from "./chatlog/ToolRuns";
 import { TurnView, LogItemView } from "./chatlog/TurnView";
@@ -223,22 +223,20 @@ export function TranscriptItems({
 }) {
   const entries = groupToolRuns(items);
   return (
-    <ShowDiffStats.Provider value={false}>
-      <div className="flex flex-col gap-3">
-        {entries.map((entry) =>
-          entry.kind === "tool_run" ? (
-            <ToolRunGroupView
-              key={entry.id}
-              group={entry}
-              live={live}
-              onApprove={onApprove}
-              onPptxShapePicked={() => {}}
-            />
-          ) : entry.kind === "agent" ? (
-            <LogItemView key={entry.id} item={entry} />
-          ) : null,
-        )}
-      </div>
-    </ShowDiffStats.Provider>
+    <div className="flex flex-col gap-3">
+      {entries.map((entry) =>
+        entry.kind === "tool_run" ? (
+          <ToolRunGroupView
+            key={entry.id}
+            group={entry}
+            live={live}
+            onApprove={onApprove}
+            onPptxShapePicked={() => {}}
+          />
+        ) : entry.kind === "agent" ? (
+          <LogItemView key={entry.id} item={entry} />
+        ) : null,
+      )}
+    </div>
   );
 }

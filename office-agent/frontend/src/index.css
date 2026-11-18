@@ -134,7 +134,7 @@
   --panel-edge: color-mix(in srgb, var(--fg) 8%, transparent);
   --panel-shadow: 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 16px rgba(0, 0, 0, 0.05);
   --code-bg: color-mix(in srgb, var(--fg) 6%, transparent);
-  --code-fg: #b4382b;
+  --code-fg: var(--accent);
   /* The notices above the message box: gray chips, lavender for one that is ready. */
   --notice-bg: #f3f3f3;
   --notice-fg: #616161;
@@ -212,7 +212,7 @@
   --panel-edge: color-mix(in srgb, var(--fg) 10%, transparent);
   --panel-shadow: 0 0 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
   --code-bg: color-mix(in srgb, var(--fg) 12%, transparent);
-  --code-fg: #f0907f;
+  --code-fg: var(--accent);
   --notice-bg: #2a2827;
   --notice-fg: #a9a5a1;
   --notice-icon: #e5894a;
