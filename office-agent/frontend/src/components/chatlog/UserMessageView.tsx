@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import { type LogItem } from "../../state/reducer";
 import { CloseIcon, RewindIcon } from "../icons";
 import { CopyButton } from "../CopyButton";
-import { attachedFilesNote, attachmentKind, type AttachmentView } from "../../lib/attachments";
+import { attachedFilesNote, attachmentKind, fileCards, type AttachmentView } from "../../lib/attachments";
 import { MessageActionsContext, SteerActionsContext, ViewFile } from "./contexts";
 import { AttachmentCard, AttachmentDialog } from "../Attachments";
 import { ThreadIdContext } from "../threadContext";
@@ -25,9 +25,9 @@ function SentAttachments({ files, images }: { files: string[]; images: string[] 
   const [openFile, setOpenFile] = useState<AttachmentView | null>(null);
   return (
     <>
-      {files.length > 0 && (
+      {fileCards(files, images).length > 0 && (
         <div className="flex flex-wrap justify-end gap-1.5">
-          {files.map((path) => {
+          {fileCards(files, images).map((path) => {
             const name = path.split(/[\\/]/).pop() ?? path;
             const view: AttachmentView = { kind: attachmentKind(name), name, path };
             // A Word, Excel or PowerPoint file opens in its panel; the rest in the preview.

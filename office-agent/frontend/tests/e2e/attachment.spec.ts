@@ -85,3 +85,38 @@ test("a PDF shows its first page, opens with all pages, and a file that can't be
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("an attached and a pasted picture are saved in .coscribe/uploads and the model is told their paths", async ({ page }) => {
+  const sent: string[] = [];
+  page.on("websocket", (ws) => ws.on("framesent", (frame) => typeof frame.payload === "string" && sent.push(frame.payload)));
+  await page.goto(freshThreadPath("attach-pictures"));
+  await waitForConnected(page);
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 8;
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+  await page.locator("textarea").evaluate((box, data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const clipboard = new DataTransfer();
+    clipboard.items.add(new File([bytes], "image.png", { type: "image/png" }));
+    box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+  }, png);
+  const composer = page.getByTestId("composer");
+  await expect(composer.getByRole("button", { name: /^Remove/ })).toHaveCount(2);
+  await page.locator("textarea").fill("what is in these");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("what is in these")).toBeVisible();
+
+  const message = sent.map((raw) => JSON.parse(raw) as { type: string; text?: string }).find((m) => m.type === "user_message");
+  expect(message?.text).toMatch(
+    /\(Attached files, now in the workspace: \.coscribe\/uploads\/images\/photo( \(\d+\))?\.png, \.coscribe\/uploads\/screenshots\/screenshot-\d{4}-\d\d-\d\d-\d{6}( \(\d+\))?\.png\)$/,
+  );
+  // The pictures show as themselves, not again as file cards, also after a reload.
+  await expect(page.getByRole("button", { name: /^Open (photo|screenshot)/ })).toHaveCount(0);
+  await page.reload();
+  await waitForConnected(page);
+  await expect(page.getByRole("img", { name: /^Attachment / })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /^Open (photo|screenshot)/ })).toHaveCount(0);
+});

@@ -1317,8 +1317,9 @@ The **+** button next to the message box opens three things:
   every loaded skill); typing a skill's name as `/<skill-name>` works
   exactly as it does in the CLI.
 - **Add files or photos** -- images are attached as real multimodal image
-  parts the model actually sees (not just a filename reference) -- see
-  `ChatSessionLG.handle_user_message`'s `images` parameter. Anything else
+  parts the model actually sees -- see `ChatSessionLG.handle_user_message`'s
+  `images` parameter -- and a picture attached or pasted from the computer is
+  also saved like a file below, so the model can put it in a document. Anything else
   (a `.docx`, a `.pdf`, a plain text file, ...) is uploaded via `POST /api/upload`
   into the conversation's main folder, under `.coscribe/uploads/<kind>/` (images,
   documents, data or other, by extension; a pasted picture in `screenshots/`, named by

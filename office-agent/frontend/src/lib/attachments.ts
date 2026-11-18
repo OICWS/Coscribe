@@ -20,6 +20,15 @@ export function splitAttachedFiles(text: string): { text: string; files: string[
   return { text: text.slice(0, found.index), files: found[1].split(", ").filter(Boolean) };
 }
 
+// The folders `/api/upload` keeps pictures in (decision 0044).
+const SAVED_PICTURE = /^\.coscribe\/uploads\/(screenshots|images)\//;
+
+/** The files a message shows as cards: a picture sent with it is already shown as itself, so the
+ * path it was saved at is left to the note the model reads. */
+export function fileCards(files: string[], images: string[]): string[] {
+  return images.length > 0 ? files.filter((path) => !SAVED_PICTURE.test(path)) : files;
+}
+
 export function attachmentKind(name: string): "pdf" | "file" {
   return name.toLowerCase().endsWith(".pdf") ? "pdf" : "file";
 }
