@@ -590,6 +590,12 @@ def test_get_providers_catalog_returns_curated_entries(
     entries = {entry["name"]: entry for entry in response.json()}
     assert entries["anthropic"]["builtin"] is True
     assert entries["deepseek"]["builtin"] is False
+    # The Providers page shows every entry by its title and links to where a key is made.
+    for entry in entries.values():
+        assert entry["title"]
+        assert entry["key_url"].startswith("https://")
+    # A third-party lineup is never guessed (see PROVIDER_CATALOG).
+    assert all(e["default_model"] == "" for e in entries.values() if not e["builtin"])
 
 
 def test_providers_catalog_includes_a_local_ollama_preset(

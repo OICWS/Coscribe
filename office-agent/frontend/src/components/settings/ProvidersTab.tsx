@@ -4,200 +4,132 @@ import { useFetchOnActive } from "../../lib/useFetchOnActive";
 import type { ProviderCatalogEntry, ProvidersResponse } from "../../types/settings";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FetchRetry } from "./FetchRetry";
-import { SettingRows, SettingsSection, fieldClass, primaryButtonClass, secondaryButtonClass } from "./SettingRow";
-
-/** Mirrors the backend's builtin-provider name list (app.py's BUILTIN_PROVIDERS) --
- * a name matching one of these (case-insensitively) routes through the
- * builtin branch server-side regardless of what base_url was typed. */
-const BUILTIN_PROVIDER_NAMES = ["anthropic", "openai", "gemini"];
+import { DiscoverGrid } from "./providers/DiscoverGrid";
+import { ProviderPage, type ProviderForm, type ProviderStatus } from "./providers/ProviderPage";
+import { ProvidersHeader, type ProvidersView } from "./providers/ProvidersHeader";
+import { YoursList, type ProviderRow } from "./providers/YoursList";
+import { findEntry, formProblem } from "./providers/catalog";
 
 const EMPTY: { catalog: ProviderCatalogEntry[]; configured: ProvidersResponse } = { catalog: [], configured: {} };
 
 const loadProviders = () =>
   Promise.all([getProvidersCatalog(), getProviders()]).then(([catalog, configured]) => ({ catalog, configured }));
 
-interface ProvidersTabProps {
-  active: boolean;
-}
+/** The open page: a provider by its name, or the form for a new custom one. */
+type Opened = { name: string } | "custom" | null;
 
-export function ProvidersTab({ active }: ProvidersTabProps) {
+/** Settings > Providers: the providers added (Yours), the ones Coscribe knows
+ * (Discover), and a provider's own page with its key and default model. */
+export function ProvidersTab({ active }: { active: boolean }) {
   const { data, status: loadStatus, error: loadError, retry: refresh } = useFetchOnActive(active, loadProviders, EMPTY);
   const { catalog, configured } = data;
-  const [name, setName] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [defaultModel, setDefaultModel] = useState("");
-  const [baseUrlDisabled, setBaseUrlDisabled] = useState(false);
-  const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
+  const [chosenView, setView] = useState<ProvidersView | null>(null);
+  const [opened, setOpened] = useState<Opened>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<ProviderStatus>(null);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
 
-  const prefillFrom = (entry: ProviderCatalogEntry) => {
-    setName(entry.name);
-    setDefaultModel(entry.default_model || "");
-    setApiKey("");
-    if (entry.builtin) {
-      setBaseUrl("");
-      setBaseUrlDisabled(true);
-    } else {
-      setBaseUrl(entry.base_url);
-      setBaseUrlDisabled(false);
-    }
+  const view = chosenView ?? (Object.keys(configured).length > 0 ? "yours" : "discover");
+  const configuredName = (name: string) => Object.keys(configured).find((n) => n.toLowerCase() === name.toLowerCase());
+  const open = (next: Opened) => {
     setStatus(null);
+    setOpened(next);
   };
 
-  const resetForm = () => {
-    setName("");
-    setBaseUrl("");
-    setApiKey("");
-    setDefaultModel("");
-    setBaseUrlDisabled(false);
-  };
-
-  const submit = async () => {
-    const trimmedName = name.trim();
-    const isBuiltin = BUILTIN_PROVIDER_NAMES.includes(trimmedName.toLowerCase());
-    if (!trimmedName) {
-      setStatus({ text: "Name cannot be blank.", error: true });
-      return;
+  const save = async (form: ProviderForm): Promise<boolean> => {
+    const problem = formProblem(form, catalog);
+    if (problem) {
+      setStatus({ text: problem, error: true });
+      return false;
     }
-    if (!apiKey.trim()) {
-      setStatus({ text: "API key cannot be blank.", error: true });
-      return;
-    }
-    if (!isBuiltin && !baseUrl.trim()) {
-      setStatus({ text: "Base URL cannot be blank.", error: true });
-      return;
-    }
-    let result;
+    const name = form.name.trim();
     try {
-      result = await addProvider(trimmedName, baseUrl, apiKey, defaultModel);
+      const result = await addProvider(name, form.baseUrl.trim(), form.apiKey.trim(), form.defaultModel.trim());
+      const rejected = Object.values(result.rejected);
+      if (rejected.length > 0) {
+        setStatus({ text: `Not saved -- ${rejected[0]}`, error: true });
+        return false;
+      }
+      setStatus({ text: result.restart_required ? "Saved. Restart coscribe-web to apply." : "Saved.", error: false });
     } catch (err) {
-      setStatus({ text: err instanceof Error ? err.message : "Not added.", error: true });
-      return;
+      setStatus({ text: err instanceof Error ? err.message : "Not saved.", error: true });
+      return false;
     }
-    const rejectedEntries = Object.entries(result.rejected);
-    if (rejectedEntries.length > 0) {
-      setStatus({ text: `Not added -- ${rejectedEntries[0][1]}`, error: true });
-      return;
-    }
-    setStatus({ text: result.restart_required ? "Added. Restart coscribe-web to apply." : "Added.", error: false });
-    resetForm();
+    setOpened({ name });
     refresh();
+    return true;
   };
 
   const confirmRemove = async () => {
     if (!removeTarget) return;
-    const providerName = removeTarget;
+    const name = removeTarget;
     setRemoveTarget(null);
     try {
-      await removeProvider(providerName);
+      await removeProvider(name);
+      setOpened(null);
     } catch (err) {
-      setStatus({ text: err instanceof Error ? err.message : `Couldn't remove ${providerName}.`, error: true });
+      setStatus({ text: err instanceof Error ? err.message : `Couldn't remove ${name}.`, error: true });
     }
     refresh();
   };
 
-  const detail = (info: (typeof configured)[string]) =>
-    info.builtin
-      ? `${info.default_model || "No default model"} · key ${info.masked_key ?? "not set"}`
-      : `${info.base_url} · key ${info.masked_key ?? "not set"}`;
+  const removeDialog = removeTarget && (
+    <ConfirmDialog
+      title="Remove provider?"
+      description={`"${removeTarget}" and its stored API key will be removed. Any thread or workflow still using it will fail until you add it again.`}
+      onCancel={() => setRemoveTarget(null)}
+      onConfirm={confirmRemove}
+    />
+  );
 
+  if (opened) {
+    const name = opened === "custom" ? null : opened.name;
+    const entry = name ? findEntry(catalog, name) : null;
+    const added = name ? configuredName(name) : undefined;
+    return (
+      <>
+        <ProviderPage
+          key={name ?? "custom"}
+          entry={entry}
+          name={entry ? null : name}
+          info={added ? configured[added] : null}
+          status={status}
+          onBack={() => open(null)}
+          onSave={save}
+          onRemove={() => added && setRemoveTarget(added)}
+        />
+        {removeDialog}
+      </>
+    );
+  }
+
+  const q = search.trim().toLowerCase();
+  const matches = (text: string) => !q || text.toLowerCase().includes(q);
+  const rows: ProviderRow[] = Object.entries(configured).map(([name, info]) => {
+    const entry = findEntry(catalog, name);
+    return { name, title: entry?.title ?? name, entry, info };
+  });
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-5">
+      <ProvidersHeader view={view} onView={setView} search={search} onSearch={setSearch} onAddCustom={() => open("custom")} />
       <FetchRetry status={loadStatus} error={loadError} onRetry={refresh} />
-
-      <SettingsSection title="Your providers" description="The services Coscribe's models come from. Pick the default one on the General page.">
-        {loadStatus === "success" && Object.keys(configured).length === 0 ? (
-          <p className="py-3 text-sm text-[var(--muted)]">No providers yet -- add one below.</p>
-        ) : (
-          <SettingRows>
-            {Object.entries(configured).map(([providerName, info]) => (
-              <div key={providerName} className="flex items-center justify-between gap-4 py-3.5">
-                <div className="min-w-0">
-                  <div className="text-[15px]">{providerName}</div>
-                  <div className="truncate text-[13px] text-[var(--muted)]">{detail(info)}</div>
-                </div>
-                <button type="button" className={secondaryButtonClass} onClick={() => setRemoveTarget(providerName)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-          </SettingRows>
-        )}
-      </SettingsSection>
-
-      <SettingsSection
-        title="Add a provider"
-        description="Anthropic, OpenAI and Gemini are built in; any other OpenAI-compatible service can be added. Pick one to fill in the form, or enter it yourself."
-      >
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {catalog.map((entry) => {
-            const isConfigured = entry.name in configured;
-            return (
-              <button
-                key={entry.name}
-                type="button"
-                title={isConfigured ? `Update ${entry.name}` : `Add ${entry.name}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--field-bg)] px-3.5 py-2.5 text-left hover:border-[var(--border-hover)]"
-                onClick={() => prefillFrom(entry)}
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{entry.name}</div>
-                  <div className="truncate text-[13px] text-[var(--muted)]">{entry.description}</div>
-                </div>
-                <span className={`shrink-0 text-[13px] ${isConfigured ? "text-[var(--muted)]" : "text-[var(--fg)]"}`}>
-                  {isConfigured ? "Added" : "Add"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] text-[var(--muted)]">Name</span>
-            <input className={fieldClass} placeholder="e.g. deepseek" value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] text-[var(--muted)]">Base URL</span>
-            <input
-              className={`${fieldClass} disabled:opacity-40`}
-              placeholder={baseUrlDisabled ? "Not needed for built-in providers" : "https://api.example.com/v1"}
-              value={baseUrl}
-              disabled={baseUrlDisabled}
-              onChange={(e) => setBaseUrl(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] text-[var(--muted)]">API key</span>
-            <input type="password" className={fieldClass} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] text-[var(--muted)]">Default model (optional)</span>
-            <input
-              className={fieldClass}
-              placeholder="e.g. deepseek-chat"
-              value={defaultModel}
-              onChange={(e) => setDefaultModel(e.target.value)}
-            />
-          </label>
-        </div>
-        <div className="mt-4 flex items-center justify-end gap-3">
-          {status && <span className={`mr-auto text-sm ${status.error ? "text-red-500" : "text-[var(--muted)]"}`}>{status.text}</span>}
-          <button type="button" className={primaryButtonClass} onClick={submit}>
-            Save provider
-          </button>
-        </div>
-      </SettingsSection>
-
-      {removeTarget && (
-        <ConfirmDialog
-          title="Remove provider?"
-          description={`"${removeTarget}" and its stored API key will be removed. Any thread or workflow still using it will fail until you add it again.`}
-          onCancel={() => setRemoveTarget(null)}
-          onConfirm={confirmRemove}
+      {loadStatus === "success" && view === "yours" && (
+        <YoursList
+          rows={rows.filter((r) => matches(`${r.title} ${r.name} ${r.info.default_model}`))}
+          searching={q !== ""}
+          onOpen={(n) => open({ name: n })}
+          onDiscover={() => setView("discover")}
         />
       )}
+      {loadStatus === "success" && view === "discover" && (
+        <DiscoverGrid
+          entries={catalog.filter((e) => matches(`${e.title} ${e.name} ${e.description}`))}
+          added={(e) => configuredName(e.name) !== undefined}
+          search={search}
+          onOpen={(n) => open({ name: n })}
+        />
+      )}
+      {removeDialog}
     </div>
   );
 }

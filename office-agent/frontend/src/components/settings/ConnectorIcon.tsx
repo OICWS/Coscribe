@@ -1,3 +1,5 @@
+import { LogoTile, type LogoSize } from "./LogoTile";
+
 // Each service's own app icon, bundled so the page doesn't depend on the
 // network. A connector without one (a custom server) gets its first letter.
 const ICONS = import.meta.glob("../../assets/connectors/*.{png,jpg,svg}", {
@@ -23,20 +25,6 @@ function iconUrl(rawName: string): string | undefined {
   return undefined;
 }
 
-export function ConnectorIcon({ name, title, size = "sm" }: { name: string; title: string; size?: "sm" | "md" | "lg" }) {
-  const box = size === "lg" ? "h-16 w-16 rounded-2xl" : size === "md" ? "h-10 w-10 rounded-xl" : "h-7 w-7 rounded-lg";
-  const url = iconUrl(name);
-  if (url) {
-    return <img src={url} alt="" className={`${box} shrink-0 border border-[var(--border)] bg-white ${
-          url.includes(".svg") ? "object-contain p-[18%]" : "object-cover"
-        }`} />;
-  }
-  const text = size === "lg" ? "text-2xl" : size === "md" ? "text-base" : "text-xs";
-  return (
-    <span
-      className={`${box} ${text} flex shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--field-bg)] font-medium text-[var(--muted)]`}
-    >
-      {title.slice(0, 1).toUpperCase()}
-    </span>
-  );
+export function ConnectorIcon({ name, title, size = "sm" }: { name: string; title: string; size?: LogoSize }) {
+  return <LogoTile url={iconUrl(name)} title={title} size={size} />;
 }

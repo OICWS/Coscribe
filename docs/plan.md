@@ -135,6 +135,9 @@ Last reviewed: 2026-11-06.
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 
+- **Providers page like Connectors** (`docs/log/2026-11-17-providers-page-redesign.md`). Open:
+  changing only a provider's default model still asks for its API key again.
+
 ## For the maintainer (settings and decisions)
 
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
@@ -149,6 +152,9 @@ Last reviewed: 2026-11-06.
   when the run ends" setting is offered, not started (`docs/log/2026-11-16-browser-self-close-crash.md`).
 
 ## Needs the maintainer's testing (could not be verified here)
+
+- Settings > Providers in the desktop app, and a key for one of the 12 new presets added end to
+  end (no account for them here).
 
 - The notices for made files on Windows: Open and Show in folder starting Excel and Explorer,
   and Copy putting a picture on the clipboard in the desktop app.

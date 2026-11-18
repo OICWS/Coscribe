@@ -284,7 +284,12 @@ export type McpReconnectResult = {
 
 export interface ProviderCatalogEntry {
   name: string;
+  title: string;
   description: string;
+  /** Longer notes for the provider's own page. */
+  about?: string;
+  /** Where a person gets an API key (or the app, for a local one). */
+  key_url: string;
   base_url: string;
   default_model: string;
   builtin: boolean;
