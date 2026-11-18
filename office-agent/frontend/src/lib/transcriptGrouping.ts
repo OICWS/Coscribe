@@ -365,14 +365,11 @@ function fileArg(args: ArgRecord): string | undefined {
  * `glue` is the text between them when both are present -- a space for
  * the common "Verb object" phrasing ("Wrote deck.pptx"), ": " for the
  * handful that read better as "Verb: object" (a query or question).
- * `diffStat`, when present, is a real line-count from the tool's own
- * result (write_file/edit_file/edit_file_batch -- see files.py's
- * _line_diff_stat) -- never estimated client-side. */
+ */
 export interface SummaryParts {
   verb: string;
   object: string | null;
   glue?: string;
-  diffStat?: { added: number; removed: number };
   /** This label represents one call that itself errored (see `isFailure`
    * below) -- rendered as red text for the whole label, not just a
    * marker. */
@@ -398,7 +395,7 @@ export interface SummaryParts {
  * file happens to special-case, where this covers all of them, including
  * a failed write_file/edit_file/read_file. `undefined` (not yet resolved,
  * or a denied approval that never ran) reads as "not a failure", same as
- * a still-pending item never showing a diff stat either. */
+ * a still-pending item. */
 export function isFailure(item: ToolOrApprovalItem): boolean {
   return item.isError === true;
 }
@@ -408,23 +405,6 @@ export function isFailure(item: ToolOrApprovalItem): boolean {
  * matches uses -- run_background_script/check_background_task have their
  * own distinct "started"/"checked" semantics and aren't folded in here. */
 const COMMAND_TOOL_NAMES = new Set(["run_python_script", "run_node_script", "run_code_command"]);
-
-/** Pulls `{lines_added, lines_removed}` off a tool result if present --
- * only write_file/edit_file/edit_file_batch's results carry these fields
- * today (see files.py), so this doubles as the "does this call have a
- * diff stat to show" check; no allowlist of tool names needed, any tool
- * whose result happens to carry both fields gets a badge for free. Null
- * when both counts are 0 (nothing actually changed -- e.g. write_file
- * writing back identical content) since a "+0-0" badge would just be
- * noise. */
-function diffStatOf(result: unknown): { added: number; removed: number } | null {
-  if (!result || typeof result !== "object") return null;
-  const added = (result as Record<string, unknown>).lines_added;
-  const removed = (result as Record<string, unknown>).lines_removed;
-  if (typeof added !== "number" || typeof removed !== "number") return null;
-  if (added === 0 && removed === 0) return null;
-  return { added, removed };
-}
 
 /** Exact-name handlers for the common built-in tools -- gives Claude-Code-
  * style specificity ("Wrote deck.pptx", "Ran a command") for the tools a
@@ -616,8 +596,7 @@ function partsFor(item: ToolOrApprovalItem, running = false): SummaryParts {
   const base = running
     ? { ...summarized, verb: presentTense(summarized.verb), running: true, shimmer: true }
     : summarized;
-  const diffStat = diffStatOf(item.result);
-  let parts = diffStat ? { ...base, diffStat } : base;
+  let parts: SummaryParts = base;
   if (isFailure(item)) {
     // "Failed to run" specifically for the command tools, matching the
     // reference UI's own wording exactly -- every other tool keeps its
@@ -704,11 +683,6 @@ function categoryClause(category: Exclude<Category, "other">, items: ToolOrAppro
   const [past, present, noun] = CATEGORY_WORDS[category];
   const running = items.some((item) => isRunning(item, live));
   const failedCount = items.filter(isFailure).length;
-  const stats = items.map((item) => diffStatOf(item.result)).filter((stat) => stat !== null);
-  const diffStat =
-    stats.length > 0
-      ? { added: stats.reduce((sum, s) => sum + s.added, 0), removed: stats.reduce((sum, s) => sum + s.removed, 0) }
-      : undefined;
   // A file category counts files, not calls: five edits to one deck are
   // one edited file. A call without a path counts on its own.
   let count = items.length;
@@ -727,7 +701,6 @@ function categoryClause(category: Exclude<Category, "other">, items: ToolOrAppro
   return {
     verb: onlyFile ? verb : counted,
     object: onlyFile ?? null,
-    ...(diffStat && { diffStat }),
     ...(failedCount > 0 && { failedCount }),
     ...(running && { running: true, shimmer: true }),
   };
