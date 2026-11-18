@@ -129,7 +129,7 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   have a deadline, and backend request timeouts cancel only that request.
 
 Run `npm run test:browser` for the panel/command-queue regressions using an
-Electron transport double. `npm run test:browser:native` checks real popup
+Electron transport double, and the workspace's site levels the permission check reads. `npm run test:browser:native` checks real popup
 handles, content, focus, bounds, overlays, background form input, takeover and permission
 queuing in a separate Electron process. The
 Windows desktop smoke job runs it separately from the Playwright UI smoke. The UI smoke
