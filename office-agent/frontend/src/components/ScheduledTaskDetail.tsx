@@ -22,6 +22,7 @@ import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { ChevronRightIcon, PencilIcon, PlayIcon, TrashIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
+import { TaskReachProvider, TaskReachSection } from "./TaskReachSection";
 import { TaskMemorySection } from "./TaskMemorySection";
 import { TaskVersionsSection } from "./TaskVersionsSection";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -384,9 +385,16 @@ function DetailedBody({
     </div>
   );
   const environment = (
-    <div>
-      <SectionLabel>Workspace</SectionLabel>
-      <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
+    <div className="flex flex-col gap-3">
+      <div>
+        <SectionLabel>Workspace</SectionLabel>
+        <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
+      </div>
+      <TaskReachSection
+        taskId={task.trigger_id}
+        changed={JSON.stringify([task.environment, task.permissions?.folders])}
+        onChanged={onChanged}
+      />
     </div>
   );
   if (workflow)
@@ -483,11 +491,9 @@ export function ScheduledTaskDetail({
   };
 
   const toggleEnabled = async () => {
-    if (task.enabled) await pauseScheduledTask(task.trigger_id);
-    else await resumeScheduledTask(task.trigger_id);
+    await (task.enabled ? pauseScheduledTask : resumeScheduledTask)(task.trigger_id);
     onChanged();
   };
-
   const saveWorkflow = async (next: Workflow) => {
     const result = await patchScheduledTask(task.trigger_id, { workflow: next });
     if ("error" in result) return result.error;
@@ -502,7 +508,8 @@ export function ScheduledTaskDetail({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <TaskReachProvider taskId={task.trigger_id} onChanged={onChanged}>
+      <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-4">
           <h1
@@ -586,6 +593,7 @@ export function ScheduledTaskDetail({
           onConfirm={confirmDelete}
         />
       )}
-    </div>
+      </div>
+    </TaskReachProvider>
   );
 }

@@ -7,7 +7,7 @@ index of the older history); why things are the way they are lives in
 PR that changes the picture, and take a line out when its work is done; keep it under about 150
 lines.
 
-Last reviewed: 2026-11-06.
+Last reviewed: 2026-11-18.
 
 ## Next, in order
 
@@ -51,10 +51,9 @@ Last reviewed: 2026-11-06.
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
    The edit dialog on one page, called a workspace in the UI, is in
    `docs/log/2026-11-18-workspace-dialog.md`. A browser level per site (decision 0050) is in
-   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. The server
-   part of a task's reach is in `docs/log/2026-11-18-task-reach-server.md`. Next: a task
-   showing what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
-   the spot.
+   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. A task's
+   reach (what it reaches, its folder inputs picked from it, a folder outside it allowed on the
+   spot) is in `docs/log/2026-11-18-task-reach-server.md` and `-ui.md`. Next: phases B to D.
 
 ## Open, smaller
 
@@ -70,9 +69,9 @@ Last reviewed: 2026-11-06.
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
 
-- **Code module manual checks** (#844): native patch approvals are scripted without API keys;
-  first-use, real-model behavior and idle service exit still need Windows use
-  (`docs/log/2026-11-18-code-patch-approval.md`).
+- **Code module manual checks** (#844): native patch approvals, the first download and the idle
+  service exit are scripted without API keys; real-model behavior is not verified
+  (`docs/log/2026-11-18-code-patch-approval.md`, `docs/log/2026-11-18-windows-checks-4-5-scripted.md`).
 
 - **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
   The reported apparent change to an investigation title is not reproduced; confirm against
@@ -88,12 +87,10 @@ Last reviewed: 2026-11-06.
   at once, and a background task started with the plan item it belongs to (the task card now
   guesses it from timing, which goes wrong when several items run at once;
   `docs/log/2026-11-15-plan-review-edits.md`).
-- **Task list across unrelated requests:** a conversation has one task list that is never
-  cleared, so a later, unrelated multi-step request appends to the finished one (a live
-  DeepSeek run showed "10 steps done" for a 3-step request that followed a 7-step one) and a
-  note sent mid-plan lands in the same list. Possible fix: start a new list when `task_create`
-  follows a list that is all done, or let `task_create` start one explicitly
-  (`docs/log/2026-11-18-plan-strike.md`).
+- **Task list and a note sent mid-plan:** a new list starts once every task of the old one is
+  done (`docs/log/2026-11-18-fresh-task-list.md`), but a note the person sends while a plan is
+  still open joins that list if the model makes tasks for it. Whether such a note should get
+  its own list is open.
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
@@ -218,10 +215,11 @@ Last reviewed: 2026-11-06.
   takes shows in the conversation and as a picture notice above the message box
   (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
-- A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
-  a one-line description of each from the side model (decision 0044, its second part, now phase B
-  of #926; the notes
-  and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
+- A workspace's uploads: the server saves them in `.coscribe/uploads/<kind>/`
+  (`docs/log/2026-11-18-uploads-in-workspace.md`); next the message box saves a pasted or attached
+  picture there too and tells the model its path, then a one-line description of each upload from
+  the side model in `uploads/index.jsonl` (decision 0044, phase B of #926; the notes and skills
+  shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
@@ -241,8 +239,6 @@ Last reviewed: 2026-11-06.
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
   joins (decision 0009).
-
-- Conversations reading and messaging each other (records 0008 and 0023, built: every non-archived conversation is reachable; the Edit environment dialog still has its old messages section until the redesign in issue 560 lands).
 
 - A callback helper so a script can use a secret (needs its own local
   authentication).

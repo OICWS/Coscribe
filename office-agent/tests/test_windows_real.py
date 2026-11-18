@@ -44,6 +44,7 @@ from coscribe.tools.exec import (
     start_command,
     warm_up_sandbox,
 )
+from coscribe.tools.mcp import prepare_for_connect, validate_mcp_config
 
 real = pytest.mark.skipif(
     sys.platform != "win32" or os.environ.get("COSCRIBE_WINDOWS_REAL") != "1",
@@ -260,6 +261,52 @@ def test_a_python_that_is_only_the_store_stub_is_replaced_by_a_working_one(
 
     assert chosen != "python"
     assert script_env.working_interpreters([chosen]) == [chosen]
+
+
+def _stub_only_path(tmp_path: Path) -> str:
+    """A PATH whose only `python` is a stand-in for the Store alias, and no `py` launcher."""
+    stub_dir = tmp_path / "stub"
+    stub_dir.mkdir()
+    (stub_dir / "python.cmd").write_text("@echo Python was not found 1>&2\n@exit /b 9009\n")
+    return f"{stub_dir}{os.pathsep}C:\\Windows\\System32"
+
+
+@real
+def test_a_connector_on_a_python_that_is_only_the_store_stub_says_what_to_do(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", _stub_only_path(tmp_path))
+    config = validate_mcp_config({"type": "mcp", "name": "py", "command": "python"})
+
+    assert script_env.working_interpreters(script_env.fallbacks_for_platform()) == []
+    with pytest.raises(RuntimeError, match=r"Settings > Capabilities > Python for scripts"):
+        prepare_for_connect(config, tmp_path / "state")
+
+
+@real
+def test_a_python_only_from_conda_once_picked_starts_the_connector(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conda_python = os.environ.get("COSCRIBE_TEST_CONDA_PYTHON", "")
+    if not Path(conda_python).is_file():
+        pytest.fail("COSCRIBE_TEST_CONDA_PYTHON is not set to an installed conda python.exe")
+    monkeypatch.setenv("PATH", _stub_only_path(tmp_path))
+    state = tmp_path / "state"
+    state.mkdir()
+    config = validate_mcp_config({"type": "mcp", "name": "py", "command": "python"})
+    with pytest.raises(RuntimeError, match=r"Python for scripts"):
+        prepare_for_connect(config, state)
+
+    assert script_env.set_interpreter_override(state, conda_python)["success"]
+    command = prepare_for_connect(config, state)["command"]
+
+    assert Path(command) == Path(conda_python)
+    # Started without `conda activate`, as the app starts it: its DLLs must still load.
+    probe = subprocess.run(
+        [command, "-c", "import ssl, sqlite3, json; print('ok')"],
+        capture_output=True, text=True, check=False, env={**os.environ},
+    )  # fmt: skip
+    assert probe.stdout.strip() == "ok", probe.stderr
 
 
 @real
@@ -690,8 +737,13 @@ def test_edge_draws_a_page_and_reports_its_overlapping_text() -> None:
 
 
 @pytest.fixture(scope="session")
-def patch_codex(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return ensure_codex(tmp_path_factory.mktemp("patch-codex"))
+def patch_codex_state(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("patch-codex")
+
+
+@pytest.fixture(scope="session")
+def patch_codex(patch_codex_state: Path) -> Path:
+    return ensure_codex(patch_codex_state)
 
 
 @real
@@ -742,3 +794,41 @@ async def test_code_patch_submission_reaches_file_approval_without_enabling_comm
     else:
         assert [request.kind for request in asked] == ["file_change"]
         assert {Path(path).resolve() for path in asked[0].paths} == {target.resolve()}
+
+
+@real
+async def test_codex_is_not_downloaded_twice_and_stops_once_idle(
+    tmp_path: Path, patch_codex_state: Path, patch_codex: Path
+) -> None:
+    # The fixture downloaded it into an empty folder; an installed one is used as it is, even
+    # with nowhere to download from.
+    assert ensure_codex(patch_codex_state, wheel_url="http://127.0.0.1:9/none.whl") == patch_codex
+
+    _StubResponses.commands, _StubResponses.outputs = [], []
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
+    spec = launch_spec(patch_codex, tmp_path / "state", providers, None)
+    host = CodexHost(lambda: spec, idle_seconds=1.0)
+    try:
+        thread = CodexThread(host, codex_model("stub:unknown-idle-model", providers), tmp_path)
+        result = await asyncio.wait_for(thread.run_turn("Say done.", _never), 60)
+        assert result.status == "completed", result.error
+        app_server = host.server
+        assert app_server is not None and app_server._process is not None
+        pid = app_server._process.pid
+        for _ in range(100):
+            if host.server is None and not _alive(pid):
+                break
+            await asyncio.sleep(0.1)
+    finally:
+        await host.shutdown(force=True)
+        server.shutdown()
+        server.server_close()
+
+    assert host.server is None, "the app-server was still held after the idle time"
+    assert not _alive(pid), "the app-server process kept running after it went idle"
+
+
+async def _never(request: ApprovalRequest) -> bool:
+    return False

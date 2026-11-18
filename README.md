@@ -13,7 +13,8 @@ Website: https://oicws.github.io/Coscribe/
 - **Documents first.** High-quality `.pptx`, `.docx` and `.xlsx` output, checked
   by rendering the pages.
 - **Your models.** Anthropic, OpenAI and Gemini directly, and any
-  OpenAI-compatible API (DeepSeek, Kimi, GLM, local runners).
+  OpenAI-compatible API, with presets for DeepSeek, Kimi, GLM, Qwen, Doubao,
+  OpenRouter, Mistral, Groq, local runners (Ollama, LM Studio) and more.
 - **Connectors and skills.** Hosted services you sign in to once in your own
   browser, and skills (folders of instructions and files) you can read before
   adding.

@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 """Web tests: uploads, previews and the slide shapes endpoint."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -30,9 +31,10 @@ def test_upload_writes_file_to_workspace_and_returns_relative_path(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["path"] == "report.pdf"
+    assert body["path"] == ".coscribe/uploads/documents/report.pdf"
     assert body["bytes_written"] == len(b"%PDF-1.4 fake content")
-    assert (tmp_path / "workspace" / "report.pdf").read_bytes() == b"%PDF-1.4 fake content"
+    saved = tmp_path / "workspace" / ".coscribe" / "uploads" / "documents" / "report.pdf"
+    assert saved.read_bytes() == b"%PDF-1.4 fake content"
 
 
 def test_an_upload_and_a_slide_overlay_use_the_conversations_own_folder_lg(
@@ -70,9 +72,9 @@ def test_an_upload_and_a_slide_overlay_use_the_conversations_own_folder_lg(
                 "/api/pptx-shapes", params={"path": "deck.pptx", "slide": 1}
             )
 
-    assert uploaded["path"] == "brief.txt"
-    assert (chosen / "brief.txt").read_bytes() == b"hello"
-    assert not (tmp_path / "workspace" / "brief.txt").exists()
+    assert uploaded["path"] == ".coscribe/uploads/documents/brief.txt"
+    assert (chosen / uploaded["path"]).read_bytes() == b"hello"
+    assert not (tmp_path / "workspace" / ".coscribe").exists()
     assert shapes.status_code == 200 and shapes.json()["slide_width_in"] > 0
     assert without_thread.status_code == 400
 
@@ -85,11 +87,11 @@ def test_upload_auto_renames_on_name_collision(
         first = client.post("/api/upload", files={"file": ("notes.txt", b"first", "text/plain")})
         second = client.post("/api/upload", files={"file": ("notes.txt", b"second", "text/plain")})
 
-    assert first.json()["path"] == "notes.txt"
-    assert second.json()["path"] == "notes (1).txt"
+    assert first.json()["path"] == ".coscribe/uploads/documents/notes.txt"
+    assert second.json()["path"] == ".coscribe/uploads/documents/notes (1).txt"
     workspace = tmp_path / "workspace"
-    assert (workspace / "notes.txt").read_bytes() == b"first"
-    assert (workspace / "notes (1).txt").read_bytes() == b"second"
+    assert (workspace / first.json()["path"]).read_bytes() == b"first"
+    assert (workspace / second.json()["path"]).read_bytes() == b"second"
 
 
 def test_upload_sanitizes_path_traversal_attempt_in_filename(
@@ -102,9 +104,47 @@ def test_upload_sanitizes_path_traversal_attempt_in_filename(
         )
 
     assert response.status_code == 200
-    assert response.json()["path"] == "evil.txt"
-    assert (tmp_path / "workspace" / "evil.txt").read_bytes() == b"data"
+    assert response.json()["path"] == ".coscribe/uploads/documents/evil.txt"
+    assert (tmp_path / "workspace" / response.json()["path"]).read_bytes() == b"data"
     assert not (tmp_path / "evil.txt").exists()
+
+
+def test_each_kind_of_upload_has_its_own_folder_and_a_pasted_picture_a_dated_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+
+        def upload(name: str, **data: str) -> str:
+            sent = client.post("/api/upload", data=data, files={"file": (name, b"x")})
+            return str(sent.json()["path"])
+
+        paths = [upload(n) for n in ("Photo.JPG", "sales.xlsx", "deck.pptx", "tool.exe", "..")]
+        pasted = upload("image.png", pasted="true")
+
+    assert paths == [
+        ".coscribe/uploads/images/Photo.JPG",
+        ".coscribe/uploads/data/sales.xlsx",
+        ".coscribe/uploads/documents/deck.pptx",
+        ".coscribe/uploads/other/tool.exe",
+        ".coscribe/uploads/other/upload",
+    ]
+    assert re.fullmatch(
+        r"\.coscribe/uploads/screenshots/screenshot-\d{4}-\d\d-\d\d-\d{6}\.png", pasted
+    )
+
+
+def test_an_upload_to_a_folder_that_cant_be_written_says_so(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        (tmp_path / "workspace").mkdir(exist_ok=True)
+        (tmp_path / "workspace" / ".coscribe").write_text("a file where the folder would be")
+        refused = client.post("/api/upload", files={"file": ("a.txt", b"x")})
+
+    assert refused.status_code == 409
+    assert "can't be written" in refused.json()["error"]
 
 
 def test_upload_rejects_oversized_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -116,7 +156,7 @@ def test_upload_rejects_oversized_file(tmp_path: Path, monkeypatch: pytest.Monke
         )
 
     assert response.status_code == 413
-    assert not (tmp_path / "workspace" / "big.txt").exists()
+    assert not (tmp_path / "workspace" / ".coscribe").exists()
 
 
 def test_get_preview_serves_an_existing_preview_png(

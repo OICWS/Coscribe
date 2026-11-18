@@ -40,6 +40,30 @@ def test_update_changes_status(tmp_path: Path) -> None:
     assert tools["task_list"]()[0]["status"] == "in_progress"
 
 
+def test_a_task_made_after_every_task_is_done_starts_a_new_list(tmp_path: Path) -> None:
+    tools = _tools_by_name("thread-1", tmp_path)
+    old = tools["task_create"](content="write the report")
+    tools["task_update"](task_id=old["id"], status="completed")
+
+    new = tools["task_create"](content="email the team")
+
+    assert tools["task_list"]() == [new]
+    assert new["id"] == "2"
+    with pytest.raises(KeyError):
+        tools["task_update"](task_id=old["id"], status="in_progress")
+
+
+def test_a_task_made_while_one_is_open_joins_the_list(tmp_path: Path) -> None:
+    tools = _tools_by_name("thread-1", tmp_path)
+    done = tools["task_create"](content="read")
+    tools["task_create"](content="write")
+    tools["task_update"](task_id=done["id"], status="completed")
+
+    tools["task_create"](content="send")
+
+    assert [t["content"] for t in tools["task_list"]()] == ["read", "write", "send"]
+
+
 def test_update_unknown_id_raises(tmp_path: Path) -> None:
     tools = _tools_by_name("thread-1", tmp_path)
 

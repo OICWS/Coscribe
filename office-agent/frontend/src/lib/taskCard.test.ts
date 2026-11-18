@@ -105,11 +105,13 @@ describe("foldTaskCard", () => {
     expect(cardsOf(entries)[0]).toMatchObject({ done: true });
   });
 
-  it("keeps a finished list's line and shows the card again further down when the list grows", () => {
+  it("keeps a finished list's line and starts a new list, with a card of its own, for the next task", () => {
     const items = [create("1", "A"), update("1", "A", "completed"), agent("done"), create("2", "B")];
     const cards = cardsOf(fold(items));
     expect(cards.map((c) => c.done)).toEqual([true, false]);
-    expect(cards[1].tasks).toHaveLength(2);
+    expect(cards[0].tasks.map((t) => t.content)).toEqual(["A"]);
+    expect(cards[1].tasks.map((t) => t.content)).toEqual(["B"]);
+    expect(taskListOf(items).map((t) => t.content)).toEqual(["B"]);
   });
 
   it("follows the list into a later turn", () => {

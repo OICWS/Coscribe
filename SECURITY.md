@@ -18,7 +18,7 @@ coscribe runs on your own computer.
   decides whether it is used; where it fails, scripts are off unless you let a conversation run
   them without isolation, a choice that is recorded. Command lines run in Codex's Windows sandbox
   where Settings set it up: they write only the conversation's read-write folders, have network
-  only when the conversation's environment allows it, and your private folders are hidden by
+  only when the conversation's workspace allows it, and your private folders are hidden by
   default. Elsewhere a command runs as you, and only after you allowed that and approve each one.
 - **What the sandbox does not cover.** Off Windows, and in a conversation let out of isolation,
   code runs as you and can read any file you can and use the network. coscribe's own process and
@@ -33,6 +33,11 @@ coscribe runs on your own computer.
   such code runs as you and could read the keychain itself. Redaction of
   responses covers common encodings only, and a host you allow a secret to be
   sent to could echo it back.
+- **The built-in browser** (desktop app) uses the sign-ins kept in its own profile, separate
+  from your everyday browser. Each site has a level in the conversation's workspace (decision
+  0050): a site set to "Use without asking" gets no prompt, one set to "Not in the browser" is
+  refused, and any other site is asked about the first time. Clicking, typing and uploading are
+  approved like other actions with outside effects; a page's text is outside content.
 - **Connectors** sign in through the service's own page in your browser; their
   tokens are kept in the keychain (or a 0600 file when there is none).
 - **A task that starts on something new in a connector** (decision 0039) asks that connector by

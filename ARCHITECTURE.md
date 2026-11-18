@@ -38,18 +38,23 @@ tools, and repeat work on a schedule. It needs only a model API key.
 - **Runtime.** `coscribe.runtime_lg`, on LangChain/LangGraph: one
   coordinator agent per conversation with ~100 built-in tools, plus
   middleware for approvals, tool deferral, auto-compaction (with older
-  tool results cleared from each request from half that size), a per-turn
-  model-call cap, and notes the user adds mid-turn. It replaced a
+  tool results cleared from each request from half that size), and notes
+  the user adds mid-turn. It replaced a
   hand-written runtime whose own provider adapters kept producing bugs.
 - **Models.** Anthropic, OpenAI and Gemini directly, and any
-  OpenAI-compatible API (DeepSeek, Kimi, GLM, local runners) as a custom
-  provider. The context-window indicator asks the Gemini API
+  OpenAI-compatible API as a custom provider; Settings › Providers offers
+  presets for the common ones (DeepSeek, Kimi, GLM, Qwen, OpenRouter, local
+  runners and more, `web/provider_catalog.py`). The context-window indicator asks the Gemini API
   directly and estimates for the rest.
 - **Persistence.** Plain files under `state_dir` (JSON records, previews,
   tasks, memory) and a SQLite checkpointer for conversation state. No
   database server.
 - **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows); the sidebar also
-  opens the Artifacts page.
+  opens the Artifacts page and, from "View all", the Sessions page of every conversation.
+- **Workspaces.** A workspace is a folder the person picks (decision 0048): its conversations and
+  tasks reach that folder, more folders it lists, Settings' Allowed folders, and the sites and
+  secrets it is given; each of its sites has a browser level (decision 0050). The code and the
+  API still call it an environment.
 - **Artifacts.** What coscribe makes from a source it owns opens in a panel beside the
   conversation and is listed on the Artifacts page: a Doc (a markdown document), Slides (a deck
   of SVG pages and HTML sections), a Design (a canvas of HTML artboards) and a Dashboard (a page
@@ -78,9 +83,12 @@ standing roster of agents.
   would double the cost of a three-line memo.
 - **Delegation**: `spawn_agent` runs a sub-agent in its own context with a
   chosen tool set and a step budget; background ones report back when done.
-- **Every loop is bounded.** A turn ends after a set number of model calls
-  (counted from the conversation, so approvals don't reset it), and each
-  file gets one review and one re-check per turn.
+- **Every unattended loop is bounded.** A reply in a conversation has no cap on
+  its model calls: the person watching stops one that runs on, as in Claude Code
+  and Codex (`COSCRIBE_MAX_TURNS` can still set one). A scheduled task's run,
+  which nobody watches, stops at the task's own number of steps; sub-agents and
+  the reviewer have their own budgets, and each file gets one review and one
+  re-check per turn.
 
 ### Approvals, and a sandbox where it holds
 
@@ -114,7 +122,7 @@ unless the person lets that one conversation run them without isolation
 remains (Codex's code module runs no commands); it refuses writes outside the folders and is not a security boundary.
 A command line (`run_background_command`) runs in Codex's Windows sandbox once the person set it
 up in Settings › Capabilities (decision 0022): it writes only the conversation's folders and is
-offline unless the environment's network is Full. It can't read the person's private folders
+offline unless the workspace's network is Full. It can't read the person's private folders
 (Documents, Desktop, Downloads, AppData and the like, and another drive's `Users` folder) unless
 the person turns that off, but it still reads the rest of another drive and Windows' own folders,
 so an online command is approved by the person. Without it, a command runs as the user only after a second
@@ -170,7 +178,7 @@ person to let it go on; nobody sets a number (0043).
   fixed workflow has.
 - **L2 a bounded agent**: a tool allowlist and declared folders and sites
   (what the person consents to when saving), caps, an output schema, a check
-  after it. **L3** an agent with the environment's tools, under the task's
+  after it. **L3** an agent with the workspace's tools, under the task's
   approval mode, that may hand parts of its task to a few sub-agents held to
   the step's rules, which never wait for a person (0051). **L4** the whole task as one agent: today's prompt task,
   written instructions a fresh assistant works out each run.
@@ -242,9 +250,13 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
 - **Images**: DuckDuckGo image search, whose rights the user is told to check,
   and a search of licensed photo libraries for pictures that may be used.
 - **Browser** (desktop only): tabs in an Electron `WebContentsView` driven
-  over the DevTools protocol, so the AI uses the user's own logins, works
-  where the user can watch, and asks per site. Elements are targeted by
-  description, not one-off refs; downloads land in the workspace.
+  over the DevTools protocol, so the AI uses the user's own logins and works
+  where the user can watch. Each site has a level in the conversation's
+  workspace (decision 0050): used without asking, kept out of the browser,
+  or asked about the first time. Saved workflows name elements by
+  description, not one-off refs; where a page names nothing (a canvas, a
+  chart) the AI looks at it as a picture and clicks by position. Downloads
+  land in the workspace.
 - **Secrets**: provider keys, connector tokens and `mcp.json` values go to
   the OS keychain when there is one (a `chmod 0600` file otherwise). *Global
   secrets* a user gives a conversation are keychain-only and are used through

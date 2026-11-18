@@ -136,6 +136,11 @@
             "title": "File",
             "type": "string"
           },
+          "pasted": {
+            "default": false,
+            "title": "Pasted",
+            "type": "boolean"
+          },
           "thread_id": {
             "default": "",
             "title": "Thread Id",
@@ -9544,6 +9549,7 @@
     },
     "/api/upload": {
       "post": {
+        "description": "An attached file, or a pasted picture, saved in the conversation's folder under\n`.coscribe/uploads/<kind>/` (decision 0044); the path returned is relative to that\nfolder, as the model reads it.",
         "operationId": "upload_file_api_upload_post",
         "requestBody": {
           "content": {
