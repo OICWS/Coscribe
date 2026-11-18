@@ -687,3 +687,58 @@ def test_edge_draws_a_page_and_reports_its_overlapping_text() -> None:
 
     assert shot.png.startswith(b"\x89PNG")
     assert shot.report["text_overlapping"] == [["Title text", "Over it"]]
+
+
+@pytest.fixture(scope="session")
+def patch_codex(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return ensure_codex(tmp_path_factory.mktemp("patch-codex"))
+
+
+@real
+@pytest.mark.parametrize(
+    "syntax,allowed,content",
+    [
+        ("quoted", False, "BEFORE\n"),
+        ("heredoc", False, "BEFORE\n"),
+        ("heredoc", True, "AFTER\n"),
+    ],
+)
+async def test_code_patch_submission_reaches_file_approval_without_enabling_commands(
+    tmp_path: Path, patch_codex: Path, syntax: str, allowed: bool, content: str
+) -> None:
+    target = tmp_path / "notes.txt"
+    target.write_text("BEFORE\n", encoding="utf-8")
+    patch = "*** Begin Patch\n*** Update File: notes.txt\n@@\n-BEFORE\n+AFTER\n*** End Patch"
+    command = (
+        f'apply_patch "{patch}"' if syntax == "quoted" else f"apply_patch <<'PATCH'\n{patch}\nPATCH"
+    )
+    _StubResponses.commands, _StubResponses.outputs = [command], []
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
+    spec = launch_spec(patch_codex, tmp_path / "state", providers, None)
+    host = CodexHost(lambda: spec)
+    asked: list[ApprovalRequest] = []
+
+    async def decide(request: ApprovalRequest) -> bool:
+        asked.append(request)
+        return allowed
+
+    try:
+        thread = CodexThread(host, codex_model("stub:unknown-patch-model", providers), tmp_path)
+        result = await asyncio.wait_for(thread.run_turn("Change BEFORE to AFTER.", decide), 60)
+    finally:
+        await host.shutdown(force=True)
+        server.shutdown()
+        server.server_close()
+
+    assert result.status == "completed", result.error
+    assert "exec_command" in _StubResponses.tools
+    assert "apply_patch" not in _StubResponses.tools
+    assert target.read_text(encoding="utf-8") == content
+    if syntax == "quoted":
+        assert asked == []
+        assert "rejected by user" in str(_StubResponses.outputs)
+    else:
+        assert [request.kind for request in asked] == ["file_change"]
+        assert {Path(path).resolve() for path in asked[0].paths} == {target.resolve()}
