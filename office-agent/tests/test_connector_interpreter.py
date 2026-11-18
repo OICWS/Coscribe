@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools.mcp import with_interpreter
+from coscribe.tools.mcp import prepare_for_connect, validate_mcp_config, with_interpreter
 
 _SCRIPT_ENV = "coscribe.tools.exec.script_env"
 
@@ -61,3 +61,17 @@ def test_with_nothing_runnable_the_command_is_kept_so_the_usual_error_shows(
     monkeypatch.setattr(f"{_SCRIPT_ENV}.working_interpreters", lambda candidates: [])
 
     assert with_interpreter(_config("python"), tmp_path)["command"] == "python"  # type: ignore[arg-type]
+
+
+def test_a_python_that_is_only_a_stub_says_so_when_the_connector_starts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(f"{_SCRIPT_ENV}.shutil.which", lambda name: "WindowsApps/python.exe")
+    monkeypatch.setattr(f"{_SCRIPT_ENV}.working_interpreters", lambda candidates: [])
+    monkeypatch.setattr(f"{_SCRIPT_ENV}.fallbacks_for_platform", lambda: ["WindowsApps/python.exe"])
+    config = validate_mcp_config({"type": "mcp", "name": "probe", "command": "python"})
+
+    # Listing the connector still shows it as saved; starting it says what to do.
+    assert with_interpreter(config, tmp_path)["command"] == "python"
+    with pytest.raises(RuntimeError, match=r"Settings > Capabilities > Python for scripts"):
+        prepare_for_connect(config, tmp_path)
