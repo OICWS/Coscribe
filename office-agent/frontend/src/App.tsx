@@ -76,7 +76,7 @@ import {
   showChat,
   showScheduled,
   startNewThread,
-  THREAD_CHANGE_EVENT,
+  THREAD_CHANGE_EVENT, useFreshThread,
 } from "./lib/nav";
 import { latestRun, taskForThread } from "./lib/runLabels";
 import { describeSchedule } from "./lib/scheduleLabels";
@@ -402,7 +402,7 @@ function App() {
   const plans = usePlanState(state.items, (m) => socketRef.current?.send(m), dispatch, () => setPanelOpen("plan", true));
   const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || plans.hasPlan));
   const onHome =
-    state.historyReceived &&
+    (useFreshThread(threadId, state.historyReceived) || state.historyReceived) &&
     state.items.length === 0 &&
     state.olderItems.length === 0 &&
     !state.turnInFlight &&

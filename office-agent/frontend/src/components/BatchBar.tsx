@@ -75,7 +75,7 @@ export function BatchBar({
           </button>
         </span>
       </div>
-      <div className="relative flex items-center gap-1" ref={ref}>
+      <div className="relative flex items-center justify-center gap-1" ref={ref}>
         <button type="button" disabled={none} className={button} aria-haspopup="menu" onClick={() => setPicking((v) => !v)}>
           <FolderIcon className="h-3.5 w-3.5" /> Move
         </button>
@@ -86,7 +86,7 @@ export function BatchBar({
           <TrashIcon className="h-3.5 w-3.5" /> Delete
         </button>
         {picking && (
-          <div role="menu" aria-label="Move to group" className={`${menuClass} absolute bottom-full left-0 mb-1 w-48`}>
+          <div role="menu" aria-label="Move to group" className={`${menuClass} absolute bottom-full left-1/2 mb-1 w-48 -translate-x-1/2`}>
             {groups.map((group) => (
               <button key={group} type="button" role="menuitem" className={itemClass} onClick={() => onMove(group)}>
                 <span className="min-w-0 truncate">{group}</span>

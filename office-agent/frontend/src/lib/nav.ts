@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 // Must match tools/bookkeeping/scheduled_tasks.py's SCHEDULED_THREAD_PREFIX: every
 // scheduled run's conversation id starts with it.
 export const SCHEDULED_THREAD_PREFIX = "scheduled-";
@@ -75,8 +77,23 @@ export function showSessions(): void {
   });
 }
 
+// A thread started here has no history on the server, so the page can show the new-conversation
+// layout before the socket's empty history arrives; otherwise the composer mounts in the chat
+// layout, takes a prefilled draft, and is remounted (losing it) when the layout switches.
+const freshThreads = new Set<string>();
+
 export function startNewThread(): string {
   const id = crypto.randomUUID().slice(0, 8);
+  freshThreads.add(id);
   goToThread(id);
   return id;
+}
+
+/** True while a thread this tab just started waits for its empty history. Once that arrives the
+ * server is the source of truth again, so a later return to the thread waits for it like any other. */
+export function useFreshThread(threadId: string, historyReceived: boolean): boolean {
+  useEffect(() => {
+    if (historyReceived) freshThreads.delete(threadId);
+  }, [historyReceived, threadId]);
+  return freshThreads.has(threadId);
 }
