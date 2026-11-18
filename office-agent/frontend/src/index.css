@@ -437,6 +437,9 @@ body {
 .md-prose code {
   color: var(--code-fg);
   font-weight: 400;
+  /* Typography's prose-sm sets code at 0.857em, which without a box around it reads as a
+     smaller font dropped into the sentence. */
+  font-size: inherit;
 }
 .md-prose pre code {
   background: none;
