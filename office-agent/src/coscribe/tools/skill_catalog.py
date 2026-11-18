@@ -212,7 +212,9 @@ def install_plugin(
 _preview_cache: dict[tuple[str, str], bytes] = {}
 
 
-def plugin_file(plugin_id: str, path: str, *, fetch: Callable[[str], bytes] | None = None) -> bytes:
+def plugin_file(
+    plugin_id: str, path: str, *, fetch: Callable[[str], bytes] | None = None
+) -> bytes:
     """One file of a plugin as pinned in the catalog, for previewing before
     anything is added. Only paths the catalog lists can be asked for, and the
     download is checked against the catalog's SHA-256 like an install is."""

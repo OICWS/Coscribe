@@ -95,7 +95,6 @@ _SENTENCE_END = re.compile(
 _MIN_SHARE_OF_BEST = 0.4
 _MIN_SCORE = 2.0
 
-
 def _tool_name(tool: Callable[..., Any] | BaseTool) -> str:
     # Deliberately a local copy of agent.py's identical helper, not an
     # import from it -- agent.py imports *this* module (to attach

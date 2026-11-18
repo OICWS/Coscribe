@@ -19,8 +19,9 @@ the password. `main` leaked it before #957 too.
     `Password=my secret pw;` and a braced `Pwd={a;b}` are blanked whole.
 - The host, port, path, database, a user name on its own and other options (`sslmode`,
   `authSource=admin`, `--sort-key=created_at`) stay readable. `key` counts only alone (`?key=`) or as
-  an API, access, account or shared key (Azure's `AccountKey=`), a name ending in `file`, `path`, `dir` and the like is skipped, and a value
-  shaped like a file path is never blanked, so `--ssl-key /etc/ssl/client.key` stays.
+  an API, access, account or shared key (Azure's `AccountKey=`); a name ending in `file`, `path`,
+  `dir` and the like is skipped, and a value shaped like a file path is never blanked, so
+  `--ssl-key /etc/ssl/client.key` stays.
 - Eleven tests in `tests/test_connector_secrets.py`; ten fail without this change.
 
 ## Not verified

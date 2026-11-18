@@ -127,6 +127,7 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": workflow_error(exc, body.workflow)}, status_code=400)
         return JSONResponse({"workflow": workflow.model_dump(mode="json")})
 
+
     def _tool_facts() -> tuple[dict[str, str], set[str]]:
         """Each tool's risk tier, and the tools that bring in outside
         content: the browser, the web tools and every connector."""

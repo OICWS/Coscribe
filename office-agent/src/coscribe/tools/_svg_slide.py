@@ -90,39 +90,15 @@ if TYPE_CHECKING:
 # instead of a hex code doesn't hit a wall. Anything else must be a 6-hex-
 # digit color, same convention write_pptx's other layouts already use.
 _NAMED_COLORS = {
-    "white": "FFFFFF",
-    "black": "000000",
-    "red": "FF0000",
-    "green": "008000",
-    "blue": "0000FF",
-    "yellow": "FFFF00",
-    "orange": "FFA500",
-    "purple": "800080",
-    "gray": "808080",
-    "grey": "808080",
-    "silver": "C0C0C0",
-    "navy": "000080",
-    "teal": "008080",
-    "olive": "808000",
-    "maroon": "800000",
-    "lime": "00FF00",
-    "aqua": "00FFFF",
-    "cyan": "00FFFF",
-    "magenta": "FF00FF",
-    "fuchsia": "FF00FF",
-    "pink": "FFC0CB",
-    "brown": "A52A2A",
-    "gold": "FFD700",
-    "indigo": "4B0082",
-    "violet": "EE82EE",
-    "coral": "FF7F50",
-    "crimson": "DC143C",
-    "darkblue": "00008B",
-    "darkgreen": "006400",
-    "darkred": "8B0000",
-    "lightgray": "D3D3D3",
-    "lightgrey": "D3D3D3",
-    "beige": "F5F5DC",
+    "white": "FFFFFF", "black": "000000", "red": "FF0000", "green": "008000",
+    "blue": "0000FF", "yellow": "FFFF00", "orange": "FFA500", "purple": "800080",
+    "gray": "808080", "grey": "808080", "silver": "C0C0C0", "navy": "000080",
+    "teal": "008080", "olive": "808000", "maroon": "800000", "lime": "00FF00",
+    "aqua": "00FFFF", "cyan": "00FFFF", "magenta": "FF00FF", "fuchsia": "FF00FF",
+    "pink": "FFC0CB", "brown": "A52A2A", "gold": "FFD700", "indigo": "4B0082",
+    "violet": "EE82EE", "coral": "FF7F50", "crimson": "DC143C",
+    "darkblue": "00008B", "darkgreen": "006400", "darkred": "8B0000",
+    "lightgray": "D3D3D3", "lightgrey": "D3D3D3", "beige": "F5F5DC",
 }
 
 _HEX_COLOR_RE = re.compile(r"^#?([0-9A-Fa-f]{6})$")
@@ -264,7 +240,8 @@ def _parse_gradient_stops(gradient_element: Any) -> list[tuple[float, str]]:
         stops.append((position, _parse_color(color_value)))
     if len(stops) < 2:
         raise ValueError(
-            f"layout: svg gradient id={gradient_id!r} needs at least two <stop> elements."
+            f"layout: svg gradient id={gradient_id!r} needs at least two "
+            "<stop> elements."
         )
     return stops
 
@@ -357,7 +334,7 @@ def _lookup_gradient(
     gradient = gradients.get(gradient_id)
     if gradient is None:
         raise ValueError(
-            f'layout: svg {where} references fill="url(#{gradient_id})", but no '
+            f"layout: svg {where} references fill=\"url(#{gradient_id})\", but no "
             f"<linearGradient>/<radialGradient> with id={gradient_id!r} was found "
             "in this SVG."
         )
@@ -376,7 +353,9 @@ def _apply_fill(shape: Any, element: Any, gradients: dict[str, _GradientDef]) ->
     fill_value = fill_value.strip()
     url_match = _URL_REF_RE.match(fill_value)
     if url_match:
-        gradient = _lookup_gradient(url_match.group(1), gradients, f"<{_localname(element)}>")
+        gradient = _lookup_gradient(
+            url_match.group(1), gradients, f"<{_localname(element)}>"
+        )
         _apply_gradient_fill(shape.fill, gradient)
         shape.line.fill.background()
         return
@@ -491,7 +470,9 @@ def _parse_svg_path(d: str) -> list[tuple[str, bool, list[float]]]:
     if not tokens:
         raise ValueError("layout: svg <path> needs a non-empty d attribute.")
     if not (tokens[0].isalpha() and tokens[0].upper() == "M"):
-        raise ValueError("layout: svg <path> data must start with a moveto (M or m) command.")
+        raise ValueError(
+            "layout: svg <path> data must start with a moveto (M or m) command."
+        )
 
     commands: list[tuple[str, bool, list[float]]] = []
     i = 0
@@ -510,7 +491,9 @@ def _parse_svg_path(d: str) -> list[tuple[str, bool, list[float]]]:
             is_relative = tok.islower()
             i += 1
         elif current is None:
-            raise ValueError("layout: svg <path> data must start with a moveto (M or m) command.")
+            raise ValueError(
+                "layout: svg <path> data must start with a moveto (M or m) command."
+            )
         elif current == "Z":
             raise ValueError("layout: svg <path> has extra data after a Z (close) command.")
         else:
@@ -522,7 +505,9 @@ def _parse_svg_path(d: str) -> list[tuple[str, bool, list[float]]]:
         params: list[float] = []
         for _ in range(arity):
             if i >= len(tokens) or tokens[i].isalpha():
-                raise ValueError(f"layout: svg <path> command {current!r} needs {arity} number(s).")
+                raise ValueError(
+                    f"layout: svg <path> command {current!r} needs {arity} number(s)."
+                )
             params.append(_parse_number(tokens[i], f"path {current} parameter"))
             i += 1
         commands.append((current, is_relative, params))
@@ -679,7 +664,8 @@ def add_svg_slide(prs: PresentationType, svg_markup: str) -> None:
 
     if _localname(root) != "svg":
         raise ValueError(
-            f"layout: svg content must be a single <svg> root element, got <{_localname(root)}>."
+            f"layout: svg content must be a single <svg> root element, got "
+            f"<{_localname(root)}>."
         )
 
     svg_w, svg_h = _svg_canvas_size(root)
@@ -746,6 +732,6 @@ def add_svg_slide(prs: PresentationType, svg_markup: str) -> None:
                 f"layout: svg does not support <{tag}> -- only <rect>, "
                 "<circle>, <ellipse>, <text>, and <path> are supported "
                 "(plus <linearGradient>/<radialGradient> for fill="
-                '"url(#id)"). Use run_node_script instead for anything '
+                "\"url(#id)\"). Use run_node_script instead for anything "
                 "needing images, groups, arcs, or shorthand curves."
             )

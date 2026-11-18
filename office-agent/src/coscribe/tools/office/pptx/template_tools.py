@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     pass
 
 
+
+
+
 # python-pptx's own bundled default template (used whenever write_pptx gets
 # no template_path) is authored for the legacy 4:3 canvas (10in x 7.5in) --
 # confirmed live, not assumed: a bare Presentation()'s slide_width/height
@@ -126,7 +129,9 @@ class TemplateToolsMixin(ToolkitBase):
             headings = [block for block in blocks if block.kind == "heading"]
             title = headings[0].text if headings else ""
             table_blocks = [block for block in blocks if block.kind == "table"]
-            other_blocks = [block for block in blocks if block.kind not in ("heading", "table")]
+            other_blocks = [
+                block for block in blocks if block.kind not in ("heading", "table")
+            ]
 
             if layout_id == "icon-list":
                 if table_blocks:
