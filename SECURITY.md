@@ -50,8 +50,10 @@ coscribe runs on your own computer.
 - **A record of how each turn went** (decision 0045) is kept in `turns.jsonl` in coscribe's
   state folder: the model, the time taken, how it ended, token counts and each tool's calls and
   errors. It holds no message text, tool arguments or results, only the first 300 characters of
-  a tool's error (which can name a file's path), with known secret formats removed. It is never
-  sent anywhere.
+  a tool's error (which can name a file's path), with known secret formats removed. The app never
+  sends it anywhere. One failed turn can leave only as a file the person saves from a
+  conversation's menu, after seeing all of it (decision 0052): the turn's numbers and the start of
+  its tool errors, without the conversation's id, with the home folder written as `~`.
 - **Steps a run adds when a step fails** (decision 0042, only for a task at proactive or above)
   are planned by a model from content that may come from outside. They hold only tool, model and
   check steps, every value they write must already be in the task or the loop's item, and each
