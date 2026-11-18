@@ -435,10 +435,7 @@ body {
   margin-bottom: 0;
 }
 .md-prose code {
-  background: var(--code-bg);
   color: var(--code-fg);
-  border-radius: 4px;
-  padding: 0.15em 0.4em;
   font-weight: 400;
 }
 .md-prose pre code {

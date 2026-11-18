@@ -6,7 +6,8 @@ they used.
 
 ## Shipped
 - `--code-fg` is `var(--accent)` in both themes, the blue of the Settings buttons
-  (`frontend/src/index.css`).
+  (`frontend/src/index.css`), with no grey box behind it: a reply's inline code is only the
+  blue monospace text. Code blocks keep their background.
 - File rows no longer show "+N -M": `SummaryLabel` drops it and `SummaryParts.diffStat` is gone
   (`frontend/src/lib/transcriptGrouping.ts`). The tools still return `lines_added` /
   `lines_removed`, which the model reads.
