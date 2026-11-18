@@ -37,7 +37,7 @@ test("Settings shows only what a person sets: no Tools or Sessions page, no step
   await expect(page.getByRole("heading", { name: "Conversations" })).toBeVisible();
 });
 
-test("Environments page lists the environments, with Edit and New", async ({ page }) => {
+test("Environments page lists the environments, with Edit in each row's menu and New", async ({ page }) => {
   await page.goto(freshThreadPath("settings-environments"));
   await waitForConnected(page);
   await page.getByRole("button", { name: "Settings" }).click();
@@ -45,8 +45,12 @@ test("Environments page lists the environments, with Edit and New", async ({ pag
   await page.locator("nav").getByRole("button", { name: "Environments", exact: true }).click();
   await loaded;
 
-  await expect(page.getByRole("heading", { name: "Environments" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Edit / }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Environments \(\d+\)$/ })).toBeVisible();
+  await page.getByRole("button", { name: "Default actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menuitem", { name: "Edit" })).toHaveCount(0);
   await page.getByRole("button", { name: "New", exact: true }).click();
   await expect(page.getByRole("dialog").last()).toBeVisible();
 });
@@ -100,25 +104,30 @@ test("General tab: Default Mode saves", async ({ page }) => {
   expect(after.COSCRIBE_DEFAULT_PERMISSION_MODE).toBe("auto");
 });
 
-test("Environments page: another folder can be set to read, write and delete", async ({ page }) => {
+test("Allowed folders: a folder can be set to read, write and delete, and removed", async ({ page }) => {
+  const folder = "/tmp/coscribe-e2e-deletable";
   await page.goto(freshThreadPath("settings-folders"));
   await waitForConnected(page);
+  // The web folder browser walks from the home folder, so the folder starts in the settings instead.
+  await page.evaluate(
+    (path) => fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ updates: { COSCRIBE_EXTRA_READABLE_DIRS: path } }) }),
+    folder,
+  );
   const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
   await page.getByRole("button", { name: "Settings" }).click();
   await configLoaded;
   await page.locator("nav").getByRole("button", { name: "Environments", exact: true }).click();
+  await page.getByRole("button", { name: "Manage" }).click();
+  const dialog = page.getByRole("dialog", { name: "Allowed folders" });
 
-  const folder = "/tmp/coscribe-e2e-deletable";
-  await page.getByLabel("Folder to add").fill(folder);
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: `Access to ${folder}` }).click();
+  await dialog.getByRole("button", { name: `Access to ${folder}` }).click();
   await expect(page.getByRole("menuitemradio")).toHaveText(["Read only", "Read and write", "Read, write and delete"]);
   await page.getByRole("menuitemradio", { name: "Read, write and delete" }).click();
   const deletable = () =>
     page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_EXTRA_DELETABLE_DIRS);
   await expect.poll(deletable).toBe(folder);
 
-  await page.getByRole("button", { name: `Remove ${folder}` }).click();
+  await dialog.getByRole("button", { name: `Remove ${folder}` }).click();
   await expect.poll(deletable).toBeNull();
 });
 

@@ -83,7 +83,11 @@ LIVE_SETTINGS = {
     "COSCRIBE_PROMPT_SUGGESTIONS": "prompt_suggestions",
     "COSCRIBE_BACKGROUND_AGENTS": "background_agents",
     "COSCRIBE_ARCHIVE_INACTIVE_DAYS": "archive_inactive_days",
+    "COSCRIBE_EXTRA_READABLE_DIRS": "extra_readable_dirs",
+    "COSCRIBE_EXTRA_WRITABLE_DIRS": "extra_writable_dirs",
+    "COSCRIBE_EXTRA_DELETABLE_DIRS": "extra_deletable_dirs",
 }
+_FOLDER_KEYS = {key for key in LIVE_SETTINGS if key.startswith("COSCRIBE_EXTRA_")}
 
 
 # Read by the browser UI only (home greeting), so the server needs neither a
@@ -147,6 +151,21 @@ _BOOLEAN_CODE_KEYS = {
     "COSCRIBE_PROMPT_SUGGESTIONS",
     "COSCRIBE_BACKGROUND_AGENTS",
 }
+
+
+def _live_value(key: str, value: str) -> Any:
+    """A LIVE_SETTINGS value as its Settings field holds it."""
+    if key == "COSCRIBE_MAX_TURNS":
+        return int(value)
+    if key in _BOOLEAN_CODE_KEYS:
+        return value == "true"
+    if key == "COSCRIBE_CODE_MODEL":
+        return value.strip() or None
+    if key == "COSCRIBE_ARCHIVE_INACTIVE_DAYS":
+        return int(value) if value.strip() and int(value) > 0 else None
+    if key in _FOLDER_KEYS:
+        return [Path(entry.strip()) for entry in value.split(",") if entry.strip()]
+    return value
 
 
 def router(state: AppState) -> APIRouter:
@@ -235,16 +254,10 @@ def router(state: AppState) -> APIRouter:
                 if key in LIVE_SETTINGS:
                     # Read afresh whenever a session starts, so the running
                     # server can take the new value without a restart.
-                    live_value: str | int | bool | None = value
-                    if key == "COSCRIBE_MAX_TURNS":
-                        live_value = int(value)
-                    elif key in _BOOLEAN_CODE_KEYS:
-                        live_value = value == "true"
-                    elif key == "COSCRIBE_CODE_MODEL":
-                        live_value = value.strip() or None
-                    elif key == "COSCRIBE_ARCHIVE_INACTIVE_DAYS":
-                        live_value = int(value) if value.strip() and int(value) > 0 else None
-                    setattr(settings, LIVE_SETTINGS[key], live_value)
+                    setattr(settings, LIVE_SETTINGS[key], _live_value(key, value))
+                if key in _FOLDER_KEYS:
+                    for session in list(state.sessions.values()):
+                        session.allowed_folders_changed()
             applied.add(key)
         restart_required = any(
             key in COSCRIBE_ENV_VARS and key not in LIVE_SETTINGS for key in applied

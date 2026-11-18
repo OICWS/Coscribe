@@ -131,7 +131,7 @@ export function CommandRows({ capabilities, set, control, onOpenEnvironments }: 
           />
           <SettingRow
             label="Private folders"
-            description="In the full sandbox a command can't read Documents, Desktop, Downloads, Pictures, OneDrive or the Users folder of another drive. The rest of another drive stays readable. To let commands read a folder there, add it to an environment or to Other folders."
+            description="In the full sandbox a command can't read Documents, Desktop, Downloads, Pictures, OneDrive or the Users folder of another drive. The rest of another drive stays readable. To let commands read a folder there, add it to an environment or to Allowed folders."
             control={
               <button type="button" className={secondaryButtonClass} onClick={onOpenEnvironments}>
                 Manage
