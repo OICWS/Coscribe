@@ -513,7 +513,13 @@ def test_a_key_file_path_or_an_ordinary_key_option_stays_readable(tmp_path: Path
         ],
     )  # fmt: skip
 
+    _connect_local(
+        tmp_path,
+        env={"AZ": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey=az+Key/9QwE==;"},
+    )
+
     blank = redactor(tmp_path)
+    assert "az+Key/9QwE==" not in blank("echoed az+Key/9QwE==")
     for value in ("/etc/ssl/private/client.key", "C:\\certs\\client-key.pem", "created_at_desc"):
         assert blank(f"read {value} back") == f"read {value} back"
     assert blank("/run/secrets/db_password") == "/run/secrets/db_password"

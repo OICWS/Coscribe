@@ -19,6 +19,8 @@ DEFAULT_MODELS = {
     "openai": ("OPENAI_API_KEY", "gpt-6-astra"),
     "gemini": ("GEMINI_API_KEY", "gemini-flash-latest"),
 }
+
+
 def default_model_from_keys() -> str:
     for provider, (key_env, model) in DEFAULT_MODELS.items():
         if os.environ.get(key_env):
@@ -262,7 +264,6 @@ class Settings(BaseSettings):
     """Whether a chat can hand programming tasks to the code module (Codex,
     code_runtime/) as a sub-agent. Off by default; the module downloads ~111 MB
     on first use and only works with models served over the Responses API."""
-
 
     code_model: str | None = None
     """The model Codex uses for a chat's code tasks ("provider:model"); unset,

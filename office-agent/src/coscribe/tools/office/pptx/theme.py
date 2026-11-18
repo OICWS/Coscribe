@@ -240,8 +240,7 @@ def parse_theme_color_slots(colors: str) -> dict[str, str]:
             )
         if not THEME_HEX_RE.match(value):
             raise ValueError(
-                f"color {key}={value!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '{key}=0F6B5C'."
+                f"color {key}={value!r} must be a 6-hex-digit color (no '#'), e.g. '{key}=0F6B5C'."
             )
         tokens[key] = value.upper()
     return tokens

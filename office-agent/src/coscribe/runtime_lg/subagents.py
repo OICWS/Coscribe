@@ -100,7 +100,6 @@ _NOT_FOR_SUBAGENTS = frozenset(
 _PARENT_ONLY_CATEGORIES = frozenset({"subagent_tasks", "selfwake", "tasks"})
 
 
-
 def for_subagents(tool: Callable[..., Any] | BaseTool) -> bool:
     if _tool_name(tool) in _NOT_FOR_SUBAGENTS:
         return False

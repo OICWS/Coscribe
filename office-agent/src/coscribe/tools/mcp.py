@@ -230,12 +230,12 @@ _ADO_PART = re.compile(
 )
 # Narrower than _CREDENTIAL_PARTS: an option such as authSource=admin, sslkey=/path/to/client.key,
 # --sort-key=created_at or --key-file names no value worth hiding. `key` counts only alone (a
-# query string's ?key=) or as an API or access key.
+# query string's ?key=) or as an API, access, account (Azure's AccountKey=) or shared key.
 _PART_NAMES = frozenset(
     {"password", "passwd", "pwd", "pass", "secret", "token", "apikey", "sig", "signature"}
 )
 _PART_ENDINGS = ("password", "secret", "token")
-_KEY_NAMES = ("apikey", "accesskey", "subscriptionkey")
+_KEY_NAMES = ("apikey", "accesskey", "accountkey", "sharedkey", "subscriptionkey")
 # A name ending in one of these points at where a credential is, not at the credential.
 _NOT_THE_VALUE = frozenset({"file", "path", "dir", "env", "var", "name", "id", "type", "mode"})
 _PATH_SHAPED = re.compile(r"(?:[/~]|\.{1,2}[/\\]|[A-Za-z]:[/\\]|\\\\)")

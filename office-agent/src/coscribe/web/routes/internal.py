@@ -25,7 +25,6 @@ def router(state: AppState) -> APIRouter:
     settings = state.settings
     background_events = state.background_events
 
-
     @router.get("/internal/events")
     async def background_events_stream() -> StreamingResponse:
         """Server-Sent Events stream of background_events.BackgroundEvent

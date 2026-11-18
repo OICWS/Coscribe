@@ -222,8 +222,14 @@ def build_templates_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..
             replace: the one-line text `find` becomes; remove: true deletes it
         """
         return toolkit.edit_pptx_text(
-            path=path, slide=slide, title=title, content=content,
-            placeholder_index=placeholder_index, find=find, replace=replace, remove=remove,
+            path=path,
+            slide=slide,
+            title=title,
+            content=content,
+            placeholder_index=placeholder_index,
+            find=find,
+            replace=replace,
+            remove=remove,
         )
 
     return {

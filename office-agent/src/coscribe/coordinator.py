@@ -615,7 +615,10 @@ def build_coordinator_agent(
 
     tools = (
         build_file_tools(
-            root, file_tool_readable, file_tool_writable, settings.protected_paths(),
+            root,
+            file_tool_readable,
+            file_tool_writable,
+            settings.protected_paths(),
             file_tool_deletable,
         )
         + build_document_tools(
@@ -625,7 +628,8 @@ def build_coordinator_agent(
             extra_writable=extra_writable,
         )
         + build_convert_tools(
-            root, state_dir=settings.state_dir,
+            root,
+            state_dir=settings.state_dir,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
         )
@@ -636,7 +640,9 @@ def build_coordinator_agent(
             extra_writable=extra_writable,
         )
         + build_presentation_tools(
-            root, thread_id=thread_id, state_dir=settings.state_dir,
+            root,
+            thread_id=thread_id,
+            state_dir=settings.state_dir,
             custom_templates_dir=settings.custom_templates_dir,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
@@ -652,16 +658,28 @@ def build_coordinator_agent(
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools(network)
         + build_script_tools(
-            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
-            session_env=session_env, detachable=detachable,
+            root,
+            settings.state_dir,
+            extra_writable=extra_writable,
+            extra_readable=extra_readable,
+            session_env=session_env,
+            detachable=detachable,
         )
         + build_node_script_tools(
-            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
-            session_env=session_env, detachable=detachable,
+            root,
+            settings.state_dir,
+            extra_writable=extra_writable,
+            extra_readable=extra_readable,
+            session_env=session_env,
+            detachable=detachable,
         )
         + build_background_task_tools(
-            thread_id, root, settings.state_dir, extra_writable=extra_writable,
-            extra_readable=extra_readable, session_env=session_env,
+            thread_id,
+            root,
+            settings.state_dir,
+            extra_writable=extra_writable,
+            extra_readable=extra_readable,
+            session_env=session_env,
         )
         + build_subagent_task_tools(thread_id, settings.state_dir)
     )
