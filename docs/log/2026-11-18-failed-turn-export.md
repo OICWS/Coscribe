@@ -2,7 +2,7 @@
 
 Why: the evaluation's tasks are guessed; the turns that went wrong in real use stay in
 `turns.jsonl` on each machine. The last part of #867, under decision
-[0051](../decisions/0051-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md),
+[0052](../decisions/0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md),
 which decision 0045 asked for before anything of the record leaves the machine.
 
 ## Shipped

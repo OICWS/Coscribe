@@ -105,7 +105,7 @@ export async function exportThread(threadId: string): Promise<Blob> {
   return res.blob();
 }
 
-/** A failed turn as its file would hold it (decision 0051): the turn's numbers and the start of
+/** A failed turn as its file would hold it (decision 0052): the turn's numbers and the start of
  * its tool errors, never the conversation's words. */
 export interface FailedTurn {
   turn: {

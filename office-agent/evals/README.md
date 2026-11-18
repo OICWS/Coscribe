@@ -337,7 +337,7 @@ calls of one answer whose results depend on which ran first) replays differently
 ### A task from a turn that failed in real use (`agentic/candidate.py`, #867)
 
 A person can save one failed turn of a conversation as a file from the conversation's menu
-("Export a failed turn…", decision 0051). It holds how the turn went (model, outcome, tool calls
+("Export a failed turn…", decision 0052). It holds how the turn went (model, outcome, tool calls
 and failures, the start of each tool error) and, if they wrote them, their own words on what they
 asked and what went wrong; never the conversation's words or files.
 

@@ -1,4 +1,4 @@
-# 0051: A failed turn leaves the machine only as a file the person saves
+# 0052: A failed turn leaves the machine only as a file the person saves
 
 Status: proposed (2026-11-18, OICWS).
 Issue #867. Adds to 0045, which said a turn's record may leave the machine only with the person's
