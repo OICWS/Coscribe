@@ -126,6 +126,35 @@ describe("foldTaskCard", () => {
   });
 });
 
+// A message the person sends while a turn works on its plan is a note in that same turn: the one
+// model reads it before its next step, so nothing runs beside the plan, and the card only moves
+// or changes when the model changes the list.
+describe("a note sent while the plan runs", () => {
+  const note = (text: string): LogItem => ({ id: id(), kind: "steer", text, status: "delivered" });
+  const kinds = (items: LogItem[]) => fold(items).map((e) => e.kind);
+
+  it("leaves the card above the note while the model answers it without touching the list", () => {
+    const items = [create("1", "Write report"), update("1", "Write report", "in_progress"), note("also, what time is it in Tokyo?"), agent("It is 10 pm there.")];
+    expect(kinds(items)).toEqual(["task_card", "steer", "agent"]);
+    expect(cardsOf(fold(items))[0].tasks[0].status).toBe("in_progress");
+  });
+
+  it("moves the one card below the note when the model next changes the list", () => {
+    const items = [create("1", "Write report"), update("1", "Write report", "in_progress"), note("also rename the folder"), tool("move_file"), update("1", "Write report", "completed")];
+    expect(kinds(items)).toEqual(["steer", "tool_run", "task_card"]);
+  });
+
+  it("puts tasks the model makes for the note into the same list", () => {
+    const items = [create("1", "Write report"), update("1", "Write report", "in_progress"), note("then email it to Ana"), create("2", "Email the report")];
+    const cards = cardsOf(fold(items));
+    expect(cards).toHaveLength(1);
+    expect(cards[0].tasks.map((t) => [t.content, t.status])).toEqual([
+      ["Write report", "in_progress"],
+      ["Email the report", "pending"],
+    ]);
+  });
+});
+
 describe("background tasks on the card", () => {
   const card = (items: LogItem[]) => {
     const cards = cardsOf(fold(items));

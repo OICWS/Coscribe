@@ -51,7 +51,7 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await expect(page.locator('iframe[title="Home"]')).toHaveCSS("pointer-events", "auto");
   await page.frameLocator('iframe[title="Home"]').getByRole("button", { name: "Start" }).dispatchEvent("click");
   await expect(page.frameLocator('iframe[title="Home"]').getByRole("button", { name: "clicked" })).toBeVisible();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByTestId("canvas-stage").getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByTestId("board-home")).toBeVisible();
 
   // Present: one board fills the panel and still works, the arrow keys and buttons step through

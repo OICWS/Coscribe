@@ -40,14 +40,12 @@ import uuid
 from asyncio import Future
 from collections import defaultdict
 from collections.abc import Callable
+from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
 from typing import Any, cast
 
-from langchain_core.messages import (
-    HumanMessage,
-    SystemMessage,
-)
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.tools import BaseTool
 from langgraph.constants import TAG_NOSTREAM
@@ -125,6 +123,13 @@ from .user_edits import user_edits_note
 from .workflow_drafting import WorkflowDrafting
 
 logger = logging.getLogger(__name__)
+
+
+def _marks(notice: bool) -> dict[str, Any]:
+    """A user message's marks: whether it is a notice, and when it was sent, for the chat to show
+    (providers are sent only the content)."""
+    return {"notice": notice, "sent_at": datetime.now(UTC).isoformat(timespec="seconds")}
+
 
 # Tests construct the channel by this name.
 _SubAgentApprovalChannel = SubAgentApprovalChannel
@@ -1172,7 +1177,7 @@ class ChatSessionLG:
         if images:
             content = [{"type": "text", "text": model_input}]
             content.extend({"type": "image_url", "image_url": {"url": url}} for url in images)
-        turn_input = {"messages": [HumanMessage(content, additional_kwargs={"notice": notice})]}
+        turn_input = {"messages": [HumanMessage(content, additional_kwargs=_marks(notice))]}
 
         # Reset for this turn (see _stream_turn's docstring): a stale entry from a previous
         # turn would pop for the wrong call.

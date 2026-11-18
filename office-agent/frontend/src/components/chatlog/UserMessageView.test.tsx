@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SteerView } from "./UserMessageView";
-import { SteerActionsContext } from "./contexts";
+import { SteerView, UserMessageView } from "./UserMessageView";
+import { MessageActionsContext, SteerActionsContext } from "./contexts";
+import type { MessageActions } from "../../lib/messageActions";
 
 const note = { kind: "steer", id: "s1", text: "How far along is it?", status: "pending" } as const;
 
@@ -32,5 +33,39 @@ describe("a note waiting while the reply is worked on", () => {
     const html = render(false);
     expect(html).toMatch(/<button[^>]*aria-label="Rewind"[^>]* disabled=""/);
     expect(html).toContain("Rewind is unavailable while working");
+  });
+});
+
+const sent = { kind: "user", id: "u1", text: "fix and watch it", turnIndex: 0, sentAt: "2026-11-18T04:33:00Z" } as const;
+
+function renderSent(actions: Partial<MessageActions> | null) {
+  const value = actions && { edit: () => {}, rewind: () => {}, blocked: null, leavesChanges: new Set<number>(), ...actions };
+  return renderToStaticMarkup(
+    <MessageActionsContext.Provider value={value}>
+      <UserMessageView item={sent} />
+    </MessageActionsContext.Provider>,
+  );
+}
+
+describe("a sent message", () => {
+  it("offers its time, Rewind, Edit and Copy", () => {
+    const html = renderSent({});
+    expect(html).toContain("Nov 18, 2026");
+    expect(html).toContain("Rewind to here");
+    expect(html).toMatch(/aria-label="Edit"/);
+    expect(html).toContain("Copy");
+  });
+
+  it("keeps Rewind and Edit disabled while they can't run, and says why", () => {
+    const html = renderSent({ blocked: "Unavailable while working" });
+    expect(html).toMatch(/<button[^>]*aria-label="Rewind to here"[^>]* disabled=""/);
+    expect(html).toMatch(/<button[^>]*aria-label="Edit"[^>]* disabled=""/);
+    expect(html).toContain("Unavailable while working");
+  });
+
+  it("before a compaction shows only its time and Copy", () => {
+    const html = renderSent(null);
+    expect(html).not.toContain("Rewind to here");
+    expect(html).toContain("Copy");
   });
 });

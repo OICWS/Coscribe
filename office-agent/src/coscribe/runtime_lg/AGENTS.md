@@ -5,7 +5,7 @@ Owns building the agent graph from the tool factories and their risk metadata (`
 deferred tool list (`tool_deferral.py`, the words its search matches on `search_words.py`), the chat model for a `provider:model` string and how hard
 it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_review.py`,
 `exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), one streamed pass of a sub-agent or an agent step, which fails on a model gone quiet and tells the conversation's record of how the run went (`agent_stream.py`), the runner a workflow's agent step runs through
-(`workflow_agent.py`, its token cap `token_limit.py`), the code module's entry point
+(`workflow_agent.py`, its token cap `token_limit.py`, the sub-agents a high or full step starts `workflow_sub_agents.py`), the code module's entry point
 (`code_agent.py`), hosted and local MCP connectors and their sign-in (`mcp.py`, `mcp_oauth.py`),
 the run side of scheduled tasks and self-wakes (`scheduled_tasks.py`, `selfwake.py`) and asking a
 connector for a task's new items (`connector_checks.py`, decision 0039), turning a
@@ -32,9 +32,9 @@ Callers import these from `coscribe.runtime_lg`, not a submodule.
   `search_tools` and `use_tool`. Per-conversation data arrives in a tool result or a note on the
   user's message, never in a schema or the system prompt (`docs/decisions/0001-fixed-cached-tool-list.md`,
   `tests/test_tool_deferral.py`). Approvals, hooks and the audit log see the real tool name.
-- A workflow's agent step is given the same tool list as any sub-agent, minus the code module and
-  the tools that need a person; every one of its calls comes to an interrupt, where its allowlist,
-  read-only rule and the task's approval mode are held (decision 0028).
+- A workflow's agent step gets a sub-agent's tool list minus the code module and the tools that need a person, plus its own `spawn_agent`;
+  every call, its sub-agents' too, comes to an interrupt, where its allowlist, read-only rule and the task's approval mode are held
+  (decision 0028); a sub-agent's call that needs a person is refused, never waited on (decision 0051).
 - A hosted connector signs in once, in the user's own browser (OAuth 2.1 with PKCE); this package
   ships no shared client secret (`docs/decisions/0004-connectors-sign-in-once-in-the-browser.md`).
 - Approvals are not a sandbox (`docs/decisions/0002-approvals-not-a-sandbox.md`): on Windows a

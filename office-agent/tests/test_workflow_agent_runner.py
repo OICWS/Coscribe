@@ -14,7 +14,13 @@ import pytest
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -311,13 +317,13 @@ async def test_an_agent_out_of_steps_still_reports(tmp_path: Path) -> None:
 def test_the_cached_part_of_an_agents_tokens_is_counted_apart() -> None:
     """A provider's cache serves most of each call's input (the fixed tool list) at its cheaper
     rate, so a total alone overstates what a step cost."""
-    from coscribe.runtime_lg.workflow_agent import _activity
+    from coscribe.runtime_lg.workflow_sub_agents import Activity, activity
 
     usage = {"input_tokens": 37192, "output_tokens": 41, "total_tokens": 37233,
              "input_token_details": {"cache_read": 36992}}  # fmt: skip
     messages = [AIMessage("", usage_metadata=usage), AIMessage("done", usage_metadata=usage)]
 
-    assert _activity(messages) == (0, 2 * 37233, 2 * 36992, [])
+    assert activity(messages) == Activity(0, 2 * 37233, 2 * 36992)
 
 
 async def test_an_agent_that_ends_with_nothing_to_say_is_asked_once_where_it_stands(
@@ -382,3 +388,146 @@ async def test_a_step_that_waits_for_a_person_leaves_a_line_per_pass(tmp_path: P
     assert first["model_calls"] == 1 and first["tools"] == {}
     assert second["model_calls"] == 1
     assert second["tools"] == {"write_file": {"calls": 1, "errors": 0}}
+
+
+# A high or full step's sub-agents (decision 0051).
+
+
+def _spawn(prompt: str = "Count the urgent mails in in.txt") -> AIMessage:
+    return _calls(("spawn_agent", {"description": "Count urgent mails", "prompt": prompt}))
+
+
+async def test_a_high_step_hands_part_of_its_task_to_a_sub_agent(tmp_path: Path) -> None:
+    env = Env(
+        tmp_path,
+        [
+            _spawn(),
+            # The sub-agent's own calls, then its report.
+            _calls(("read_file", {"path": "in.txt"})),
+            _says("Three urgent mails."),
+            # The step's agent again, with the report.
+            _says("The sub-agent found three."),
+        ],
+    )
+
+    outcome = await env.run([_agent(autonomy="high")]).start({})
+
+    assert outcome.status == "completed"
+    assert outcome.values["sorted"] == {"report": "The sub-agent found three."}
+    assert env.ran == ["read in.txt"]
+    assert env.tool_results() == ["Three urgent mails."]
+    # The sub-agent was given the task alone, not the step's conversation.
+    assert [m.content for m in env.model.seen[1] if isinstance(m, HumanMessage)] == [
+        "Count the urgent mails in in.txt"
+    ]
+    done = next(r for r in env.records if r.status == "done")
+    assert done.agent == {"tool_calls": 2, "tokens": 0,
+                          "tools_used": ["read_file", "spawn_agent"], "sub_agents": 1}  # fmt: skip
+
+
+async def test_a_sub_agents_call_that_needs_a_person_is_refused_not_waited_on(
+    tmp_path: Path,
+) -> None:
+    env = Env(
+        tmp_path,
+        [
+            _spawn("Write the summary to out.txt"),
+            _calls(("write_file", {"path": "out.txt", "content": "x"})),
+            _says("I couldn't write out.txt: it needs approval."),
+            # The step's agent makes the call itself, which a person is asked about.
+            _calls(("write_file", {"path": "out.txt", "content": "x"})),
+            _says("Wrote it."),
+        ],
+    )
+    run = env.run([_agent(autonomy="high")])
+
+    first = await run.start({})
+
+    assert first.status == "waiting"
+    assert first.request is not None and first.request["pending"]["tool"] == "write_file"
+    assert env.ran == []
+    assert "A sub-agent can't wait" in str(env.model.seen[2][-1].content)
+    second = await run.answer(True)
+    assert second.status == "completed"
+    assert env.ran == ["write out.txt"]
+    reasons = [(e["tool_name"], e["decision"], e["reason"]) for e in env.audit()]
+    assert reasons == [
+        ("write_file", "reject", "workflow_step"),
+        ("write_file", "approve", "human"),
+    ]
+
+
+async def test_a_sub_agent_keeps_the_steps_approval_mode(tmp_path: Path) -> None:
+    env = Env(
+        tmp_path,
+        [
+            _spawn("Write the summary to out.txt"),
+            _calls(("write_file", {"path": "out.txt", "content": "x"})),
+            _says("Wrote it."),
+            _says("Done."),
+        ],
+    )
+
+    outcome = await env.run([_agent(autonomy="full")], mode="auto").start({})
+
+    assert outcome.status == "completed"
+    assert env.ran == ["write out.txt"]
+    assert [(e["decision"], e["reason"]) for e in env.audit()] == [("approve", "workflow_step")]
+
+
+async def test_a_bounded_step_starts_no_sub_agent(tmp_path: Path) -> None:
+    env = Env(tmp_path, [_spawn(), _says('Done. {"outcome": "done"}')])
+
+    outcome = await env.run([_agent(tools=["read_file"])]).start({})
+
+    assert outcome.status == "completed"
+    assert env.model.i == 2
+    assert "can't start sub-agents" in env.tool_results()[-1]
+    assert [(e["tool_name"], e["reason"]) for e in env.audit()] == [
+        ("spawn_agent", "workflow_step")
+    ]
+
+
+async def test_a_step_starts_no_more_sub_agents_than_its_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.workflows import agent_step
+
+    monkeypatch.setattr(agent_step, "MAX_SUB_AGENTS", 1)
+    env = Env(
+        tmp_path,
+        [_spawn(), _says("Three."), _spawn("And the others"), _says("Three, the rest not done.")],
+    )
+
+    outcome = await env.run([_agent(autonomy="high")]).start({})
+
+    assert outcome.status == "completed"
+    assert env.model.i == 4
+    assert "has started its 1 sub-agents" in env.tool_results()[-1]
+
+
+async def test_a_sub_agents_tokens_count_against_its_step(tmp_path: Path) -> None:
+    usage = {"input_tokens": 900, "output_tokens": 100, "total_tokens": 1000}
+    env = Env(
+        tmp_path,
+        [_spawn(), AIMessage("Three.", usage_metadata=usage), _says("Three urgent.")],
+    )
+
+    outcome = await env.run([_agent(autonomy="high")]).start({})
+
+    assert outcome.status == "completed"
+    done = next(r for r in env.records if r.status == "done")
+    assert done.agent is not None and done.agent["tokens"] == 1000
+    lines = _turn_lines(env)
+    assert [line["kind"] for line in lines] == ["subagent", "workflow_agent"]
+    assert lines[0]["step"] == lines[1]["step"]
+
+
+def test_a_sub_agents_tokens_are_counted_with_the_call_that_started_it() -> None:
+    from coscribe.runtime_lg.token_limit import tokens_used
+
+    report = ToolMessage("Three.", tool_call_id="t0", artifact={
+        "sub_agent": {"tokens": 1000, "cached_tokens": 400}})  # fmt: skip
+
+    assert tokens_used([report, AIMessage("", usage_metadata={
+        "input_tokens": 90, "output_tokens": 10, "total_tokens": 100})]) == 700  # fmt: skip
