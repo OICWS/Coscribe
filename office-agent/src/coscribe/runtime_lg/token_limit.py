@@ -8,20 +8,37 @@ from collections.abc import Sequence
 from typing import Any
 
 from langchain.agents.middleware import AgentMiddleware, hook_config
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 TOKEN_LIMIT_PREFIX = "Token budget used"
 
 
+# A tool result whose artifact holds this key reports a sub-agent's work (decision 0051): its
+# tokens count where it was started, so the agent that started it stops at the same budget.
+SUB_AGENT_ARTIFACT = "sub_agent"
+
+
+def sub_agent_usage(message: Any) -> dict[str, Any] | None:
+    """What a sub-agent started by this tool call used, or None for any other result."""
+    if not isinstance(message, ToolMessage) or not isinstance(message.artifact, dict):
+        return None
+    usage = message.artifact.get(SUB_AGENT_ARTIFACT)
+    return usage if isinstance(usage, dict) else None
+
+
 def tokens_used(messages: Sequence[Any]) -> int:
     """The new tokens the model replies in `messages` cost, as the provider reported them: what
-    it served from its cache is billed far lower, and every call of a long agent re-reads it."""
+    it served from its cache is billed far lower, and every call of a long agent re-reads it.
+    A sub-agent's are counted with the call that started it."""
     used = 0
     for message in messages:
         if isinstance(message, AIMessage) and message.usage_metadata:
             usage = message.usage_metadata
             cached = (usage.get("input_token_details") or {}).get("cache_read", 0) or 0
             used += int(usage["total_tokens"] or 0) - int(cached)
+        child = sub_agent_usage(message)
+        if child is not None:
+            used += int(child.get("tokens") or 0) - int(child.get("cached_tokens") or 0)
     return used
 
 

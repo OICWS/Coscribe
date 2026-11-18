@@ -38,7 +38,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
 | [0026](0026-libreoffice-is-an-optional-engine-found-or-installed-on-request.md) | LibreOffice is an optional engine, found or installed on request |
 | [0027](0027-an-artifact-is-what-coscribe-made-from-a-source-it-owns.md) | An artifact is what coscribe made from a source it owns |
-| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed; narrowed by 0042) |
+| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed; narrowed by 0042, 0051) |
 | [0029](0029-a-test-run-stops-before-a-step-that-cant-be-taken-back.md) | A test run stops before a step that can't be taken back (proposed) |
 | [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted; narrowed by 0032) |
 | [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
@@ -60,3 +60,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (proposed; sites narrowed by 0050) |
 | [0049](0049-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |
 | [0050](0050-a-workspace-lists-its-sites-each-with-a-browser-level.md) | A workspace lists its sites, each with a browser level |
+| [0051](0051-a-workflow-steps-sub-agents-keep-its-rules-and-never-wait.md) | A workflow step's sub-agents keep its rules and never wait for a person (proposed) |

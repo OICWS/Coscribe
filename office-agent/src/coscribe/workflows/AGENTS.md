@@ -10,7 +10,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 
 ## Public interface
 `BranchStep`, `ChoiceStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
-`AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
+`AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns), `SUB_AGENT_TOOL` (the tool a high or full step's agent starts a sub-agent with, decision 0051);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps`, `called_permissions`, `allowed_to_run` (permissions); `TaskSource` (where a run finds the tasks its steps run), `callable_tasks` (what the drafter is told it can run); `describe_params`, `tool_description`
 (catalog); `ask_connector` (a connector tool's answer as a value, or why it gave none); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `answer_problem`, `paused_at`, `wake_due` (a run paused at an ask or wait step, decision 0033); `write_overview` (a task's one-sentence overview, decision 0037); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `added_fix` (a run's added steps as their step's `on_failure: steps`, decision 0042); `run_budget` (what a run may use before it asks, decision 0043); `DraftFailed`, `WorkflowDraft`,
@@ -28,8 +28,8 @@ history, so this package does not import `runtime_lg`).
 - An agent step's runner keeps one agent per `AgentRequest.key` and never redoes finished work;
   an answer counts only for the call it names (`call_id`), since a resume replays earlier answers.
 - An agent step that reads outside content may only make READ calls, unless `trusted_input`.
-- A bounded step's allowlist, declared folders and sites are its consent: a call beyond them
-  waits for a person (`agent_step.decide`, `permissions.outside_declared`), never runs unasked.
+- A bounded step's allowlist, declared folders and sites are its consent: a call beyond them waits for a person
+  (`agent_step.decide`, `permissions.outside_declared`), never runs unasked, and it starts no sub-agent (decision 0051).
 - A test run stops before an approval step, an ask step without defaults (it doesn't wait at a wait step) and before a step marked `irreversible` (unless
   `send_for_real`, refused when no one is watching; decision 0029), and writes no run history.
   A revision (`revise_workflow`) keeps every step the workflow it revises marks `irreversible`.

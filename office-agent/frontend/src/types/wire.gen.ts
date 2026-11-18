@@ -256,6 +256,11 @@ export interface WorkflowAgentActivity {
   tokens?: number;
   cached_tokens?: number;
   tools_used?: string[];
+  /**
+   * The sub-agents a high or full step started (decision 0051); counted in the
+   * numbers above.
+   */
+  sub_agents?: number;
   pending?: WorkflowAgentCall;
   added?: WorkflowAddedSteps;
 }

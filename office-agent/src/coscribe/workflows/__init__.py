@@ -11,7 +11,7 @@ from ..workflow_spec import (
     workflow_error,
 )
 from .added_steps import added_fix
-from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
+from .agent_step import SUB_AGENT_TOOL, AgentCall, AgentReply, AgentRequest, AgentRunner
 from .budget import run_budget
 from .catalog import describe_params, tool_description
 from .connector_value import ask_connector
@@ -49,6 +49,7 @@ __all__ = [
     "DraftFailed",
     "LoopStep",
     "RunOutcome",
+    "SUB_AGENT_TOOL",
     "StepContext",
     "StepRecord",
     "TaskSource",
