@@ -284,3 +284,32 @@ def test_a_folder_allowed_on_default_gets_the_conversation_an_environment_of_its
     assert listed["Invoices"]["folders"] == [str(tmp_path / "workspace"), str(allowed)]
     assert added["environment"] == listed["Invoices"]["id"]
     assert added["folders"] == [str(tmp_path / "workspace"), str(allowed)]
+
+
+def test_the_first_start_asks_for_a_workspace_and_new_conversations_work_there(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Decision 0048: Default works in the folder the person chose, named for it."""
+    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+    (tmp_path / "home" / "Documents").mkdir(parents=True)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        asked = client.get("/api/workspace/first").json()
+        refused = [
+            client.post("/api/workspace/first", json={"folder": folder}).status_code
+            for folder in ["", "relative", str(tmp_path / "no" / "such"), str(tmp_path / "home")]
+        ]
+        chosen = client.post("/api/workspace/first", json={"folder": asked["suggested"]})
+        again = client.post("/api/workspace/first", json={"folder": asked["suggested"]})
+        after = client.get("/api/workspace/first").json()
+        envs = client.get("/api/environments").json()["environments"]
+        reach = client.get("/api/threads/t_new/workspace").json()
+
+    suggested = tmp_path / "home" / "Documents" / "Coscribe"
+    assert asked == {"needed": True, "suggested": str(suggested)}
+    assert refused == [422, 422, 422, 422]
+    assert chosen.json() == {"folder": str(suggested.resolve())} and suggested.is_dir()
+    assert again.status_code == 409
+    assert after["needed"] is False
+    assert [(e["name"], e["folders"]) for e in envs] == [("Coscribe", [str(suggested.resolve())])]
+    assert [root["path"] for root in reach["roots"]] == [str(suggested.resolve())]

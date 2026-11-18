@@ -104,6 +104,7 @@ GET /api/threads/{thread_id}/workspace/{root}/list
 GET /api/threads/{thread_id}/workspace/{root}/raw/{path:path}
 GET /api/threads/{thread_id}/workspace/{root}/search
 GET /api/tools
+GET /api/workspace/first
 GET /internal/browser-host
 GET /internal/events
 GET,HEAD /docs
@@ -187,6 +188,7 @@ POST /api/threads/{thread_id}/workspace-notes
 POST /api/upload
 POST /api/workflows/permissions
 POST /api/workflows/validate
+POST /api/workspace/first
 POST /internal/browser-host/result
 PUT /api/capabilities/{name}
 PUT /api/code/permissions

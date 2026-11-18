@@ -9657,6 +9657,64 @@
         "summary": "Validate Workflow"
       }
     },
+    "/api/workspace/first": {
+      "get": {
+        "operationId": "first_workspace_api_workspace_first_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response First Workspace Api Workspace First Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "First Workspace"
+      },
+      "post": {
+        "operationId": "choose_first_workspace_api_workspace_first_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Choose First Workspace Api Workspace First Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Choose First Workspace"
+      }
+    },
     "/internal/browser-host": {
       "get": {
         "description": "The desktop app's browser takes its commands from here; see\ntools/web/browser.py.",

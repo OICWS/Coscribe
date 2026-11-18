@@ -409,6 +409,19 @@ class Environments:
                 data["threads"][thread_id] = by_settings[key]
             self._write(data)
 
+    def first_workspace(self, folder: str) -> None:
+        """The first start's workspace (decision 0048): Default works in `folder` from now on,
+        named for it."""
+        with _LOCK:
+            data = self._read()
+            default = data["environments"][DEFAULT_ID]
+            if default["folders"]:
+                raise EnvironmentRefused("The workspace is already chosen.")
+            default["folders"] = [folder]
+            default["name"] = ""
+            default["name"] = self._free_name(data, Path(folder).name or "Workspace")
+            self._write(data)
+
     @staticmethod
     def _free_name(data: dict[str, Any], wanted: str) -> str:
         base = " ".join(wanted.split())[:MAX_NAME].strip() or "Conversation"
