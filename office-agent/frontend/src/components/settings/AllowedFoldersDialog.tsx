@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { browseDirs } from "../../lib/rest";
-import { folderName } from "../../lib/recentFolders";
+import { folderName } from "../../lib/folderName";
 import { CloseIcon, PlusIcon } from "../icons";
 import { SelectMenu } from "../SelectMenu";
 import { DirBrowserModal } from "./DirBrowserModal";
@@ -84,7 +84,7 @@ function FolderTable({ entries, onChange }: { entries: DirEntry[]; onChange: (en
   );
 }
 
-/** Settings' Allowed folders, managed in a dialog the way Settings › Environments links to it. */
+/** Settings' Allowed folders, managed in a dialog the way Settings › Workspaces links to it. */
 export function AllowedFoldersDialog({ entries, onChange, onClose }: { entries: DirEntry[]; onChange: (entries: DirEntry[]) => void; onClose: () => void }) {
   const [browsing, setBrowsing] = useState(false);
 
@@ -113,7 +113,7 @@ export function AllowedFoldersDialog({ entries, onChange, onClose }: { entries: 
               Allowed folders
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-              Every environment can use these folders and the folders inside them. When a chat needs another folder, it asks first, and Allow adds
+              Every workspace can use these folders and the folders inside them. When a chat needs another folder, it asks first, and Allow adds
               it here. Remove one and Coscribe asks again next time.
             </p>
           </div>

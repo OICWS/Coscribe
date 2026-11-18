@@ -102,8 +102,8 @@ export function EnvironmentsSection({ active }: { active: boolean }) {
 
   return (
     <SettingsSection
-      title={environments ? `Environments (${environments.length})` : "Environments"}
-      description="An environment is a folder you work in. Its conversations and tasks reach that folder, the allowed folders below, and the sites and secrets you give it. Choose one for a conversation under the message box."
+      title={environments ? `Workspaces (${environments.length})` : "Workspaces"}
+      description="A workspace is a folder you work in. Its conversations and tasks reach that folder, the allowed folders below, and the sites and secrets you give it. Choose one for a conversation under the message box."
       action={
         <button type="button" className={`${secondaryButtonClass} flex items-center gap-1.5`} onClick={() => setEditing(null)}>
           <PlusIcon className="h-4 w-4" />
@@ -111,7 +111,7 @@ export function EnvironmentsSection({ active }: { active: boolean }) {
         </button>
       }
     >
-      <div role="table" aria-label="Environments" className="mt-3 rounded-xl border border-[var(--border)] text-[13px]">
+      <div role="table" aria-label="Workspaces" className="mt-3 rounded-xl border border-[var(--border)] text-[13px]">
         <div role="row" className={`${columns} border-b border-[var(--border)] py-2.5 pl-4 pr-2 text-[var(--muted)]`}>
           <span role="columnheader">Name</span>
           <span role="columnheader">Folder</span>

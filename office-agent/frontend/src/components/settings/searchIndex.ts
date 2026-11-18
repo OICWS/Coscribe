@@ -26,7 +26,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   // Its address, bypass list, user name and password show only once a manual proxy is chosen, so
   // they are found through this row.
   { category: "general", label: "Proxy", keywords: "network internet address do not use for bypass user name password" },
-  { category: "workspace", label: "Environments", keywords: "folder workspace internet access new edit" },
+  { category: "workspace", label: "Workspaces", keywords: "folder environment internet access new edit" },
   { category: "workspace", label: "Allowed folders", keywords: "directory read write" },
   { category: "capabilities", label: "Create and edit files", keywords: "write read only word excel powerpoint pdf" },
   { category: "capabilities", label: "Artifacts", keywords: "docs design dashboard panel" },

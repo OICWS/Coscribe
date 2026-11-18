@@ -283,7 +283,7 @@ function Settings({
             </label>
           </Section>
           <Section title="Where it runs">
-            <div className="flex items-center gap-1.5 text-sm">Uses the environment {environment}</div>
+            <div className="flex items-center gap-1.5 text-sm">Uses the workspace {environment}</div>
           </Section>
           <Section
             title="Versions"

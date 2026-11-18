@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { folderName } from "../../lib/recentFolders";
+import { folderName } from "../../lib/folderName";
 import { AllowedFoldersDialog } from "./AllowedFoldersDialog";
 import { EnvironmentsSection } from "./EnvironmentsSection";
 import { SettingRow, SettingRows, secondaryButtonClass } from "./SettingRow";
@@ -13,10 +13,10 @@ interface WorkspaceTabProps {
 const SHORT_ACCESS = { read: "read", "read-write": "read and write", "read-write-delete": "read, write and delete" } as const;
 
 function allowedSummary(entries: DirEntry[]): string {
-  if (entries.length === 0) return "Folders every environment can use besides its own. None yet: when a chat needs another folder, it asks you first.";
+  if (entries.length === 0) return "Folders every workspace can use besides its own. None yet: when a chat needs another folder, it asks you first.";
   const shown = entries.slice(0, 3).map((entry) => `${folderName(entry.path)} (${SHORT_ACCESS[entry.permission]})`);
   const more = entries.length > 3 ? `, and ${entries.length - 3} more` : "";
-  return `Folders every environment can use besides its own: ${shown.join(", ")}${more}. When a chat needs another one, it asks you first.`;
+  return `Folders every workspace can use besides its own: ${shown.join(", ")}${more}. When a chat needs another one, it asks you first.`;
 }
 
 export function WorkspaceTab({ dirEntries, onDirEntriesChange }: WorkspaceTabProps) {

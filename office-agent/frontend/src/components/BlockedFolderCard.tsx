@@ -51,8 +51,8 @@ export function BlockedFolderCard({ blocked }: { blocked: BlockedWrite }) {
             Add “{shortName(folder)}”
           </button>
           <span className="text-[13px] text-[var(--muted)]">
-            It joins this conversation’s environment, so its conversations can read and change files there. On Default,
-            this conversation gets an environment of its own.
+            It joins this conversation’s workspace, so its conversations can read and change files there. On Default,
+            this conversation gets a workspace of its own.
           </span>
         </div>
       )}
