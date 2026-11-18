@@ -143,9 +143,6 @@ Last reviewed: 2026-11-06.
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 
-- **Providers page like Connectors** (`docs/log/2026-11-17-providers-page-redesign.md`). Open:
-  changing only a provider's default model still asks for its API key again.
-
 ## For the maintainer (settings and decisions)
 
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
