@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
+import { defaultWorkspaceName, editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
 
 test("a dialog opened from a hover-opened sidebar is not closed with the sidebar", async ({ page }) => {
   await page.goto(freshThreadPath("rail-dialog"));
@@ -65,7 +65,8 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await page.goto(path);
   await waitForConnected(page);
   const picker = page.getByTitle("Choose this conversation's workspace");
-  await expect(picker).toHaveText("Default");
+  const defaultName = await defaultWorkspaceName(request);
+  await expect(picker).toHaveText(defaultName);
   await newEnvironment(page, name);
 
   await editEnvironment(page, name);
@@ -89,7 +90,7 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await dialog.getByRole("button", { name: "Delete workspace" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(picker).toHaveText("Default");
+  await expect(picker).toHaveText(defaultName);
   expect(await environmentNamed(request, name)).toBeUndefined();
   await request.delete(`/api/threads/${threadId}`);
 });

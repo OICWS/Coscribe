@@ -86,8 +86,9 @@ without first copying it into the workspace by hand.
 A conversation can also have its own folders: **Add folder** under the
 message box attaches any number of them, and they can be removed or added
 between replies. The first is the main one (relative paths resolve there);
-the agent can read and write in all of them. A conversation with none uses
-the Workspace Root.
+the agent can read and write in all of them. The first start asks for the
+Default workspace's folder (offered: `Documents\Coscribe`, decision 0048); until
+it is chosen, a conversation with none uses the Workspace Root.
 
 Under the hood this is still two `.env` variables --
 `COSCRIBE_EXTRA_READABLE_DIRS` (read-only) and

@@ -1,8 +1,8 @@
 # frontend: the React + TypeScript UI, built into the server's static directory
 
 ## Purpose
-The UI of coscribe. `src/main.tsx` mounts `App.tsx` (or `components/dock/PanelWindow.tsx` in a
-detached panel window); `App.tsx` owns the chat socket and the reducer and is the hot file.
+The UI of coscribe. `src/main.tsx` mounts `App.tsx` and the first start's `FirstWorkspaceDialog.tsx` (or
+`components/dock/PanelWindow.tsx` in a detached panel window); `App.tsx` owns the chat socket and the reducer and is the hot file.
 `src/state/reducer.ts` turns server events into the chat log; `src/components/` holds the views
 (`chatlog/` the transcript, `settings/` the settings modal, `workflow/` the workflow editor and
 run view, `dock/` the panel dock); `src/lib/` the transport and helpers (`ws.ts` the chat socket

@@ -59,6 +59,12 @@ export interface EnvironmentRecord {
   used_by: number;
 }
 
+/** Default's name: the first start names it for the folder it chose. */
+export async function defaultWorkspaceName(request: { get: (url: string) => Promise<{ json: () => Promise<unknown> }> }): Promise<string> {
+  const listed = (await (await request.get("/api/environments")).json()) as { environments: EnvironmentRecord[] };
+  return listed.environments.find((e) => e.id === "default")?.name ?? "Default";
+}
+
 export async function environmentNamed(
   request: { get: (url: string) => Promise<{ json: () => Promise<unknown> }> },
   name: string,

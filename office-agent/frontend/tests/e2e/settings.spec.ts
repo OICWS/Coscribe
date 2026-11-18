@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { freshThreadPath, waitForConnected } from "./helpers";
+import { defaultWorkspaceName, freshThreadPath, waitForConnected } from "./helpers";
 
 test("General tab: a change saves itself", async ({ page }) => {
   await page.goto(freshThreadPath("settings"));
@@ -40,7 +40,7 @@ test("Settings shows only what a person sets: no Tools or Sessions page, no step
   await expect(page.getByRole("heading", { name: "Conversations" })).toBeVisible();
 });
 
-test("Workspaces page lists the workspaces, with Edit in each row's menu and New", async ({ page }) => {
+test("Workspaces page lists the workspaces, with Edit in each row's menu and New", async ({ page, request }) => {
   await page.goto(freshThreadPath("settings-environments"));
   await waitForConnected(page);
   await page.getByRole("button", { name: "Settings" }).click();
@@ -49,7 +49,7 @@ test("Workspaces page lists the workspaces, with Edit in each row's menu and New
   await loaded;
 
   await expect(page.getByRole("heading", { name: /^Workspaces \(\d+\)$/ })).toBeVisible();
-  await page.getByRole("button", { name: "Default actions" }).click();
+  await page.getByRole("button", { name: `${await defaultWorkspaceName(request)} actions` }).click();
   await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
   await page.keyboard.press("Escape");
