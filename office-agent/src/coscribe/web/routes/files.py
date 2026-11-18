@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -27,17 +28,58 @@ from .shared import MAX_UPLOAD_BYTES
 _PREVIEW_NAME_RE = re.compile(r"[0-9a-f]{32}\.png")  # tools/_thumbnail.py's uuid4().hex naming
 
 
-def _unique_upload_path(scope: WorkspaceScope, filename: str) -> Path:
-    name = Path(filename).name or "upload"
-    candidate = scope.resolve(name)
-    if not candidate.exists():
-        return candidate
+_KINDS = {
+    "images": frozenset(".png .jpg .jpeg .gif .webp .bmp .svg .tif .tiff .heic .ico".split()),
+    "documents": frozenset(
+        ".pdf .doc .docx .odt .rtf .txt .md .ppt .pptx .odp .key .pages .htm .html .epub .eml "
+        ".msg".split()
+    ),
+    "data": frozenset(
+        ".xls .xlsx .xlsm .ods .csv .tsv .json .jsonl .xml .yaml .yml .parquet .sqlite .db".split()
+    ),
+}
+
+
+def _upload_folder(filename: str, *, pasted: bool) -> str:
+    """Where in `.coscribe/uploads/` a file goes (decision 0044): by its extension, so the same
+    file always lands in the same place, never by what a model makes of it."""
+    if pasted:
+        return "screenshots"
+    suffix = Path(filename).suffix.lower()
+    return next((kind for kind, suffixes in _KINDS.items() if suffix in suffixes), "other")
+
+
+def _unique_upload_path(folder: Path, filename: str) -> Path:
+    # A name never changes once the model has the path, so a second file with it gets a new one.
+    candidate = folder / filename
     stem, suffix, counter = candidate.stem, candidate.suffix, 1
-    while True:
-        candidate = scope.resolve(f"{stem} ({counter}){suffix}")
-        if not candidate.exists():
-            return candidate
+    while candidate.exists():
+        candidate = folder / f"{stem} ({counter}){suffix}"
         counter += 1
+    return candidate
+
+
+def _upload_name(filename: str, *, pasted: bool) -> str:
+    if pasted:
+        suffix = Path(filename).suffix.lower() or ".png"
+        return f"screenshot-{datetime.now().strftime('%Y-%m-%d-%H%M%S')}{suffix}"
+    name = Path(filename).name
+    return name if name not in {"", ".", ".."} else "upload"
+
+
+def _save_upload(root: Path, filename: str, content: bytes, *, pasted: bool) -> Path:
+    folder = root / ".coscribe" / "uploads" / _upload_folder(filename, pasted=pasted)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = _unique_upload_path(folder, _upload_name(filename, pasted=pasted))
+    path.write_bytes(content)
+    return path
+
+
+def _png_in(folder: Path, name: str) -> Response:
+    path = folder / name
+    if not _PREVIEW_NAME_RE.fullmatch(name) or not path.is_file():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(path, media_type="image/png")
 
 
 def router(state: AppState) -> APIRouter:
@@ -45,37 +87,35 @@ def router(state: AppState) -> APIRouter:
     settings = state.settings
     _get_session = state.get_session
 
+    def _scope(thread_id: str) -> WorkspaceScope:
+        if thread_id:
+            return _get_session(thread_id).workspace_scope()
+        return WorkspaceScope(settings.workspace_root)
 
     @router.post("/api/upload")
     async def upload_file(
-        file: UploadFile, thread_id: Annotated[str, Form()] = ""
+        file: UploadFile,
+        thread_id: Annotated[str, Form()] = "",
+        pasted: Annotated[bool, Form()] = False,
     ) -> JSONResponse:
-        # Direct port of web/app.py's identical endpoint -- pure file I/O
-        # against settings.workspace_root, nothing runtime-specific about
-        # it (unlike /api/config, /api/mcp/*, /api/providers/*, this one
-        # has no "next new session only" wrinkle: an uploaded file just
-        # needs to exist on disk before the model's next tool call reads
-        # it, which every already-open ChatSessionLG can do immediately).
+        """An attached file, or a pasted picture, saved in the conversation's folder under
+        `.coscribe/uploads/<kind>/` (decision 0044); the path returned is relative to that
+        folder, as the model reads it."""
         content = await file.read()
         if len(content) > MAX_UPLOAD_BYTES:
             return JSONResponse({"error": "file too large (max 25MB)"}, status_code=413)
-        # Into the conversation's own folder when it has one: the model
-        # reads the path relative to that, not to the app's default.
-        scope = (
-            _get_session(thread_id).workspace_scope()
-            if thread_id
-            else WorkspaceScope(settings.workspace_root)
-        )
-        path = _unique_upload_path(scope, file.filename or "upload")
-        path.write_bytes(content)
+        scope = _scope(thread_id)
+        try:
+            path = _save_upload(scope.root, file.filename or "upload", content, pasted=pasted)
+        except OSError:
+            return JSONResponse(
+                {"error": f"Couldn't save it in {scope.root}: the folder can't be written."},
+                status_code=409,
+            )
         return JSONResponse({"path": scope.relative(path), "bytes_written": len(content)})
 
     def _attachment_pdf(path: str, thread_id: str) -> Path | JSONResponse:
-        scope = (
-            _get_session(thread_id).workspace_scope()
-            if thread_id
-            else WorkspaceScope(settings.workspace_root)
-        )
+        scope = _scope(thread_id)
         try:
             file_path = scope.resolve(path)
         except PermissionError:
@@ -120,22 +160,12 @@ def router(state: AppState) -> APIRouter:
         # the exact `<32 hex chars>.png` shape render_thumbnail always
         # generates, so it can only ever resolve to a plain filename inside
         # that one directory).
-        if not _PREVIEW_NAME_RE.fullmatch(name):
-            return JSONResponse({"error": "not found"}, status_code=404)
-        preview_path = settings.state_dir / "previews" / name
-        if not preview_path.is_file():
-            return JSONResponse({"error": "not found"}, status_code=404)
-        return FileResponse(preview_path, media_type="image/png")
+        return _png_in(settings.state_dir / "previews", name)
 
     @router.get("/api/screenshots/{name}")
     async def get_screenshot(name: str) -> Response:
         # Same shape check as previews: only a page_screenshot file name.
-        if not _PREVIEW_NAME_RE.fullmatch(name):
-            return JSONResponse({"error": "not found"}, status_code=404)
-        path = settings.state_dir / SCREENSHOT_FOLDER / name
-        if not path.is_file():
-            return JSONResponse({"error": "not found"}, status_code=404)
-        return FileResponse(path, media_type="image/png")
+        return _png_in(settings.state_dir / SCREENSHOT_FOLDER, name)
 
     @router.get("/api/pptx-shapes")
     async def get_pptx_shapes(path: str, slide: int, thread_id: str = "") -> JSONResponse:
@@ -151,16 +181,13 @@ def router(state: AppState) -> APIRouter:
         # list_pptx_shapes tool calls -- this is a plain, ungated REST
         # read, not a tool call, since it's UI-only (never reaches the
         # model, never touches the audit log a real tool call would).
-        if thread_id:
-            scope = _get_session(thread_id).workspace_scope()
-            toolkit = PresentationToolkit(
-                scope.root,
-                state_dir=settings.state_dir,
-                extra_readable=scope.extra_readable,
-                extra_writable=scope.extra_writable,
-            )
-        else:
-            toolkit = PresentationToolkit(settings.workspace_root, state_dir=settings.state_dir)
+        scope = _scope(thread_id)
+        toolkit = PresentationToolkit(
+            scope.root,
+            state_dir=settings.state_dir,
+            extra_readable=scope.extra_readable,
+            extra_writable=scope.extra_writable,
+        )
         try:
             result = await asyncio.to_thread(toolkit.list_pptx_shapes, path=path, slide=slide)
         except Exception as exc:

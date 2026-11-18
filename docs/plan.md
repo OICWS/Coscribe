@@ -203,10 +203,11 @@ Last reviewed: 2026-11-06.
   takes shows in the conversation and as a picture notice above the message box
   (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
-- A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
-  a one-line description of each from the side model (decision 0044, its second part, now phase B
-  of #926; the notes
-  and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
+- A workspace's uploads: the server saves them in `.coscribe/uploads/<kind>/`
+  (`docs/log/2026-11-18-uploads-in-workspace.md`); next the message box saves a pasted or attached
+  picture there too and tells the model its path, then a one-line description of each upload from
+  the side model in `uploads/index.jsonl` (decision 0044, phase B of #926; the notes and skills
+  shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
