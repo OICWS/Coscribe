@@ -41,14 +41,14 @@ export function ScriptsPage({
   return (
     <section className="flex flex-col gap-3">
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-        Settings › Capabilities decides what may run on this computer; here you can turn it off for this environment.
+        Settings › Capabilities decides what may run on this computer; here you can turn it off for this workspace.
       </p>
       <SwitchRow
         label="Scripts"
         detail={
           scriptsOff
             ? "Off in Settings › Capabilities."
-            : "Python and Node.js scripts, isolated to this environment's folders."
+            : "Python and Node.js scripts, isolated to this workspace's folders."
         }
         on={run.scripts && !scriptsOff}
         disabled={scriptsOff}
@@ -77,7 +77,7 @@ export function ScriptsPage({
           <span className="flex flex-col gap-1">
             <span className="text-[15px] font-medium">Run scripts without isolation</span>
             <span className="text-[13px] leading-relaxed text-[var(--muted)]">
-              The isolation check failed on this computer, so scripts are off. This turns them on in this environment
+              The isolation check failed on this computer, so scripts are off. This turns them on in this workspace
               only: a script then runs as you and can reach anything you can. You still approve each one, and turning
               this on is recorded in the audit log.
             </span>

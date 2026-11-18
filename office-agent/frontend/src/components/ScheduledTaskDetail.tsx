@@ -385,7 +385,7 @@ function DetailedBody({
   );
   const environment = (
     <div>
-      <SectionLabel>Environment</SectionLabel>
+      <SectionLabel>Workspace</SectionLabel>
       <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
     </div>
   );

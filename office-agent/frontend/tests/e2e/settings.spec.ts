@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
@@ -31,21 +32,21 @@ test("Settings shows only what a person sets: no Tools or Sessions page, no step
   await page.getByRole("button", { name: "Settings" }).click();
 
   const nav = page.locator("nav");
-  await expect(nav.getByRole("button", { name: "Environments", exact: true })).toBeVisible();
+  await expect(nav.getByRole("button", { name: "Workspaces", exact: true })).toBeVisible();
   for (const gone of ["Tools", "Sessions", "Workspace"]) await expect(nav.getByRole("button", { name: gone, exact: true })).toHaveCount(0);
   for (const gone of ["Max steps per reply", "Log level", "Model for side jobs", "Port for task events"]) await expect(page.getByText(gone, { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Conversations" })).toBeVisible();
 });
 
-test("Environments page lists the environments, with Edit in each row's menu and New", async ({ page }) => {
+test("Workspaces page lists the workspaces, with Edit in each row's menu and New", async ({ page }) => {
   await page.goto(freshThreadPath("settings-environments"));
   await waitForConnected(page);
   await page.getByRole("button", { name: "Settings" }).click();
   const loaded = page.waitForResponse((r) => r.url().includes("/api/environments") && r.status() === 200);
-  await page.locator("nav").getByRole("button", { name: "Environments", exact: true }).click();
+  await page.locator("nav").getByRole("button", { name: "Workspaces", exact: true }).click();
   await loaded;
 
-  await expect(page.getByRole("heading", { name: /^Environments \(\d+\)$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Workspaces \(\d+\)$/ })).toBeVisible();
   await page.getByRole("button", { name: "Default actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
@@ -106,6 +107,8 @@ test("General tab: Default Mode saves", async ({ page }) => {
 
 test("Allowed folders: a folder can be set to read, write and delete, and removed", async ({ page }) => {
   const folder = "/tmp/coscribe-e2e-deletable";
+  // A folder that can't be found offers no access to change.
+  mkdirSync(folder, { recursive: true });
   await page.goto(freshThreadPath("settings-folders"));
   await waitForConnected(page);
   // The web folder browser walks from the home folder, so the folder starts in the settings instead.
@@ -116,7 +119,7 @@ test("Allowed folders: a folder can be set to read, write and delete, and remove
   const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
   await page.getByRole("button", { name: "Settings" }).click();
   await configLoaded;
-  await page.locator("nav").getByRole("button", { name: "Environments", exact: true }).click();
+  await page.locator("nav").getByRole("button", { name: "Workspaces", exact: true }).click();
   await page.getByRole("button", { name: "Manage" }).click();
   const dialog = page.getByRole("dialog", { name: "Allowed folders" });
 

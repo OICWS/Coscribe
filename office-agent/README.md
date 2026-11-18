@@ -72,10 +72,10 @@ files under `COSCRIBE_WORKSPACE_ROOT` (defaults to `./workspace`).
 
 The built-in file/document/spreadsheet/presentation tools can also reach
 specific directories outside the workspace, if you configure them. In the
-web UI, Settings > Environments has an **Allowed folders** list (a change applies without a
+web UI, Settings > Workspaces has an **Allowed folders** row (Manage) (a change applies without a
 restart, and a chat that needs another folder asks on a card whose Allow adds it there): you
 can add any number of directories, each with its own
-access (read only, read and write, or read, write and delete) -- type a path directly or use **Browse...**,
+access (read only, read and write, or read, write and delete) -- add one with **Add folder**,
 backed by a small server-side folder picker (`/api/browse-dirs`), not the
 browser's native file picker, which never exposes a selected folder's real
 absolute path for security reasons; this sidesteps that by listing real
@@ -572,7 +572,7 @@ where to read more.
 
 - **Files.** `list_files`, `search_files`, `read_file`, `get_file_info` (`READ`) and `write_file`,
   `edit_file`, `edit_file_batch`, `move_file`, `copy_file`, `delete_file` (`WRITE_LOCAL`, a delete
-  goes to the recycle bin) work inside the conversation's folders (Settings › Environments; a
+  goes to the recycle bin) work inside the conversation's folders (Settings › Workspaces; a
   conversation can be given more, read-only or read-write). Card: `src/coscribe/tools/AGENTS.md`.
 - **Artifacts** (decisions 0015, 0027): what coscribe makes from a source it owns opens in a panel
   beside the conversation and is listed on the Artifacts page, where it can be renamed, copied,
@@ -614,7 +614,7 @@ under the permission mode.
   run without isolation, which is recorded.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
-  environment's network is Full, and the person's private folders are hidden by default. Without
+  workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
   it, a command runs as the user only after the person allowed that, and each one is approved.
 - Off Windows, or let out of isolation, code runs as the user; a folder guard then catches
   mistaken writes and is not a security boundary.

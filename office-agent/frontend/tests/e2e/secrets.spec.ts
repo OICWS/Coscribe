@@ -52,20 +52,19 @@ test("a secret is added, kept write-only, given to a conversation and deleted", 
     await newEnvironment(page, envName);
     await editEnvironment(page, envName);
 
-    const dialog = page.getByRole("dialog", { name: "Edit environment" });
+    const dialog = page.getByRole("dialog", { name: "Edit workspace" });
     await dialog.getByRole("button", { name: /Environment variables/ }).click();
     await dialog.getByLabel("Environment variables", { exact: true }).fill("# mode\nMODE=fast");
     await dialog.getByRole("button", { name: "Back" }).click();
     await expect(dialog.getByRole("button", { name: /Environment variables/ })).toContainText("1 variable");
-    await dialog.getByRole("button", { name: /Secrets/ }).click();
-    await dialog.getByRole("checkbox").first().check();
+    await dialog.getByRole("checkbox", { name: new RegExp(name) }).check();
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
 
     const saved = await environmentNamed(request, envName);
     expect([saved?.variables, saved?.secrets]).toEqual([{ MODE: "fast" }, [name]]);
 
-    // Deleting the secret also takes it out of the environment.
+    // Deleting the secret also takes it out of the workspace.
     await openSecrets(page);
     await row.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).last().click();

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createEnvironment, deleteEnvironment, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
-import { folderName, remember } from "../lib/recentFolders";
 import type { Environment, EnvironmentFields, SecretInfo } from "../types/settings";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { EnvironmentRow, FoldersPage, SecretsPage, VariablesPage } from "./environment/EnvironmentPages";
+import { EnvironmentRow, VariablesPage } from "./environment/EnvironmentPages";
+import { FoldersSection, SecretsSection, SitesSection } from "./environment/WorkspaceSections";
 import {
   runSummary,
   useMachineLimits,
@@ -14,18 +14,14 @@ import {
 } from "./environment/drafts";
 import { formatEnvText, parseEnvText } from "./environment/envText";
 import { ArrowLeftIcon, CloseIcon } from "./icons";
-import { NetworkPage } from "./environment/NetworkPage";
 import { ScriptsPage } from "./environment/ScriptsPage";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "./settings/SettingRow";
 
-type Page = "main" | "folders" | "network" | "scripts" | "secrets" | "variables";
+type Page = "main" | "scripts" | "variables";
 
 const PAGE_TITLES: Record<Page, string> = {
-  main: "Edit environment",
-  folders: "Folders",
-  network: "Network",
+  main: "Edit workspace",
   scripts: "Scripts and commands",
-  secrets: "Secrets",
   variables: "Environment variables",
 };
 
@@ -47,7 +43,7 @@ function plural(n: number, noun: string): string {
 }
 
 function usedBy(environment: Environment | null): string {
-  if (environment === null) return "A new environment";
+  if (environment === null) return "A new workspace";
   const tasks = environment.tasks > 0 ? ` and ${plural(environment.tasks, "scheduled task")}` : "";
   if (environment.id === DEFAULT_ENVIRONMENT) return `Used by every conversation that hasn't chosen another${tasks}`;
   return `Used by ${plural(environment.used_by, "conversation")}${tasks}`;
@@ -79,10 +75,10 @@ export function EnvironmentDialog(props: EnvironmentDialogProps) {
       .then(([{ environments }, known]) => {
         if (cancelled) return;
         const environment = environments.find((e) => e.id === environmentId) ?? null;
-        if (environmentId !== null && environment === null) setError("This environment no longer exists.");
+        if (environmentId !== null && environment === null) setError("This workspace no longer exists.");
         else setLoaded({ environment, secrets: known.secrets });
       })
-      .catch(() => !cancelled && setError("Couldn't load the environment."));
+      .catch(() => !cancelled && setError("Couldn't load the workspace."));
     return () => {
       cancelled = true;
     };
@@ -157,7 +153,7 @@ function EditorHeader({
       )}
       <div className="min-w-0 flex-1">
         <h2 className="text-xl font-semibold leading-tight">
-          {page === "main" && !environment ? "New environment" : PAGE_TITLES[page]}
+          {page === "main" && !environment ? "New workspace" : PAGE_TITLES[page]}
         </h2>
         {page === "main" && <p className="mt-1 truncate text-sm text-[var(--muted)]">{usedBy(environment)}</p>}
       </div>
@@ -179,22 +175,18 @@ function MainPage({
   limits: MachineLimits;
   onOpen: (page: Exclude<Page, "main">) => void;
 }) {
-  const { folders, chosen } = draft;
   const parsed = parseEnvText(draft.variablesText);
   const variableCount = "variables" in parsed ? Object.keys(parsed.variables).length : 0;
   const summaries: [Exclude<Page, "main">, string][] = [
-    ["folders", folders.length === 0 ? "The default workspace" : folders.map(folderName).join(", ")],
-    ["network", draft.network.summary],
     ["scripts", runSummary(draft.run, limits)],
-    ["secrets", chosen.size === 0 ? "None" : `${chosen.size} of ${secrets.length}`],
     ["variables", variableCount === 0 ? "None" : `${variableCount} variable${variableCount === 1 ? "" : "s"}`],
   ];
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Name</span>
         <input
-          aria-label="Environment name"
+          aria-label="Workspace name"
           className={fieldClass}
           value={draft.name}
           maxLength={60}
@@ -202,9 +194,14 @@ function MainPage({
           onChange={(e) => draft.setName(e.target.value)}
         />
       </label>
-      {summaries.map(([target, value]) => (
-        <EnvironmentRow key={target} title={PAGE_TITLES[target]} value={value} onOpen={() => onOpen(target)} />
-      ))}
+      <FoldersSection folders={draft.folders} onChange={draft.setFolders} />
+      <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />
+      <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />
+      <div className="flex flex-col gap-2">
+        {summaries.map(([target, value]) => (
+          <EnvironmentRow key={target} title={PAGE_TITLES[target]} value={value} onOpen={() => onOpen(target)} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -232,7 +229,7 @@ function EditorFooter({
           className="mr-auto rounded-lg px-1 text-sm text-[var(--danger)] hover:underline"
           onClick={onDelete}
         >
-          Delete environment
+          Delete workspace
         </button>
       )}
       <button type="button" className={`${secondaryButtonClass} ${deletable ? "" : "ml-auto"}`} onClick={onCancel}>
@@ -248,7 +245,7 @@ function EditorFooter({
 // One height on every page (a floor as tall as the tallest, Network) so moving between pages does not
 // make the dialog jump; only a long list grows it, up to the viewport, then the body scrolls.
 const dialogClass =
-  "flex max-h-full min-h-[min(43rem,100%)] w-full max-w-[36rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
+  "flex h-[min(48rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
 
 function EnvironmentEditor({
   environment,
@@ -274,7 +271,7 @@ function EnvironmentEditor({
     }
     const variables = parsed.variables;
     if (!draft.name.trim()) {
-      setError("Give the environment a name.");
+      setError("Give the workspace a name.");
       setPage("main");
       return;
     }
@@ -287,7 +284,6 @@ function EnvironmentEditor({
       setError(result.error);
       return;
     }
-    remember(draft.folders);
     onSaved(result);
     onClose();
   };
@@ -310,17 +306,14 @@ function EnvironmentEditor({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={() => !draft.dirty && onClose()}>
       <div
         role="dialog"
-        aria-label={environment ? "Edit environment" : "New environment"}
+        aria-label={environment ? "Edit workspace" : "New workspace"}
         className={dialogClass}
         onClick={(e) => e.stopPropagation()}
       >
         <EditorHeader page={page} environment={environment} onBack={() => setPage("main")} onClose={onClose} />
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pt-1">
           {page === "main" && <MainPage draft={draft} secrets={secrets} limits={limits} onOpen={setPage} />}
-          {page === "folders" && <FoldersPage folders={draft.folders} onChange={draft.setFolders} />}
-          {page === "network" && <NetworkPage draft={draft.network} />}
           {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
-          {page === "secrets" && <SecretsPage secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />}
           {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
           {error && (
             <p role="alert" className="pt-4 text-sm text-[var(--danger)]">

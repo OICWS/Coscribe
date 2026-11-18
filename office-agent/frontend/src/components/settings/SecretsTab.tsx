@@ -170,7 +170,7 @@ export function SecretsTab({ active }: { active: boolean }) {
       <div className="rounded-xl bg-[var(--card-bg)] px-5 py-4 text-sm leading-relaxed">
         <p>
           Add a key or token once, then give it to the conversations that need it (right-click a conversation &gt; Edit
-          environment). The assistant can use it in a web request only for the hosts you allow here, and never sees its
+          workspace). The assistant can use it in a web request only for the hosts you allow here, and never sees its
           value.
         </p>
         <p className="mt-2 text-[var(--muted)]">

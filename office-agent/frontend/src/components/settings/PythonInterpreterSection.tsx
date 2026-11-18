@@ -21,7 +21,7 @@ function preparedText(result: ScriptIsolation): Status {
       return { text: "Ready. Scripts run isolated with this Python.", error: false };
     case "failed":
       return {
-        text: `Ready, but the isolation check failed on this computer (${CHECK_WORDS[result.failed] ?? result.failed}), so scripts are off. A conversation can still allow them under Edit environment › Scripts.`,
+        text: `Ready, but the isolation check failed on this computer (${CHECK_WORDS[result.failed] ?? result.failed}), so scripts are off. A conversation can still allow them under Edit workspace › Scripts.`,
         error: true,
       };
     case "setup_failed":

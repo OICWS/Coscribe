@@ -15,8 +15,8 @@ const SANDBOX_OPTIONS: { value: SandboxChoice; label: string }[] = [
 ];
 
 const SANDBOX_TEXT: Record<SandboxChoice, string> = {
-  basic: "A command can write only its environment's folders, but can read your files. No administrator needed.",
-  full: "A command runs as a separate Windows user: it can write only its environment's folders and can't read your private folders. Needs an administrator once.",
+  basic: "A command can write only its workspace's folders, but can read your files. No administrator needed.",
+  full: "A command runs as a separate Windows user: it can write only its workspace's folders and can't read your private folders. Needs an administrator once.",
   none: "A command runs as you and can change any of your files.",
 };
 
@@ -70,7 +70,7 @@ const CONFIRMATIONS = {
   commands: {
     title: "Turn on commands?",
     description:
-      "Coscribe sets up the basic command sandbox, where a command can write only its environment's folders. You approve each command. Turning this on is recorded in the audit log.",
+      "Coscribe sets up the basic command sandbox, where a command can write only its workspace's folders. You approve each command. Turning this on is recorded in the audit log.",
     confirmLabel: "Turn on",
   },
   commands_without_sandbox: {
@@ -131,7 +131,7 @@ export function CommandRows({ capabilities, set, control, onOpenEnvironments }: 
           />
           <SettingRow
             label="Private folders"
-            description="In the full sandbox a command can't read Documents, Desktop, Downloads, Pictures, OneDrive or the Users folder of another drive. The rest of another drive stays readable. To let commands read a folder there, add it to an environment or to Allowed folders."
+            description="In the full sandbox a command can't read Documents, Desktop, Downloads, Pictures, OneDrive or the Users folder of another drive. The rest of another drive stays readable. To let commands read a folder there, add it to a workspace or to Allowed folders."
             control={
               <button type="button" className={secondaryButtonClass} onClick={onOpenEnvironments}>
                 Manage

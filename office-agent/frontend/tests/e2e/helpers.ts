@@ -35,18 +35,18 @@ export async function waitForConnected(page: Page): Promise<void> {
 
 /** Makes an environment from the picker below the message box; the conversation then uses it. */
 export async function newEnvironment(page: Page, name: string): Promise<void> {
-  await page.getByTitle("Choose this conversation's environment").click();
-  await page.getByRole("button", { name: "New environment" }).click();
-  const dialog = page.getByRole("dialog", { name: "New environment" });
-  await dialog.getByLabel("Environment name").fill(name);
+  await page.getByTitle("Choose this conversation's workspace").click();
+  await page.getByRole("button", { name: "New workspace" }).click();
+  const dialog = page.getByRole("dialog", { name: "New workspace" });
+  await dialog.getByLabel("Workspace name").fill(name);
   await dialog.getByRole("button", { name: "Create" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTitle("Choose this conversation's environment")).toHaveText(name);
+  await expect(page.getByTitle("Choose this conversation's workspace")).toHaveText(name);
 }
 
 /** Opens an environment's dialog with its gear in the picker. */
 export async function editEnvironment(page: Page, name: string): Promise<void> {
-  await page.getByTitle("Choose this conversation's environment").click();
+  await page.getByTitle("Choose this conversation's workspace").click();
   await page.getByRole("button", { name: `Edit ${name}` }).click();
 }
 

@@ -69,7 +69,7 @@ function ScriptsRow({ active, on, toggle }: { active: boolean; on: boolean; togg
       label="Run scripts"
       description={
         <>
-          For work too big for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it, kept to the folders of its environment.
+          For work too big for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it, kept to the folders of its workspace.
           {on && problem && (
             <span className="mt-1 block text-[var(--danger)]">
               {isolation.checking ? "Checking again…" : problem}{" "}
@@ -163,7 +163,7 @@ export function CapabilitiesTab({ active, values, onChange, onOpenEnvironments }
         <SettingRows>
           <SettingRow
             label="Create and edit files"
-            description="Coscribe writes and changes files in the folders of its environment: Word, Excel, PowerPoint, PDF and text. Off, it only reads them and answers in the conversation; a script or command you approve can still write."
+            description="Coscribe writes and changes files in the folders of its workspace: Word, Excel, PowerPoint, PDF and text. Off, it only reads them and answers in the conversation; a script or command you approve can still write."
             control={<ToggleSwitch label="Create and edit files" on={capabilities.files} onClick={() => set("files", !capabilities.files)} />}
           />
           {capabilities.files && (
