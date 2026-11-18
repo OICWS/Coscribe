@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, TypedDict, cast
 from urllib.parse import urlsplit
@@ -170,12 +171,48 @@ def prepare_for_connect(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
         if values:
             prepared[field] = {k: resolve_secret(v) or "" for k, v in values.items()}
     ready = with_secrets(cast(MCPConfig, prepared), state_dir)
-    # Every env and header value is kept like a secret, so a server that echoes one must not
-    # put it in front of the model, typed into the connector or picked from Settings > Secrets.
-    fields = cast(dict[str, Any], ready)
-    sent = [v for field in ("env", "headers") for v in (fields.get(field) or {}).values()]
-    SecretStore.blank_also(f"mcp:{config['name']}", sent)
+    _blank_credentials(ready)
     return with_interpreter(ready, state_dir)
+
+
+# Parts of an env or header name that say its value is a credential, so a server that echoes
+# it must not put it in front of the model. Others (NODE_ENV, a path, a base URL, Content-Type)
+# stay readable: blanking them would hide them from every tool result in the process.
+_CREDENTIAL_PARTS = frozenset(
+    {
+        "auth", "authorization", "bearer", "cookie", "cred", "creds", "credential",
+        "credentials", "pass", "passwd", "password", "pat", "pwd", "secret", "session",
+        "signature", "token",
+    }
+)  # fmt: skip
+_CREDENTIAL_ENDINGS = ("key", "token", "secret", "password")
+_TOKEN_SHAPED = re.compile(r"[A-Za-z0-9_\-.+=]{20,}")
+
+
+def _is_credential(name: str, value: str) -> bool:
+    """Whether a connector's env or header value is kept like a secret: its name says so,
+    or the value itself looks like a token (long, letters and digits, no path or URL)."""
+    words = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+    parts = [part for part in re.split(r"[^a-z0-9]+", words) if part]
+    if any(part in _CREDENTIAL_PARTS or part.endswith(_CREDENTIAL_ENDINGS) for part in parts):
+        return True
+    return bool(
+        _TOKEN_SHAPED.fullmatch(value) and re.search(r"[A-Za-z]", value) and re.search(r"\d", value)
+    )
+
+
+def _blank_credentials(config: MCPConfig) -> None:
+    """Have every redactor blank the credentials `config` is connected with, typed into the
+    connector or picked from Settings > Secrets. Called wherever the plaintext is produced
+    for connecting: at startup and when one connector is (re)connected."""
+    fields = cast(dict[str, Any], config)
+    sent = [
+        value
+        for field in ("env", "headers")
+        for name, value in (fields.get(field) or {}).items()
+        if isinstance(value, str) and _is_credential(name, value)
+    ]
+    SecretStore.blank_also(f"mcp:{config['name']}", sent)
 
 
 def with_interpreter(config: MCPConfig, state_dir: Path | None) -> MCPConfig:
@@ -266,11 +303,12 @@ def load_mcp_server_configs(
                 config["headers"] = {
                     k: _read_back(v, fill_secrets) for k, v in config["headers"].items()
                 }
-            result[name] = (
-                with_interpreter(with_secrets(config, state_dir), state_dir)
-                if fill_secrets
-                else config
-            )
+            if fill_secrets:
+                ready = with_secrets(config, state_dir)
+                _blank_credentials(ready)
+                result[name] = with_interpreter(ready, state_dir)
+            else:
+                result[name] = config
         except (SecretError, RuntimeError) as exc:
             # One connector's missing or unreadable secret (a keychain entry
             # that is gone, or a keychain that is locked) must not take the

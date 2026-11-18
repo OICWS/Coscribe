@@ -121,8 +121,9 @@ class SecretStore:
     @staticmethod
     def blank_also(owner: str, values: Iterable[str]) -> None:
         """Have every `redactor` blank `values` too: keys kept like a secret but stored
-        elsewhere (a connector's own env and header values, its sign-in tokens). Replaces what
-        `owner` gave before; none clears it."""
+        elsewhere (a connector's credentials, its sign-in tokens). Adds to what `owner` gave
+        before, for the life of the process: a refreshed token's predecessor may still be
+        echoed."""
         _blank_also(owner, values)
 
     def hosts_of(self, name: str) -> list[str] | None:
@@ -270,11 +271,10 @@ def _blank_also(owner: str, values: Iterable[str]) -> None:
         forms |= _forms(value)
         if scheme := _AUTH_SCHEME.fullmatch(value.strip()):
             forms |= _forms(scheme.group(1))
+    if not forms:
+        return
     with _LOCK:
-        if forms:
-            _OTHER_FORMS[owner] = frozenset(forms)
-        else:
-            _OTHER_FORMS.pop(owner, None)
+        _OTHER_FORMS[owner] = _OTHER_FORMS.get(owner, frozenset()) | forms
         _other_version += 1
 
 
