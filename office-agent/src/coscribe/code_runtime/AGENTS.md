@@ -50,13 +50,10 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
 `tests/web/test_settings.py` (the Settings > Code routes).
 
 ## Verify by hand
-On Windows, check first-use download, a plain read and file modification in Manual mode with
-file changes set to Ask: reject leaves the file unchanged, then allowing a new request edits it.
-With commands disabled, ordinary commands are refused without a card. If the model offers
-only `exec_command`, submit a patch using the heredoc form in `runtime_lg/code_agent.py`, not
-a quoted multiline argument; Codex recognizes the patch before starting a shell.
-Check the shared app-server stops after ten idle minutes. `tests/test_windows_real.py` runs
-the pinned real Codex against a local stub model to check patch approval without API keys.
+On Windows, check first download, plain reads and Manual/Ask edits: Deny leaves the file,
+Allow edits it. Ordinary commands stay off; for an exec_command-only model, use the patch
+heredoc in `runtime_lg/code_agent.py`, not a quoted multiline argument. Check ten-minute idle
+shutdown. `tests/test_windows_real.py` checks real Codex patch approval with a keyless stub API.
 
 ## Reviewed
 2026-10-13 (first card).
