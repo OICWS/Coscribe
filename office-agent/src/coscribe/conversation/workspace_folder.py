@@ -49,14 +49,20 @@ def read_skills(folder: Path) -> list[SkillInfo]:
         return []
 
 
-def read_connector_names(folder: Path) -> list[str]:
-    """The servers `.coscribe/mcp.json` names, as Claude Code's `.mcp.json` holds them."""
+def read_connectors(folder: Path) -> dict[str, Any]:
+    """The servers `.coscribe/mcp.json` holds, as Claude Code's `.mcp.json` holds them."""
     try:
         raw = json.loads((folder / COSCRIBE_DIR / "mcp.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return []
+        return {}
     servers = raw.get("mcpServers") if isinstance(raw, dict) else None
-    return sorted(str(name) for name in servers) if isinstance(servers, dict) else []
+    if not isinstance(servers, dict):
+        return {}
+    return {str(name): entry for name, entry in servers.items()}
+
+
+def read_connector_names(folder: Path) -> list[str]:
+    return sorted(read_connectors(folder))
 
 
 def fingerprint(folder: Path) -> str:
@@ -129,6 +135,10 @@ class WorkspaceFolders:
             "connectors": read_connector_names(folder),
             "trusted": self.trust.trusted(folder, current),
         }
+
+    def accepted_connectors(self, folder: Path) -> dict[str, Any]:
+        """The folder's `mcp.json` servers once the person accepted them as they are now."""
+        return read_connectors(folder) if self.trust.trusted(folder, fingerprint(folder)) else {}
 
     def accept(self, folder: Path) -> dict[str, Any] | None:
         self.trust.accept(folder)

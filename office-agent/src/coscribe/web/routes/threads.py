@@ -328,7 +328,9 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         folder = next((f for f in session._assembly.folders() if str(f) == body.path), None)
         if folder is None:
             return JSONResponse({"error": "Not a folder of this conversation"}, status_code=404)
-        return {"workspace": session._assembly.workspace_folders.accept(folder)}
+        accepted = session._assembly.workspace_folders.accept(folder)
+        await state.watch_workspace_connectors(Path(session.workspace_root))
+        return {"workspace": accepted}
 
     router.add_api_route(
         "/api/threads/{thread_id}/workspace-notes",

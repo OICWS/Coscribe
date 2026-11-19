@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -24,6 +25,7 @@ def router(state: AppState) -> APIRouter:
     meta_store = state.meta_store
     _get_session = state.get_session
     _track_background = state.track_background
+    _watch_workspace = state.watch_workspace_connectors
     _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
 
     @router.websocket("/ws/browser")
@@ -113,6 +115,7 @@ def router(state: AppState) -> APIRouter:
         # Written while the person types their first message, so it can carry the brief.
         session._assembly.folder_briefs.refresh(session._assembly.folders())
         try:
+            await _watch_workspace(Path(session.workspace_root))
             await session.send_state(websocket, with_turn=True)
             await session.send_history(websocket)
             # A pending approval from before a restart or dropped connection
@@ -129,6 +132,8 @@ def router(state: AppState) -> APIRouter:
                 data = await websocket.receive_json()
                 message_type = data.get("type")
                 if message_type == "user_message":
+                    # Awaited: a folder connector the person no longer accepts leaves first.
+                    await _watch_workspace(Path(session.workspace_root))
                     asyncio.create_task(
                         session.handle_user_message(
                             data["text"],
@@ -139,21 +144,15 @@ def router(state: AppState) -> APIRouter:
                         )
                     )
                 elif message_type == "edit_message":
-                    # Same asyncio.create_task treatment as user_message
-                    # above -- an edit runs a real turn afterward (may
-                    # itself block on an approval), so it can't be awaited
-                    # inline without blocking this loop from ever reaching
-                    # the approval_response that would unblock it.
+                    # Not awaited: the turn it reruns can wait on an approval that only this
+                    # loop can deliver.
                     asyncio.create_task(
                         session.handle_edit_message(
                             data["index"], data["text"], session.via(websocket), data.get("images")
                         )
                     )
                 elif message_type == "rewind_message":
-                    # Never blocks on an approval future the way edit's
-                    # rerun can, but create_task anyway -- consistent with
-                    # every other mutating message type here, and safe
-                    # regardless since it only ever awaits _turn_lock.
+                    # Only waits for the turn lock; a task like every other change here.
                     asyncio.create_task(session.handle_rewind_message(data["index"], websocket))
                 elif message_type == "approval_response":
                     approved, scope = bool(data.get("approved")), data.get("scope")

@@ -22,6 +22,7 @@ from langchain_core.messages import (
 )
 
 from coscribe.runtime_lg import mcp as lg_mcp
+from coscribe.tools import name_of
 from coscribe.web import app as web_app
 from coscribe.web.connector_manager import ConnectorManager
 from coscribe.web.routes import skills as skills_routes
@@ -1249,6 +1250,7 @@ def test_connector_manager_refresh_gives_every_open_session_the_current_tools(
     class _Session:
         def __init__(self) -> None:
             self.seen: list[Any] | None = None
+            self.workspace_root = tmp_path
 
         async def refresh_extra_tools(self, tools: list[Any]) -> None:
             self.seen = tools
@@ -1261,6 +1263,72 @@ def test_connector_manager_refresh_gives_every_open_session_the_current_tools(
     asyncio.run(manager.refresh_all_sessions_extra_tools())
 
     assert first.seen == [tool] and second.seen == [tool]
+
+
+def _workspace_with_connectors(folder: Path, servers: dict[str, Any]) -> None:
+    (folder / ".coscribe").mkdir(parents=True, exist_ok=True)
+    (folder / ".coscribe" / "mcp.json").write_text(json.dumps({"mcpServers": servers}))
+
+
+def test_a_workspaces_connectors_connect_once_accepted_for_its_conversations_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import WorkspaceFolders
+
+    connected: list[tuple[str, Any, tuple[Any, ...]]] = []
+    connections: list[_ManagedConnection] = []
+
+    async def _fake_connect(name: str, config: Any, *args: Any, **kwargs: Any) -> Any:
+        connected.append((name, config, args + tuple(kwargs)))
+        connections.append(_ManagedConnection())
+        return [_connector_tool(name, "run")], connections[-1], None
+
+    monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect)
+    folder, other = tmp_path / "ws", tmp_path / "other"
+    other.mkdir()
+    _workspace_with_connectors(
+        folder,
+        {
+            "fetch": {"command": "uvx", "args": ["mcp-server-fetch"]},
+            "leaky": {"command": "uvx", "env": {"TOKEN": "{{secret:github}}"}},
+        },
+    )
+
+    class _Session:
+        def __init__(self, root: Path) -> None:
+            self.workspace_root = root
+            self.seen: list[Any] = []
+
+        async def refresh_extra_tools(self, tools: list[Any]) -> None:
+            self.seen = tools
+
+    here, elsewhere = _Session(folder), _Session(other)
+    settings = _settings(tmp_path)
+    manager = ConnectorManager(settings, {"a": here, "b": elsewhere}, lambda *args: None)
+    shared = _connector_tool("fetch", "global")
+    manager.tools = [shared, _connector_tool("docs", "read")]
+
+    async def watch() -> None:
+        await manager.workspaces.watch(folder)
+        await asyncio.gather(*manager.sign_in_tasks)
+
+    asyncio.run(watch())
+    assert connected == []
+
+    WorkspaceFolders(settings.state_dir).accept(folder)
+    asyncio.run(watch())
+
+    # Connected with nothing of the person's: no sign-in, and a secret reference is refused.
+    assert [(name, extra) for name, _, extra in connected] == [("fetch", ())]
+    assert "secrets" in manager.workspaces.errors(folder)["leaky"]
+    assert [name_of(t) for t in here.seen] == ["docs_read", "fetch_run"]
+    assert [name_of(t) for t in elsewhere.seen] == ["fetch_global", "docs_read"]
+
+    # Changed outside coscribe: gone from the conversation before the next turn, and closed.
+    _workspace_with_connectors(folder, {"fetch": {"command": "evil"}})
+    asyncio.run(watch())
+    assert [name_of(t) for t in here.seen] == ["fetch_global", "docs_read"]
+    assert connections[0].closed and len(connected) == 1
 
 
 def test_saved_oauth_tokens_keep_a_refresh_token_left_out_and_no_metadata_from_before(

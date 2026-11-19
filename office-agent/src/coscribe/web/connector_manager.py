@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any, Protocol
 
 from ..config import Settings
@@ -22,9 +23,12 @@ from ..tools import (
 )
 from ..workflows import tool_description
 from .routes.shared import _read_mcp_servers_raw
+from .workspace_connectors import WorkspaceConnectors
 
 
 class _OpenSession(Protocol):
+    workspace_root: Path
+
     async def refresh_extra_tools(self, tools: list[Any]) -> None: ...
 
 
@@ -57,13 +61,32 @@ class ConnectorManager:
         # Run after every open conversation has the new tools, so a conversation woken by a
         # connection (a connector it offered) already has them.
         self.after_refresh: Callable[[], None] | None = None
+        self.workspaces = WorkspaceConnectors(
+            settings.state_dir, self._connect_workspace, self.refresh_all_sessions_extra_tools,
+            self._track,
+        )  # fmt: skip
 
-    def session_extra_tools(self) -> list[Any]:
-        """The connector tools conversations get, under the permissions set
-        in Settings > Connectors."""
-        return apply_connector_permissions(
-            self.tools, ConnectorPermissions(self._settings.state_dir).load()
+    def _track(self, task: asyncio.Task[None]) -> None:
+        self.sign_in_tasks.add(task)
+        task.add_done_callback(self.sign_in_tasks.discard)
+
+    async def _connect_workspace(self, name: str, config: Any) -> tuple[list[Any], Any, str | None]:
+        from ..runtime_lg import connect_one_mcp_server_lg
+
+        return await connect_one_mcp_server_lg(name, config)
+
+    def session_extra_tools(self, folder: Path | None = None) -> list[Any]:
+        """The connector tools conversations get, under the permissions set in Settings >
+        Connectors; with `folder`, also the connectors that folder keeps, which replace one of
+        the same name. Those keep each tool's own hint: a permission set for a connector of the
+        same name was set for another server."""
+        own = self.workspaces.tools(folder) if folder is not None else []
+        names = {connector_of(tool) for tool in own}
+        shared = [tool for tool in self.tools if connector_of(tool) not in names]
+        permitted = apply_connector_permissions(
+            shared, ConnectorPermissions(self._settings.state_dir).load()
         )
+        return permitted + own
 
     def connector_tools(self, name: str) -> list[dict[str, Any]]:
         permissions = ConnectorPermissions(self._settings.state_dir).load().get(name, {})
@@ -128,9 +151,7 @@ class ConnectorManager:
             finally:
                 self._reconnecting.discard(name)
 
-        task = asyncio.create_task(reconnect())
-        self.sign_in_tasks.add(task)
-        task.add_done_callback(self.sign_in_tasks.discard)
+        self._track(asyncio.create_task(reconnect()))
 
     async def connect_and_register_mcp_server_lg(
         self, name: str, config: Any, connect_timeout: float | None = None
@@ -173,6 +194,9 @@ class ConnectorManager:
         and bump call back to back."""
         tools = self.session_extra_tools()
         for session in self._sessions.values():
-            await session.refresh_extra_tools(tools)
+            own = self.workspaces.tools(Path(session.workspace_root))
+            await session.refresh_extra_tools(
+                self.session_extra_tools(Path(session.workspace_root)) if own else tools
+            )
         if self.after_refresh is not None:
             self.after_refresh()
