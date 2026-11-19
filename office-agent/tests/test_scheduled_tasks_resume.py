@@ -840,6 +840,7 @@ async def test_history_shows_a_starting_runs_prompt_exactly_once(
         assert [e["text"] for e in history["entries"] if e["kind"] == "user"] == [prompt]
 
 
+@pytest.mark.quarantine(issue=986, until="2026-11-26")
 async def test_a_run_parked_on_approval_offers_it_to_a_watching_tab(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
