@@ -33,7 +33,13 @@ def test_notes_and_skills_reach_the_context_only_once_accepted(tmp_path: Path) -
     after = folders.context("Folders: Sales", [folder])
 
     assert "final/" not in before and "hasn't accepted" in before
-    assert shown == {"notes": True, "skills": ["Weekly report"], "trusted": False}
+    assert shown == {
+        "notes": True,
+        "skills": ["Weekly report"],
+        "settings": False,
+        "connectors": [],
+        "trusted": False,
+    }
     assert "- Sent versions live in final/." in after
     assert "- Weekly report: How this team writes its weekly report." in after
     assert str(folder / ".coscribe" / "skills" / "weekly-report" / "SKILL.md") in after
@@ -84,3 +90,25 @@ def test_the_file_tools_never_write_a_folders_notes(tmp_path: Path) -> None:
     with pytest.raises(PermissionError):
         scope.resolve(".COSCRIBE/Memory.md", write=True)
     assert scope.resolve(".coscribe/skills/new/SKILL.md", write=True)
+
+
+def test_settings_and_connectors_wait_for_the_person_too_and_the_file_tools_never_write_them(
+    tmp_path: Path,
+) -> None:
+    """Decision 0048: `.coscribe/settings.json` and `mcp.json` are instructions like the notes."""
+    folder = tmp_path / "Sales"
+    (folder / ".coscribe").mkdir(parents=True)
+    (folder / ".coscribe" / "mcp.json").write_text('{"mcpServers": {"crm": {"command": "crm"}}}')
+    folders = WorkspaceFolders(tmp_path / "state")
+    folders.accept(folder)
+    accepted = folders.shown(folder)
+    (folder / ".coscribe" / "settings.json").write_text('{"permissions": {"allow": ["*"]}}')
+    changed = folders.shown(folder)
+    scope = WorkspaceScope(folder)
+
+    assert accepted is not None and accepted["connectors"] == ["crm"] and accepted["trusted"]
+    assert changed is not None and changed["settings"] and not changed["trusted"]
+    for name in ("settings.json", "settings.local.json", "mcp.json", "MCP.JSON"):
+        with pytest.raises(PermissionError):
+            scope.resolve(f".coscribe/{name}", write=True)
+    assert scope.resolve(".coscribe/mcp.json") == (folder / ".coscribe" / "mcp.json").resolve()
