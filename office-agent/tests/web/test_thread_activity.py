@@ -466,7 +466,13 @@ def test_a_folders_own_notes_wait_in_activity_until_the_person_uses_them_lg(
             "/api/threads/t_notes/workspace-notes", json={"path": str(tmp_path)}
         )
 
-    assert before[0]["workspace"] == {"notes": True, "skills": [], "trusted": False}
+    assert before[0]["workspace"] == {
+        "notes": True,
+        "skills": [],
+        "settings": False,
+        "connectors": [],
+        "trusted": False,
+    }
     assert used.json()["workspace"]["trusted"] is True
     assert after[0]["workspace"]["trusted"] is True
     assert elsewhere.status_code == 404
