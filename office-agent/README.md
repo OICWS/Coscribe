@@ -86,8 +86,9 @@ without first copying it into the workspace by hand.
 A conversation can also have its own folders: **Add folder** under the
 message box attaches any number of them, and they can be removed or added
 between replies. The first is the main one (relative paths resolve there);
-the agent can read and write in all of them. A conversation with none uses
-the Workspace Root.
+the agent can read and write in all of them. The first start asks for the
+Default workspace's folder (offered: `Documents\Coscribe`, decision 0048); until
+it is chosen, a conversation with none uses the Workspace Root.
 
 Under the hood this is still two `.env` variables --
 `COSCRIBE_EXTRA_READABLE_DIRS` (read-only) and
@@ -753,13 +754,17 @@ any words you wrote on it.
   everyday browser (⋮ → "Clear browsing data…" clears it; ⋮ → "Save
   screenshot…" saves the page as a PNG). Sites get no
   camera, microphone, location or notification permission.
-- **Site permission**: the first time the AI's browser tools touch a
-  site in a conversation, the Browser panel asks -- Don't allow, Allow
-  for this chat, or Always allow. ⋮ → "Manage allowed sites…" lists the
-  always-allowed ones (add, remove, clear all); pre-allowing a site is
-  how an unattended scheduled task gets through without a prompt (an
-  unanswered prompt counts as no after three minutes). Kept by the
-  desktop app in `browser-settings.json` in its user-data folder.
+- **Site permission**: each site in the conversation's workspace has a
+  browser level (decision 0050): Use without asking goes ahead, Not in the
+  browser is refused, and for any other site, the first time the AI's
+  browser tools touch it in a conversation, the Browser panel asks -- Don't
+  allow, Allow for this chat, or Always allow. Always allow sets the site to
+  Use without asking in that conversation's workspace; ⋮ → "Manage allowed
+  sites…" opens the workspace, where Sites holds every level. A site set to
+  Use without asking is how an unattended scheduled task gets through
+  without a prompt (an unanswered prompt counts as no after three minutes).
+  The app's older global list is moved once into the workspaces that reach
+  each site, then emptied.
 - Up to 9 tabs, as in Claude's browser: past that "+" is disabled, a link
   that would open a new tab loads in the current one, and the AI is told
   to close or reuse a tab.
@@ -1262,7 +1267,9 @@ from the thread's own checkpointed messages via
 refresh live as each tool call finishes:
 
 - **Progress** -- the model's plan (`task_create`/`task_update`) as a step
-  row and a checklist.
+  row and a checklist; a finished step is struck through (the line lifts
+  on hover). In the conversation the plan's card shows five steps of a long
+  plan, with "Show N more" for the rest.
 - **Outputs** -- every file the conversation created or changed: the
   `path` of any successful `WRITE_LOCAL`/`EXTERNAL` tool call, plus the
   workspace files a script reports writing (see [Running
@@ -1296,7 +1303,7 @@ Gemini, via `GeminiProvider.get_context_window`'s `client.models.get()`
 call -- not a hardcoded guess), falling back to a rough, explicitly
 unverified per-vendor estimate otherwise. Clicking the model pill opens a picker
 listing every provider with a key/default model configured (built-in and
-custom, from **Settings → Providers**/**API Keys**) plus a free-text
+custom, from **Settings → Providers**) plus a free-text
 field for any other "provider:model" string -- picking one switches
 *this thread's* model immediately, no restart, no reconnect. The switch
 is per-thread and in-memory, same as the mode pill's Plan/Accept-Edits
@@ -1311,11 +1318,14 @@ The **+** button next to the message box opens three things:
   every loaded skill); typing a skill's name as `/<skill-name>` works
   exactly as it does in the CLI.
 - **Add files or photos** -- images are attached as real multimodal image
-  parts the model actually sees (not just a filename reference) -- see
-  `ChatSessionLG.handle_user_message`'s `images` parameter. Anything else
-  (a `.docx`, a `.pdf`, a plain text file, ...) is uploaded straight into
-  the workspace via `POST /api/upload` (capped at 25MB, name collisions
-  auto-renamed rather than overwritten) and referenced by path in your
+  parts the model actually sees -- see `ChatSessionLG.handle_user_message`'s
+  `images` parameter -- and a picture attached or pasted from the computer is
+  also saved like a file below, so the model can put it in a document. Anything else
+  (a `.docx`, a `.pdf`, a plain text file, ...) is uploaded via `POST /api/upload`
+  into the conversation's main folder, under `.coscribe/uploads/<kind>/` (images,
+  documents, data or other, by extension; a pasted picture in `screenshots/`, named by
+  date and time; capped at 25MB, name collisions auto-renamed rather than overwritten;
+  decision 0044) and referenced by path in your
   message, so the Coordinator reaches for `read_docx`/`read_pdf`/
   `read_file` on it like any other workspace file -- both kinds show up
   as removable chips above the message box while queued.
@@ -1330,13 +1340,17 @@ The **+** button next to the message box opens three things:
   JSON, defaulting to `./mcp.json` if you haven't set one. Same
   restart-required caveat as the settings panel: MCP connections are only
   ever made once at process startup.
-- **Providers settings tab** -- register any OpenAI-compatible API
-  (DeepSeek, Kimi, GLM catalog one-click entries, or a custom form for any
-  other) as a new model prefix, backed by `GET`/`POST /api/providers` and
-  `DELETE /api/providers/{name}` in `web/app.py`. Reads and writes the same
-  `providers.json` file the `COSCRIBE_PROVIDERS_CONFIG_PATH` setting
-  points at (see [Custom LLM providers](#custom-llm-providers) above). API
-  keys are masked in the configured list, same as the API Keys tab.
+- **Providers settings tab** -- laid out like Connectors: "Yours" lists the
+  providers you added (logo, default model, masked key) and "Discover" the
+  presets (`web/provider_catalog.py`), with search; each opens its own page
+  with where to get a key and the form that adds it, saves a change (a new
+  default model keeps the saved key) or removes it. "Add custom provider"
+  takes any other OpenAI-compatible API as a new model prefix. Backed by
+  `GET /api/providers/catalog`, `GET`/`POST /api/providers` and
+  `DELETE /api/providers/{name}` (`web/routes/settings/providers.py`),
+  which read and write the `providers.json` file the
+  `COSCRIBE_PROVIDERS_CONFIG_PATH` setting points at (see
+  [Custom LLM providers](#custom-llm-providers) above).
 - **Appearance** (top of Settings → General) -- Theme (match the system,
   light or dark), Interface font for the whole interface (Figtree, the
   default; the system's own UI font; or OpenDyslexic -- Figtree and
@@ -1356,6 +1370,21 @@ The **+** button next to the message box opens three things:
   (the same entrypoint `cli.py`/the WebSocket session use) and reads off its
   tool list, so it can never drift out of sync with what the agent actually
   has. Distinct from Connectors (external, MCP) and Providers (which LLMs).
+
+**Sent messages.** Hovering a message you sent shows when you sent it,
+**Rewind to here** (takes it and every later turn out of the conversation and
+puts its text back in the message box) and **Edit** (sends the changed text as
+your latest message instead). Both work on any message after the last
+`/compact`; a file written, command run or connector call in the turns taken
+out stays done, and the tooltips say so.
+
+**Sessions page.** "View all" under the sidebar's recent conversations opens
+every conversation, Active or Archived, searchable by title or workspace.
+
+**Export a failed turn** (the conversation's menu) saves one turn that failed or
+was stopped as a file you read before saving: how it went, without the
+conversation's words beyond what you add (decision 0052). `evals/README.md`
+says how it becomes an evaluation task.
 
 The gear icon opens a settings panel that reads and writes `.env` directly
 (`GET`/`POST /api/config` in `web/app.py`, using `python-dotenv`'s

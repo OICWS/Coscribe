@@ -8,7 +8,8 @@ import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
 import { type DraftCards } from "./workflow/draftCards";
 import { type TaskDraftItem } from "./chatlog/types";
-import { ShowDiffStats, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
+import { MessageActionsContext, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
+import { useMessageActions } from "../lib/messageActions";
 import { ChatContexts } from "./chatlog/ChatContexts";
 import { ToolRunGroupView } from "./chatlog/ToolRuns";
 import { TurnView, LogItemView } from "./chatlog/TurnView";
@@ -23,13 +24,9 @@ interface ChatLogProps {
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
   onOpenPlan?: () => void;
-  /** Undefined while a turn is in flight -- editing mid-turn would race
-   * the very history the edit is about to truncate, so the affordance is
-   * hidden entirely rather than left clickable-but-erroring. */
+  /** Edit a sent message and run from it. Undefined while a turn is in flight, which it would race. */
   onEditMessage?: (turnIndex: number, text: string) => void;
-  /** Rewind (undo the last question+reply, hand the text back to the
-   * composer) -- same "hidden while a turn is in flight" reasoning as
-   * onEditMessage above, and offered on the same footer, see TurnView. */
+  /** Take a sent message and what follows out of the conversation. Undefined while a turn is in flight. */
   onRewindMessage?: (turnIndex: number, text: string) => void;
   /** True until this thread's history has arrived -- an existing
    * thread shows a spinner then, not the brand-new-thread greeting. */
@@ -47,8 +44,8 @@ interface ChatLogProps {
   /** Earlier, pre-/compact messages revealed by scrolling near the top
    * of the log -- kept as a separate list rendered above `items` rather
    * than prepended into it, see ChatState.olderItems' own comment for
-   * why. Always read-only (no onEditMessage wired for these -- see
-   * TurnView's call below), and rendered as plain turns via the same
+   * why. Always read-only (no Rewind or Edit: the server's history
+   * starts after the compaction), and rendered as plain turns via the same
    * groupTurns pass `items` gets, so a pre-compact turn looks identical
    * to a live one apart from that. */
   olderItems: LogItem[];
@@ -100,6 +97,7 @@ export function ChatLog({
     onReview: onReviewWorkflowDraft,
   };
 
+  const messageActions = useMessageActions(items, turnInFlight, onEditMessage, onRewindMessage);
   const onScroll = useFollowEnd(scrollRef, endRef, items, items[items.length - 1]?.kind === "user");
   // Revealing older history above never moves the viewport (see the scroll-anchoring effect
   // below, which handles that case on its own terms).
@@ -174,11 +172,7 @@ export function ChatLog({
           <p className="self-center text-xs text-[var(--muted)]">Loading earlier messages...</p>
         )}
         {olderTurns.map((turn, i) => (
-          // No onEditMessage (read-only replay, see olderItems' own prop
-          // comment) and onPptxShapePicked is a no-op -- targeting a
-          // follow-up edit off a pre-compact preview isn't something
-          // this pass adds a real affordance for, and TurnView requires
-          // the prop regardless of whether anything's clickable.
+          // Read-only: the server's history starts after the compaction, so these can't be cut.
           <TurnView
             key={turn.id}
             turn={turn}
@@ -187,21 +181,20 @@ export function ChatLog({
             onPptxShapePicked={() => {}}
           />
         ))}
-        {turns.map((turn, i) => (
-          <TurnView
-            key={turn.id}
-            turn={turn}
-            isLastTurn={i === turns.length - 1}
-            onApprove={onApprove}
-            onAnswerPlan={onAnswerPlan} onOpenPlan={onOpenPlan}
-            onEditMessage={onEditMessage}
-            onRewindMessage={onRewindMessage}
-            onReviewTaskDraft={onReviewTaskDraft}
-            onDismissTaskDraft={onDismissTaskDraft}
-            live={turnInFlight && i === turns.length - 1}
-            onPptxShapePicked={onPptxShapePicked}
-          />
-        ))}
+        <MessageActionsContext.Provider value={messageActions}>
+          {turns.map((turn, i) => (
+            <TurnView
+              key={turn.id}
+              turn={turn}
+              onApprove={onApprove}
+              onAnswerPlan={onAnswerPlan} onOpenPlan={onOpenPlan}
+              onReviewTaskDraft={onReviewTaskDraft}
+              onDismissTaskDraft={onDismissTaskDraft}
+              live={turnInFlight && i === turns.length - 1}
+              onPptxShapePicked={onPptxShapePicked}
+            />
+          ))}
+        </MessageActionsContext.Provider>
         <div ref={endRef} />
       </div>
     </div>
@@ -223,22 +216,20 @@ export function TranscriptItems({
 }) {
   const entries = groupToolRuns(items);
   return (
-    <ShowDiffStats.Provider value={false}>
-      <div className="flex flex-col gap-3">
-        {entries.map((entry) =>
-          entry.kind === "tool_run" ? (
-            <ToolRunGroupView
-              key={entry.id}
-              group={entry}
-              live={live}
-              onApprove={onApprove}
-              onPptxShapePicked={() => {}}
-            />
-          ) : entry.kind === "agent" ? (
-            <LogItemView key={entry.id} item={entry} />
-          ) : null,
-        )}
-      </div>
-    </ShowDiffStats.Provider>
+    <div className="flex flex-col gap-3">
+      {entries.map((entry) =>
+        entry.kind === "tool_run" ? (
+          <ToolRunGroupView
+            key={entry.id}
+            group={entry}
+            live={live}
+            onApprove={onApprove}
+            onPptxShapePicked={() => {}}
+          />
+        ) : entry.kind === "agent" ? (
+          <LogItemView key={entry.id} item={entry} />
+        ) : null,
+      )}
+    </div>
   );
 }

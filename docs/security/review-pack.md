@@ -55,7 +55,11 @@ Decision 0003. A secret is a name, a value in the OS keychain and the hosts it m
   (`tools/web/http_request.py`, `tests/test_http_request.py`).
 - Hidden: every stored value and its common encodings are blanked from every tool result at the
   outermost middleware, before the model, transcript, UI or audit log read it
-  (`tests/test_secret_redaction_properties.py`).
+  (`tests/test_secret_redaction_properties.py`). So is every env and header value a connector is
+  started with whose name or shape says it is a credential, a password written inside a connection
+  string in its env, headers, arguments or URL (`user:password@`, `Password=...`, `--password x`),
+  and a hosted connector's sign-in tokens, old ones included (`blank_also`,
+  `tests/test_connector_secrets.py`).
 - Never given: scripts and Codex receive no value; `http_request` is not given to the code module.
 - Names and hosts reach the model through `list_secrets`, never a tool schema or the system prompt.
 

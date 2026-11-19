@@ -29,7 +29,8 @@ setting (`runtime/proxy.py`) or secret storage (`runtime/`).
 - A conversation's network setting (`runtime.NetworkGuard`, Edit workspace > Sites) is checked
   at each call, and on every request of `read_web_page`, `download_image` and `http_request`, so a
   redirect can't leave the allowed domains; the browser's steps are checked by the desktop app
-  against `network_sites` (`tests/test_network_access.py`).
+  against `network_sites`, and asks, allows or refuses each site from `browser_sites`, the
+  workspace's browser level per site (decision 0050; `tests/test_network_access.py`).
 
 ## Tests
 `tests/test_browser_tool.py`, `tests/test_browser_data_tool.py`, `tests/test_browser_look_tool.py`,

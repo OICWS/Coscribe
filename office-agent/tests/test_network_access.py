@@ -149,9 +149,21 @@ def test_the_browser_gets_the_list_to_check_each_step_and_nothing_with_no_networ
     _navigate(host, _guard(tmp_path, "full", []))("https://example.com")
     assert host.args[0]["network_sites"] == ["example.com"]
     assert "network_sites" not in host.args[1]
+    assert host.args[0]["browser_sites"] == {}
     with pytest.raises(PermissionError):
         _navigate(host, _guard(tmp_path, "none", []))("https://example.com")
     assert len(host.args) == 2
+
+
+def test_the_browser_gets_each_sites_level(tmp_path: Path) -> None:
+    in_environment(
+        tmp_path,
+        "t1",
+        network={"mode": "full", "domains": [], "browser": {"a.com": "allow", "b.com": "off"}},
+    )
+    host = _Host()
+    _navigate(host, NetworkGuard(tmp_path, "t1"))("https://a.com")
+    assert host.args[0]["browser_sites"] == {"a.com": "allow", "b.com": "off"}
 
 
 def test_an_isolated_script_has_the_network_only_with_full_access(

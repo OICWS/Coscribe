@@ -170,6 +170,20 @@ def test_pages_in_a_trusted_folder_take_images_from_that_folder(tmp_path: Path) 
     assert result["ok"], result
 
 
+def test_revisions_update_one_deck_and_an_explicit_copy_has_its_own_pages(tmp_path: Path) -> None:
+    tool = _tool(tmp_path)
+    for title in ("第一稿", "第二稿", "第三稿"):
+        _write(tmp_path / "pages", "1.svg", _title_page(title))
+        assert tool("pages", "deck.pptx")["ok"]
+        assert list(tmp_path.glob("*.pptx")) == [tmp_path / "deck.pptx"]
+        assert Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes.title.text == title
+
+    _write(tmp_path / "copy-pages", "1.svg", _title_page("另一个版本"))
+    assert tool("copy-pages", "copy.pptx")["ok"]
+    assert Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes.title.text == "第三稿"
+    assert Presentation(str(tmp_path / "copy.pptx")).slides[0].shapes.title.text == "另一个版本"
+
+
 def test_a_deck_changed_after_its_build_is_refused_with_the_way_out(tmp_path: Path) -> None:
     _write(tmp_path / "pages", "1.svg", _title_page("一"))
     tool = _tool(tmp_path)
@@ -178,8 +192,11 @@ def test_a_deck_changed_after_its_build_is_refused_with_the_way_out(tmp_path: Pa
     prs.slides[0].shapes.title.text = "用户改过"
     prs.save(str(tmp_path / "deck.pptx"))
 
-    with pytest.raises(ValueError, match="edit_pptx_"):
+    with pytest.raises(ValueError, match="edit_pptx_") as conflict:
         tool("pages", "deck.pptx")
+    assert "ask the user before using replace_changes" in str(conflict.value)
+    assert "Create a separate version only if the user requests one." in str(conflict.value)
+    assert list(tmp_path.glob("*.pptx")) == [tmp_path / "deck.pptx"]
     assert Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes.title.text == "用户改过"
 
     assert tool("pages", "deck.pptx", replace_changes=True)["ok"]

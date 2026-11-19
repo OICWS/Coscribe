@@ -16,7 +16,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from .network_access import MODES, clean_network
+from .network_access import BROWSER_LEVELS, MODES, clean_network, normalize_domain, reaches
 from .secret_store import MAX_VARIABLE_VALUE, MAX_VARIABLES, NAME
 
 DEFAULT_ID = "default"
@@ -91,7 +91,9 @@ def _clean(fields: dict[str, Any], current: dict[str, Any], known: set[str]) -> 
     if "network" in fields:
         network = fields["network"] if isinstance(fields["network"], dict) else {}
         try:
-            env["network"] = clean_network(network.get("mode"), network.get("domains", []))
+            env["network"] = clean_network(
+                network.get("mode"), network.get("domains", []), network.get("browser")
+            )
         except ValueError as exc:
             raise EnvironmentRefused(str(exc)) from exc
     if "variables" in fields:
@@ -132,6 +134,13 @@ def _readable(raw: Any) -> dict[str, Any]:
             if isinstance(domains, list)
             else [],
         }
+        browser = network.get("browser")
+        if isinstance(browser, dict):
+            levels = {
+                k: v for k, v in browser.items() if isinstance(k, str) and v in BROWSER_LEVELS
+            }
+            if levels:
+                env["network"]["browser"] = levels
     if isinstance(raw.get("secrets"), list):
         env["secrets"] = [s for s in raw["secrets"] if isinstance(s, str)]
     if isinstance(raw.get("variables"), dict):
@@ -326,6 +335,43 @@ class Environments:
             data["thread_folders"].setdefault(thread_id, {})[folder] = access
             self._write(data)
 
+    def set_browser_level(self, thread_id: str, host: str, level: str) -> str:
+        """The browser prompt's Always allow: the site joins the conversation's workspace at this
+        level. Returns the site as kept; refused for a site the workspace can't reach."""
+        site = normalize_domain(host)
+        if site is None or level not in BROWSER_LEVELS:
+            raise EnvironmentRefused(f"{host!r} isn't a site, such as example.com.")
+        with _LOCK:
+            data = self._read()
+            env = data["environments"][data["threads"].get(thread_id, DEFAULT_ID)]
+            if not reaches(env["network"], site):
+                raise EnvironmentRefused(f"{site} is outside the sites {env['name']} may reach.")
+            levels = {**env["network"].get("browser", {}), site: level}
+            env["network"]["browser"] = {k: v for k, v in levels.items() if v != "ask"}
+            if not env["network"]["browser"]:
+                del env["network"]["browser"]
+            self._write(data)
+        return site
+
+    def import_browser_sites(self, hosts: list[str]) -> int:
+        """Decision 0050's one-time move of the desktop app's global Always-allow list: each site
+        joins every workspace that reaches it, unless that workspace already has a level for it.
+        Returns how many sites were added."""
+        sites = [s for s in (normalize_domain(h) for h in hosts) if s and s != "*"]
+        added = 0
+        with _LOCK:
+            data = self._read()
+            for env in data["environments"].values():
+                levels = env["network"].setdefault("browser", {})
+                for site in sites:
+                    if site not in levels and reaches(env["network"], site):
+                        levels[site] = "allow"
+                        added += 1
+                if not levels:
+                    del env["network"]["browser"]
+            self._write(data)
+        return added
+
     def forget_thread(self, thread_id: str) -> None:
         with _LOCK:
             data = self._read()
@@ -361,6 +407,19 @@ class Environments:
                     data["environments"][env_id] = env
                     by_settings[key] = env_id
                 data["threads"][thread_id] = by_settings[key]
+            self._write(data)
+
+    def first_workspace(self, folder: str) -> None:
+        """The first start's workspace (decision 0048): Default works in `folder` from now on,
+        named for it."""
+        with _LOCK:
+            data = self._read()
+            default = data["environments"][DEFAULT_ID]
+            if default["folders"]:
+                raise EnvironmentRefused("The workspace is already chosen.")
+            default["folders"] = [folder]
+            default["name"] = ""
+            default["name"] = self._free_name(data, Path(folder).name or "Workspace")
             self._write(data)
 
     @staticmethod

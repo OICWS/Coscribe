@@ -27,7 +27,7 @@ from langchain_core.tools import BaseTool
 from langgraph.types import Command
 
 from ..runtime import get_tool_metadata, redactor
-from ..workflows import AgentCall, AgentReply, AgentRequest
+from ..workflows import SUB_AGENT_TOOL, AgentCall, AgentReply, AgentRequest
 from .agent import build_langgraph_agent, tool_name
 from .agent_stream import MODEL_STALL_SECONDS, ModelStalled, RunRecord, no_record, stream_turn
 from .audit import AuditLog, record_decision
@@ -35,6 +35,7 @@ from .audit import Reason as AuditReason
 from .messages import extract_text
 from .subagents import LIMIT_MESSAGE_PREFIX, for_subagents, wrap_up
 from .token_limit import TOKEN_LIMIT_PREFIX
+from .workflow_sub_agents import NEEDS_A_PERSON, SubAgents, activity, sub_agents_started
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,6 @@ logger = logging.getLogger(__name__)
 _NOT_IN_WORKFLOWS = frozenset(
     {"run_code_task", "run_code_command", "ask_user_question", "create_scheduled_task"}
 )
-_DEFERRAL_TOOLS = frozenset({"search_tools", "use_tool"})
 
 
 def workflow_agent_tools(
@@ -75,22 +75,6 @@ class _Answers:
 
     def clear(self) -> None:
         self.path.unlink(missing_ok=True)
-
-
-def _activity(messages: Sequence[Any]) -> tuple[int, int, int, list[str]]:
-    """Tool calls, tokens, the part of them the provider served from its cache, and tools used."""
-    calls, tokens, cached, used = 0, 0, 0, set()
-    for message in messages:
-        if not isinstance(message, AIMessage):
-            continue
-        usage: dict[str, Any] = dict(message.usage_metadata or {})
-        tokens += int(usage.get("total_tokens", 0) or 0)
-        cached += int((usage.get("input_token_details") or {}).get("cache_read", 0) or 0)
-        for call in message.tool_calls:
-            if call["name"] not in _DEFERRAL_TOOLS:
-                calls += 1
-                used.add(call["name"])
-    return calls, tokens, cached, sorted(used)
 
 
 @dataclass(frozen=True)
@@ -131,6 +115,9 @@ class WorkflowAgentRunner:
         self._risks = {
             tool_name(t): get_tool_metadata(cast(Any, t)).risk_category for t in self._tools
         }
+        # A step's sub-agents (decision 0051): the tool is on every step's list, so the list
+        # stays the same (decision 0001); a step that may start none is refused the call.
+        self._risks[SUB_AGENT_TOOL] = "READ"
 
     async def __call__(self, request: AgentRequest) -> AgentReply:
         # A fresh context: run inside a workflow node, the agent's graph
@@ -225,7 +212,7 @@ class WorkflowAgentRunner:
             core_names = core_names | self.fixed_tool_names
         return build_langgraph_agent(
             chat_model,
-            self._tools,
+            [*self._tools, self._sub_agents(request, model_string, chat_model).tool()],
             request.instructions,
             checkpointer=self.checkpointer,
             extra_interrupt_tool_names=list(self._risks),
@@ -234,6 +221,33 @@ class WorkflowAgentRunner:
             defer_tools=self.defer_tools,
             core_tool_names=core_names,
             redact=redactor(self.state_dir),
+        )
+
+    def _sub_agents(self, request: AgentRequest, model_string: str, chat_model: Any) -> SubAgents:
+        async def decide(call: AgentCall) -> dict[str, Any]:
+            outcome = await self._decision(call, request, None)
+            if outcome is None:
+                outcome = _Decided.reject("workflow_step", NEEDS_A_PERSON)
+            if outcome.reason is not None:
+                self._audit(call, outcome)
+            return outcome.decision
+
+        core_names = self.core_tool_names
+        if self.keeps_tool_list_fixed(model_string):
+            core_names = core_names | self.fixed_tool_names
+        return SubAgents(
+            request=request,
+            tools=self._tools,
+            risks=self._risks,
+            model_string=model_string,
+            chat_model=chat_model,
+            decide=decide,
+            go_on=_GO_ON,
+            state_dir=self.state_dir,
+            record_run=self.record_run,
+            model_stall_seconds=self.model_stall_seconds,
+            defer_tools=self.defer_tools,
+            core_tool_names=core_names,
         )
 
     async def _decide(
@@ -247,6 +261,8 @@ class WorkflowAgentRunner:
         resume: dict[str, Any] = {}
         decided: list[tuple[AgentCall, _Decided]] = []
         waiting: AgentCall | None = None
+        # Counted from the checkpoint, so a resumed pass doesn't hand out the cap again.
+        sub_agents_left = request.sub_agents - sub_agents_started(_messages(state))
         for task in state.tasks:
             for pending in task.interrupts:
                 decisions = []
@@ -256,7 +272,14 @@ class WorkflowAgentRunner:
                     if answer is not None and answer.get("call_id") == call.call_id:
                         given[call.call_id] = answer
                         answers.save(given)
-                    outcome = await self._decision(call, request, given.get(call.call_id))
+                    starts = call.tool == SUB_AGENT_TOOL
+                    outcome = (
+                        _Decided.reject("workflow_step", _no_more_sub_agents(request))
+                        if starts and sub_agents_left <= 0
+                        else await self._decision(call, request, given.get(call.call_id))
+                    )
+                    if starts and outcome is not None and outcome.decision["type"] == "approve":
+                        sub_agents_left -= 1
                     if outcome is None:
                         waiting = waiting or call
                         continue
@@ -312,16 +335,22 @@ class WorkflowAgentRunner:
         call: AgentCall | None = None,
         error: str | None = None,
     ) -> AgentReply:
-        messages = list((getattr(state, "values", None) or {}).get("messages", []))
-        calls, tokens, cached, used = _activity(messages)
+        done = activity(_messages(state))
         return AgentReply(
-            status, text=text, call=call, error=error, tool_calls=calls, tokens=tokens,
-            cached_tokens=cached, tools_used=used,
+            status, text=text, call=call, error=error, tool_calls=done.tool_calls,
+            tokens=done.tokens, cached_tokens=done.cached_tokens, tools_used=list(done.tools_used),
+            sub_agents=done.sub_agents,
         )  # fmt: skip
 
 
 async def _ignore(_update: Any) -> None:
     return None
+
+
+def _no_more_sub_agents(request: AgentRequest) -> str:
+    if request.sub_agents <= 0:
+        return "This step can't start sub-agents: do the task with your own tools."
+    return f"This step has started its {request.sub_agents} sub-agents: do the rest yourself."
 
 
 # A model can end a turn with no words and no call -- seen after a tool

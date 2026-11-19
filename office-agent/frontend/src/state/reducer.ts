@@ -17,10 +17,12 @@ export type LogItem =
   | FolderAccessItem
   // turnIndex: 0-based among the "user" items only, the index EditMessageOut expects (the backend
   // counts its checkpointed HumanMessages the same way). Set at creation, so later items can't move it.
-  | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[]; files?: string[] }
+  // sentAt: ISO time it was sent; absent for a message from before the server recorded it.
+  | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[]; files?: string[]; sentAt?: string }
   /** A note added while a reply was being worked on (steerItems.ts). */
   | SteerItem
-  | { id: string; kind: "agent"; text: string; streaming: boolean }
+  // doneAt: when the reply finished in this tab; the server keeps no time for a reply.
+  | { id: string; kind: "agent"; text: string; streaming: boolean; doneAt?: string }
   | {
       id: string;
       kind: "tool";
@@ -266,7 +268,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
   let lastPlan = "";
   return entries.map((entry): LogItem => {
     if (entry.kind === "user") {
-      return { id: genId(), kind: "user", text: entry.text, turnIndex: userTurnIndex++, images: entry.images, files: entry.files };
+      return { id: genId(), kind: "user", text: entry.text, turnIndex: userTurnIndex++, images: entry.images, files: entry.files, sentAt: entry.sent_at };
     }
     if (entry.kind === "agent") {
       return { id: genId(), kind: "agent", text: entry.text, streaming: false };
@@ -413,6 +415,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             turnIndex: state.retainedUserTurns + countUserItems(state.items),
             images: action.images,
             files: action.files,
+            sentAt: new Date().toISOString(),
           },
         ],
       };
@@ -433,7 +436,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         turnInFlight: true,
         error: null,
-        items: [...kept, { id: genId(), kind: "user", ...splitText(action.text), turnIndex: action.turnIndex }],
+        items: [...kept, { id: genId(), kind: "user", ...splitText(action.text), turnIndex: action.turnIndex, sentAt: new Date().toISOString() }],
       };
     }
 
@@ -551,9 +554,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const items = [...state.items];
       const last = items[items.length - 1];
       if (last && last.kind === "agent" && last.streaming) {
-        items[items.length - 1] = { ...last, text: action.text, streaming: false };
+        items[items.length - 1] = { ...last, text: action.text, streaming: false, doneAt: new Date().toISOString() };
       } else {
-        items.push({ id: genId(), kind: "agent", text: action.text, streaming: false });
+        items.push({ id: genId(), kind: "agent", text: action.text, streaming: false, doneAt: new Date().toISOString() });
       }
       return { ...state, items, turnInFlight: false, workflowTest: null };
     }

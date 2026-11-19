@@ -22,13 +22,13 @@ and YaHei tests were not broken.
 | 1 | First launch and a real chat | nothing | all | 20 min |
 | 2 | Credential Manager, locked keychain | yes, in part | the Settings > Secrets screen | 3 min |
 | 3 | A hosted connector with a key | nothing | all | 15 min |
-| 4 | Store stub, conda-only Python | a stub in front of Python | a real stub, conda | 10 min |
-| 5 | Codex on Windows | `Format-Hex` on the real PowerShell | a live Codex run | 10 min |
+| 4 | Store stub, conda-only Python | yes: a stub-only PATH and a conda Python off PATH | nothing | 0 |
+| 5 | Codex on Windows | yes: `Format-Hex`, both patch decisions, one download, idle exit | nothing (a real model is not verified) | 0 |
 | 6 | Background commands | tree kill with taskkill | the notice from a model turn | 5 min |
 | 7 | Window frame | nothing | all | 10 min |
 | 8 | Fonts and layout | font table (nightly, existing) | the looks | 10 min |
 | 9 | Conversations messaging | nothing | all | 5 min |
-| 10 | Real providers | nothing | all | 10 min |
+| 10 | Real providers | effort in each provider's request (`tests/test_effort.py`) | the provider you have a key for | 5 min |
 | 11 | MCP tool returning an artifact | nothing | all | 5 min |
 | 12 | Conversion through Office or WPS | nothing | all | 10 min |
 | 13 | Word documents in Word | nothing | all | 15 min |
@@ -65,7 +65,9 @@ Scripted: save, read back from a new process, find the entry with `cmdkey /list`
 behind the app's back (the error says "re-enter it via Settings"), and a hook under cmd and
 under PowerShell.
 By hand:
-1. Settings > Secrets: add a secret named `check-1` with value `abc`. Open Windows Credential
+1. Settings > Secrets: add a secret named "check_1" with value `abcd1234` and host `example.com`
+   (a name is letters, digits and underscores; a value is at least 8 characters; a secret needs a
+   host). Open Windows Credential
    Manager (Start, type "Credential Manager", Windows Credentials). Expected: an entry whose name
    contains `coscribe` and the secret's reference appears.
 2. Delete that entry in Credential Manager, then open Settings > Connectors and a connector that
@@ -83,33 +85,21 @@ By hand:
 4. In a chat of 10 or more turns, open the usage line after the third turn. Expected: cached
    tokens are above 0 on each later turn.
 
-## 4. Python on Windows: the Store stub and a conda-only Python (10 min)
-Scripted: a `python.cmd` that exits 9009 in front of the real Python on PATH is replaced by a
-working interpreter.
-By hand, on a machine where the only `python` is the Store alias (Settings > Apps > Advanced app
-settings > App execution aliases: leave `python.exe` on and uninstall Python):
-1. Settings > Connectors: add a stdio connector with command `python` and any script.
-   Expected: the connector shows a message that says Python is missing or which one to pick, not
-   an endless spinner or only "Connection closed"; Settings > Environment lists no interpreter.
-2. Repeat on a machine with Python only through conda (Anaconda Prompt, nothing on the system
-   PATH). Expected: the same message, and picking the conda `python.exe` in Settings >
-   Environment makes the connector start.
+## 4. Python on Windows: the Store stub and a conda-only Python (0 min)
+Scripted, nothing left by hand: with a PATH whose only `python` is a stand-in for the Store alias
+(a `python.cmd` that exits 9009 as the alias does), a stdio connector with command `python` says
+what to do ("pick one under Settings > Capabilities > Python for scripts") instead of "Connection
+closed", and no interpreter is offered; then a Miniconda Python off PATH and never activated,
+picked there, starts the connector and loads its DLLs. The runner installs Miniconda when its
+image has none.
 
-## 5. Codex and the code module on Windows (10 min)
-Scripted: the real Windows PowerShell 5.1 runs `Format-Hex -LiteralPath` (it has no `-Count`; that
-was added in 6.1) and returns the bytes as text, and the code module counts it as a read.
-By hand:
-1. Open a code thread on a folder with a binary file. Ask Codex to show the first bytes of it with
-   Format-Hex. Expected: no approval card (it is a read), the hex table in the answer is not
-   garbled.
-2. In Manual mode with file changes set to Ask, request a patch to a test file. Reject the
-   file-change card and check it is unchanged; make a new request, allow it and check it changes.
-   If only `exec_command` is offered, the patch must use the heredoc form described on the
-   code-runtime card, not `apply_patch "<multiline patch>"`. Ordinary commands remain refused
-   when commands are disabled; that refusal is not a file-change approval test.
-3. Check first-use download separately from starting an already installed Codex, and wait ten
-   idle minutes to check the shared app-server exits. The Windows job scripts the quoted-patch
-   refusal and both patch-approval decisions using the pinned real Codex and a local stub API.
+## 5. Codex and the code module on Windows (0 min)
+Scripted, nothing left by hand: the real Windows PowerShell 5.1 runs `Format-Hex -LiteralPath`
+(it has no `-Count`; that was added in 6.1) and returns the bytes as text, and the code module
+counts it as a read; with the pinned real Codex and a local stub API, a quoted `apply_patch` is
+refused, a heredoc patch reaches the file-change card and is rejected or applied as answered,
+Codex is downloaded once and used as installed after that, and the shared app-server exits when
+nothing has used it for its idle time. Not verified: a turn with a real model.
 
 ## 6. Background commands on Windows (5 min)
 Scripted: a command that starts a child process is stopped with taskkill, and the child is gone.
@@ -150,10 +140,12 @@ By hand:
    hello, with send_to_conversation." Expected: A finds the tool through search, calls it; B
    shows the note and can answer.
 
-## 10. Real providers (10 min)
-1. Settings > Providers: add a Gemini key. Expected: the model list loads. Set an effort level
-   and send one message; the request log shows the effort.
-2. Send one request each to Claude and OpenAI with a non-default effort. Expected: both answer.
+## 10. Real providers (5 min)
+Scripted: the effort each provider is sent (`tests/test_effort.py`).
+By hand, with the providers you have a key for (Gemini's free key from Google AI Studio is enough):
+1. Settings > Providers: add the key. Expected: the model list loads. Set an effort level and send
+   one message; the request log shows the effort.
+A provider nobody has a key for is written on #844 as not verified.
 
 ## 11. MCP tool that returns an artifact (5 min)
 1. Connect an MCP server whose tool returns an artifact, and call it from a chat. Expected: the

@@ -60,6 +60,8 @@ function startedTaskId(item: ToolOrApprovalItem): string | null {
   return started && typeof taskId === "string" && taskId !== "" ? taskId : null;
 }
 
+const allDone = (tasks: ProgressItem[]) => tasks.length > 0 && tasks.every((task) => task.status === "completed");
+
 const isTaskTool = (name: string) => name === "task_create" || name === "task_update" || name === "task_list";
 
 /** One task call applied to the list. A call still running counts from its
@@ -69,7 +71,11 @@ function applyTaskCall(tasks: ProgressItem[], item: ToolOrApprovalItem): Progres
     const created = taskOf(item.result) ?? (typeof item.arguments.content === "string"
       ? { id: `pending-${item.id}`, content: item.arguments.content, status: "pending" as const }
       : null);
-    return created ? [...tasks.filter((task) => task.id !== created.id), created] : tasks;
+    if (!created) return tasks;
+    // As task_create does on the server: a list whose every item is done is over, and a new
+    // item starts the next one.
+    const kept = allDone(tasks) ? [] : tasks.filter((task) => task.id !== created.id);
+    return [...kept, created];
   }
   if (item.toolName === "task_update") {
     const updated = taskOf(item.result);
@@ -100,11 +106,9 @@ export function planPanelData(items: LogItem[]): { tasks: ProgressItem[]; plan: 
   return { tasks: taskListOf(items), plan: last ? last.plan : null, pendingPlanId: last?.status === "pending" ? last.id : null };
 }
 
-const allDone = (tasks: ProgressItem[]) => tasks.length > 0 && tasks.every((task) => task.status === "completed");
-
 /** Where the list is shown, by the id of the task call it is shown under. Only a
  * call that changed the list counts. The card goes under the last such call; a
- * list that was finished and then grew keeps its done line where it finished. */
+ * finished list keeps its done line where it finished, and the next list gets a card of its own. */
 export function taskCardPlaces(items: LogItem[]): Record<string, TaskCardEntry> {
   const changes: { id: string; tasks: ProgressItem[] }[] = [];
   let tasks: ProgressItem[] = [];

@@ -63,12 +63,13 @@ class WorkspaceScope:
                 f"Path is one of Coscribe's own settings files; only the user changes it, in "
                 f"Settings: {path}"
             )
-        if write and _is_folder_notes(resolved):
-            # A folder's notes are instructions every later conversation there follows: the
-            # model proposes a line with `remember` and the person's Save writes it.
+        if write and _is_folder_instructions(resolved):
+            # A folder's notes, settings and connectors are instructions every later
+            # conversation there follows: the model proposes a note with `remember` and the
+            # person's Save writes it; the rest only the person edits.
             raise PermissionError(
-                f"{path} holds the folder's notes; only the user changes them, or saves a line "
-                "you offer with the remember tool."
+                f"{path} holds the folder's notes or settings; only the user changes them, or "
+                "saves a note you offer with the remember tool."
             )
         if self._under(resolved, self.root):
             return resolved
@@ -114,5 +115,10 @@ class WorkspaceScope:
             return False
 
 
-def _is_folder_notes(path: Path) -> bool:
-    return path.name.casefold() == "memory.md" and path.parent.name.casefold() == ".coscribe"
+_FOLDER_INSTRUCTIONS = ("memory.md", "settings.json", "settings.local.json", "mcp.json")
+
+
+def _is_folder_instructions(path: Path) -> bool:
+    return (
+        path.name.casefold() in _FOLDER_INSTRUCTIONS and path.parent.name.casefold() == ".coscribe"
+    )

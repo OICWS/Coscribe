@@ -228,7 +228,10 @@ export function summarizeOutput(value: unknown): string {
 export function agentUsage(activity: WorkflowAgentActivity | null | undefined): string | null {
   const calls = activity?.tool_calls;
   if (calls === undefined) return null;
-  return calls === 0 ? "Used no tools" : `${calls} tool ${calls === 1 ? "call" : "calls"}`;
+  const used = calls === 0 ? "Used no tools" : `${calls} tool ${calls === 1 ? "call" : "calls"}`;
+  // A sub-agent's calls are counted in the step's (decision 0051).
+  const helpers = activity?.sub_agents ?? 0;
+  return helpers ? `${used}, with ${helpers} ${helpers === 1 ? "sub-agent" : "sub-agents"}` : used;
 }
 
 const TASK_LEVELS: TaskAutonomy[] = ["fixed", "self_healing", "proactive", "autonomous"];

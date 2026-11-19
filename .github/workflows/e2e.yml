@@ -38,7 +38,7 @@ env:
   EXCLUDED: approval chat
   SPECS: >-
     artifacts attachment chat-files code composer-drop-paste connector-setup connectors providers find labels navigation
-    files-panel panel-windows panels permissions workflow-agent workflow-ask-and-wait workflow-autonomy workflow-memory-and-triggers workflow-connector-trigger workflow-webhook-trigger workflow-tasks-and-versions workflow-parallel-steps workflow-canvas workflow-failure-handling workflow-quick-edit workflow-run-canvas rail-dialog secrets settings sidebar skill-plugins slides slides-panels slides-stage slides-drafts slides-foreign titlebar tool-rows plan-panel plan-proposal plan-comments image-annotation prompt-suggestion run-in-background design-systems doc-editor dashboard design-canvas toolbar python-interpreter capabilities output-notices
+    files-panel panel-windows panels permissions workflow-agent workflow-ask-and-wait workflow-autonomy workflow-memory-and-triggers workflow-connector-trigger workflow-webhook-trigger workflow-tasks-and-versions workflow-parallel-steps workflow-canvas workflow-failure-handling workflow-quick-edit workflow-run-canvas task-reach first-workspace rail-dialog secrets settings sidebar skill-plugins slides slides-panels slides-stage slides-drafts slides-foreign titlebar tool-rows plan-panel plan-proposal plan-comments image-annotation prompt-suggestion run-in-background design-systems doc-editor dashboard design-canvas toolbar python-interpreter capabilities output-notices message-actions
 
 jobs:
   playwright:
@@ -105,6 +105,9 @@ jobs:
             for _ in $(seq 60); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done
             echo "$url did not come up"; tail -n 30 "$scratch"/*.log; exit 1
           done
+          # The specs share one workspace, chosen here as the first start would (decision 0048).
+          curl -sf -X POST http://127.0.0.1:8000/api/workspace/first -H "Content-Type: application/json" \
+            -H "x-coscribe-token: e2e-launch-token" -d "{\"folder\": \"$scratch/workspace\"}" > /dev/null
 
       - name: Specs
         working-directory: office-agent/frontend

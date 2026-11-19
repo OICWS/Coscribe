@@ -85,6 +85,90 @@ def _audit(
         )
 
 
+def _browser_site_routes(router: APIRouter, state_dir: Path) -> None:
+    """The built-in browser's site levels (decision 0050): its prompt's Always allow, and the
+    one-time move of the desktop app's old global list."""
+
+    async def set_browser_level(thread_id: str, payload: dict[str, Any]) -> Any:
+        try:
+            site = Environments(state_dir).set_browser_level(
+                thread_id, str(payload.get("site", "")), str(payload.get("level", ""))
+            )
+        except EnvironmentRefused as exc:
+            return _refused(exc.reason)
+        env_id = Environments(state_dir).environment_of(thread_id)
+        record_decision(
+            AuditLog(state_dir),
+            thread_id=thread_id,
+            tool_name="set_environment",
+            arguments={"environment": env_id, "browser": {site: payload.get("level")}},
+            decision="approve",
+            reason="human",
+        )
+        return {"site": site, "environment": env_id}
+
+    async def import_browser_sites(payload: dict[str, Any]) -> Any:
+        sites = payload.get("sites")
+        if not isinstance(sites, list) or not all(isinstance(s, str) for s in sites):
+            return _refused("sites must be a list of sites.")
+        return {"added": Environments(state_dir).import_browser_sites(sites)}
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/browser-site", set_browser_level, methods=["POST"]
+    )
+    router.add_api_route(
+        "/api/environments/import-browser-sites", import_browser_sites, methods=["POST"]
+    )
+
+
+def _suggested_folder() -> Path:
+    return Path.home() / "Documents" / "Coscribe"
+
+
+def _chosen_folder(text: Any) -> Path | str:
+    """The folder the person picked, made if it isn't there yet (its parent must be); a reason
+    otherwise."""
+    folder = Path(str(text or "").strip()).expanduser()
+    if not str(text or "").strip() or not folder.is_absolute():
+        return "Choose a folder on this computer."
+    if Environments.too_broad(folder.resolve()):
+        return "That is a whole drive or your home folder. Choose a folder inside it."
+    if not folder.is_dir():
+        if not folder.parent.is_dir():
+            return f"{folder.parent} doesn't exist."
+        try:
+            folder.mkdir()
+        except OSError as exc:
+            return f"Couldn't make {folder}: {exc.strerror or exc}."
+    return folder.resolve()
+
+
+def _first_workspace_routes(router: APIRouter, state: AppState) -> None:
+    """The first start asks for a workspace (decision 0048) instead of working in a hidden one."""
+    settings = state.settings
+
+    async def first_workspace() -> dict[str, Any]:
+        default = Environments(settings.state_dir).get(DEFAULT_ENVIRONMENT) or {}
+        return {"needed": not default.get("folders"), "suggested": str(_suggested_folder())}
+
+    async def choose_first_workspace(payload: dict[str, Any]) -> Any:
+        folder = _chosen_folder(payload.get("folder"))
+        if isinstance(folder, str):
+            return _refused(folder)
+        sessions = _open_sessions(state, {DEFAULT_ENVIRONMENT})
+        if any(s.turn_running for s in sessions):
+            return _refused("A conversation is replying. Choose once it has finished.", 409)
+        try:
+            Environments(settings.state_dir).first_workspace(str(folder))
+        except EnvironmentRefused as exc:
+            return _refused(exc.reason, 409)
+        await _move_folders(settings.state_dir, sessions)
+        return {"folder": str(folder)}
+
+    router.add_api_route("/api/workspace/first", first_workspace, methods=["GET"])
+    router.add_api_route("/api/workspace/first", choose_first_workspace, methods=["POST"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     state_dir = state.settings.state_dir
@@ -152,4 +236,6 @@ def router(state: AppState) -> APIRouter:
     router.add_api_route("/api/environments", create_environment, methods=["POST"])
     router.add_api_route("/api/environments/{env_id}", update_environment, methods=["PUT"])
     router.add_api_route("/api/environments/{env_id}", delete_environment, methods=["DELETE"])
+    _browser_site_routes(router, state_dir)
+    _first_workspace_routes(router, state)
     return router

@@ -45,7 +45,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from ..runtime import delete_secret, harden_file_permissions, resolve_secret, store_secret
+from ..runtime import (
+    SecretStore,
+    delete_secret,
+    harden_file_permissions,
+    resolve_secret,
+    store_secret,
+)
 
 # The MCP SDK and httpx are imported where they are used: this module is
 # loaded for every server start, and most people have no remote connector.
@@ -149,7 +155,16 @@ class _Storage:
         from mcp.shared.auth import OAuthToken
 
         raw = self.load("tokens")
-        return OAuthToken.model_validate_json(raw) if raw else None
+        if not raw:
+            return None
+        tokens = OAuthToken.model_validate_json(raw)
+        self._blank(tokens)
+        return tokens
+
+    def _blank(self, tokens: OAuthToken) -> None:
+        # A server that echoes the token it was sent must not show it to the model.
+        sent = [tokens.access_token, tokens.refresh_token or ""]
+        SecretStore.blank_also(f"mcp-oauth:{self._name}", sent)
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
         data = self._read()
@@ -161,6 +176,7 @@ class _Storage:
 
             kept = OAuthToken.model_validate_json(old).refresh_token
             tokens = tokens.model_copy(update={"refresh_token": kept})
+        self._blank(tokens)
         delete_secret(data.get("tokens"))
         data["tokens"] = store_secret(
             f"mcp-oauth:{self._name}:tokens", tokens.model_dump_json(exclude_none=True)

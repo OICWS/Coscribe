@@ -208,6 +208,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/scheduled-tasks/{trigger_id}/memory",
     "/api/scheduled-tasks/{trigger_id}/versions",
     "/api/scheduled-tasks/{trigger_id}/runs/{run_id}/report",
+    "/api/scheduled-tasks/{trigger_id}/reach",
     "/api/secrets",
     "/api/settings/proxy",
     "/api/skills",
@@ -225,6 +226,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/activity",
     "/api/threads/{thread_id}/background-tasks",
     "/api/threads/{thread_id}/export",
+    "/api/threads/{thread_id}/failed-turns",
     "/api/threads/{thread_id}/context-breakdown",
     "/api/threads/{thread_id}/files/download",
     "/api/threads/{thread_id}/workspace",
@@ -241,6 +243,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/subagents",
     "/api/threads/{thread_id}/tasks",
     "/api/tools",
+    "/api/workspace/first",
     "/internal/browser-host",
     "/internal/events",
 }

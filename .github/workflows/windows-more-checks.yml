@@ -2,7 +2,7 @@ name: Windows more checks
 
 # The checks that used to wait for a person on a Windows machine and can be scripted on a runner:
 # the real Credential Manager, cmd and PowerShell hooks, Format-Hex, taskkill on a process tree,
-# the Store python stub, YaHei in resvg, Edge drawing a page for look_at_page, Codex's command sandbox, and the Slides editor's e2e specs. Kept in its own workflow so a failure here does not reset
+# the Store python stub and a conda-only Python, Codex's download and idle exit, YaHei in resvg, Edge drawing a page for look_at_page, Codex's command sandbox, and the Slides editor's e2e specs. Kept in its own workflow so a failure here does not reset
 # windows.yml's run of green nights (decision 0009) or block windows-checks.yml.
 "on":
   schedule:
@@ -15,6 +15,8 @@ name: Windows more checks
       - "office-agent/frontend/tests/e2e/fixtures/build_*deck.py"
       - "office-agent/scripts/stub_llm.py"
       - "office-agent/tests/test_windows_real.py"
+      - "office-agent/src/coscribe/tools/exec/script_env.py"
+      - "office-agent/src/coscribe/code_runtime/launch.py"
       - "office-agent/src/coscribe/conversation/page_shot.py"
       - "office-agent/src/coscribe/tools/exec/command_sandbox.py"
       - "office-agent-sandbox/**"
@@ -57,6 +59,22 @@ jobs:
         with:
           version: "0.13.7"
 
+      # A Python only from conda, off PATH and never activated, as on a machine where Anaconda is
+      # the only Python (check 4 in docs/manual-checks.md). The image's own Miniconda when it has
+      # one, else the installer from repo.anaconda.com.
+      - name: Find or install Miniconda off PATH
+        shell: pwsh
+        run: |
+          if ($env:CONDA -and (Test-Path "$env:CONDA\python.exe")) {
+            $root = $env:CONDA
+          } else {
+            $installer = Join-Path $env:RUNNER_TEMP "miniconda.exe"
+            Invoke-WebRequest -Uri https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe -OutFile $installer
+            $root = Join-Path $env:RUNNER_TEMP "miniconda"
+            Start-Process -FilePath $installer -Wait -ArgumentList "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$root"
+          }
+          "COSCRIBE_TEST_CONDA_PYTHON=$root\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Install coscribe
         run: python scripts/install_locked.py --extra dev --extra web
 
@@ -97,6 +115,22 @@ jobs:
 
       - name: Build the sandbox
         run: bash ../office-agent-sandbox/scripts/build.sh "$(cygpath -m "$RUNNER_TEMP")/sandbox"
+
+      # A Python only from conda, off PATH and never activated, as on a machine where Anaconda is
+      # the only Python (check 4 in docs/manual-checks.md). The image's own Miniconda when it has
+      # one, else the installer from repo.anaconda.com.
+      - name: Find or install Miniconda off PATH
+        shell: pwsh
+        run: |
+          if ($env:CONDA -and (Test-Path "$env:CONDA\python.exe")) {
+            $root = $env:CONDA
+          } else {
+            $installer = Join-Path $env:RUNNER_TEMP "miniconda.exe"
+            Invoke-WebRequest -Uri https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe -OutFile $installer
+            $root = Join-Path $env:RUNNER_TEMP "miniconda"
+            Start-Process -FilePath $installer -Wait -ArgumentList "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$root"
+          }
+          "COSCRIBE_TEST_CONDA_PYTHON=$root\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install coscribe
         run: python scripts/install_locked.py --extra dev --extra web

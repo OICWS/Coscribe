@@ -57,19 +57,19 @@ export function TaskStatusIcon({
 }
 
 /** The items of a task list, one per line. In the Plan panel (`strike`) a
- * finished one has a plain tick and is struck through; in the conversation it
- * is a filled tick and only greyed. */
+ * finished one has a plain tick and is struck through until the pointer rests on it; elsewhere
+ * it is a filled tick and only greyed. */
 export function TaskList({ tasks, strike = false, live = false }: { tasks: ProgressItem[]; strike?: boolean; live?: boolean }) {
   return (
     <ol className="flex flex-col gap-2.5">
       {tasks.map((task) => (
-        <li key={task.id} className="flex items-start gap-2.5 text-[15px] leading-6">
+        <li key={task.id} className="group/step flex items-start gap-2.5 text-[15px] leading-6">
           <span className="mt-[3px]">
             <TaskStatusIcon status={task.status} live={live} plain={strike} />
           </span>
           <span
             className={`min-w-0 [overflow-wrap:anywhere] ${
-              task.status === "completed" ? (strike ? "line-through" : "text-[var(--muted)]") : ""
+              task.status === "completed" ? (strike ? "line-through group-hover/step:no-underline" : "text-[var(--muted)]") : ""
             }`}
           >
             {task.content}

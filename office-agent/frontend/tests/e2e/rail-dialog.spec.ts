@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
+import { defaultWorkspaceName, editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
 
 test("a dialog opened from a hover-opened sidebar is not closed with the sidebar", async ({ page }) => {
   await page.goto(freshThreadPath("rail-dialog"));
@@ -65,7 +65,8 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await page.goto(path);
   await waitForConnected(page);
   const picker = page.getByTitle("Choose this conversation's workspace");
-  await expect(picker).toHaveText("Default");
+  const defaultName = await defaultWorkspaceName(request);
+  await expect(picker).toHaveText(defaultName);
   await newEnvironment(page, name);
 
   await editEnvironment(page, name);
@@ -89,7 +90,7 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await dialog.getByRole("button", { name: "Delete workspace" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(picker).toHaveText("Default");
+  await expect(picker).toHaveText(defaultName);
   expect(await environmentNamed(request, name)).toBeUndefined();
   await request.delete(`/api/threads/${threadId}`);
 });
@@ -116,15 +117,22 @@ test("a workspace's Sites limit its conversations to the sites listed", async ({
     await site.fill("docs.python.org");
     await dialog.getByRole("button", { name: "Add site" }).click();
     await expect(dialog.getByRole("cell", { name: "example.com", exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "example.com in the browser" }).click();
+    await page.getByRole("menuitemradio", { name: "Use without asking" }).click();
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
     expect((await environmentNamed(request, name))?.network).toEqual({
       mode: "limited",
       domains: ["example.com", "docs.python.org"],
+      browser: { "example.com": "allow" },
     });
 
+    // The Browser panel's prompt keeps a level the same way, in the conversation's workspace.
+    const kept = await request.post(`/api/threads/${threadId}/browser-site`, { data: { site: "docs.python.org", level: "off" } });
+    expect(kept.ok()).toBe(true);
     await editEnvironment(page, name);
     await expect(dialog.getByRole("button", { name: "Listed sites", pressed: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "docs.python.org in the browser" })).toHaveText("Not in the browser");
     await dialog.getByRole("button", { name: "Remove docs.python.org" }).click();
     await dialog.getByRole("button", { name: "None", exact: true }).click();
     await expect(dialog.getByLabel("Add a site")).toHaveCount(0);

@@ -1,7 +1,9 @@
 import { controlClass } from "../../lib/formStyles";
 import { isRelativeDate, RELATIVE_DATES, resolveDate } from "../../lib/inputKinds";
 import type { WorkflowInput } from "../../types/workflow";
+import { useThisTaskReach } from "../../lib/taskReach";
 import { SelectMenu } from "../SelectMenu";
+import { FolderValue } from "./FolderValue";
 
 type Value = WorkflowInput["default"];
 
@@ -73,6 +75,19 @@ export function InputValueControl({
   blank?: string;
 }) {
   const className = `${controlClass} w-full min-w-0`;
+  const task = useThisTaskReach();
+  if (input.type === "folder" && task) {
+    return (
+      <FolderValue
+        taskId={task.taskId}
+        onChanged={task.onChanged}
+        value={value === null ? "" : String(value)}
+        onChange={onChange}
+        label={label}
+        placeholder={placeholderFor(input, forRun, blank)}
+      />
+    );
+  }
   if (input.type === "date" && !forRun) return <DateValue value={value} onChange={onChange} label={label} blank={blank} />;
   if (input.type === "date") {
     return (

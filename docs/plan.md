@@ -7,7 +7,7 @@ index of the older history); why things are the way they are lives in
 PR that changes the picture, and take a line out when its work is done; keep it under about 150
 lines.
 
-Last reviewed: 2026-11-06.
+Last reviewed: 2026-11-18.
 
 ## Next, in order
 
@@ -30,8 +30,9 @@ Last reviewed: 2026-11-06.
    fails at proactive or above (#861, decision 0042). Merged too: a task that starts on an event a
    program on the machine sends (#853, decision 0040), and a run asking before its models use
    more tokens, with nothing to set (#862, decision 0043), whose budget now counts llm steps'
-   tokens (`docs/log/2026-11-15-llm-step-tokens.md`). Open: an L3 step delegating, and adding
-   steps when nothing failed.
+   tokens (`docs/log/2026-11-15-llm-step-tokens.md`). A high or full step's agent hands parts of
+   its task to sub-agents held to the step's rules (decision 0051,
+   `docs/log/2026-11-18-workflow-step-sub-agents.md`). Open: adding steps when nothing failed.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
@@ -39,9 +40,9 @@ Last reviewed: 2026-11-06.
    run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
-   Next: a nightly replay of the three that write Office files;
-   a failed turn exported as an evaluation task with
-   the person's consent.
+   A failed turn saved by the person as a file, which `evals/agentic/candidate.py` turns into a
+   task to finish by hand (decision 0052, `docs/log/2026-11-18-failed-turn-export.md`).
+   Next: a nightly replay of the three that write Office files.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
@@ -49,19 +50,33 @@ Last reviewed: 2026-11-06.
    `docs/log/2026-11-16-folder-access-card.md`; part 2 (Settings' environments table and the
    Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
    The edit dialog on one page, called a workspace in the UI, is in
-   `docs/log/2026-11-18-workspace-dialog.md`. Next, one PR each: a browser level per site, merging
-   the browser's Allowed sites into each workspace's sites (decision record first); a task showing
-   what it reaches, its folder inputs picked from that reach, and a folder outside it allowed on
-   the spot.
+   `docs/log/2026-11-18-workspace-dialog.md`. A browser level per site (decision 0050) is in
+   `docs/log/2026-11-18-site-browser-levels-server.md`, `-desktop.md` and `-ui.md`. A task's
+   reach (what it reaches, its folder inputs picked from it, a folder outside it allowed on the
+   spot) is in `docs/log/2026-11-18-task-reach-server.md` and `-ui.md`. B is in
+   `docs/log/2026-11-18-uploads-in-workspace.md`. C's server part (the first workspace) is in `docs/log/2026-11-18-first-workspace-server.md`.
+   The first-start dialog is in `docs/log/2026-11-18-first-workspace-ui.md` (no chat-only
+   conversation: the dialog has no skip, so Default always has a folder). D part 1 (settings and
+   connectors wait for "Use them" and the file tools can't write them) is in
+   `docs/log/2026-11-19-workspace-settings-trust.md`. Next: reading them.
 
 ## Open, smaller
+
+- **Connector credentials the redactor does not recognise** (`docs/log/2026-11-18-connection-string-passwords.md`):
+  a scheme-less DSN (`user:pass@tcp(host)/db`), a password in an argument after a flag that does
+  not name it, a password under 8 characters printed on its own, and a `name=value` password that
+  starts with `/` or `~` (taken for a path).
+
+- **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
+  messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.
+  Needs a time on the AI message that no provider is sent.
 
 - **Composer draft across pages:** opening Artifacts discards unsent text when the composer
   unmounts; reproduce/check noted in `docs/log/2026-11-18-artifacts-return.md`.
 
-- **Code module manual checks** (#844): native patch approvals are scripted without API keys;
-  first-use, real-model behavior and idle service exit still need Windows use
-  (`docs/log/2026-11-18-code-patch-approval.md`).
+- **Code module manual checks** (#844): native patch approvals, the first download and the idle
+  service exit are scripted without API keys; real-model behavior is not verified
+  (`docs/log/2026-11-18-code-patch-approval.md`, `docs/log/2026-11-18-windows-checks-4-5-scripted.md`).
 
 - **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
   The reported apparent change to an investigation title is not reproduced; confirm against
@@ -77,6 +92,10 @@ Last reviewed: 2026-11-06.
   at once, and a background task started with the plan item it belongs to (the task card now
   guesses it from timing, which goes wrong when several items run at once;
   `docs/log/2026-11-15-plan-review-edits.md`).
+- **Task list and a note sent mid-plan:** a new list starts once every task of the old one is
+  done (`docs/log/2026-11-18-fresh-task-list.md`), but a note the person sends while a plan is
+  still open joins that list if the model makes tasks for it. Whether such a note should get
+  its own list is open.
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
@@ -146,9 +165,6 @@ Last reviewed: 2026-11-06.
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 
-- **Providers page like Connectors** (`docs/log/2026-11-17-providers-page-redesign.md`). Open:
-  changing only a provider's default model still asks for its API key again.
-
 ## For the maintainer (settings and decisions)
 
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
@@ -204,10 +220,10 @@ Last reviewed: 2026-11-06.
   takes shows in the conversation and as a picture notice above the message box
   (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
-- A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
-  a one-line description of each from the side model (decision 0044, its second part, now phase B
-  of #926; the notes
-  and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
+- A workspace's uploads: saved in `.coscribe/uploads/<kind>/`, pictures from the message box
+  included (`docs/log/2026-11-18-uploads-in-workspace.md`, `-pictures.md`); next a one-line
+  description of each upload from the side model in `uploads/index.jsonl` (decision 0044, phase B of #926; the notes and skills
+  shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
@@ -227,8 +243,6 @@ Last reviewed: 2026-11-06.
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
   joins (decision 0009).
-
-- Conversations reading and messaging each other (records 0008 and 0023, built: every non-archived conversation is reachable; the Edit environment dialog still has its old messages section until the redesign in issue 560 lands).
 
 - A callback helper so a script can use a secret (needs its own local
   authentication).

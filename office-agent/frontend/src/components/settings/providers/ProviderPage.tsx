@@ -154,7 +154,7 @@ function ProviderFields({
           type="password"
           autoComplete="off"
           className={fieldClass}
-          placeholder={maskedKey ? `Saved (ends in ${maskedKey.slice(-4)}). Enter it again to save changes.` : ""}
+          placeholder={maskedKey ? `Saved (ends in ${maskedKey.slice(-4)}). Leave blank to keep it.` : ""}
           value={form.apiKey}
           onChange={set("apiKey")}
         />

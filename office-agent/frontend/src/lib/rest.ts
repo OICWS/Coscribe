@@ -12,6 +12,7 @@ import type {
   CapabilityFolders,
   CommandSandbox,
   CommandSandboxMode,
+  BrowserLevel,
   Environment,
   EnvironmentFields,
   BrowseDirsResponse,
@@ -101,6 +102,40 @@ async function getJson<T>(url: string): Promise<T> {
 /** The conversation as Markdown, for sending along with a bug report. */
 export async function exportThread(threadId: string): Promise<Blob> {
   const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/export`);
+  await checkOk(res);
+  return res.blob();
+}
+
+/** A failed turn as its file would hold it (decision 0052): the turn's numbers and the start of
+ * its tool errors, never the conversation's words. */
+export interface FailedTurn {
+  turn: {
+    started: string;
+    kind?: string;
+    model?: string;
+    outcome?: string;
+    error?: string | null;
+    model_calls?: number;
+    tools?: Record<string, { calls: number; errors: number }>;
+  };
+  tool_errors: { tool: string; text: string }[];
+}
+
+export async function listFailedTurns(threadId: string): Promise<FailedTurn[]> {
+  const body = await getJson<{ turns: FailedTurn[] }>(`/api/threads/${encodeURIComponent(threadId)}/failed-turns`);
+  return body.turns;
+}
+
+/** The one turn the person chose, with what they wrote about it, as a file to save. */
+export async function exportFailedTurn(
+  threadId: string,
+  choice: { started: string; asked: string; went_wrong: string },
+): Promise<Blob> {
+  const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/failed-turns/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(choice),
+  });
   await checkOk(res);
   return res.blob();
 }
@@ -572,15 +607,23 @@ export const getCommands = () => getJson<CommandsResponse>("/api/commands");
 // -- Uploads --------------------------------------------------------------
 
 /** `threadId`: the file lands in that conversation's own folder. */
-export async function uploadFile(file: File, threadId: string): Promise<UploadResult> {
+/** `pasted` names a picture from the clipboard by the date and time instead of its own name. */
+export async function uploadFile(file: File, threadId: string, pasted = false): Promise<UploadResult> {
   const form = new FormData();
   form.append("thread_id", threadId);
   form.append("file", file);
+  if (pasted) form.append("pasted", "true");
   const res = await fetch("/api/upload", { method: "POST", body: form });
   return res.json() as Promise<UploadResult>;
 }
 
 // -- Secrets and session environments -------------------------------------
+
+/** Whether the first start still has to choose a workspace (decision 0048), and the folder offered. */
+export const getFirstWorkspace = () => getJson<{ needed: boolean; suggested: string }>("/api/workspace/first");
+
+/** Default works in `folder` from now on; the folder is made if its parent exists. */
+export const chooseFirstWorkspace = (folder: string) => sendForResult<{ folder: string }>("/api/workspace/first", "POST", { folder });
 
 export const getSecrets = () => getJson<SecretsResponse>("/api/secrets");
 
@@ -628,6 +671,10 @@ export const updateEnvironment = (id: string, fields: EnvironmentFields) =>
   sendForResult<Environment & { warning?: string }>(`/api/environments/${encodeURIComponent(id)}`, "PUT", fields);
 export const deleteEnvironment = (id: string) =>
   sendForResult<{ moved: number }>(`/api/environments/${encodeURIComponent(id)}`, "DELETE", undefined);
+/** The built-in browser's level for a site, kept in the workspace this conversation uses. */
+export const setThreadBrowserSite = (threadId: string, site: string, level: BrowserLevel) =>
+  sendForResult<{ site: string; environment: string }>(`/api/threads/${encodeURIComponent(threadId)}/browser-site`, "POST", { site, level });
+export const importBrowserSites = (sites: string[]) => sendForResult<{ added: number }>("/api/environments/import-browser-sites", "POST", { sites });
 
 /** Settings › Capabilities: what coscribe may run on this computer. */
 export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");
