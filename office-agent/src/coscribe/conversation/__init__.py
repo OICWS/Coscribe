@@ -40,6 +40,7 @@ from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 from .turn_export import eval_candidate, failed_turns, find_turn
 from .workspace_folder import WorkspaceFolders
+from .workspace_permissions import WorkspacePermissions
 
 __all__ = [
     "OPENABLE_EXTENSIONS",
@@ -88,4 +89,5 @@ __all__ = [
     "find_turn",
     "eval_candidate",
     "WorkspaceFolders",
+    "WorkspacePermissions",
 ]

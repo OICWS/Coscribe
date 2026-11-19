@@ -20,7 +20,7 @@ from .approvals import can_resolve_approvals
 from .events import EventSink
 from .history import close_orphaned_tool_calls
 from .turn_lock import TurnLock
-from .turn_text import format_reply, usage_event
+from .turn_text import usage_event
 
 
 class ApprovalResumeHost(Protocol):
@@ -49,6 +49,9 @@ class ApprovalResumeHost(Protocol):
     async def _decide_action_request(self, request: dict[str, Any], websocket: Any) -> Any: ...
 
     async def _stream_turn(self, turn_input: Any, websocket: EventSink) -> str: ...
+
+    @property
+    def _turn_streamer(self) -> Any: ...
 
 
 class ApprovalResumer:
@@ -141,9 +144,9 @@ class ApprovalResumer:
                 return
             # state.next is truthy, so the resolve loop runs at least once; `or ""` only
             # satisfies the type checker.
-            text = await self.resolve_pending_approvals(websocket) or ""
+            text = host._turn_streamer.reply(await self.resolve_pending_approvals(websocket) or "")
             await self._record_resumed_run_status()
-            await websocket.send_json({"type": "agent_message", "text": format_reply(text)})
+            await websocket.send_json({"type": "agent_message", "text": text})
             if host._last_usage_metadata is not None:
                 await websocket.send_json(usage_event(host._last_usage_metadata))
             await websocket.send_json({"type": "tasks_changed"})

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +47,14 @@ def read_skills(folder: Path) -> list[SkillInfo]:
         return load_skills(_skills_dir(folder), create_if_missing=False)
     except OSError:
         return []
+
+
+def read_settings(folder: Path) -> dict[str, Any]:
+    try:
+        raw = json.loads((folder / COSCRIBE_DIR / "settings.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return raw if isinstance(raw, dict) else {}
 
 
 def read_connectors(folder: Path) -> dict[str, Any]:
@@ -136,14 +144,21 @@ class WorkspaceFolders:
             "trusted": self.trust.trusted(folder, current),
         }
 
-    def accepted_connectors(self, folder: Path) -> dict[str, Any]:
-        """The folder's `mcp.json` servers once the person accepted them as they are now."""
+    def _accepted(self, folder: Path, read: Callable[[Path], dict[str, Any]]) -> dict[str, Any]:
         before = fingerprint(folder)
-        servers = read_connectors(folder)
-        # Read between two fingerprints: a file swapped after the check is not what connects.
+        content = read(folder)
+        # Read between two fingerprints: a file swapped after the check is not what applies.
         if not self.trust.trusted(folder, before) or fingerprint(folder) != before:
             return {}
-        return servers
+        return content
+
+    def accepted_connectors(self, folder: Path) -> dict[str, Any]:
+        """The folder's `mcp.json` servers once the person accepted them as they are now."""
+        return self._accepted(folder, read_connectors)
+
+    def accepted_settings(self, folder: Path) -> dict[str, Any]:
+        """The folder's `settings.json` once the person accepted it as it is now."""
+        return self._accepted(folder, read_settings)
 
     def accept(self, folder: Path) -> dict[str, Any] | None:
         self.trust.accept(folder)

@@ -61,6 +61,8 @@ class ToolMetadata:
     risk_category: ToolRiskCategory = "READ"
     category: str | None = None
     description: str | None = None
+    # Called on its own in a step, the tool's result is the end of the turn: no model call follows.
+    ends_turn: bool = False
 
     @property
     def requires_approval(self) -> bool:
@@ -76,6 +78,7 @@ def tool_metadata(
     risk_category: ToolRiskCategory = "READ",
     category: str | None = None,
     description: str | None = None,
+    ends_turn: bool = False,
 ) -> Callable[..., Any]:
     """Attach a ToolMetadata to a callable, returning it unchanged (for use as a wrapper)."""
     setattr(
@@ -85,6 +88,7 @@ def tool_metadata(
             risk_category=risk_category,
             category=category,
             description=description,
+            ends_turn=ends_turn,
         ),
     )
     return func
