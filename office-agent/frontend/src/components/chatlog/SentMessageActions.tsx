@@ -38,7 +38,7 @@ export function SentMessageActions({
       )}
       {blocked !== undefined && (
         <>
-          <HoverTip below label={blocked ?? "Rewind to here"} detail={blocked ? undefined : REWIND_TAKES_OUT + (leavesChanges ? LEAVES_CHANGES : "")}>
+          <HoverTip below align="end" label={blocked ?? "Rewind to here"} detail={blocked ? undefined : REWIND_TAKES_OUT + (leavesChanges ? LEAVES_CHANGES : "")}>
             <button type="button" aria-label="Rewind to here" disabled={blocked !== null} className={MESSAGE_ICON_BUTTON} onClick={onRewind}>
               <RewindIcon className="h-3.5 w-3.5" />
             </button>
