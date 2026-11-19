@@ -413,7 +413,8 @@ class ApprovalDecider:
                 audit_log, name, args, websocket, "exec_policy", exec_policy_detail
             )
         if folder_rule is not None and folder_rule[0] == "ask":
-            return await self._ask_person_only(audit_log, name, args, websocket)
+            note = f"The workspace's settings ask for this ({folder_rule[1]})."
+            return await self._ask_person_only(audit_log, name, args, websocket, note)
         if folder_rule is not None:
             return await self._approved(
                 audit_log, name, args, websocket, "workspace_settings", folder_rule[1]
@@ -433,9 +434,13 @@ class ApprovalDecider:
         return await self._ask_person_only(audit_log, name, args, websocket, reviewer_note)
 
     def _folder_rule(self, name: str, args: dict[str, Any]) -> tuple[FolderVerdict, str] | None:
-        folders = self._host._assembly.workspace_folders
-        settings = folders.accepted_settings(Path(self._host.workspace_root))
-        return WorkspacePermissions(settings).decide(name, args) if settings else None
+        root = Path(self._host.workspace_root)
+        settings = self._host._assembly.workspace_folders.accepted_settings(root)
+        if not settings:
+            return None
+        metadata = self._host.tool_catalog().get(name)
+        risk = getattr(metadata, "risk_category", None)
+        return WorkspacePermissions(settings, root).decide(name, args, risk)
 
     def _turned_off(self, name: str, args: dict[str, Any]) -> str | None:
         """Asked before a person is: nobody approves a write its switch then refuses."""
@@ -464,15 +469,9 @@ class ApprovalDecider:
         reviewer_note: str | None = None,
     ) -> Any:
         if not can_resolve_approvals(websocket):
-            # Reached only when this call is genuinely gated and neither
-            # exec_policy nor accept_edits already decided it above --
-            # creating the Future below would await a real approval nobody
-            # is present to give. A normal unattended turn never gets here
-            # (its caller skips _resolve_pending_approvals entirely, leaving
-            # the interrupt durably paused in the checkpointer); this is the
-            # backstop for an unattended run with accept_edits or auto mode
-            # on, which does resolve approvals and must not hang the poller
-            # forever.
+            # A normal unattended turn never gets here (its interrupt stays paused in the
+            # checkpointer); an unattended run with accept_edits or auto mode on does, and a
+            # Future would wait on a person nobody is present to be.
             message = "No one is available to approve this -- this is an unattended run."
             self._audit(audit_log, name, args, "reject", "unattended", message)
             return self._denied(name, message)
