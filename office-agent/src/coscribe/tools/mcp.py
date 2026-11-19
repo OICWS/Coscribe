@@ -238,7 +238,9 @@ _PART_ENDINGS = ("password", "secret", "token")
 _KEY_NAMES = ("apikey", "accesskey", "accountkey", "sharedkey", "subscriptionkey")
 # A name ending in one of these points at where a credential is, not at the credential.
 _NOT_THE_VALUE = frozenset({"file", "path", "dir", "env", "var", "name", "id", "type", "mode"})
-_PATH_SHAPED = re.compile(r"(?:[/~]|\.{1,2}[/\\]|[A-Za-z]:[/\\]|\\\\)")
+# Only shapes base64 can't take (a key starts with `/` about one time in 64, and a password may
+# start with `~`): a drive, a UNC share or a relative path.
+_PATH_SHAPED = re.compile(r"(?:\.{1,2}[/\\]|[A-Za-z]:[/\\]|\\\\)")
 _FLAG = re.compile(r"-{1,2}([A-Za-z][A-Za-z0-9_-]*)")
 
 
