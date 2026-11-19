@@ -64,6 +64,11 @@ coscribe runs on your own computer.
   check steps, every value they write must already be in the task or the loop's item, and each
   tool that does more than read waits for your yes, even with no one watching. They are kept
   only when you save them.
+- **A workspace folder's own settings and connectors** (`.coscribe/settings.json` and
+  `mcp.json`, decision 0048) are written by whoever can write the folder, so nothing reads them
+  until you accept the folder, and a change waits for you again. Its rules never allow a call
+  that leaves the machine, and its connectors get none of your sign-ins, secrets or proxy
+  credentials, and every one of their calls asks. The file tools refuse to write these files.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 
