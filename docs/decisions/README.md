@@ -57,9 +57,10 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (proposed) |
 | [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (proposed) |
 | [0047](0047-browser-operations-follow-their-target-tab.md) | Browser operations follow their target tab |
-| [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (proposed; sites narrowed by 0050) |
+| [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (proposed; sites narrowed by 0050, Allowed folders by 0053) |
 | [0049](0049-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |
 | [0050](0050-a-workspace-lists-its-sites-each-with-a-browser-level.md) | A workspace lists its sites, each with a browser level |
 | [0051](0051-a-workflow-steps-sub-agents-keep-its-rules-and-never-wait.md) | A workflow step's sub-agents keep its rules and never wait for a person (accepted) |
 | [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
+| [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (proposed; narrows 0048) |
 | [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (proposed) |

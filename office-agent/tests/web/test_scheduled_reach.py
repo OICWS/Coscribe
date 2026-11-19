@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.runtime import DEFAULT_ENVIRONMENT, Environments
 from coscribe.runtime_lg import AuditLog
 
 from .helpers import FakeToolCallingChatModel, _client_lg
@@ -18,16 +19,24 @@ def _task(client: object) -> str:
     return str(created["trigger_id"])
 
 
+def _workspace_uses(tmp_path: Path, folder: Path) -> None:
+    environments = Environments(tmp_path / "state")
+    main = tmp_path / "workspace"
+    main.mkdir(exist_ok=True)
+    environments.update(DEFAULT_ENVIRONMENT, {"folders": [str(main), str(folder)]}, set())
+
+
 def test_a_task_lists_its_workspace_the_allowed_folders_and_its_own_folders(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    shared = tmp_path / "Shared reports"
+    shared, unused = tmp_path / "Shared reports", tmp_path / "Other team"
     shared.mkdir()
-    monkeypatch.setenv("COSCRIBE_EXTRA_WRITABLE_DIRS", str(shared))
+    monkeypatch.setenv("COSCRIBE_EXTRA_WRITABLE_DIRS", f"{shared},{unused}")
     own = tmp_path / "Exports"
     own.mkdir()
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         task = _task(client)
+        _workspace_uses(tmp_path, shared)
         assert (
             client.post(f"/api/scheduled-tasks/{task}/folders", json={"path": str(own)}).status_code
             == 200
@@ -35,7 +44,8 @@ def test_a_task_lists_its_workspace_the_allowed_folders_and_its_own_folders(
         reach = client.get(f"/api/scheduled-tasks/{task}/reach").json()
         assert reach["workspace"]["id"] == "default"
         assert len(reach["workspace"]["folders"]) == 1
-        assert {"path": str(shared), "permission": "write"} in reach["allowed"]
+        # Only the Allowed folders the workspace picked (decision 0053).
+        assert reach["allowed"] == [{"path": str(shared), "permission": "write"}]
         assert reach["task"] == [str(own.resolve())]
 
         removed = client.delete(
@@ -75,6 +85,7 @@ def test_a_folder_input_is_checked_against_the_tasks_reach(
     outside.mkdir()
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         task = _task(client)
+        _workspace_uses(tmp_path, read_only)
         reach = client.get(f"/api/scheduled-tasks/{task}/reach").json()
         workspace = Path(reach["workspace"]["folders"][0])
 

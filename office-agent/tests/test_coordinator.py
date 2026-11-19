@@ -217,37 +217,23 @@ def test_no_extra_dirs_configured_adds_no_instructions_note(tmp_path: Path) -> N
     assert "outside the workspace root" not in agent.instructions
 
 
-def test_extra_dirs_are_named_by_path_in_instructions(tmp_path: Path) -> None:
-    downloads = tmp_path / "Downloads"
-    shared = tmp_path / "shared"
-    agent = build_coordinator_agent(
-        _settings(tmp_path, extra_readable_dirs=[downloads], extra_writable_dirs=[shared]),
-        "thread-1",
+def test_allowed_folders_are_named_only_for_a_workspace_that_uses_them(tmp_path: Path) -> None:
+    """Allowed folders reach a workspace only once it picks them (decision 0053), so the fixed
+    system prompt names none and the conversation's context names the ones its workspace uses."""
+    from coscribe.coordinator import conversation_context
+
+    downloads, shared, unused = tmp_path / "Downloads", tmp_path / "shared", tmp_path / "unused"
+    settings = _settings(
+        tmp_path, extra_readable_dirs=[downloads, unused], extra_writable_dirs=[shared]
     )
 
-    assert agent.instructions is not None
-    assert str(downloads) in agent.instructions
-    assert str(shared) in agent.instructions
-    assert "(read only)" in agent.instructions
-    assert "(read and write)" in agent.instructions
-    assert "check these directories" in agent.instructions
-    # Regression: the model previously only checked extra dirs when the user
-    # explicitly said "readable"/"writable directory" -- a broad "what files
-    # do you have access to" only looked at workspace_root.
-    assert "check the workspace root" in agent.instructions
-    assert "not just the workspace root by default" in agent.instructions
+    instructions = build_coordinator_agent(settings, "thread-1").instructions or ""
+    context = conversation_context(settings, tmp_path / "main", [downloads, shared])
 
-
-def test_writable_dir_is_not_also_listed_as_read_only(tmp_path: Path) -> None:
-    shared = tmp_path / "shared"
-    agent = build_coordinator_agent(
-        _settings(tmp_path, extra_readable_dirs=[shared], extra_writable_dirs=[shared]),
-        "thread-1",
-    )
-
-    assert agent.instructions is not None
-    assert agent.instructions.count(str(shared)) == 1
-    assert "(read and write)" in agent.instructions
+    assert str(downloads) not in instructions and str(shared) not in instructions
+    assert f"- {downloads} (read only; pass the absolute path)" in context
+    assert f"- {shared} (read and write; pass the absolute path)" in context
+    assert str(unused) not in context
 
 
 def test_context_names_every_folder_attached_to_the_conversation(tmp_path: Path) -> None:
@@ -256,7 +242,7 @@ def test_context_names_every_folder_attached_to_the_conversation(tmp_path: Path)
     main = tmp_path / "reports"
     extra = tmp_path / "downloads"
 
-    context = conversation_context(_settings(tmp_path), main, [extra])
+    context = conversation_context(_settings(tmp_path, extra_writable_dirs=[extra]), main, [extra])
 
     assert f"- {main} (main folder: relative paths start inside it" in context
     assert "never prefix them with 'reports/'" in context

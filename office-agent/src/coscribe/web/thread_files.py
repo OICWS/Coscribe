@@ -85,11 +85,8 @@ class ThreadFiles:
         return self.scope_of_folders(root, extra)
 
     def scope_of_folders(self, root: Path, extra: list[Path]) -> WorkspaceScope:
-        return WorkspaceScope(
-            root,
-            extra_readable=[*self._settings.extra_readable_dirs, *extra],
-            extra_writable=[*self._settings.extra_writable_dirs, *extra],
-        )
+        readable, writable, _ = self._settings.reach_of(extra)
+        return WorkspaceScope(root, extra_readable=readable, extra_writable=writable)
 
     def delete(self, thread_id: str) -> None:
         """Every file that belongs to a thread -- otherwise a new thread later

@@ -14,6 +14,7 @@ from fastapi import (
 
 from ....config import PermissionMode
 from ....runtime import (
+    Environments,
     env_resolve_secret_for_display,
     env_value_for_storage,
     harden_file_permissions,
@@ -168,6 +169,18 @@ def _live_value(key: str, value: str) -> Any:
     return value
 
 
+def _allowed_folders(settings: Any) -> set[str]:
+    lists = (settings.extra_readable_dirs, settings.extra_writable_dirs)
+    return {str(folder) for folders in lists for folder in folders}
+
+
+def _drop_from_workspaces(state: AppState, before: set[str]) -> None:
+    """A folder taken off Allowed folders leaves every workspace that used it (decision 0053)."""
+    removed = before - _allowed_folders(state.settings)
+    if removed:
+        Environments(state.settings.state_dir).drop_folders(removed)
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
@@ -205,6 +218,7 @@ def router(state: AppState) -> APIRouter:
         )
         rejected: dict[str, str] = {}
         applied: set[str] = set()
+        folders_before = _allowed_folders(settings)
         for key, value in payload.updates.items():
             if key not in allowed:
                 continue
@@ -259,6 +273,7 @@ def router(state: AppState) -> APIRouter:
                     for session in list(state.sessions.values()):
                         session.allowed_folders_changed()
             applied.add(key)
+        _drop_from_workspaces(state, folders_before)
         restart_required = any(
             key in COSCRIBE_ENV_VARS and key not in LIVE_SETTINGS for key in applied
         )
