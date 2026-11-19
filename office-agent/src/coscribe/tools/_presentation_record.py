@@ -8,10 +8,12 @@ import hashlib
 import json
 import os
 import shutil
+import zipfile
 from pathlib import Path
 from typing import Any
 
 from pptx import Presentation
+from pptx.exc import PackageNotFoundError
 
 MANIFEST = "build.json"
 
@@ -77,7 +79,7 @@ def pages_folder(deck: Path) -> Path | None:
         return None
     try:
         slides = slide_hashes(deck)
-    except Exception:  # noqa: BLE001 - a file python-pptx can't open is simply not ours
+    except (OSError, ValueError, KeyError, zipfile.BadZipFile, PackageNotFoundError):
         return None
     matches = [f for f, m in orphans if [e["slide"] for e in m["pages"]] == slides]
     if len(matches) != 1:
