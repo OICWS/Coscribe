@@ -91,7 +91,7 @@ export function PlanCard({
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[15px] font-medium">Claude proposed a plan</p>
           {onOpenPlan && (
-            <button type="button" className="text-[14px] text-[var(--accent)] underline underline-offset-2" onClick={onOpenPlan}>
+            <button type="button" className="cursor-pointer text-[14px] text-[var(--accent)] underline-offset-2 transition-colors hover:text-[color-mix(in_srgb,var(--accent)_85%,var(--bg))] hover:underline focus-visible:underline" onClick={onOpenPlan}>
               Open plan
             </button>
           )}
