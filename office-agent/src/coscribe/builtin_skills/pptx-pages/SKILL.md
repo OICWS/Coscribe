@@ -41,12 +41,18 @@ every slide's text, tables, chart data and pictures; keep all of it, the picture
 pass the old deck in `sources` so the number check holds the new pages to it, and write the new
 deck under a new name.
 
-To edit a deck built this way: edit the page's SVG (edit_file) and build again; for a change that
-touches every page (a colour, a font), edit each page. If the build refuses because the .pptx was
-changed after it was built (in PowerPoint, or with the edit_pptx_* tools), do not pass
-replace_changes on your own: either make the change with the edit_pptx_* tools on the .pptx (a word
-or a number: edit_pptx_text with find, on every slide at once; a shape: list_pptx_shapes, then its
-name or path), or ask the user whether their changes may be replaced.
+To revise a deck built this way, identify its original PPTX and source folder. Edit the existing
+SVG pages and build back to that same PPTX path. Apply colours, fonts and layout changes in the
+source pages whenever they can express them. Finish the source edits and rebuild before making
+any PPTX-only changes. Use the existing slide history for undo. If the user asks for a separate
+version, use a separate output name and a separate copy of the source pages so both decks stay
+editable.
+
+If the builder refuses to replace the original, preserve the current PPTX. Use the
+`edit_pptx_*` tools on that same file if they can make the requested change while keeping its
+existing edits. Otherwise ask the user before using `replace_changes`. A rebuild to a second
+path followed by a move or copy over the original also replaces its edits and needs the same
+explicit approval. Leave the original in place while waiting.
 
 Not for this way: a few words in a deck the user brought (use the edit tools); for their
 template, see "Changing the template's own slides".
