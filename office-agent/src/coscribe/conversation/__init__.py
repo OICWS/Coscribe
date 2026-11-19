@@ -39,6 +39,7 @@ from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 from .turn_export import eval_candidate, failed_turns, find_turn
+from .workspace_folder import WorkspaceFolders
 
 __all__ = [
     "OPENABLE_EXTENSIONS",
@@ -86,4 +87,5 @@ __all__ = [
     "failed_turns",
     "find_turn",
     "eval_candidate",
+    "WorkspaceFolders",
 ]

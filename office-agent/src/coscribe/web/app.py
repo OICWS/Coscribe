@@ -309,6 +309,7 @@ def _make_lifespan(
             # shutdown (a lingering Playwright browser, most visibly).
             for connection in connectors.connections.values():
                 await connection.close()
+            await connectors.workspaces.close()
             for task in list(connectors.sign_in_tasks):
                 task.cancel()
             await app_callback.stop()
@@ -444,15 +445,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     thread_files = ThreadFiles(settings)
 
     def _skills_by_name() -> dict[str, SkillInfo]:
-        # Re-scanned on every call, not a closure snapshot -- the same
-        # staleness bug switch_model's custom-providers snapshot had (see
-        # runtime_lg/README.md), just for skills: settings.skills_dir can
-        # gain a new entry mid-process now (POST /api/skills/upload
-        # below), and both GET /api/skills and the select_skills WS
-        # validation need to see it without a server restart. Skill
-        # directories are few and cheap to stat, so re-scanning per call
-        # (rather than invalidating a cache on upload) is the simplest
-        # correct thing.
+        # Re-scanned on every call rather than kept: an upload adds to settings.skills_dir while
+        # the server runs, and GET /api/skills and the select_skills check must see it. Skill
+        # folders are few and cheap to stat.
         return {s.name: s for s in load_builtin_skills() + load_skills(settings.skills_dir)}
 
     # load_skills(settings.skills_dir) above creates the directory as a
@@ -489,16 +484,17 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             for command in hooks_config["SessionStart"]:
                 run_hook(command, session_start_payload)
             folders = thread_files.resolve_folders(thread_id)
+            root = folders[0] if folders else settings.workspace_root
             sessions[thread_id] = ChatSessionLG(
                 thread_id=thread_id,
                 settings=settings,
                 context_window_client=context_window_client,
                 custom_providers=session_custom_providers,
-                extra_tools=connectors.session_extra_tools(),
+                extra_tools=connectors.session_extra_tools(Path(root)),
                 checkpointer=checkpointer_holder["checkpointer"],
                 hooks_config=hooks_config,
                 enabled_skill_names=_enabled_skills(),
-                workspace_root=folders[0] if folders else settings.workspace_root,
+                workspace_root=root,
                 workspace_explicit=bool(folders),
                 extra_folders=folders[1:],
                 configured_models=lambda: _configured_models(settings),
@@ -511,7 +507,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         # docstring for why -- runtime_lg can't import ChatSessionLG
         # directly, that would be circular) -- _get_session itself is
         # plain sync, this is just the async wrapper it needs.
-        return _get_session(thread_id)
+        session = _get_session(thread_id)
+        await connectors.prepare(session)
+        return session
 
     async def _delete_thread_data(thread_id: str) -> bool:
         """Delete a thread's checkpoints plus every sidecar file that belongs
@@ -575,6 +573,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         get_session=_get_session,
         get_session_async=_get_session_async,
         session_extra_tools=connectors.session_extra_tools,
+        prepare_workspace_connectors=connectors.prepare,
         skills_by_name=_skills_by_name,
         providers_info=lambda: _providers_info(settings),
         connector_tools=connectors.connector_tools,

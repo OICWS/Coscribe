@@ -58,7 +58,9 @@ Last reviewed: 2026-11-18.
    The first-start dialog is in `docs/log/2026-11-18-first-workspace-ui.md` (no chat-only
    conversation: the dialog has no skip, so Default always has a folder). D part 1 (settings and
    connectors wait for "Use them" and the file tools can't write them) is in
-   `docs/log/2026-11-19-workspace-settings-trust.md`. Next: reading them.
+   `docs/log/2026-11-19-workspace-settings-trust.md`. D part 2 (an accepted `mcp.json` connects
+   for that workspace's conversations) is in `docs/log/2026-11-19-workspace-connectors.md`. Next:
+   `settings.json`'s permissions and env, and the "Use them" card naming them.
 
 ## Open, smaller
 
