@@ -526,7 +526,7 @@ export function ScheduledTaskDetail({
 
   return (
     <TaskReachProvider taskId={task.trigger_id} onChanged={onChanged}>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 md:[body[data-quick-edit]_&]:pr-[440px]">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-4">
           <h1

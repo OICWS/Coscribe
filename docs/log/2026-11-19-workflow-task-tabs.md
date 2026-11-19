@@ -11,6 +11,10 @@ notice opened only from its text with nothing on hover to say it could.
   working, workspace), each opening the tab that changes it, in place of the folded Settings.
 - `workflow/TaskSettingsTab.tsx`: every setting once, in four cards; the webhook address moved
   here from the runs list. The plain autonomy dropdown is gone; the radio levels stay.
+- `workflow/QuickEditPanel.tsx`: "Change this step" and "Change what it asks for" are a floating
+  card like the dock's panels (rounded, header with expand to the full editor and close), with no
+  grey backdrop; the task page makes room for it, Escape closes it, and another step can be
+  picked while it is open.
 - `NoticeStack.tsx`: a notice that opens something is clickable on its whole row, shows a
   pointer and a darker background on hover, and a ring when its button has keyboard focus.
 - e2e specs that opened Detailed now open the tab; the 12 workflow, task-reach, permissions and
