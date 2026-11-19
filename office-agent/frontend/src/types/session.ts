@@ -131,6 +131,7 @@ export interface ContextBreakdown {
 // -- Side panel (GET /api/threads/{id}/activity) ------------------------------
 
 export interface ActivityFile {
+  presentation_source?: boolean;
   /** Relative to the workspace (or absolute, for an extra directory). */
   path: string;
   name: string;

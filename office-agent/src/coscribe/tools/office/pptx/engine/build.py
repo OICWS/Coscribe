@@ -20,14 +20,14 @@ from typing import Any
 
 from pptx import Presentation
 
+from ...._presentation_record import MANIFEST as MANIFEST
+from ...._presentation_record import read_manifest
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
 from .design_check import PICTURE, library_system, off_system, unplaced_logo
 from .history import record_state
 from .sections import check_sections, compile_sections
 from .svg_to_section import convert_page
-
-MANIFEST = "build.json"
 
 
 class DeckChangedError(Exception):
@@ -153,7 +153,7 @@ def build_deck(
     by `recorded_as` ("coscribe", "you"); None records nothing (an undo itself)."""
     files, sections = _sources(pages_dir, template)
     manifest_path = pages_dir / MANIFEST
-    previous = _read_manifest(manifest_path)
+    previous = read_manifest(manifest_path)
     if out.exists() and not replace_changes:
         _refuse_if_changed(out, previous)
 
@@ -207,7 +207,7 @@ def built_from_pages(deck: Path) -> Path | None:
     that build wrote it (an edit since then was not checked by the build)."""
     target = deck.resolve()
     for folder in deck.parent.iterdir():
-        manifest = _read_manifest(folder / MANIFEST)
+        manifest = read_manifest(folder / MANIFEST)
         if manifest and Path(manifest["deck"]).resolve() == target:
             built = [entry["slide"] for entry in manifest["pages"]]
             return folder if built == slide_hashes(deck) else None
@@ -220,7 +220,7 @@ def built_pages(deck: Path) -> list[Path] | None:
     folder = built_from_pages(deck)
     if folder is None:
         return None
-    recorded = _read_manifest(folder / MANIFEST)["pages"]
+    recorded = read_manifest(folder / MANIFEST)["pages"]
     pages = [folder / entry["page"] for entry in recorded]
     if any(page.suffix.lower() != ".svg" for page in pages):
         return None
@@ -262,24 +262,6 @@ def _refuse_if_changed(out: Path, previous: dict[str, Any]) -> None:
             f"{out.name} changed after it was built ({what}); building from the pages would "
             "throw those changes away"
         )
-
-
-def _read_manifest(path: Path) -> dict[str, Any]:
-    """The last build's record; one that is missing or not in the shape this module writes
-    counts as no build, so the deck at its path is treated as not built from these pages."""
-    try:
-        data: Any = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    if not isinstance(data, dict) or not isinstance(data.get("deck"), str):
-        return {}
-    entries = data.get("pages")
-    keys = {"page", "source", "slide"}
-    if not isinstance(entries, list) or not all(
-        isinstance(e, dict) and keys <= e.keys() for e in entries
-    ):
-        return {}
-    return dict(data)
 
 
 def _source_texts(sources: Sequence[Path]) -> tuple[list[str], list[str]]:

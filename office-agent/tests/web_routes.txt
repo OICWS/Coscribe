@@ -111,6 +111,7 @@ GET,HEAD /docs
 GET,HEAD /docs/oauth2-redirect
 GET,HEAD /openapi.json
 GET,HEAD /redoc
+HEAD /api/threads/{thread_id}/files/download
 MOUNT /static
 PATCH /api/scheduled-tasks/{trigger_id}
 POST /api/artifacts/{artifact}/duplicate

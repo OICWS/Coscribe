@@ -1,37 +1,51 @@
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
-// While a deck is being built from pages, the panel shows the pages written so far (the stub model
-// writes one file per message, then a slow command keeps the turn running).
-test.use({ viewport: { width: 1600, height: 1000 } });
+const SVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'><rect width='1280' height='720' fill='#eef'/></svg>";
 
-const svg = (color: string) => `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'><rect width='1280' height='720' fill='${color}'/></svg>`;
-
-test("the Slides panel shows the pages written so far until the deck is built", async ({ page }) => {
-  test.setTimeout(150_000);
+test("only the matching active build can show source pages, and moved deck cards disappear", async ({ page }) => {
+  const old = "deck-new.pptx";
+  const current = "deck.pptx";
+  let exists = true;
+  let send: (event: unknown) => void = () => {};
+  await page.route("**/files/download?**", (route) => {
+    const path = new URL(route.request().url()).searchParams.get("path");
+    return path?.endsWith(".svg")
+      ? route.fulfill({ body: SVG, contentType: "image/svg+xml" })
+      : route.fulfill({ status: path === current || (path === old && exists) ? 200 : 404 });
+  });
+  await page.route(/\/slides\?path=/, (route) => route.fulfill({ status: 404, json: { error: "No deck" } }));
+  await page.routeWebSocket("**/ws/**", (socket) => {
+    const server = socket.connectToServer();
+    socket.onMessage((message) => server.send(message));
+    send = (event) => socket.send(JSON.stringify(event));
+    server.onMessage((message) => {
+      const event = JSON.parse(String(message));
+      if (event.type === "history") event.entries = [
+        { kind: "user", text: "Build a presentation" },
+        { kind: "tool", tool_name: "write_file", arguments: { path: "pages/01-cover.svg" }, result: "Written" },
+        { kind: "tool", tool_name: "build_pptx_from_pages", arguments: { path: old, pages_dir: "pages" }, result: "Built" },
+        { kind: "tool", tool_name: "write_file", arguments: { path: current }, result: "Written" },
+      ];
+      send(event);
+    });
+  });
   await page.goto(freshThreadPath("slides-drafts"));
   await waitForConnected(page);
-  const write = async (path: string, content: string) => {
-    await page.locator("textarea").fill(`write ${path} [[stub-tool write_file ${JSON.stringify({ path, content })}]]`);
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Approve", exact: true }).click({ timeout: 30_000 });
-    await expect(page.getByText(`write ${path}`, { exact: false }).first()).toBeVisible();
-    await page.waitForTimeout(1200);
-  };
-  await write("pages/01-cover.svg", svg("#0a6"));
-  await write("pages/02-agenda.svg", svg("#06a"));
-  await write("pages/03-body.svg", svg("#a60"));
-  await write("deck.pptx", "not built from pages");
 
-  const script = "import time\ntime.sleep(45)";
-  await page.locator("textarea").fill(`wait [[stub-tool run_python_script ${JSON.stringify({ script, description: "wait" })}]]`);
-  await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Run in background" })).toBeVisible({ timeout: 30_000 });
+  const card = page.getByTitle(`Open ${old}`, { exact: true });
+  await expect(card).toBeVisible();
+  send({ type: "turn_started", text: "Build a new version" });
+  send({ type: "tool_started", tool_name: "build_pptx_from_pages", arguments: { path: current, pages_dir: "pages" } });
+  await card.click();
+  await expect(page.getByText("No deck", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 page so far")).toHaveCount(0);
 
-  await page.getByTitle(/task/i).first().click();
-  await page.locator("li", { hasText: "Created today" }).filter({ hasText: "deck.pptx" }).getByRole("button").first().click({ timeout: 15_000 });
-  await expect(page.getByText("3 pages so far")).toBeVisible();
+  await page.getByTitle(`Open ${current}`, { exact: true }).click();
+  await expect(page.getByText(/1 page so far/)).toBeVisible();
   await expect(page.getByRole("img", { name: "01-cover.svg" })).toBeVisible();
-  await expect(page.getByRole("img", { name: "03-body.svg" })).toBeVisible();
+
+  exists = false;
+  send({ type: "tool_result", tool_name: "move_file", arguments: { source: old, destination: current }, result: { source: old, destination: current }, is_error: false });
+  await expect(card).toHaveCount(0);
 });

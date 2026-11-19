@@ -2,23 +2,24 @@ import { describe, expect, it } from "vitest";
 import { draftPages } from "./draftPages";
 
 const write = (path: string, extra: Record<string, unknown> = {}) => ({ toolName: "write_file", arguments: { path }, result: "ok", ...extra });
+const build = { toolName: "build_pptx_from_pages", arguments: { path: "deck.pptx", pages_dir: "pages" } };
 
 describe("draftPages", () => {
-  it("lists the pages of the folder written to last, in the order of their names", () => {
-    const calls = [write("deck/10-end.svg"), write("deck/02-agenda.svg"), write("deck/01-cover.svg"), write("icons/star.svg"), write("deck/03-body.svg")];
-    expect(draftPages(calls).map((p) => p.path)).toEqual(["deck/01-cover.svg", "deck/02-agenda.svg", "deck/03-body.svg", "deck/10-end.svg"]);
+  it("shows the active deck's pages in order, even if another folder was written later", () => {
+    const calls = [write("pages/10-end.svg"), write("pages/01-cover.svg"), write("icons/star.svg"), build];
+    expect(draftPages(calls, "deck.pptx").map((p) => p.path)).toEqual(["pages/01-cover.svg", "pages/10-end.svg"]);
+    expect(draftPages(calls, "old.pptx")).toEqual([]);
   });
 
-  it("leaves out a write that failed or has not finished, and a call that only reads", () => {
-    const calls = [write("p/01.svg"), write("p/02.svg", { isError: true }), write("p/03.svg", { result: undefined }), { toolName: "read_file", arguments: { path: "p/04.svg" }, result: "x" }];
-    expect(draftPages(calls).map((p) => p.path)).toEqual(["p/01.svg"]);
+  it("ends the preview once that build has finished or been denied", () => {
+    const page = write("pages/01.svg");
+    expect(draftPages([page], "deck.pptx")).toEqual([]);
+    expect(draftPages([page, build, { ...build, result: "ok" }], "deck.pptx")).toEqual([]);
+    expect(draftPages([page, { ...build, status: "denied" }], "deck.pptx")).toEqual([]);
   });
 
-  it("counts the writes of a page, so one written again is fetched again", () => {
-    expect(draftPages([write("p/01.svg"), write("p/01.svg")])).toEqual([{ path: "p/01.svg", version: 2 }]);
-  });
-
-  it("is empty when no page was written", () => {
-    expect(draftPages([write("notes.md")])).toEqual([]);
+  it("counts completed writes of the same page", () => {
+    const calls = [write("pages/01.svg"), write("pages/01.svg"), write("pages/02.svg", { isError: true }), build];
+    expect(draftPages(calls, "deck.pptx")).toEqual([{ path: "pages/01.svg", version: 2 }]);
   });
 });

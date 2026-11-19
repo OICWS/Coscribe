@@ -71,23 +71,28 @@ const NONE: ActivityFile[] = [];
 
 /** What the conversation made, fetched again a moment after each finished call, with when it was
  * fetched to say how long ago each file changed. */
-function useOutputs(threadId: string, refreshKey: string): { outputs: ActivityFile[]; at: Date } {
+function useOutputs(threadId: string, refreshKey: string, turnInFlight: boolean): { outputs: ActivityFile[]; at: Date } {
   const [fetched, setFetched] = useState({ threadId: "", outputs: NONE, at: new Date(0) });
   const request = useRef(0);
   useEffect(() => {
     const mine = ++request.current;
     const timer = window.setTimeout(() => {
       getThreadActivity(threadId).then(
-        (activity) => mine === request.current && setFetched({
+        (activity) => mine === request.current && setFetched((previous) => ({
           threadId,
-          outputs: activity.outputs.filter((file) => activity.closed_outputs?.[file.path] !== (file.modified_at ?? "")),
+          outputs: activity.outputs.filter((file) => {
+            if (file.presentation_source || activity.closed_outputs?.[file.path] === (file.modified_at ?? "")) return false;
+            // New SVGs may still become build inputs later in this turn.
+            return !turnInFlight || !/\.svg$/i.test(file.path) || (previous.threadId === threadId
+              && previous.outputs.some((old) => old.path === file.path && old.modified_at === file.modified_at));
+          }),
           at: new Date(),
-        }),
+        })),
         () => undefined,
       );
     }, REFRESH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [threadId, refreshKey]);
+  }, [threadId, refreshKey, turnInFlight]);
   return fetched.threadId === threadId ? fetched : { outputs: NONE, at: fetched.at };
 }
 
@@ -102,9 +107,10 @@ interface OutputActions {
 export function useOutputNotices(
   threadId: string,
   refreshKey: string,
+  turnInFlight: boolean,
   on: OutputActions,
 ): { notices: Notice[]; overlay: ReactNode } {
-  const { outputs, at: now } = useOutputs(threadId, refreshKey);
+  const { outputs, at: now } = useOutputs(threadId, refreshKey, turnInFlight);
   const docs = useDocs(threadId, outputs);
   const [closed, close] = useClosed(threadId);
   const [gallery, setGallery] = useState<{ files: ActivityFile[]; index: number } | null>(null);

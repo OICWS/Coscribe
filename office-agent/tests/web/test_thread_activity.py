@@ -81,6 +81,45 @@ def test_thread_activity_lists_outputs_references_tools_and_progress_lg(
     assert activity["connectors"] == [] and activity["skills"] == []
 
 
+def test_activity_marks_only_svg_pages_used_by_the_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ..test_deck_engine import COVER
+
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call("p1", "write_file", {"path": "pages/01.svg", "content": COVER}),
+                    _tool_call("p2", "write_file", {"path": "standalone.svg", "content": COVER}),
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call(
+                        "p3", "build_pptx_from_pages", {"pages_dir": "pages", "path": "deck.pptx"}
+                    ),
+                ],
+            ),
+            AIMessage(content="done"),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "slides_sources", "make a presentation and a separate drawing")
+        activity = client.get("/api/threads/slides_sources/activity").json()
+        url = "/api/threads/slides_sources/files/download"
+        assert client.head(url, params={"path": "deck.pptx"}).status_code == 200
+        assert client.head(url, params={"path": "deck-final.pptx"}).status_code == 404
+
+    assert {f["path"]: f.get("presentation_source", False) for f in activity["outputs"]} == {
+        "deck.pptx": False,
+        "pages/01.svg": True,
+        "standalone.svg": False,
+    }
+
+
 def test_thread_activity_marks_files_created_edited_and_read_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

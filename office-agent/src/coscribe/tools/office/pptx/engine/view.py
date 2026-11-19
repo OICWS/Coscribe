@@ -17,7 +17,9 @@ from xml.etree import ElementTree as ET
 
 from pptx import Presentation
 
-from .build import MANIFEST, _read_manifest, _source_hash, slide_hashes
+from ...._presentation_record import MANIFEST, read_manifest
+from ...._presentation_record import pages_folder as pages_folder
+from .build import _source_hash, slide_hashes
 from .compiler import EMU_PER_PX, SVG_NS
 from .icons import expand_icons
 from .native import native_kind
@@ -42,23 +44,13 @@ class NotBuiltFromPages(ValueError):
     """The .pptx was not written by a build of a pages folder next to it."""
 
 
-def pages_folder(deck: Path) -> Path | None:
-    """The folder next to `deck` whose build wrote it, whether or not it changed since."""
-    target = deck.resolve()
-    for folder in deck.parent.iterdir():
-        manifest = _read_manifest(folder / MANIFEST) if folder.is_dir() else {}
-        if manifest and Path(manifest["deck"]).resolve() == target:
-            return folder
-    return None
-
-
 def read_deck(deck: Path) -> dict[str, Any]:
     """The deck's slides for the panel. `changed` says the .pptx or a page differs from what the
     last build saw, so what the panel shows may not be what the file holds."""
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
-    entries = _read_manifest(folder / MANIFEST)["pages"]
+    entries = read_manifest(folder / MANIFEST)["pages"]
     prs = Presentation(str(deck))
     changed = [e["slide"] for e in entries] != slide_hashes(deck)
     slides = []
@@ -86,7 +78,7 @@ def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
-    entries = _read_manifest(folder / MANIFEST)["pages"]
+    entries = read_manifest(folder / MANIFEST)["pages"]
     if not 0 <= index < len(entries):
         raise IndexError(f"no slide {index + 1}")
     page = folder / entries[index]["page"]

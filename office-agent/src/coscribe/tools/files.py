@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 from ..runtime import tool_metadata
 from ._output_truncation import cap_read_output
+from ._presentation_record import MANIFEST, deck_files, move_deck
 from ._workspace import WorkspaceScope
 
 DEFAULT_IGNORES = {".git", "__pycache__", ".venv", "node_modules"}
@@ -403,6 +404,16 @@ class FileToolkit:
         dest_path = self._resolve(destination, write=True)
         if not source_path.exists():
             raise ValueError(f"Source does not exist: {source}")
+        deck_rename = (
+            source_path != dest_path
+            and source_path.parent == dest_path.parent
+            and source_path.suffix.lower() == dest_path.suffix.lower() == ".pptx"
+            and source_path.is_file()
+        )
+        if deck_rename:
+            replaced = deck_files(dest_path)[1:] if dest_path.is_file() else []
+            for folder in deck_files(source_path)[1:] + replaced:
+                self._resolve(str(folder / MANIFEST), write=True)
         if dest_path.exists():
             if dest_path.is_dir():
                 # shutil.move's own behavior for an existing directory
@@ -417,9 +428,13 @@ class FileToolkit:
                 )
             if not overwrite:
                 raise FileExistsError(f"Destination already exists: {destination}")
-            dest_path.unlink()
+            if not deck_rename:
+                dest_path.unlink()
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source_path), str(dest_path))
+        if deck_rename:
+            move_deck(source_path, dest_path)
+        else:
+            shutil.move(str(source_path), str(dest_path))
         return {
             "source": self._relative(source_path),
             "destination": self._relative(dest_path),

@@ -205,6 +205,9 @@ jobs:
             for _ in $(seq 90); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done
             echo "$url did not come up"; tail -n 30 "$scratch"/*.log; exit 1
           done
+          # The Slides specs share the workspace selected on first start.
+          curl -sf -X POST http://127.0.0.1:8000/api/workspace/first -H "Content-Type: application/json" \
+            -H "x-coscribe-token: e2e-launch-token" -d "{\"folder\": \"$scratch/workspace\"}" > /dev/null
           export COSCRIBE_E2E_WORKSPACE="$scratch/workspace"
           export PLAYWRIGHT_CHROMIUM_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
           npx playwright test tests/e2e/slides.spec.ts tests/e2e/slides-panels.spec.ts --reporter=list,html --trace=retain-on-failure
