@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import httpx
 from dotenv import dotenv_values, set_key
 from fastapi import (
     APIRouter,
@@ -26,6 +27,7 @@ from ...provider_catalog import (
     PROVIDER_CATALOG,
 )
 from ...schemas import (
+    ProviderModelsRequest,
     ProviderUpdate,
 )
 from ...state import AppState
@@ -43,6 +45,15 @@ def _save_builtin_key(env_key: str, api_key: str) -> bool:
     # there) -- this live process needs the actual key now, not after the next
     # resolve_env_keyring_refs() startup pass.
     os.environ[env_key] = api_key
+    return True
+
+
+def _save_builtin(provider: dict[str, str], api_key: str, default_model: str) -> bool:
+    """`_save_builtin_key`, then the default model when one is given."""
+    if not _save_builtin_key(provider["api_key_env"], api_key):
+        return False
+    if default_model:
+        set_key(".env", provider["default_model_env"], default_model)
     return True
 
 
@@ -65,6 +76,95 @@ def _custom_key(
         return "the saved key can't be read here; enter it again"
 
 
+_OPENAI_BASE_URL = "https://api.openai.com/v1"
+
+
+def _builtin_has_model(provider: dict[str, str]) -> bool:
+    """Whether a built-in provider already has a model the picker can offer, the same way
+    `_providers_info` finds one: its own setting, or the global default naming it."""
+    env = dotenv_values(".env")
+    if env.get(provider["default_model_env"]):
+        return True
+    key, _, model = (env.get("COSCRIBE_DEFAULT_MODEL") or "").partition(":")
+    return key == provider["key"] and bool(model)
+
+
+def _model_to_save(
+    builtin: dict[str, str] | None, payload_model: str, existing: dict[str, Any] | None
+) -> str | None:
+    """The default model to save: the payload's, else "" to keep the one already saved;
+    None when there is none, since the model picker offers a provider's default model and
+    nothing else."""
+    model = payload_model.strip()
+    if model:
+        return model
+    if builtin is not None:
+        return "" if _builtin_has_model(builtin) else None
+    return (existing or {}).get("default_model") or None
+
+
+def _models_target(
+    payload: ProviderModelsRequest, providers_config_path: Path | None
+) -> tuple[str, str] | str:
+    """(base URL, API key) to list a provider's models with, a blank key falling back to
+    the saved one; or why it can't be listed."""
+    name = payload.name.strip()
+    api_key = payload.api_key.strip()
+    if name.lower() == "openai":
+        base_url, api_key = _OPENAI_BASE_URL, api_key or os.environ.get("OPENAI_API_KEY", "")
+    elif any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS):
+        return "Listing models works for OpenAI-compatible providers."
+    else:
+        base_url = payload.base_url.strip()
+        if not api_key and providers_config_path is not None:
+            stored = _read_providers_raw(providers_config_path)["providers"].get(name, {})
+            try:
+                api_key = resolve_secret(stored.get("api_key")) or ""
+            except RuntimeError:
+                api_key = ""
+    if not base_url:
+        return "Enter the base URL first."
+    if not api_key:
+        return "Enter the API key first."
+    return base_url, api_key
+
+
+async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
+    """The model IDs an OpenAI-compatible service lists at `GET {base_url}/models`, or why
+    they couldn't be listed."""
+    url = base_url.rstrip("/") + "/models"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, headers={"Authorization": f"Bearer {api_key}"})
+    except httpx.TimeoutException:
+        return {"models": [], "error": "The provider didn't answer within 15 s."}
+    except httpx.HTTPError as exc:
+        return {"models": [], "error": f"Couldn't reach the provider: {exc}."}
+    if response.status_code in (401, 403):
+        return {"models": [], "error": "The provider refused the API key."}
+    if response.status_code >= 400:
+        return {"models": [], "error": f"The provider answered {response.status_code} at /models."}
+    try:
+        data = response.json().get("data")
+    except (ValueError, AttributeError):
+        data = None
+    if not isinstance(data, list):
+        return {"models": [], "error": "The provider doesn't list its models at /models."}
+    ids = sorted({str(m["id"]) for m in data if isinstance(m, dict) and m.get("id")})
+    if not ids:
+        return {"models": [], "error": "The provider listed no models."}
+    return {"models": ids, "error": None}
+
+
+async def _provider_models(
+    payload: ProviderModelsRequest, providers_config_path: Path | None
+) -> dict[str, Any]:
+    target = _models_target(payload, providers_config_path)
+    if isinstance(target, str):
+        return {"models": [], "error": target}
+    return await list_provider_models(*target)
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
@@ -83,6 +183,13 @@ def router(state: AppState) -> APIRouter:
     async def get_providers() -> dict[str, Any]:
         return _providers_info()
 
+    async def get_provider_models(payload: ProviderModelsRequest) -> dict[str, Any]:
+        """A POST although it changes nothing: the request carries an API key."""
+        return await _provider_models(payload, settings.providers_config_path)
+
+    # Registered by call so the dead-code check sees the handler used.
+    router.post("/api/providers/models")(get_provider_models)
+
     @router.post("/api/providers")
     async def add_provider(payload: ProviderUpdate) -> dict[str, Any]:
         name = payload.name.strip()
@@ -93,17 +200,19 @@ def router(state: AppState) -> APIRouter:
         blank_key = {"restart_required": False, "rejected": {name: "api_key cannot be blank"}}
 
         builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+        path = settings.providers_config_path or Path("./providers.json").resolve()
+        raw = _read_providers_raw(path)
+        default_model = _model_to_save(builtin, payload.default_model, raw["providers"].get(name))
+        if default_model is None:
+            return {"restart_required": False, "rejected": {name: "default_model cannot be blank"}}
+
         if builtin is not None:
-            if not _save_builtin_key(builtin["api_key_env"], payload.api_key):
+            if not _save_builtin(builtin, payload.api_key, default_model):
                 return blank_key
-            if payload.default_model:
-                set_key(".env", builtin["default_model_env"], payload.default_model)
             # Nothing caches the key: resolve_chat_model and the context-window lookup
             # both build their client fresh on every call.
             return {"restart_required": False, "rejected": {}}
 
-        path = settings.providers_config_path or Path("./providers.json").resolve()
-        raw = _read_providers_raw(path)
         keys = _custom_key(name, payload, raw["providers"].get(name))
         if isinstance(keys, str):
             return {"restart_required": False, "rejected": {name: keys}}
@@ -113,9 +222,11 @@ def router(state: AppState) -> APIRouter:
         # real value as a hardened-permission fallback otherwise) --
         # context_window_client.register_custom_provider below gets the
         # real value (api_key), never this.
-        entry: dict[str, Any] = {"base_url": payload.base_url, "api_key": stored_key}
-        if payload.default_model:
-            entry["default_model"] = payload.default_model
+        entry: dict[str, Any] = {
+            "base_url": payload.base_url,
+            "api_key": stored_key,
+            "default_model": default_model,
+        }
 
         # .resolve() matters here: this path gets persisted both into
         # settings.providers_config_path (kept for the rest of the process's

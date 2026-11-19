@@ -309,6 +309,11 @@ export interface ProviderUpdateResult {
   rejected: Record<string, string>;
 }
 
+export interface ProviderModelsResult {
+  models: string[];
+  error: string | null;
+}
+
 export interface ProviderDeleteResult {
   restart_required: boolean;
 }
