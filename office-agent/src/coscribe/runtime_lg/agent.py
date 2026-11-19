@@ -25,6 +25,7 @@ from langchain.agents.middleware import (
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.tools import BaseTool
+from langchain_core.tools import tool as as_tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
@@ -388,6 +389,14 @@ class _CompactMiddleware(SummarizationMiddleware):
         return self._with_tasks(await super().abefore_model(state, runtime), state)
 
 
+def _ending_turn(t: Callable[..., Any] | BaseTool) -> Callable[..., Any] | BaseTool:
+    # The same conversion create_agent makes of a plain callable, so the schema the model sees
+    # is unchanged; return_direct is what lets the graph end the turn after the tool.
+    if isinstance(t, BaseTool) or not get_tool_metadata(t).ends_turn:
+        return t
+    return as_tool(t, return_direct=True)
+
+
 def _writer_names(tools: Sequence[Callable[..., Any] | BaseTool]) -> set[str]:
     return {
         tool_name(t)
@@ -554,7 +563,7 @@ def build_langgraph_agent(
 
     middleware += [*turn_end(open_tasks, tools, resolve_file), _AnswerEveryToolCallMiddleware()]
 
-    final_tools = list(tools)
+    final_tools = [_ending_turn(t) for t in tools]
     if defer_tools:
         core_names = set(core_tool_names)
         deferred = [t for t in tools if tool_name(t) not in core_names]

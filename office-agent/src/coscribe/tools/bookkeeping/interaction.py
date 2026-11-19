@@ -246,6 +246,20 @@ def request_folder_access(folder: str, access: Literal["read", "write"], reason:
     )
 
 
+def react_to_message(emoji: str) -> str:
+    """Answer the user's latest message with one emoji, shown on their message, instead of a
+    written reply. Use it when words would only acknowledge: they turned down what you offered
+    ("no need"), said thanks or "ok", and nothing is left to do. Called on its own it ends your
+    turn, so write no text with it. Alongside other tools, carry on as usual.
+
+    Args:
+        emoji: one emoji, e.g. "👍".
+    """
+    if not emoji.strip() or len(emoji.strip()) > 8:
+        raise ValueError("emoji must be one emoji, e.g. \"👍\".")
+    return "Reacted."
+
+
 def build_interaction_tools() -> list[Callable[..., Any]]:
     """Return the interaction tool callables. No state to bind -- unlike
     every other build_*_tools factory in this package, this one takes no
@@ -257,4 +271,7 @@ def build_interaction_tools() -> list[Callable[..., Any]]:
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
         tool_metadata(remember, risk_category="READ", category="interaction"),
         tool_metadata(request_folder_access, risk_category="READ", category="interaction"),
+        tool_metadata(
+            react_to_message, risk_category="READ", category="interaction", ends_turn=True
+        ),
     ]

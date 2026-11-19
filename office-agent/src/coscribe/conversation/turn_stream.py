@@ -19,7 +19,7 @@ from .events import EventSink
 from .history import close_orphaned_tool_calls
 from .stopped_turn import keep_stopped_turn
 from .turn_record import TurnRecorder, observed
-from .turn_text import usage_event
+from .turn_text import format_reply, usage_event
 
 
 async def _without_summaries(stream: Any) -> Any:
@@ -78,6 +78,13 @@ class TurnStreamer:
         self.keep_stopped_work = True
         # Set for the turn that is running (`recorded_turn`); None counts nothing.
         self.record: TurnRecorder | None = None
+        # Only a tool that ends the turn (an emoji on the user's message) leaves a result last.
+        self.ended_at_tool = False
+
+    def reply(self, text: str) -> str:
+        """The finished turn's reply as the page shows it. A turn a tool ended has said what it
+        had to; no words then is not a model that went quiet."""
+        return "" if self.ended_at_tool and not text.strip() else format_reply(text)
 
     async def stopped(self, text: str | None = None) -> str:
         """What the page shows for a turn that ended on a stop, after keeping its work in the
@@ -99,9 +106,8 @@ class TurnStreamer:
         arrives in this call, or at the end of the loop for a gated call whose result comes
         in the resumed call after approval.
 
-        Stop is cooperative, checked after every chunk: it cannot cut a model call already
-        in flight. The generator is closed explicitly so an abandoned one does not keep
-        running in the background.
+        Stop is cooperative, checked after every chunk: it cannot cut a model call in flight.
+        The generator is closed so an abandoned one does not run on in the background.
         """
         host = self._host
         agent = host.lg_agent
@@ -152,6 +158,7 @@ class TurnStreamer:
                     await self.announce_started_tools(chunk, websocket)
                     continue
                 message, _metadata = chunk
+                self.ended_at_tool = isinstance(message, ToolMessage)
                 if isinstance(message, AIMessageChunk):
                     text = _extract_text(message.content)
                     if text:
