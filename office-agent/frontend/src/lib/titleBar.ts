@@ -5,6 +5,7 @@ import { setTitleBarColors, titleBarPlatform } from "./electron";
  * page (office-agent-desktop's main/windowChrome.ts). */
 export const TITLE_BAR_PLATFORM = titleBarPlatform();
 export const DRAWS_TITLE_BAR = TITLE_BAR_PLATFORM !== null;
+export const APP_HEADER_HEIGHT = DRAWS_TITLE_BAR ? "2.5rem" : "3rem";
 
 /** Width of the top-left cluster (menu, sidebar toggle, back, forward)
  * while the sidebar is collapsed: 32px buttons, 2px gaps, 6px padding. */

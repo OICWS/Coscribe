@@ -7,6 +7,7 @@ import { useTaskNames } from "../../lib/taskCalls";
 import { dataFlow } from "../../lib/dataFlow";
 import { applyQuick, type QuickField, quickFields, replaceStep } from "../../lib/quickEdit";
 import { allSteps } from "../../lib/workflowTree";
+import { APP_HEADER_HEIGHT } from "../../lib/titleBar";
 import type { Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
 import { CloseIcon } from "../icons";
 import { AutoTextarea, FieldLabel } from "./fields";
@@ -147,7 +148,7 @@ function QuickSheet({
   onOpenEditor: () => void;
 }) {
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/20" onClick={onClose}>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-end bg-black/20" style={{ top: APP_HEADER_HEIGHT }} onClick={onClose}>
       <aside
         aria-label={title}
         className="flex h-full w-[min(420px,100vw)] flex-col border-l border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]"
