@@ -133,7 +133,6 @@ export function TaskVersionsSection({ task, onChanged }: { task: ScheduledTask; 
 
   return (
     <section aria-label="Versions">
-      <div className="mb-1 text-sm text-[var(--muted)]">Versions</div>
       <ul className="-mx-2 flex flex-col">
         {shown.map((version, index) => (
           <VersionRow

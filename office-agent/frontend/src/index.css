@@ -143,6 +143,9 @@
   --notice-pill-fg: #171717;
   --notice-ready-bg: #e8e1f7;
   --notice-ready-fg: #8e6bd9;
+  --notice-hover-bg: #ebebeb;
+  --notice-pill-hover-bg: #dcdcdc;
+  --notice-ready-hover-bg: #ddd3f3;
 }
 
 :root[data-theme="dark"] {
@@ -220,6 +223,9 @@
   --notice-pill-fg: #f0ede9;
   --notice-ready-bg: #2e2840;
   --notice-ready-fg: #b9a2f0;
+  --notice-hover-bg: #322f2e;
+  --notice-pill-hover-bg: #47433f;
+  --notice-ready-hover-bg: #372f4d;
 }
 
 /* Reusable blue gradient text -- see the palette comment above for

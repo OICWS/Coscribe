@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { patchScheduledTask } from "../lib/rest";
+import { capitalize, formatRunTime, latestRun } from "../lib/runLabels";
 import { plainDefault } from "../lib/inputKinds";
 import { waitsForYou } from "../lib/plainOutline";
 import { plainDetail } from "../lib/plainSteps";
@@ -8,7 +8,8 @@ import { neededAutonomy } from "../lib/workflowLabels";
 import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
-import { AutonomyChoice, PLAIN_LABEL } from "./workflow/AutonomySetting";
+import { RunStatusIcon } from "./RunStatusIcon";
+import { PLAIN_LABEL } from "./workflow/AutonomySetting";
 import { PlainStepList, PlainText } from "./workflow/PlainStepList";
 import { InputQuickPanel, QuickEditPanel } from "./workflow/QuickEditPanel";
 import { TaskOverviewLine } from "./workflow/TaskOverviewLine";
@@ -140,7 +141,7 @@ function WhatItDoes({
         title="What it does"
         action={
           <button type="button" className={linkButton} onClick={onShowDetails}>
-            See or edit the steps
+            Edit the steps
           </button>
         }
       >
@@ -214,137 +215,107 @@ function NeedsFromYou({
   );
 }
 
-/** How the task is set up rather than what it does, folded under one line that sums it up. */
-function Settings({
+/** How the task is set up, one tile per question; each opens the tab that changes it. */
+function Glance({
   task,
   workflow,
-  persist,
-  onEdit,
-  onShowDetails,
-  onChanged,
   environment,
+  onShowSettings,
+  onShowRuns,
 }: {
   task: ScheduledTask;
   workflow: Workflow;
-  persist: (next: Workflow) => Promise<string | null>;
-  onEdit: () => void;
-  onShowDetails: () => void;
-  onChanged: () => void;
   environment: ReactNode;
+  onShowSettings: () => void;
+  onShowRuns: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const when = task.schedule.kind === "manual" ? "Only when you start it" : describeSchedule(task.schedule);
-  const failing = PLAIN_LABEL[workflow.autonomy ?? neededAutonomy(workflow)];
-  const toggleInvestigate = async () => {
-    await patchScheduledTask(task.trigger_id, { auto_investigate: !task.auto_investigate });
-    onChanged();
-  };
+  const last = latestRun(task);
+  const tiles: { label: string; value: ReactNode; open: () => void; title: string }[] = [
+    {
+      label: "When it runs",
+      value: task.schedule.kind === "manual" ? "When you start it" : describeSchedule(task.schedule),
+      open: onShowSettings,
+      title: "Change when it runs",
+    },
+    {
+      label: "Last run",
+      value: last ? (
+        <span className="flex min-w-0 items-center gap-1.5">
+          <RunStatusIcon status={last.status} />
+          <span className="truncate">{capitalize(formatRunTime(last.started_at))}</span>
+        </span>
+      ) : (
+        "Not run yet"
+      ),
+      open: onShowRuns,
+      title: "See its runs",
+    },
+    {
+      label: "If a step stops working",
+      value: PLAIN_LABEL[workflow.autonomy ?? neededAutonomy(workflow)],
+      open: onShowSettings,
+      title: "Change what happens when a step stops working",
+    },
+    { label: "Workspace", value: environment, open: onShowSettings, title: "See what it may touch" },
+  ];
   return (
-    <section data-testid="task-settings">
-      <button
-        type="button"
-        aria-expanded={open}
-        className="flex w-full items-baseline gap-2 text-left"
-        onClick={() => setOpen(!open)}
-      >
-        <span className={`text-xs text-[var(--muted)] transition-transform ${open ? "rotate-90" : ""}`}>▸</span>
-        <h2 className="text-sm font-medium">Settings</h2>
-        {!open && (
-          <span className="min-w-0 truncate text-[13px] text-[var(--muted)]">
-            {when} · When a step stops working: {failing.toLowerCase()} · Version {task.version ?? 1}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="mt-4 flex flex-col gap-6 pl-4">
-          <Section
-            title="When it runs"
-            action={
-              <button type="button" className={linkButton} onClick={onEdit}>
-                Change
-              </button>
-            }
-          >
-            <div className="text-sm">{when}</div>
-          </Section>
-          <Section title="If a step stops working">
-            <AutonomyChoice workflow={workflow} persist={persist} />
-            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={task.auto_investigate ?? false}
-                onChange={() => void toggleInvestigate()}
-              />
-              <span>
-                When a run fails, have Coscribe look into it and suggest a fix
-                <span className="block text-[13px] text-[var(--muted)]">It never saves the fix without you.</span>
-              </span>
-            </label>
-          </Section>
-          <Section title="Where it runs">
-            <div className="flex items-center gap-1.5 text-sm">Uses the workspace {environment}</div>
-          </Section>
-          <Section
-            title="Versions"
-            action={
-              (task.version ?? 1) > 1 && (
-                <button type="button" className={linkButton} onClick={onShowDetails}>
-                  Compare or restore
-                </button>
-              )
-            }
-          >
-            <div className="text-sm">
-              Version {task.version ?? 1} · each save keeps the one before, so you can go back
-            </div>
-          </Section>
-        </div>
-      )}
-    </section>
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="task-glance">
+      {tiles.map((tile) => (
+        <button
+          key={tile.label}
+          type="button"
+          title={tile.title}
+          className="flex min-w-0 cursor-pointer flex-col gap-1 rounded-xl bg-[var(--card-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--card-bg)_85%,var(--fg))]"
+          onClick={tile.open}
+        >
+          <span className="text-[12px] text-[var(--muted)]">{tile.label}</span>
+          <span className="line-clamp-2 min-w-0 text-sm">{tile.value}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
-/** A workflow task's page for someone who uses it rather than builds it: one sentence on what it
- * does, its steps in plain words, what it needs from them and its runs, with how it is set up
- * folded away. Every control here changes the same settings the detailed view shows. */
+/** A workflow task's overview, for someone who uses it rather than builds it: one sentence on
+ * what it does, how it is set up at a glance, its steps in plain words, what it needs from them
+ * and its latest runs. Every control here changes the same settings the other tabs show. */
 export function ScheduledTaskSimple({
   task,
   workflow,
   persist,
-  onEdit,
-  onShowDetails,
+  onEditSteps,
   onOpenStep,
-  onChanged,
+  onShowSettings,
+  onShowRuns,
   runs,
   environment,
 }: {
   task: ScheduledTask;
   workflow: Workflow;
   persist: (next: Workflow) => Promise<string | null>;
-  onEdit: () => void;
-  onShowDetails: () => void;
-  /** Opens a step in the detailed view's editor, from its quick edit. */
+  onEditSteps: () => void;
+  /** Opens a step in the Steps tab's editor, from its quick edit. */
   onOpenStep: (stepId: string) => void;
-  onChanged: () => void;
+  onShowSettings: () => void;
+  onShowRuns: () => void;
   runs: ReactNode;
   environment: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-7" data-testid="task-simple-view">
-      <TaskOverviewLine triggerId={task.trigger_id} version={task.version ?? 1} />
-      <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onShowDetails} onOpenStep={onOpenStep} />
-      <NeedsFromYou task={task} workflow={workflow} persist={persist} onShowDetails={onShowDetails} />
+      <div className="flex flex-col gap-4">
+        <TaskOverviewLine triggerId={task.trigger_id} version={task.version ?? 1} />
+        <Glance
+          task={task}
+          workflow={workflow}
+          environment={environment}
+          onShowSettings={onShowSettings}
+          onShowRuns={onShowRuns}
+        />
+      </div>
+      <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onEditSteps} onOpenStep={onOpenStep} />
+      <NeedsFromYou task={task} workflow={workflow} persist={persist} onShowDetails={onEditSteps} />
       {runs}
-      <Settings
-        task={task}
-        workflow={workflow}
-        persist={persist}
-        onEdit={onEdit}
-        onShowDetails={onShowDetails}
-        onChanged={onChanged}
-        environment={environment}
-      />
     </div>
   );
 }

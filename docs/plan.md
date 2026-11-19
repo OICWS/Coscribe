@@ -233,8 +233,8 @@ Last reviewed: 2026-11-18.
   shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
-- A scheduled task changed by describing the change in words, from the task page's simple view
-  (#843): today a person edits steps in the detailed view or asks in a conversation. Needs a
+- A scheduled task changed by describing the change in words, from the task page's Overview tab
+  (#843): today a person edits steps in the Steps tab or asks in a conversation. Needs a
   route that drafts a revision of a saved task from a request, as a failed run's investigation does.
 
 - The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the

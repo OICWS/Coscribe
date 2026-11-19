@@ -48,7 +48,8 @@ test("a workflow's page shows it as a canvas in plain words, then in detail, and
     await expect(simple).not.toContainText("list_files");
     await expect(simple).not.toContainText("{{");
 
-    await page.getByRole("button", { name: "Detailed" }).click();
+    await page.getByRole("tab", { name: /^Steps/ }).click();
+    await page.getByRole("group", { name: "Steps view" }).getByRole("button", { name: "Flowchart" }).click();
     const canvas = page.getByTestId("workflow-canvas");
     await expect(canvas).toContainText("Start");
     await expect(canvas).toContainText("Repeats for each item");
