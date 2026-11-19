@@ -56,6 +56,7 @@ from .capability_guard import capability_refusal
 from .events import EventSink
 from .folder_access import decide_folder_request
 from .workspace_folder import WorkspaceFolders
+from .workspace_permissions import FolderVerdict, WorkspacePermissions
 
 _COMMAND_TOOL = "run_background_command"
 _MEMORY_HERE = "Save for this folder"
@@ -253,30 +254,12 @@ class ApprovalDecider:
     async def _decide_action_request(
         self, request: dict[str, Any], websocket: Any, *, honor_stop: bool = True
     ) -> Any:
-        """Decide one pending action request, in precedence order: a
-        configured PreToolUse hook can veto it outright (a hook runs before
-        the approval policy it would otherwise reach); otherwise, a request for a tool in
-        self._gated_tool_risks is genuinely gated. For
-        run_python_script/run_node_script specifically (EXEC_POLICY_TOOL_NAMES),
-        a configured exec policy (runtime_lg/exec_policy.py, ROADMAP.md
-        Phase 7) can pre-decide the call: "forbidden" rejects outright,
-        checked even before plan mode (same tier as a hook veto -- a
-        categorical, human-authored "never do this" always wins); "allow"
-        skips straight to approval, but only *after* plan mode's own check,
-        so plan mode's read-only guarantee stays absolute regardless of any
-        exec-policy rule. Otherwise ("prompt", or no policy configured --
-        today's behavior, unconfigured) falls through unchanged: plan mode
-        denies it outright (mirroring PlanModePolicy), accept-edits
-        approves it without asking (mirroring AllowAllToolPolicy), and
-        otherwise the user is actually asked (sending one approval_required
-        WS message per request -- design gap noted in the Phase 3 plan: the
-        middleware batches all of a task's requests into one interrupt, but
-        the existing WS contract expects one message per gated call). A
-        request for a tool *not* in that set only reached here because
-        PreToolUse hooks are configured (see __init__'s
-        extra_interrupt_tool_names) and already passed the hook check
-        above, so it's auto-approved -- plan mode does not block it, since
-        it was never risky enough to require approval in the first place.
+        """Decide one pending action request. A configured PreToolUse hook can veto it outright
+        (it runs before the approval policy it would otherwise reach); a tool in
+        self._gated_tool_risks then goes through `_decide_gated_request`, which holds the
+        precedence. Any other tool reached here only because PreToolUse hooks are configured
+        (__init__'s extra_interrupt_tool_names) and passed them, so it's approved, plan mode or
+        not: it never needed approval.
 
         A name in QUESTION_TOOL_NAMES (ask_user_question) is a different
         shape of interrupt entirely -- see runtime_lg/agent.py's own
@@ -395,7 +378,7 @@ class ApprovalDecider:
         """The precedence for a gated tool once no hook has vetoed it: exec
         policy forbids, its switch is off, plan mode, exec policy allows, a code-module
         allowance, accept-edits or auto mode, the auto reviewer, and last
-        a person."""
+        a person. The workspace's own rules come after exec policy's, which are the person's."""
         exec_policy_decision, exec_policy_detail = "prompt", None
         if name in EXEC_POLICY_TOOL_NAMES:
             exec_policy = self._host._load_exec_policy()
@@ -403,6 +386,11 @@ class ApprovalDecider:
         if exec_policy_decision == "forbidden":
             message = exec_policy_detail or "Forbidden by exec policy."
             self._audit(audit_log, name, args, "reject", "exec_policy", message)
+            return {"type": "reject", "message": message}
+        folder_rule = self._folder_rule(name, args)
+        if folder_rule is not None and folder_rule[0] == "deny":
+            message = f"The workspace's settings deny this ({folder_rule[1]})."
+            self._audit(audit_log, name, args, "reject", "workspace_settings", message)
             return {"type": "reject", "message": message}
         turned_off = self._turned_off(name, args)
         if turned_off is not None:
@@ -424,6 +412,13 @@ class ApprovalDecider:
             return await self._approved(
                 audit_log, name, args, websocket, "exec_policy", exec_policy_detail
             )
+        if folder_rule is not None and folder_rule[0] == "ask":
+            note = f"The workspace's settings ask for this ({folder_rule[1]})."
+            return await self._ask_person_only(audit_log, name, args, websocket, note)
+        if folder_rule is not None:
+            return await self._approved(
+                audit_log, name, args, websocket, "workspace_settings", folder_rule[1]
+            )
         if self._code_allows(name, websocket):
             return await self._approved(audit_log, name, args, websocket, "code_allowed")
         auto_reason = self._auto_approves(name)
@@ -437,6 +432,15 @@ class ApprovalDecider:
             if decision is not None:
                 return decision
         return await self._ask_person_only(audit_log, name, args, websocket, reviewer_note)
+
+    def _folder_rule(self, name: str, args: dict[str, Any]) -> tuple[FolderVerdict, str] | None:
+        root = Path(self._host.workspace_root)
+        settings = self._host._assembly.workspace_folders.accepted_settings(root)
+        if not settings:
+            return None
+        metadata = self._host.tool_catalog().get(name)
+        risk = getattr(metadata, "risk_category", None)
+        return WorkspacePermissions(settings, root).decide(name, args, risk)
 
     def _turned_off(self, name: str, args: dict[str, Any]) -> str | None:
         """Asked before a person is: nobody approves a write its switch then refuses."""
@@ -465,15 +469,9 @@ class ApprovalDecider:
         reviewer_note: str | None = None,
     ) -> Any:
         if not can_resolve_approvals(websocket):
-            # Reached only when this call is genuinely gated and neither
-            # exec_policy nor accept_edits already decided it above --
-            # creating the Future below would await a real approval nobody
-            # is present to give. A normal unattended turn never gets here
-            # (its caller skips _resolve_pending_approvals entirely, leaving
-            # the interrupt durably paused in the checkpointer); this is the
-            # backstop for an unattended run with accept_edits or auto mode
-            # on, which does resolve approvals and must not hang the poller
-            # forever.
+            # A normal unattended turn never gets here (its interrupt stays paused in the
+            # checkpointer); an unattended run with accept_edits or auto mode on does, and a
+            # Future would wait on a person nobody is present to be.
             message = "No one is available to approve this -- this is an unattended run."
             self._audit(audit_log, name, args, "reject", "unattended", message)
             return self._denied(name, message)

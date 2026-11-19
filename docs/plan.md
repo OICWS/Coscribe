@@ -59,8 +59,9 @@ Last reviewed: 2026-11-18.
    conversation: the dialog has no skip, so Default always has a folder). D part 1 (settings and
    connectors wait for "Use them" and the file tools can't write them) is in
    `docs/log/2026-11-19-workspace-settings-trust.md`. D part 2 (an accepted `mcp.json` connects
-   for that workspace's conversations) is in `docs/log/2026-11-19-workspace-connectors.md`. A
-   workspace reaches only the Allowed folders it picks (decision 0053); the server is in
+   for that workspace's conversations) is in `docs/log/2026-11-19-workspace-connectors.md`, part 3
+   (`settings.json`'s permissions decide gated calls) in `docs/log/2026-11-19-workspace-permissions.md`.
+   A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
    `docs/log/2026-11-19-allowed-folders-per-workspace.md`. Next: the workspace dialog's picker,
    `settings.json`'s env, and the "Use them" card naming the settings and connectors.
 
@@ -73,8 +74,7 @@ Last reviewed: 2026-11-18.
 
 - **Connector credentials the redactor does not recognise** (`docs/log/2026-11-18-connection-string-passwords.md`):
   a scheme-less DSN (`user:pass@tcp(host)/db`), a password in an argument after a flag that does
-  not name it, a password under 8 characters printed on its own, and a `name=value` password that
-  starts with `/` or `~` (taken for a path).
+  not name it, and a password under 8 characters printed on its own.
 
 - **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
   messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.

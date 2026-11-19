@@ -34,6 +34,11 @@ runs, is refused or waits for a person. The precedence is one table, `ROWS` in
    (`conversation/capability_guard.py`; its own test beside the table).
 5. An exec policy rule `forbidden` refuses a script before plan mode is read; `allow` approves a
    script (not in plan mode) and works unattended; `prompt` and rules for other tools change nothing.
+   After it, the `permissions` of the workspace's accepted `.coscribe/settings.json` (decision
+   0048, `conversation/workspace_permissions.py`): `deny` refuses before plan mode is read, `ask`
+   asks even under a standing approval, `allow` approves (not in plan mode, and never a command
+   only the person may approve); a file not accepted changes nothing. Logged as
+   `workspace_settings`.
 6. A standing approval (`preapproved`) approves any risk tier and is logged as such.
 7. Accept Edits approves local writes only; scripts and external actions still ask.
 8. A scheduled run's approval mode: `skip` approves every tier, `auto` approves local writes and
