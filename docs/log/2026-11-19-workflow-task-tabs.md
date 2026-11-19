@@ -9,6 +9,9 @@ notice opened only from its text with nothing on hover to say it could.
   the header; the page switch and the header's "Workflow · 7 steps" are gone (decision 0053).
 - `ScheduledTaskSimple.tsx` is the Overview: four tiles (when it runs, last run, if a step stops
   working, workspace), each opening the tab that changes it, in place of the folded Settings.
+- The Overview's sections are cards; its steps show a pointer and "Change" on hover, and its
+  actions are outlined buttons. The flowchart's cards (`WorkflowCanvas.tsx`, plain mode, now used
+  by the Steps tab too) show only each step's kind and title.
 - `workflow/TaskSettingsTab.tsx`: every setting once, in four cards; the webhook address moved
   here from the runs list. The plain autonomy dropdown is gone; the radio levels stay.
 - `workflow/QuickEditPanel.tsx`: "Change this step" and "Change what it asks for" are a floating

@@ -3,6 +3,7 @@ import { type PlainGroup, type PlainRow, plainOutline } from "../../lib/plainOut
 import { plainKind } from "../../lib/plainSteps";
 import { useTaskNames } from "../../lib/taskCalls";
 import type { Workflow, WorkflowInput } from "../../types/workflow";
+import { PencilIcon } from "../icons";
 import { PlainTile, plainColor } from "./WorkflowCanvas";
 
 /** A sentence with each input it reads as a chip, so what the person fills in stands out from
@@ -58,7 +59,7 @@ function Row({
         data-testid="plain-step"
         data-plain-step={step.id}
         aria-current={openId === step.id ? "true" : undefined}
-        className="group flex w-full items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-[var(--card-bg)] aria-[current]:bg-[var(--card-bg)]"
+        className="group flex w-full cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-[var(--card-bg)] aria-[current]:bg-[var(--card-bg)]"
         onClick={() => onOpen(step.id)}
       >
         {number !== null ? (
@@ -89,7 +90,11 @@ function Row({
             </span>
           )}
         </span>
-        <span className="mt-px shrink-0 text-xs text-[var(--muted)]">{plainKind(step)}</span>
+        <span className="mt-px shrink-0 text-xs text-[var(--muted)] group-hover:hidden">{plainKind(step)}</span>
+        <span className="mt-px hidden shrink-0 items-center gap-1 text-xs font-medium text-[var(--fg)] group-hover:flex" aria-hidden="true">
+          <PencilIcon className="h-3 w-3" />
+          Change
+        </span>
       </button>
       {row.groups.map((group, index) => (
         <Group key={index} group={group} inputs={inputs} onOpen={onOpen} openId={openId} indent={number !== null} />

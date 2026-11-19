@@ -8,6 +8,7 @@ import { neededAutonomy } from "../lib/workflowLabels";
 import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
+import { ChevronRightIcon, PencilIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { PLAIN_LABEL } from "./workflow/AutonomySetting";
 import { PlainStepList, PlainText } from "./workflow/PlainStepList";
@@ -18,8 +19,8 @@ import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section>
-      <div className="mb-2 flex items-center justify-between gap-3">
+    <section className="rounded-xl border border-[var(--border)] px-4 pb-4 pt-3">
+      <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
         <h2 className="text-sm font-medium">{title}</h2>
         {action}
       </div>
@@ -28,7 +29,9 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
   );
 }
 
-const linkButton = "text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline";
+// Looks like a button so a person can tell it does something: plain gray text read as a label.
+const linkButton =
+  "inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-[var(--border)] px-2 text-[13px] text-[var(--fg)] transition-colors hover:bg-[var(--card-bg)]";
 
 /** What fills an input by itself when the task starts on something new: a folder task's file
  * (decision 0034), a connector item's or an event's field (decisions 0039, 0040). Nothing to
@@ -141,12 +144,13 @@ function WhatItDoes({
         title="What it does"
         action={
           <button type="button" className={linkButton} onClick={onShowDetails}>
+            <PencilIcon className="h-3 w-3" />
             Edit the steps
           </button>
         }
       >
         <PlainStepList workflow={workflow} onOpenStep={setEditing} openStepId={editing} />
-        <button type="button" className={`${linkButton} mt-2`} onClick={() => setChart(!chart)}>
+        <button type="button" className={`${linkButton} mt-3`} onClick={() => setChart(!chart)}>
           {chart ? "Hide the flowchart" : "Show the flowchart"}
         </button>
         {chart && (
@@ -265,10 +269,13 @@ function Glance({
           key={tile.label}
           type="button"
           title={tile.title}
-          className="flex min-w-0 cursor-pointer flex-col gap-1 rounded-xl bg-[var(--card-bg)] px-3 py-2.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--card-bg)_85%,var(--fg))]"
+          className="group flex min-w-0 cursor-pointer flex-col gap-1 rounded-xl border border-[var(--border)] px-3 py-2.5 text-left transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--card-bg)]"
           onClick={tile.open}
         >
-          <span className="text-[12px] text-[var(--muted)]">{tile.label}</span>
+          <span className="flex items-center justify-between gap-2 text-[12px] text-[var(--muted)]">
+            {tile.label}
+            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
+          </span>
           <span className="line-clamp-2 min-w-0 text-sm">{tile.value}</span>
         </button>
       ))}
@@ -302,7 +309,7 @@ export function ScheduledTaskSimple({
   environment: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-7" data-testid="task-simple-view">
+    <div className="flex flex-col gap-4" data-testid="task-simple-view">
       <div className="flex flex-col gap-4">
         <TaskOverviewLine triggerId={task.trigger_id} version={task.version ?? 1} />
         <Glance
@@ -315,7 +322,7 @@ export function ScheduledTaskSimple({
       </div>
       <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onEditSteps} onOpenStep={onOpenStep} />
       <NeedsFromYou task={task} workflow={workflow} persist={persist} onShowDetails={onEditSteps} />
-      {runs}
+      <section className="rounded-xl border border-[var(--border)] px-4 pb-3 pt-3">{runs}</section>
     </div>
   );
 }

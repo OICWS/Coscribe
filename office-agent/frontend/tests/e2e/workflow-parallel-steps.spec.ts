@@ -43,7 +43,7 @@ test("a parallel step runs its lanes and waits for an approval inside one", asyn
     await expect(both).toContainText("At the same time");
     await page.getByRole("button", { name: "Show the flowchart" }).click();
     await expect(page.getByTestId("parallel-lanes")).toContainText("All 2 lanes run at the same time");
-    await expect(page.locator('[data-canvas-step="both"]')).toContainText("Does 2 things at the same time");
+    await expect(page.locator('[data-canvas-step="both"]')).toContainText("Both at once");
 
     await page.request.post(`/api/scheduled-tasks/${id}/run`, { data: {} });
     await expect.poll(async () => (await lastRun()).status, { timeout: 30_000 }).toBe("needs_approval");

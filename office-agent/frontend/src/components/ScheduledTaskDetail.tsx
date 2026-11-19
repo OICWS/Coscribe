@@ -402,6 +402,7 @@ function StepsTab({
         {chart ? (
           <WorkflowCanvas
             workflow={workflow}
+            plain
             onOpenStep={(stepId) => {
               onFocus(stepId);
               setChart(false);

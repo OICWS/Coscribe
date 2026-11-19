@@ -16,7 +16,8 @@ using a task could not tell where to look.
   (when it runs, last run, if a step stops working, workspace) that opens the tab changing it,
   the steps in words, what it needs from you, and the latest runs with what it keeps between runs.
 - **Steps** is the editor, with the flowchart as its second view; a step clicked on the chart
-  opens in the list. A run's "Edit step" and an overview step's "open in the editor" land here.
+  opens in the list. The chart, here and on the Overview, names each step by its kind and title
+  only: the people who read it change a task by asking AI, not by reading tool arguments. A run's "Edit step" and an overview step's "open in the editor" land here.
 - **Runs** lists every run. **Settings** holds each setting once, in four groups: when it runs
   (with a program's webhook address), if a step stops working (the autonomy levels and looking
   into failures), where it runs and what it may touch, and versions.
