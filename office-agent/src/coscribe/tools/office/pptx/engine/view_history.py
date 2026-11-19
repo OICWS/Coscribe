@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from ...._file_locks import file_lock
-from .build import MANIFEST, _read_manifest, _refuse_if_changed, build_deck, page_files
+from ...._presentation_record import MANIFEST, read_manifest
+from .build import _refuse_if_changed, build_deck, page_files
 from .history import read_log, restore_state, set_position
 from .view import NotBuiltFromPages, pages_folder
 
@@ -45,7 +46,7 @@ def step_history(
             target = log["at"] + direction
         if log["at"] < 0 or not 0 <= target < len(states):
             raise ValueError("nothing to undo" if direction < 0 else "nothing to redo")
-        _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
+        _refuse_if_changed(deck, read_manifest(folder / MANIFEST))
         restore_state(folder, log["states"][target], page_files(folder, (".svg", ".html")))
         build_deck(folder, deck, resource_root=resource_root, recorded_as=None)
         set_position(folder, target)

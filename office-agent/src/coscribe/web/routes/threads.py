@@ -423,6 +423,10 @@ def _file_and_context_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": f"No file {path!r}"}, status_code=404)
         return FileResponse(resolved, filename=resolved.name)
 
+    router.add_api_route(
+        "/api/threads/{thread_id}/files/download", download_thread_file, methods=["HEAD"]
+    )
+
     @router.get("/api/threads/{thread_id}/context-breakdown")
     async def get_context_breakdown_endpoint(thread_id: str) -> dict[str, Any]:
         # Deliberately reuses _get_session (the same live-session cache

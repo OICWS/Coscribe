@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from coscribe.tools.files import FileToolkit
 from coscribe.tools.office.pptx import (
     NotBuiltFromPages,
     deck_basic_fonts,
@@ -48,6 +49,19 @@ def test_the_deck_lists_its_slides_as_built(tmp_path: Path) -> None:
         page.read_text(encoding="utf-8").replace("</svg>", "<rect/></svg>"), encoding="utf-8"
     )
     assert read_deck(deck)["changed"]
+
+
+def test_moving_a_finished_deck_over_its_delivery_name_keeps_its_pages(tmp_path: Path) -> None:
+    target = _deck(tmp_path, COVER)
+    final = tmp_path / "deck-final.pptx"
+    assert build_deck(tmp_path / "pages", final, resource_root=tmp_path).ok
+
+    FileToolkit(tmp_path).move_file(final.name, target.name, overwrite=True)
+
+    view = read_deck(target)
+    assert view["folder"] == "pages" and not view["changed"]
+    assert len(view["slides"]) == 1
+    assert not final.exists()
 
 
 def test_a_slide_is_one_svg_with_nothing_outside_it(tmp_path: Path) -> None:

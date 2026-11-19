@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from ...._file_locks import file_lock
-from .build import MANIFEST, _read_manifest, _refuse_if_changed, build_deck, page_files
+from ...._presentation_record import MANIFEST, read_manifest
+from .build import _refuse_if_changed, build_deck, page_files
 from .history import record_state
 from .section_format import parse_section
 from .view import NotBuiltFromPages, pages_folder
@@ -74,7 +75,7 @@ def _arrange(deck: Path, resource_root: Path, change: Any) -> int:
         folder = pages_folder(deck)
         if folder is None:
             raise NotBuiltFromPages(f"{deck.name} was not built from pages")
-        _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
+        _refuse_if_changed(deck, read_manifest(folder / MANIFEST))
         before = page_files(folder, (".svg", ".html"))
         record_state(folder, before, "coscribe")
         pages: list[Path | New] = list(before)

@@ -36,8 +36,8 @@ export function ViewerPanel({
 }) {
   if (isPptx(path)) {
     return (
-      <DraftPages.Provider value={busy ? draftPages(items) : NO_DRAFTS}>
-        <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} busy={busy} />
+      <DraftPages.Provider value={busy ? draftPages(items, path) : NO_DRAFTS}>
+        <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} />
       </DraftPages.Provider>
     );
   }

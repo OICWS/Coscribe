@@ -9,8 +9,8 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from ..._presentation_record import copy_deck, deck_files, move_deck
 from .engine.build import DeckChangedError
-from .engine.deck_files import copy_deck, deck_files, move_deck
 from .engine.design_system import design_system
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.section_format import SectionError

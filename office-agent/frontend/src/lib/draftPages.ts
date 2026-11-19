@@ -2,6 +2,7 @@ import { createContext } from "react";
 
 interface Call {
   toolName: string;
+  status?: string;
   arguments: Record<string, unknown>;
   result?: unknown;
   isError?: boolean;
@@ -16,22 +17,26 @@ export interface DraftPage {
 
 const folderOf = (path: string) => path.replace(/[^\\/]*$/, "");
 
-/** The slide pages a run has written so far: the `.svg` files of the folder written to last, in file
- * name order, which is the order of the slides. The deck itself comes only when they are built, so
- * until then these are all there is to show. */
-export function draftPages(entries: Iterable<Call | { kind: string }>): DraftPage[] {
+/** Only a live build identifies which source pages belong to the requested deck. */
+export function draftPages(entries: (Call | { kind: string })[], deck: string): DraftPage[] {
+  const normalize = (path: string) => path.replaceAll("\\", "/").replace(/^\.\//, "");
+  const build = [...entries].reverse().find((call) => "toolName" in call
+    && call.toolName === "build_pptx_from_pages"
+    && typeof call.arguments.path === "string" && normalize(call.arguments.path) === normalize(deck));
+  if (!build || !("toolName" in build) || build.result !== undefined
+      || (build.status && build.status !== "approved") || typeof build.arguments.pages_dir !== "string") return [];
+  const folder = normalize(build.arguments.pages_dir).replace(/\/$/, "");
   const writes = new Map<string, number>();
-  let latest = "";
   for (const call of entries) {
     if (!("toolName" in call)) continue;
     const path = call.arguments.path;
     if (call.result === undefined || call.isError || typeof path !== "string" || !/\.svg$/i.test(path)) continue;
     if (/^(read|list|inspect|get|check|render|preview|search|find|describe|count)_/.test(call.toolName)) continue;
-    writes.set(path, (writes.get(path) ?? 0) + 1);
-    latest = folderOf(path);
+    if (folderOf(normalize(path)).replace(/\/$/, "") === (folder === "." ? "" : folder)) {
+      writes.set(path, (writes.get(path) ?? 0) + 1);
+    }
   }
   return [...writes]
-    .filter(([path]) => folderOf(path) === latest)
     .map(([path, version]) => ({ path, version }))
     .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 }

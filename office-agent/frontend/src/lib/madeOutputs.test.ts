@@ -31,6 +31,11 @@ describe("madeOutputs", () => {
     expect(made[1]).toMatchObject({ files: [{ path: "one.png" }, { path: "two.jpg" }] });
   });
 
+  it("keeps standalone SVG notices but omits the SVGs used to build a presentation", () => {
+    const made = madeOutputs([file("slides/01.svg", { presentation_source: true }), file("slides/logo.svg")], new Set());
+    expect(made).toMatchObject([{ kind: "images", files: [{ path: "slides/logo.svg" }] }]);
+  });
+
   it("counts a design's pages as the one design", () => {
     const made = madeOutputs([file("site.design/home.html"), file("site.design/about.html")], new Set());
     expect(made).toHaveLength(1);

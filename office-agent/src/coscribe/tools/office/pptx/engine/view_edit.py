@@ -22,9 +22,8 @@ from PIL import Image
 from pptx import Presentation
 
 from ...._file_locks import file_lock, replace_with_retry
+from ...._presentation_record import MANIFEST, read_manifest
 from .build import (
-    MANIFEST,
-    _read_manifest,
     _refuse_if_changed,
     _source_hash,
     build_deck,
@@ -103,7 +102,7 @@ def save_slide(
         folder, page = _page(deck, index)
         if _source_hash(page.read_text(encoding="utf-8")) != version:
             raise SlideChanged(page.name)
-        _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
+        _refuse_if_changed(deck, read_manifest(folder / MANIFEST))
         # The pages as they are before the change, so it can be undone even when no build was
         # recorded since they were written.
         record_state(folder, page_files(folder, (".svg", ".html")), "coscribe")
@@ -154,7 +153,7 @@ def _page(deck: Path, index: int) -> tuple[Path, Path]:
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
-    entries = _read_manifest(folder / MANIFEST)["pages"]
+    entries = read_manifest(folder / MANIFEST)["pages"]
     if not 0 <= index < len(entries):
         raise IndexError(f"no slide {index + 1}")
     return folder, folder / entries[index]["page"]

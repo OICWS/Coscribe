@@ -36,7 +36,7 @@ export function madeOutputs(outputs: ActivityFile[], docs: ReadonlySet<string>):
   const images: ActivityFile[] = [];
   let imagesAt = -1;
   for (const file of outputs) {
-    if (!file.exists) continue;
+    if (!file.exists || file.presentation_source) continue;
     const path = canvasOfPage(file.path) ?? file.path;
     if (seen.has(path)) continue;
     seen.add(path);

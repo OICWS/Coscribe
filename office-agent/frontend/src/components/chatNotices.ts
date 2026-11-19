@@ -29,7 +29,7 @@ export function useChatNotices(
   on: ChatNoticeActions,
 ): { notices: Notice[]; overlay: ReactNode } {
   const { threadId, refreshKey, items, turnInFlight } = conversation;
-  const made = useOutputNotices(threadId, refreshKey, { view: on.viewFile });
+  const made = useOutputNotices(threadId, refreshKey, turnInFlight, { view: on.viewFile });
   const drafts = useDraftNotices(items, turnInFlight, cards, { save: on.saveDraft, review: on.reviewDraft });
   const waiting = useWaitingNotice(items);
   const offer =

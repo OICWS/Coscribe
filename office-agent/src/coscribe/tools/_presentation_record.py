@@ -6,9 +6,37 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
-from .build import MANIFEST, _read_manifest
-from .view import pages_folder
+MANIFEST = "build.json"
+
+
+def read_manifest(path: Path) -> dict[str, Any]:
+    """The last build's record; one that is missing or not in the shape this module writes
+    counts as no build, so the deck at its path is treated as not built from these pages."""
+    try:
+        data: Any = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict) or not isinstance(data.get("deck"), str):
+        return {}
+    entries = data.get("pages")
+    keys = {"page", "source", "slide"}
+    if not isinstance(entries, list) or not all(
+        isinstance(e, dict) and keys <= e.keys() for e in entries
+    ):
+        return {}
+    return dict(data)
+
+
+def pages_folder(deck: Path) -> Path | None:
+    """The folder next to `deck` whose build wrote it, whether or not it changed since."""
+    target = deck.resolve()
+    for folder in deck.parent.iterdir():
+        manifest = read_manifest(folder / MANIFEST) if folder.is_dir() else {}
+        if manifest and Path(manifest["deck"]).resolve() == target:
+            return folder
+    return None
 
 
 def deck_files(deck: Path) -> list[Path]:
@@ -18,7 +46,7 @@ def deck_files(deck: Path) -> list[Path]:
 
 
 def _point_record_at(folder: Path, deck: Path) -> None:
-    record = _read_manifest(folder / MANIFEST)
+    record = read_manifest(folder / MANIFEST)
     record["deck"] = str(deck.resolve())
     (folder / MANIFEST).write_text(
         json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"

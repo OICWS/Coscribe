@@ -51,13 +51,10 @@ export function SlidesPanel({
   refreshKey,
   onSendComment,
   onFileChanged,
-  busy = false,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
-  /** A turn is running: the file may be half written. */
-  busy?: boolean;
   /** The deck was renamed (its new path) or deleted (null) from its menu. */
   onFileChanged?: (path: string | null) => void;
   /** Sends a comment to coscribe as a message; absent where there is no conversation. */
@@ -81,6 +78,7 @@ export function SlidesPanel({
   const shownZoom = ui.zoom ?? fitFor(view, stage);
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
+  const building = useContext(DraftPages).length > 0;
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
   const locked = deck?.readOnly ?? false;
   const properties = ui.propertiesShown && slide && !locked && (
@@ -95,8 +93,8 @@ export function SlidesPanel({
       onKeyDown={(e) => ui.onKey(e, shownZoom, history.step)}
     >
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} canComment={!locked} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} readOnly={locked} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
-      {(notBuilt || !deck) && busy ? (
+      <DeckNotices changed={deck?.changed ?? false} readOnly={locked} error={shownError(building, deck, [error, edits.problem, downloads.failed, comments.failed])} />
+      {(notBuilt || !deck) && building ? (
         <Building name={name} threadId={threadId} />
       ) : notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
@@ -308,7 +306,7 @@ function DeckNotices({ changed, readOnly, error }: { changed: boolean; readOnly:
     <>
       {readOnly && (
         <div className="shrink-0 border-t border-[var(--border)] px-4 py-1.5 text-xs text-[var(--muted)]">
-          Read-only: Coscribe did not build this presentation. Ask Coscribe to change it, or open it in PowerPoint.
+          Read-only: The source pages for this presentation are unavailable. Ask Coscribe to change it, or open it in PowerPoint.
         </div>
       )}
       {changed && (
@@ -535,12 +533,14 @@ function useSlideDeck(threadId: string, path: string, refreshKey: string) {
       (loaded) => {
         if (!live) return;
         setDeck(loaded);
+        setNotBuilt(false);
         setError(null);
       },
       (e: unknown) => {
         if (!live) return;
-        if (e instanceof DeckNotBuilt) setNotBuilt(true);
-        else setError(e instanceof Error ? e.message : String(e));
+        setDeck(null);
+        setNotBuilt(e instanceof DeckNotBuilt);
+        setError(e instanceof DeckNotBuilt ? null : e instanceof Error ? e.message : String(e));
       },
     );
     return () => {
@@ -719,13 +719,6 @@ function shownError(busy: boolean, deck: SlideDeck | null, [error, edit, downloa
 
 function Building({ name, threadId }: { name: string; threadId: string }) {
   const drafts = useContext(DraftPages);
-  if (drafts.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
-        Coscribe is working on {name}…
-      </div>
-    );
-  }
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto bg-[var(--stage-bg)] p-4" role="status">
       <p className="text-sm text-[var(--muted)]">

@@ -66,6 +66,30 @@ def _lines_removed(result: Any) -> int:
     return removed if isinstance(removed, int) else 0
 
 
+def _presentation_sources(call: dict[str, Any], scope: WorkspaceScope) -> set[str]:
+    folder = call["args"].get("pages_dir")
+    if call["name"] != "build_pptx_from_pages" or not isinstance(folder, str):
+        return set()
+    try:
+        raw = call["result"]
+        report = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return set()
+    pages = report.get("pages") if isinstance(report, dict) else None
+    return (
+        {
+            entry["path"]
+            for page in pages
+            if isinstance(page, dict)
+            and isinstance(name := page.get("page"), str)
+            and name.lower().endswith(".svg")
+            and (entry := _file_entry(scope, str(Path(folder) / name))) is not None
+        }
+        if isinstance(pages, list)
+        else set()
+    )
+
+
 def _script_files(result: Any) -> list[str]:
     try:
         parsed = json.loads(result) if isinstance(result, str) else None
@@ -128,11 +152,13 @@ def summarize_activity(
     # Paths a call wrote whole (a script, or a write_/build_ tool, over what was there): their
     # content is what coscribe made, whether or not the file existed before.
     written_whole: set[str] = set()
+    presentation_sources: set[str] = set()
     tool_counts: dict[str, int] = {}
     connectors: dict[str, dict[str, int]] = {}
     skills: list[str] = []
 
     for call in _succeeded_calls(messages):
+        presentation_sources.update(_presentation_sources(call, scope))
         name, args = call["name"], call["args"]
         metadata = catalog.get(name)
         category = metadata.category if metadata is not None else None
@@ -187,22 +213,19 @@ def summarize_activity(
     whole_keys = {
         entry["path"] for p in written_whole if (entry := _file_entry(scope, p)) is not None
     }
-    outputs: list[dict[str, Any]] = []
-    for key in dict.fromkeys(reversed(last_touched)):  # most recently touched first
-        if actions[key] == "read" or _is_scratch(key):
-            continue
-        # A file gone again that the conversation did not start by reading was a working file
-        # the assistant made and cleaned up (the instructions ask it to), not something to hand
-        # the person; one it read first may be the person's own, and is listed as gone.
-        if not entries[key]["exists"] and first_touch[key] != "read":
-            continue
-        outputs.append(
-            {
-                **entries[key],
-                "action": actions[key],
-                "rewritten": actions[key] == "created" or key in whole_keys,
-            }
-        )
+    # A missing file we didn't first read was an intermediate the assistant cleaned up.
+    outputs = [
+        {
+            **entries[key],
+            "action": actions[key],
+            "rewritten": actions[key] == "created" or key in whole_keys,
+            **({"presentation_source": True} if key in presentation_sources else {}),
+        }
+        for key in dict.fromkeys(reversed(last_touched))
+        if actions[key] != "read"
+        and not _is_scratch(key)
+        and (entries[key]["exists"] or first_touch[key] == "read")
+    ]
     references = [
         {**entries[key], "action": "read"}
         for key in dict.fromkeys(last_touched)  # in the order first read
