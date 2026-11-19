@@ -19,7 +19,8 @@ Website: https://oicws.github.io/Coscribe/
    the first start: choose **More info → Run anyway**.
 2. Open **Settings › Providers**, pick a model service and paste its API key
    (or add any OpenAI-compatible service yourself).
-3. Pick a **workspace**, the folder you work in, under the message box, and ask.
+3. On the first start, choose a **workspace**, the folder you work in
+   (`Documents\Coscribe` is suggested). Another can be picked under the message box. Then ask.
 
 The desktop app adds what a browser tab can't: the built-in browser panel, the
 taskbar flashing when a conversation needs you, and keeping the computer awake
@@ -51,7 +52,8 @@ To build it yourself, see [`office-agent-desktop/`](office-agent-desktop/).
   ends with a report.
 - **You stay in control.** Four permission modes (Manual, Accept Edits, Plan, and Auto,
   where a reviewer model approves on your behalf). Plans can be reviewed and edited
-  before work starts, and any sent message can be rewound or edited. On Windows,
+  before work starts, and any sent message can be rewound or edited. A workspace can
+  add its own allow, ask and deny rules in `.coscribe/settings.json`. On Windows,
   scripts run in an isolated sandbox that reaches only the folders you allowed.
   Every decision goes to an audit log.
 - **Checks its own work.** A separate reviewer with read-only tools checks finished
@@ -64,7 +66,8 @@ To build it yourself, see [`office-agent-desktop/`](office-agent-desktop/).
 - **Connectors, skills and memory.** Hosted services you sign in to once in your own
   browser (no app to register), skills (folders of instructions and files) you can
   read before adding, and global instructions plus notes a workspace folder keeps for
-  itself.
+  itself. A workspace folder can also name its own connectors in `.coscribe/mcp.json`,
+  used once you accepted them.
 - **Code when you need it.** Programming tasks can be handed to Codex, an optional
   module downloaded on first use.
 
