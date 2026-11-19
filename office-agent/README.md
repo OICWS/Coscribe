@@ -1129,10 +1129,10 @@ already wrong by the time a user tried it -- see
 needed: `resolve_chat_model` (`runtime_lg/providers.py`) hands the
 `base_url`/`api_key` straight to `langchain_openai.ChatOpenAI`'s
 constructor -- that's all an OpenAI-compatible endpoint needs.
-`default_model` in the file is just a UI convenience for pre-filling the
-"add custom provider" form (left blank for third-party vendors in the
-catalog itself, for the same staleness reason -- fill in your own
-current model id there); it isn't read by anything else.
+`default_model` in the file is the model the composer's model pill offers for
+that provider, and the only one: a provider without it can't be picked there, so
+the Providers page requires it (the catalog leaves it blank for third-party
+vendors, for the same staleness reason).
 
 The web UI's **Settings → Providers** tab edits this same file for you. It is
 laid out like Connectors: **Yours** lists what is added (logo, default model,
@@ -1146,9 +1146,11 @@ Together AI, Fireworks AI, Cerebras, and local Ollama and LM Studio. They are
 conveniences, not a limit: **Add → Add custom provider** takes any other
 OpenAI-compatible API. None pre-fills a guessed default model (see above).
 Adding or removing a provider is saved immediately, no restart needed, and
-takes effect in already-open conversations too. A provider's optional default
-model is what lets the composer's model pill (below) offer a one-click switch
-to it without you typing its exact model id.
+takes effect in already-open conversations too. A provider's default model is
+required: it is what the composer's model pill (below) offers. For an
+OpenAI-compatible provider, **List the provider's models** asks its `/models`
+(`POST /api/providers/models`) and offers the IDs to pick from; the page lists
+at once for an added provider that has none yet.
 
 ## Secrets storage
 
