@@ -25,8 +25,8 @@ function Line({ name, title, note, onRemove }: { name: string; title?: string; n
   );
 }
 
-/** What a task's runs can reach without stopping to ask: its workspace, Settings' Allowed
- * folders, and the folders allowed for this task only, which can be taken back here. */
+/** What a task's runs can reach without stopping to ask: its workspace, the Allowed folders its
+ * workspace uses, and the folders allowed for this task only, which can be taken back here. */
 export function TaskReachSection({ taskId, changed, onChanged }: { taskId: string; changed: string; onChanged: () => void }) {
   const { reach, reload } = useTaskReach(taskId, changed);
   const [error, setError] = useState<string | null>(null);

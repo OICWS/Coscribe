@@ -6,7 +6,7 @@ notice opened only from its text with nothing on hover to say it could.
 
 ## Shipped
 - `components/ScheduledTaskDetail.tsx`: tabs Overview, Steps (with counts), Runs, Settings under
-  the header; the page switch and the header's "Workflow · 7 steps" are gone (decision 0053).
+  the header; the page switch and the header's "Workflow · 7 steps" are gone (decision 0054).
 - `ScheduledTaskSimple.tsx` is the Overview: four tiles (when it runs, last run, if a step stops
   working, workspace), each opening the tab that changes it, in place of the folded Settings.
 - The Overview's sections are cards; its steps show a pointer and "Change" on hover, and its
