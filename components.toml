@@ -97,6 +97,7 @@ protected_modules = [
     "coscribe.tools._pdfium",
     "coscribe.tools._pptx_shapes",
     "coscribe.tools._pptx_text",
+    "coscribe.tools._presentation_record",
     "coscribe.tools._svg_preview",
     "coscribe.tools._svg_slide",
     "coscribe.tools._thumbnail",
