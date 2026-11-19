@@ -71,8 +71,7 @@ Last reviewed: 2026-11-18.
 
 - **Connector credentials the redactor does not recognise** (`docs/log/2026-11-18-connection-string-passwords.md`):
   a scheme-less DSN (`user:pass@tcp(host)/db`), a password in an argument after a flag that does
-  not name it, a password under 8 characters printed on its own, and a `name=value` password that
-  starts with `/` or `~` (taken for a path).
+  not name it, and a password under 8 characters printed on its own.
 
 - **A reply's time after a reload** (`docs/log/2026-11-18-rewind-on-user-messages.md`): user
   messages keep their send time, replies don't, so a replayed reply's footer shows Copy alone.

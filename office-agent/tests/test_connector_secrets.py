@@ -554,3 +554,27 @@ def test_every_url_in_a_list_and_a_password_with_a_slash_are_blanked(tmp_path: P
     for secret in ("first-pass-1", "second-pass-2", "pa/ss-w0rd"):
         assert secret not in blank(f"echoed {secret}")
     assert blank("dsn mysql://u:pw@db/shop") == "dsn [REDACTED SECRET]db/shop"
+
+
+def test_a_password_that_starts_with_a_slash_or_a_tilde_is_blanked(tmp_path: Path) -> None:
+    # Base64 keys (Azure's AccountKey) start with `/` about one time in 64.
+    _connect_local(
+        tmp_path,
+        env={
+            "AZ": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey=/aB3+kQ9zXw==;",
+            "PG": "host=db user=app password=~tilde-pw-77",
+            "SQL": "Server=db;User Id=app;Password=/slash pass 5;",
+        },
+        args=["--password", "/flag-slash-4k"],
+    )
+
+    blank = redactor(tmp_path)
+    for secret in ("/aB3+kQ9zXw==", "~tilde-pw-77", "/slash pass 5", "/flag-slash-4k"):
+        assert secret not in blank(f"echoed {secret}")
+
+
+def test_a_windows_path_named_like_a_credential_part_stays_readable(tmp_path: Path) -> None:
+    _connect_local(tmp_path, args=["--token", "C:\\Users\\someone\\token.txt"])
+
+    blank = redactor(tmp_path)
+    assert blank("read C:\\Users\\someone\\token.txt") == "read C:\\Users\\someone\\token.txt"
