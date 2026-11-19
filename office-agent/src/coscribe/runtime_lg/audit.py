@@ -43,6 +43,8 @@ Reason = Literal[
     "capability_off",
     "auto_review_block",
     "exec_policy",
+    # A rule in the workspace's accepted `.coscribe/settings.json` (decision 0048).
+    "workspace_settings",
     "code_allowed",
     AutoApproveReason,
     "human",

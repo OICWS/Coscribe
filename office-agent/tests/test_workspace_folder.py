@@ -112,3 +112,27 @@ def test_settings_and_connectors_wait_for_the_person_too_and_the_file_tools_neve
         with pytest.raises(PermissionError):
             scope.resolve(f".coscribe/{name}", write=True)
     assert scope.resolve(".coscribe/mcp.json") == (folder / ".coscribe" / "mcp.json").resolve()
+
+
+def test_a_folder_rule_matches_a_tool_and_its_main_argument_only() -> None:
+    from coscribe.conversation.workspace_permissions import WorkspacePermissions
+
+    rules = WorkspacePermissions(
+        {
+            "permissions": {
+                "allow": ["run_command(git status*)", "github_*"],
+                "deny": ["github_delete_*", 42],
+                "ask": "not a list",
+            }
+        }
+    )
+
+    assert rules.decide("run_command", {"command": "git status -s"}) == (
+        "allow",
+        "run_command(git status*)",
+    )
+    # The allowed text in another field doesn't allow the call.
+    assert rules.decide("run_command", {"description": "git status", "command": "rm -rf /"}) is None
+    assert rules.decide("github_delete_repo", {}) == ("deny", "github_delete_*")
+    assert rules.decide("github_list_issues", {}) == ("allow", "github_*")
+    assert WorkspacePermissions({}).decide("run_command", {}) is None
