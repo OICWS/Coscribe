@@ -18,6 +18,7 @@ from lxml import etree
 from pptx import Presentation
 from pptx.util import Emu
 
+from ...._file_locks import write_atomically
 from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, utils
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
@@ -110,7 +111,7 @@ def compile_sections(
             continue
         _compile(slide, section, report, resource_root, folder)
     out.parent.mkdir(parents=True, exist_ok=True)
-    prs.save(str(out))
+    write_atomically(out, lambda tmp: prs.save(str(tmp)))
     return CompileReport(out, reports)
 
 

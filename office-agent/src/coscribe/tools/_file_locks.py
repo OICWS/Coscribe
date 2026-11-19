@@ -72,6 +72,18 @@ def replace_with_retry(src: Path, dst: Path, *, attempts: int = 5, delay: float 
             time.sleep(delay * (attempt + 1))
 
 
+def write_atomically(path: Path, write: Callable[[Path], object]) -> None:
+    """`write` fills a hidden file beside `path`, which then replaces it whole: a write that
+    fails half way leaves the old file as it was and no temporary file behind. A target open
+    in another program fails in the replace, with `path` as the error's second filename."""
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        write(tmp)
+        replace_with_retry(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def read_text_with_retry(path: Path, *, attempts: int = 5, delay: float = 0.02) -> str:
     """``read_text`` that waits out a writer's ``os.replace`` of the same file: Windows refuses
     to open a file while it is being replaced. Other platforms get the plain call."""

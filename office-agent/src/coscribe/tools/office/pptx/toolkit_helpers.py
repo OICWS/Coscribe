@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -32,22 +33,59 @@ OFFICE_TIMEOUT = 60.0
 SHAPE_TYPES = frozenset(
     {
         # Basic
-        "RECTANGLE", "ROUNDED_RECTANGLE", "OVAL", "ISOSCELES_TRIANGLE",
-        "RIGHT_TRIANGLE", "DIAMOND", "PARALLELOGRAM", "TRAPEZOID", "PENTAGON",
-        "HEXAGON", "OCTAGON", "CROSS", "PLAQUE", "CAN", "CUBE",
+        "RECTANGLE",
+        "ROUNDED_RECTANGLE",
+        "OVAL",
+        "ISOSCELES_TRIANGLE",
+        "RIGHT_TRIANGLE",
+        "DIAMOND",
+        "PARALLELOGRAM",
+        "TRAPEZOID",
+        "PENTAGON",
+        "HEXAGON",
+        "OCTAGON",
+        "CROSS",
+        "PLAQUE",
+        "CAN",
+        "CUBE",
         # Arrows
-        "RIGHT_ARROW", "LEFT_ARROW", "UP_ARROW", "DOWN_ARROW", "LEFT_RIGHT_ARROW",
-        "UP_DOWN_ARROW", "BENT_ARROW", "CHEVRON", "NOTCHED_RIGHT_ARROW", "U_TURN_ARROW",
+        "RIGHT_ARROW",
+        "LEFT_ARROW",
+        "UP_ARROW",
+        "DOWN_ARROW",
+        "LEFT_RIGHT_ARROW",
+        "UP_DOWN_ARROW",
+        "BENT_ARROW",
+        "CHEVRON",
+        "NOTCHED_RIGHT_ARROW",
+        "U_TURN_ARROW",
         # Flowchart
-        "FLOWCHART_PROCESS", "FLOWCHART_DECISION", "FLOWCHART_TERMINATOR",
-        "FLOWCHART_DATA", "FLOWCHART_DOCUMENT", "FLOWCHART_PREPARATION",
-        "FLOWCHART_PREDEFINED_PROCESS", "FLOWCHART_CONNECTOR",
+        "FLOWCHART_PROCESS",
+        "FLOWCHART_DECISION",
+        "FLOWCHART_TERMINATOR",
+        "FLOWCHART_DATA",
+        "FLOWCHART_DOCUMENT",
+        "FLOWCHART_PREPARATION",
+        "FLOWCHART_PREDEFINED_PROCESS",
+        "FLOWCHART_CONNECTOR",
         # Callouts
-        "ROUNDED_RECTANGULAR_CALLOUT", "RECTANGULAR_CALLOUT", "OVAL_CALLOUT",
+        "ROUNDED_RECTANGULAR_CALLOUT",
+        "RECTANGULAR_CALLOUT",
+        "OVAL_CALLOUT",
         "CLOUD_CALLOUT",
         # Decorative
-        "CLOUD", "HEART", "LIGHTNING_BOLT", "SUN", "MOON", "STAR_5_POINT",
-        "STAR_4_POINT", "SMILEY_FACE", "DONUT", "NO_SYMBOL", "BLOCK_ARC", "ARC",
+        "CLOUD",
+        "HEART",
+        "LIGHTNING_BOLT",
+        "SUN",
+        "MOON",
+        "STAR_5_POINT",
+        "STAR_4_POINT",
+        "SMILEY_FACE",
+        "DONUT",
+        "NO_SYMBOL",
+        "BLOCK_ARC",
+        "ARC",
     }
 )
 
@@ -83,7 +121,7 @@ def validate_hyperlink_url(url: str) -> None:
     if not url.startswith(HYPERLINK_SCHEMES):
         raise ValueError(
             f"add_pptx_hyperlink: url {url!r} must start with one of "
-            f"{', '.join(HYPERLINK_SCHEMES)}, or be \"#slide-N\" to jump to slide N -- "
+            f'{", ".join(HYPERLINK_SCHEMES)}, or be "#slide-N" to jump to slide N -- '
             "got a scheme-less or unsupported value."
         )
 
@@ -119,23 +157,79 @@ def resolve_slide_jump_target(prs: PresentationType, slide: int, url: str) -> An
 # Lowercase, matching how it's compared (case-insensitively) below.
 SAFE_FONTS = frozenset(
     {
-        "microsoft yahei", "simhei", "simsun", "kaiti", "fangsong", "dengxian",
-        "microsoft jhenghei", "microsoft jhenghei ui", "pmingliu", "mingliu",
-        "mingliu_hkscs", "dfkai-sb",
-        "pingfang sc", "heiti sc", "songti sc", "stsong",
-        "pingfang tc", "pingfang hk", "heiti tc", "songti tc", "kaiti tc",
-        "yu gothic", "yu gothic ui", "yu mincho",
-        "meiryo", "meiryo ui",
-        "ms gothic", "ms mincho", "ms pgothic", "ms pmincho", "ms ui gothic",
-        "malgun gothic", "gulim", "dotum", "batang",
-        "nirmala ui", "mangal", "kokila", "aparajita", "utsaah",
-        "leelawadee ui", "leelawadee", "cordia new", "angsana new", "browallia new",
-        "david", "miriam", "frank ruehl", "gisha", "levenim mt", "narkisim", "aharoni",
-        "arial", "arial black", "calibri", "segoe ui", "verdana",
-        "helvetica", "helvetica neue", "tahoma", "trebuchet ms",
-        "times new roman", "times", "georgia", "cambria", "cambria math", "palatino",
-        "garamond", "book antiqua",
-        "consolas", "courier new", "menlo", "monaco",
+        "microsoft yahei",
+        "simhei",
+        "simsun",
+        "kaiti",
+        "fangsong",
+        "dengxian",
+        "microsoft jhenghei",
+        "microsoft jhenghei ui",
+        "pmingliu",
+        "mingliu",
+        "mingliu_hkscs",
+        "dfkai-sb",
+        "pingfang sc",
+        "heiti sc",
+        "songti sc",
+        "stsong",
+        "pingfang tc",
+        "pingfang hk",
+        "heiti tc",
+        "songti tc",
+        "kaiti tc",
+        "yu gothic",
+        "yu gothic ui",
+        "yu mincho",
+        "meiryo",
+        "meiryo ui",
+        "ms gothic",
+        "ms mincho",
+        "ms pgothic",
+        "ms pmincho",
+        "ms ui gothic",
+        "malgun gothic",
+        "gulim",
+        "dotum",
+        "batang",
+        "nirmala ui",
+        "mangal",
+        "kokila",
+        "aparajita",
+        "utsaah",
+        "leelawadee ui",
+        "leelawadee",
+        "cordia new",
+        "angsana new",
+        "browallia new",
+        "david",
+        "miriam",
+        "frank ruehl",
+        "gisha",
+        "levenim mt",
+        "narkisim",
+        "aharoni",
+        "arial",
+        "arial black",
+        "calibri",
+        "segoe ui",
+        "verdana",
+        "helvetica",
+        "helvetica neue",
+        "tahoma",
+        "trebuchet ms",
+        "times new roman",
+        "times",
+        "georgia",
+        "cambria",
+        "cambria math",
+        "palatino",
+        "garamond",
+        "book antiqua",
+        "consolas",
+        "courier new",
+        "menlo",
+        "monaco",
         "impact",
     }
 )
@@ -234,11 +328,12 @@ def render_to_pdf(pptx_path: Path) -> Path | None:
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_pptx_qa_"))
     pdf_path = out_dir / f"{pptx_path.stem}.pdf"
     try:
-        if _office_com.convert(pptx_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None:
-            return None
+        if _office_com.convert(pptx_path, pdf_path, "pdf", OFFICE_TIMEOUT) is not None:
+            return pdf_path
     except ValueError:
-        return None
-    return pdf_path
+        pass
+    shutil.rmtree(out_dir, ignore_errors=True)
+    return None
 
 
 def resolve_xml_qname(name: str) -> str:

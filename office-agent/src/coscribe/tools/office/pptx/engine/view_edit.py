@@ -12,7 +12,6 @@ from __future__ import annotations
 import base64
 import copy
 import io
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -21,7 +20,7 @@ from xml.etree import ElementTree as ET
 from PIL import Image
 from pptx import Presentation
 
-from ...._file_locks import file_lock, replace_with_retry
+from ...._file_locks import file_lock, write_atomically
 from ...._presentation_record import MANIFEST, read_manifest
 from .build import (
     _refuse_if_changed,
@@ -107,9 +106,7 @@ def save_slide(
         # recorded since they were written.
         record_state(folder, page_files(folder, (".svg", ".html")), "coscribe")
         target = page.with_suffix(".html")
-        tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-        tmp.write_text(source, encoding="utf-8")
-        replace_with_retry(tmp, target)
+        write_atomically(target, lambda tmp: tmp.write_text(source, encoding="utf-8"))
         if page != target:
             page.unlink()
         report = build_deck(folder, deck, resource_root=resource_root, recorded_as="you")

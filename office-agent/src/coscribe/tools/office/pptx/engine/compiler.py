@@ -23,6 +23,7 @@ from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.opc.package import Part
 from pptx.util import Emu
 
+from ...._file_locks import write_atomically
 from ...._native_svg import pptx_effects
 from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properties, utils
@@ -142,7 +143,7 @@ def compile_pages(
         )
         reports.append(report)
     out.parent.mkdir(parents=True, exist_ok=True)
-    prs.save(str(out))
+    write_atomically(out, lambda tmp: prs.save(str(tmp)))
     return CompileReport(out, reports)
 
 

@@ -80,6 +80,54 @@ def test_a_finished_deck_from_other_pages_replaces_the_old_record(tmp_path: Path
     assert not (tmp_path / "pages" / "build.json").exists()
 
 
+def test_a_renamed_workspace_keeps_its_decks(tmp_path: Path) -> None:
+    (tmp_path / "before").mkdir()
+    _deck(tmp_path / "before", COVER)
+    moved = tmp_path / "after"
+    (tmp_path / "before").rename(moved)
+
+    assert read_deck(moved / "deck.pptx")["folder"] == "pages"
+    assert build_deck(moved / "pages", moved / "deck.pptx", resource_root=moved).ok
+
+
+def test_a_deck_renamed_outside_coscribe_is_found_by_its_slides(tmp_path: Path) -> None:
+    deck = _deck(tmp_path, COVER)
+    renamed = deck.rename(tmp_path / "report.pptx")
+
+    assert read_deck(renamed)["folder"] == "pages"
+    assert build_deck(tmp_path / "pages", renamed, resource_root=tmp_path).ok
+
+
+def test_a_deck_moved_to_another_folder_takes_its_pages(tmp_path: Path) -> None:
+    _deck(tmp_path, COVER)
+    (tmp_path / "out").mkdir()
+
+    FileToolkit(tmp_path).move_file("deck.pptx", "out/deck.pptx")
+
+    assert read_deck(tmp_path / "out" / "deck.pptx")["folder"] == "pages"
+    assert not (tmp_path / "pages").exists()
+
+
+def test_a_build_that_fails_while_saving_leaves_the_deck_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pptx.presentation import Presentation as Deck
+
+    deck = _deck(tmp_path, COVER)
+    before = deck.read_bytes()
+
+    def half_written(self: Deck, file: str) -> None:
+        Path(file).write_bytes(b"PK")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Deck, "save", half_written)
+    with pytest.raises(OSError, match="disk full"):
+        build_deck(tmp_path / "pages", deck, resource_root=tmp_path)
+
+    assert deck.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["deck.pptx", "pages"]
+
+
 def test_a_slide_is_one_svg_with_nothing_outside_it(tmp_path: Path) -> None:
     deck = _deck(tmp_path, OBJECTS)
     svg = slide_svg(deck, 0, tmp_path)

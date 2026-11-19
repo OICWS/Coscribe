@@ -11,17 +11,15 @@ unless the caller says to replace it.
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pptx import Presentation
-
 from ...._presentation_record import MANIFEST as MANIFEST
-from ...._presentation_record import read_manifest
+from ...._presentation_record import pages_folder, read_manifest, write_manifest
+from ...._presentation_record import slide_hashes as slide_hashes
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
 from .design_check import PICTURE, library_system, off_system, unplaced_logo
@@ -153,6 +151,8 @@ def build_deck(
     by `recorded_as` ("coscribe", "you"); None records nothing (an undo itself)."""
     files, sections = _sources(pages_dir, template)
     manifest_path = pages_dir / MANIFEST
+    if out.exists():
+        pages_folder(out)  # a deck renamed outside coscribe gets its record back first
     previous = read_manifest(manifest_path)
     if out.exists() and not replace_changes:
         _refuse_if_changed(out, previous)
@@ -196,7 +196,7 @@ def build_deck(
             )
         ],
     }
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_manifest(pages_dir, manifest)
     if recorded_as is not None:
         record_state(pages_dir, files, recorded_as)
     return report
@@ -205,13 +205,11 @@ def build_deck(
 def built_from_pages(deck: Path) -> Path | None:
     """The pages folder next to `deck` whose last build wrote it, while every slide is still as
     that build wrote it (an edit since then was not checked by the build)."""
-    target = deck.resolve()
-    for folder in deck.parent.iterdir():
-        manifest = read_manifest(folder / MANIFEST)
-        if manifest and Path(manifest["deck"]).resolve() == target:
-            built = [entry["slide"] for entry in manifest["pages"]]
-            return folder if built == slide_hashes(deck) else None
-    return None
+    folder = pages_folder(deck)
+    if folder is None:
+        return None
+    built = [entry["slide"] for entry in read_manifest(folder / MANIFEST)["pages"]]
+    return folder if built == slide_hashes(deck) else None
 
 
 def built_pages(deck: Path) -> list[Path] | None:
@@ -228,20 +226,6 @@ def built_pages(deck: Path) -> list[Path] | None:
         if not page.is_file() or _source_hash(page.read_text(encoding="utf-8")) != entry["source"]:
             return None
     return pages
-
-
-def slide_hashes(deck: Path) -> list[str]:
-    """One hash per slide over its XML and everything it points to, so a changed picture
-    counts as a changed slide too."""
-    hashes = []
-    for slide in Presentation(str(deck)).slides:
-        digest = hashlib.sha256(slide.part.blob)
-        for rel in sorted(slide.part.rels.values(), key=lambda r: r.rId):
-            digest.update(f"{rel.rId} {rel.reltype} {rel.target_ref}".encode())
-            if not rel.is_external:
-                digest.update(rel.target_part.blob)
-        hashes.append(digest.hexdigest())
-    return hashes
 
 
 def _refuse_if_changed(out: Path, previous: dict[str, Any]) -> None:

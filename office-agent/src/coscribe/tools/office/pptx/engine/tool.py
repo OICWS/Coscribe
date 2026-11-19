@@ -111,6 +111,12 @@ def build_engine_tools(
         if not path.lower().endswith(".pptx"):
             raise ValueError(f"path must end in .pptx: {path}")
         out = scope.resolve(path, write=True)
+        if folder.resolve().parent != out.resolve().parent:
+            # The viewer, its edits and later builds find a deck's pages beside it only.
+            raise ValueError(
+                f"pages_dir must be a folder in the same folder as the .pptx: put the pages in "
+                f"{scope.relative(out.parent / folder.name)} or write the deck next to {pages_dir}"
+            )
         source_paths = _existing_sources(scope, sources or [])
         _seed_from_conversation(folder, state_dir, thread_id)
         with file_lock(out):

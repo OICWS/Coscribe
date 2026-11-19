@@ -6,13 +6,12 @@ they travel with the deck and outlive the app. They stay in the app; the .pptx n
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ...._file_locks import file_lock, replace_with_retry
+from ...._file_locks import file_lock, write_atomically
 from .view import NotBuiltFromPages, pages_folder
 
 COMMENTS = "comments.json"
@@ -100,11 +99,8 @@ def _change(deck: Path, change: Any) -> None:
     with file_lock(path):
         comments = _load(path)
         change(comments)
-        tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-        tmp.write_text(
-            json.dumps({"comments": comments}, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        replace_with_retry(tmp, path)
+        text = json.dumps({"comments": comments}, ensure_ascii=False, indent=2)
+        write_atomically(path, lambda tmp: tmp.write_text(text, encoding="utf-8"))
 
 
 def _find(comments: list[dict[str, Any]], comment_id: str) -> dict[str, Any]:
