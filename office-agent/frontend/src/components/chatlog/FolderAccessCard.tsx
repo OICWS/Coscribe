@@ -26,14 +26,15 @@ function accessLabel(access: string): string {
 function answeredLine(item: FolderAccessItem): { allowed: boolean; text: string } {
   const [choice, access] = (item.answer ?? "deny").split(":");
   const name = folderName(item.folder);
-  if (choice === "allow") return { allowed: true, text: `Allowed ${name} · ${accessLabel(access)} · every workspace` };
+  if (choice === "allow") return { allowed: true, text: `Allowed ${name} · ${accessLabel(access)} · this workspace` };
   if (choice === "chat") return { allowed: true, text: `Allowed ${name} · ${accessLabel(access)} · this chat only` };
   if (choice === "workspace") return { allowed: false, text: `Saving in the workspace instead of ${name}` };
   return { allowed: false, text: item.reply ? `Not allowed ${name}: “${item.reply}”` : `Not allowed ${name}` };
 }
 
 /** The model asked for a folder outside the workspace (decision 0048). Allow adds it to Allowed
- * folders, which every workspace can use; Only this chat keeps it to this conversation. */
+ * folders and to this conversation's workspace (decision 0053); Only this chat keeps it to this
+ * conversation. */
 export function FolderAccessCard({ item }: { item: FolderAccessItem }) {
   const actions = useContext(FolderActionsContext);
   const [access, setAccess] = useState<Access>(item.access === "write" ? "read-write" : "read");
@@ -119,7 +120,7 @@ export function FolderAccessCard({ item }: { item: FolderAccessItem }) {
           </button>
         )}
       </div>
-      <p className="text-xs text-[var(--muted)]">Allow adds it to Allowed folders, which every workspace can use.</p>
+      <p className="text-xs text-[var(--muted)]">Allow adds it to this workspace and to Allowed folders, where other workspaces can pick it.</p>
     </div>
   );
 }

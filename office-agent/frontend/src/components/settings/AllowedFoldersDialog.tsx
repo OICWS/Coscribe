@@ -113,8 +113,8 @@ export function AllowedFoldersDialog({ entries, onChange, onClose }: { entries: 
               Allowed folders
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-              Every workspace can use these folders and the folders inside them. When a chat needs another folder, it asks first, and Allow adds
-              it here. Remove one and Coscribe asks again next time.
+              A workspace reaches only the ones it picks, in its own settings, and the folders inside them. When a chat needs another folder, it
+              asks first, and Allow adds it here and to that workspace. Remove one and it leaves every workspace that uses it.
             </p>
           </div>
           <button

@@ -4,6 +4,7 @@ import type { BrowserLevel, SecretInfo } from "../../types/settings";
 import { FolderIcon, PlusIcon } from "../icons";
 import { SelectMenu, type SelectOption } from "../SelectMenu";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
+import { DIR_PERMISSION_OPTIONS, type DirEntry } from "../settings/fields";
 import { SegmentedControl } from "../settings/SegmentedControl";
 import { fieldClass, secondaryButtonClass } from "../settings/SettingRow";
 import { normalizeSite, patternBase, reachesPattern } from "../../lib/workspaceSites";
@@ -32,10 +33,22 @@ function reach(network: NetworkDraft): string[] | null {
   return network.mode === "none" ? [] : network.mode === "any" ? null : network.sites;
 }
 
-/** The workspace's folder and the other folders it adds. Allowed folders reach every workspace without being listed here. */
-export function FoldersSection({ folders, onChange }: { folders: string[]; onChange: (folders: string[]) => void }) {
+const ACCESS_LABELS = Object.fromEntries(DIR_PERMISSION_OPTIONS.map((option) => [option.value, option.label]));
+
+/** A folder Allowed folders doesn't hold yet joins it as read and write when the workspace is saved. */
+function accessLabel(permission: string | undefined): string {
+  return permission ? ACCESS_LABELS[permission] : "Read and write (new)";
+}
+
+/** The workspace's folder and the Allowed folders it uses (decision 0053): picked from Settings'
+ * list, or a new folder, which joins that list as read and write when the workspace is saved. */
+export function FoldersSection({ folders, library, onChange }: { folders: string[]; library: DirEntry[]; onChange: (folders: string[]) => void }) {
   const [browsing, setBrowsing] = useState<"main" | "more" | null>(null);
   const [main, ...more] = folders;
+  const access = new Map(library.map((entry) => [entry.path, entry.permission]));
+  const unused: SelectOption<string>[] = library
+    .filter((entry) => !folders.includes(entry.path))
+    .map((entry) => ({ value: entry.path, label: `${folderName(entry.path)} · ${ACCESS_LABELS[entry.permission]}` }));
   const pick = (path: string) => {
     if (browsing === "main") onChange([path, ...more.filter((folder) => folder !== path)]);
     else if (!folders.includes(path)) onChange(main === undefined ? [path] : [...folders, path]);
@@ -58,12 +71,27 @@ export function FoldersSection({ folders, onChange }: { folders: string[]; onCha
         </span>
       </Section>
       <Section
-        title="More folders for this workspace"
-        description="Allowed folders in Settings reach every workspace already."
+        title="Allowed folders this workspace uses"
+        description="Pick from Allowed folders in Settings, or add a new folder, which joins them as read and write. Other workspaces don't reach these."
         action={
-          <button type="button" className={smallButton} disabled={main === undefined} onClick={() => setBrowsing("more")}>
-            Add folder…
-          </button>
+          <div className="flex items-center gap-2">
+            {unused.length > 0 && (
+              <SelectMenu
+                variant="field"
+                className="w-[190px]"
+                triggerClassName="h-8 text-[13px]"
+                ariaLabel="Use an allowed folder"
+                placeholder="Use an allowed folder"
+                disabled={main === undefined}
+                value=""
+                options={unused}
+                onChange={(path) => onChange([...folders, path])}
+              />
+            )}
+            <button type="button" className={smallButton} disabled={main === undefined} onClick={() => setBrowsing("more")}>
+              Add new folder…
+            </button>
+          </div>
         }
       >
         {more.length > 0 && (
@@ -72,6 +100,7 @@ export function FoldersSection({ folders, onChange }: { folders: string[]; onCha
               <tr className="text-left text-[var(--muted)]">
                 <th className={`${cell} w-[34%] py-1.5 font-normal`}>Folder</th>
                 <th className={`${cell} py-1.5 font-normal`}>Location</th>
+                <th className={`${cell} w-[150px] py-1.5 font-normal`}>Access</th>
                 <th className={`${cell} w-[84px] py-1.5`}>
                   <span className="sr-only">Remove</span>
                 </th>
@@ -83,6 +112,9 @@ export function FoldersSection({ folders, onChange }: { folders: string[]; onCha
                   <td className={`${cell} truncate pr-3`}>{folderName(folder)}</td>
                   <td className={`${cell} truncate pr-3 text-[var(--muted)]`} title={folder}>
                     {folder}
+                  </td>
+                  <td className={`${cell} truncate pr-3 text-[var(--muted)]`}>
+                    {accessLabel(access.get(folder))}
                   </td>
                   <td className={`${cell} text-right`}>
                     <button type="button" aria-label={`Remove ${folder}`} className={smallButton} onClick={() => onChange(folders.filter((f) => f !== folder))}>
