@@ -154,3 +154,7 @@ def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path)
     assert rules.decide("http_request", {}) is None
     assert rules.decide("github_create_issue", {}, "EXTERNAL") is None
     assert WorkspacePermissions({}, tmp_path).decide(command, {}) is None
+    many = WorkspacePermissions(
+        {"permissions": {"deny": [f"tool_{n}" for n in range(300)]}}, tmp_path
+    )
+    assert many.decide("tool_299", {}) == ("deny", "tool_299")
