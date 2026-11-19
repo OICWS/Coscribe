@@ -61,7 +61,7 @@ function Inputs({
   const onlyTheFile = workflow.inputs.every((input) => input.name in filled);
   return (
     <div>
-      <div className="mb-1 text-[13px] text-[var(--muted)]">
+      <div className="mb-1.5 text-[13px] font-medium text-[var(--muted)]">
         {onlyTheFile ? "Works on" : "You fill in, each time it runs"}
       </div>
       <ul className="flex flex-col gap-1 text-sm">
@@ -105,7 +105,7 @@ function Waits({ workflow }: { workflow: Workflow }) {
   if (waits.length === 0) return null;
   return (
     <div>
-      <div className="mb-1 text-[13px] text-[var(--muted)]">It stops and waits for you</div>
+      <div className="mb-1.5 text-[13px] font-medium text-[var(--muted)]">It stops and waits for you</div>
       <ul className="flex flex-col gap-1 text-sm">
         {waits.map((step) => (
           <li key={step.id}>
@@ -191,11 +191,11 @@ function NeedsFromYou({
 
   return (
     <Section title="What it needs from you">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col divide-y divide-[var(--border)] [&>*:not(:first-child)]:pt-3 [&>*:not(:last-child)]:pb-3">
         <Inputs workflow={workflow} filled={filledBy(task)} onChange={setEditingInput} />
         <Waits workflow={workflow} />
         <div>
-          <div className="mb-1 text-[13px] text-[var(--muted)]">It may touch</div>
+          <div className="mb-1.5 text-[13px] font-medium text-[var(--muted)]">It may touch</div>
           <WorkflowPermissions
             workflow={workflow}
             triggerId={task.trigger_id}
