@@ -124,10 +124,29 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
   );
 }
 
+/** The model's emoji answer, on the bubble's lower left corner like a chat app's reaction. */
+function ReactionBadge({ emoji }: { emoji: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={`Reacted ${emoji}`}
+      className="absolute -bottom-3.5 left-2 flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg)] px-1 text-sm leading-none shadow-sm"
+    >
+      {emoji}
+    </span>
+  );
+}
+
 /** A sent message, with its time, Rewind, Edit and Copy under it while the pointer is on it. Both
  * Rewind and Edit take this message and every turn after it out of the conversation; Edit then
  * sends the new text as the latest message. */
-export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user" }> }) {
+export function UserMessageView({
+  item,
+  reaction = null,
+}: {
+  item: Extract<LogItem, { kind: "user" }>;
+  reaction?: string | null;
+}) {
   const actions = useContext(MessageActionsContext);
   const [editing, setEditing] = useState(false);
   // Read on hover, so "2 minutes ago" is current when it shows.
@@ -160,8 +179,9 @@ export function UserMessageView({ item }: { item: Extract<LogItem, { kind: "user
     <div className="group/msg ml-auto flex max-w-[96%] flex-col items-end gap-1.5" onMouseEnter={() => setNow(Date.now())}>
       <SentAttachments files={files} images={item.images ?? []} />
       {(item.text.trim() !== "" || !hasAttachments) && (
-        <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
+        <div className={`relative rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap ${reaction ? "mb-3" : ""}`}>
           {shownText}
+          {reaction && <ReactionBadge emoji={reaction} />}
         </div>
       )}
       {isLongText && (

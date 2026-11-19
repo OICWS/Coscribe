@@ -461,3 +461,25 @@ def test_a_reply_after_the_plan_check_is_a_new_paragraph_of_the_same_reply_lg(
 
     replies = [m["text"] for m in messages if m["type"] == "agent_message"]
     assert replies == ["I made a plan.\n\nThe memo needs your figures first."]
+
+
+def test_a_turn_a_reaction_ends_sends_no_words_and_no_no_reply_note_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    react = _tool_call("call_1", "react_to_message", {"emoji": "👍"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[react]), AIMessage(content="")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_reaction") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "no need, thanks"})
+            reacted = _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "user_message", "text": "and now?"})
+            quiet = _receive_until(ws, "tasks_changed")
+
+    assert fake_model.i == 2
+    assert [m["text"] for m in reacted if m["type"] == "agent_message"] == [""]
+    # A model that answers with nothing at all still gets the note.
+    assert "no reply" in [m["text"] for m in quiet if m["type"] == "agent_message"][0]

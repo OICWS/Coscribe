@@ -106,7 +106,9 @@ def for_subagents(tool: Callable[..., Any] | BaseTool) -> bool:
         return False
     if isinstance(tool, BaseTool):
         return True
-    return get_tool_metadata(tool).category not in _PARENT_ONLY_CATEGORIES
+    # A turn-ending tool answers the person on the parent's side (an emoji on their message).
+    metadata = get_tool_metadata(tool)
+    return metadata.category not in _PARENT_ONLY_CATEGORIES and not metadata.ends_turn
 
 
 @dataclass

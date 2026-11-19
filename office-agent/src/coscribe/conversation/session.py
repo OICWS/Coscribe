@@ -115,7 +115,6 @@ from .turn_text import (
     TITLE_INSTRUCTIONS,
     clean_title,
     design_system_for_start,
-    format_reply,
     turn_mode_note,
     usage_event,
 )
@@ -1249,9 +1248,9 @@ class ChatSessionLG:
 
         if self._stop_requested:
             shown = await self._turn_streamer.stopped(reply_text)
-            await websocket.send_json({"type": "agent_message", "text": shown})
         else:
-            await websocket.send_json({"type": "agent_message", "text": format_reply(reply_text)})
+            shown = self._turn_streamer.reply(reply_text)
+        await websocket.send_json({"type": "agent_message", "text": shown})
         # self._last_usage_metadata is set by _stream_turn (see its
         # docstring) -- None if the model never populated usage_metadata at
         # all, in which case the event is omitted entirely rather than

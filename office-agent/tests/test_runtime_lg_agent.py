@@ -566,3 +566,77 @@ def test_a_picture_a_tool_returns_reaches_the_model_as_a_user_message_after_its_
     assert sent[3].content[1] == picture
     saved = [m for m in agent.get_state(config).values["messages"] if isinstance(m, ToolMessage)]
     assert saved[0].content[1] == picture
+
+
+def test_a_reaction_on_its_own_ends_the_turn_and_alongside_work_does_not() -> None:
+    from coscribe.tools import build_interaction_tools
+
+    def noop_tool() -> str:
+        """A tool that does nothing."""
+        return "done"
+
+    react = {"name": "react_to_message", "args": {"emoji": "👍"}}
+    tools = [*build_interaction_tools(), noop_tool]
+    model = _FakeModel(responses=[AIMessage(content="", tool_calls=[{**react, "id": "r1"}])])
+    agent = build_langgraph_agent(model, tools, "be helpful", checkpointer=InMemorySaver())
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="no need")]}, config={"configurable": {"thread_id": "a"}}
+    )
+    assert model.i == 1
+    assert isinstance(result["messages"][-1], ToolMessage)
+
+    model = _FakeModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{**react, "id": "r2"}, {"name": "noop_tool", "args": {}, "id": "n1"}],
+            ),
+            AIMessage(content="done it"),
+        ]
+    )
+    agent = build_langgraph_agent(model, tools, "be helpful", checkpointer=InMemorySaver())
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="thanks, now do it")]},
+        config={"configurable": {"thread_id": "b"}},
+    )
+    assert model.i == 2
+    assert result["messages"][-1].content == "done it"
+
+
+def test_a_reaction_that_fails_or_leaves_plan_tasks_open_goes_back_to_the_model() -> None:
+    from coscribe.tools import build_interaction_tools
+
+    def task_update() -> str:
+        """Update a task."""
+        return "updated"
+
+    tools = [*build_interaction_tools(), task_update]
+    bad = {"name": "react_to_message", "args": {"emoji": ""}, "id": "r1"}
+    model = _FakeModel(
+        responses=[AIMessage(content="", tool_calls=[bad]), AIMessage(content="Noted.")]
+    )
+    agent = build_langgraph_agent(model, tools, "be helpful", checkpointer=InMemorySaver())
+    agent.invoke(
+        {"messages": [HumanMessage(content="ok")]}, config={"configurable": {"thread_id": "a"}}
+    )
+    assert model.i == 2
+
+    model = _FakeModel(
+        responses=[
+            AIMessage(content="", tool_calls=[{"name": "task_update", "args": {}, "id": "t1"}]),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "react_to_message", "args": {"emoji": "👍"}, "id": "r2"}],
+            ),
+            AIMessage(content="Finishing the last task."),
+        ]
+    )
+    agent = build_langgraph_agent(
+        model, tools, "be helpful", checkpointer=InMemorySaver(), open_tasks=lambda: "- [ ] Send it"
+    )
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="ok thanks")]},
+        config={"configurable": {"thread_id": "b"}},
+    )
+    assert model.i == 3
+    assert result["messages"][-1].content == "Finishing the last task."
