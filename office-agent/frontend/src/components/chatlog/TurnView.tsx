@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { foldTaskCard } from "../../lib/taskCard";
 import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
+import { takeReaction } from "../../lib/reactions";
 import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
@@ -66,7 +67,10 @@ export function TurnView({
   onDismissTaskDraft?: (item: TaskDraftItem) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
-  const entries = foldTaskCard(groupToolRuns(turn.items), turn.taskPlaces);
+  // A message drawn as a card (a run's prompt, a report) has no bubble to carry an emoji.
+  const plain = turn.userItem !== null && !isCardMessage(turn.userItem.text);
+  const { items, reaction } = plain ? takeReaction(turn.items) : { items: turn.items, reaction: null };
+  const entries = foldTaskCard(groupToolRuns(items), turn.taskPlaces);
   const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
   const waiting = turn.hasPendingApproval || turn.items.some(asksThePerson);
   const finalAgentItem = turn.finalAgentItem;
@@ -106,7 +110,7 @@ export function TurnView({
         ) : entry.kind === "steer" ? (
           <SteerView key={entry.id} item={entry} />
         ) : (
-          <LogItemView key={entry.id} item={entry} />
+          <LogItemView key={entry.id} item={entry} reaction={entry.kind === "user" ? reaction : null} />
         ),
       )}
       <FileCards items={calls} />
@@ -129,7 +133,28 @@ export function TurnView({
   );
 }
 
-export function LogItemView({ item }: { item: Extract<LogItem, { kind: "user" | "agent" | "system" }> }) {
+const CARD_PREFIXES = [
+  RUN_PROMPT_PREFIX,
+  INVESTIGATION_PREFIX,
+  REVISION_PREFIX,
+  SUBAGENT_REPORT_PREFIX,
+  BACKGROUND_REPORT_PREFIX,
+  CONNECTED_NOTE_PREFIX,
+  CONVERSATION_MESSAGE_PREFIX,
+];
+
+function isCardMessage(text: string): boolean {
+  return CARD_PREFIXES.some((prefix) => text.startsWith(prefix));
+}
+
+export function LogItemView({
+  item,
+  reaction = null,
+}: {
+  item: Extract<LogItem, { kind: "user" | "agent" | "system" }>;
+  /** The emoji the model answered this user message with. */
+  reaction?: string | null;
+}) {
   if (item.kind === "user") {
     if (item.text.startsWith(RUN_PROMPT_PREFIX)) return <ScheduledRunCard text={item.text} />;
     if (item.text.startsWith(INVESTIGATION_PREFIX) || item.text.startsWith(REVISION_PREFIX))
@@ -138,13 +163,15 @@ export function LogItemView({ item }: { item: Extract<LogItem, { kind: "user" | 
     if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
     if (item.text.startsWith(CONNECTED_NOTE_PREFIX)) return <ConnectorConnectedNote text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
-    return <UserMessageView item={item} />;
+    return <UserMessageView item={item} reaction={reaction} />;
   }
 
   if (item.kind === "agent") {
     const { said, stopped, running } = item.streaming ? { said: item.text, stopped: false, running: 0 } : splitStopped(item.text);
     const text = item.streaming ? `${said} ▍` : said;
     if (stopped && !said.trim()) return <StoppedNote running={running} />;
+    // The server sends no words only for a turn a tool ended, an emoji on the user's message.
+    if (!item.streaming && !said.trim()) return null;
     return (
       <div className="min-w-0 max-w-[92%] [overflow-wrap:anywhere]">
         {/* No border/bubble at all, like claude.ai's own assistant replies

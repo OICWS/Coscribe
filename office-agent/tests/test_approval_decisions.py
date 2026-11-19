@@ -32,8 +32,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.code_runtime import CodePermissions
 from coscribe.config import Settings
+from coscribe.conversation import WorkspaceFolders, question_answer
 from coscribe.conversation import approvals as approvals_module
-from coscribe.conversation import question_answer
 from coscribe.conversation import session as session_module
 from coscribe.conversation.approvals import PLAN_TASKS_MARKER
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
@@ -145,6 +145,8 @@ class Row:
     sandboxed: bool = False  # the command sandbox is set up
     unelevated: bool = False  # ... in the mode without an administrator
     online: bool = False  # the conversation's environment has Full network
+    folder_rule: str | None = None  # the workspace's settings.json lists the tool: deny/ask/allow
+    folder_accepted: bool = True  # ... and the person accepted it
 
 
 ROWS: dict[str, Row] = {
@@ -252,6 +254,32 @@ ROWS: dict[str, Row] = {
     "an_unelevated_sandboxed_command_asks_even_when_preapproved": Row(
         COMMAND, "reject", "human", preapproved=True, sandboxed=True, unelevated=True, asked=True
     ),
+    # -- the workspace's accepted settings.json: after the person's exec policy, before the rest
+    "a_folder_deny": Row(EXEC, "reject", "workspace_settings", folder_rule="deny"),
+    "a_folder_deny_beats_a_run_that_skips_approval": Row(
+        EXEC, "reject", "workspace_settings", folder_rule="deny", run_mode="skip"
+    ),
+    "exec_forbidden_beats_a_folder_allow": Row(
+        EXEC, "reject", "exec_policy", exec_rule="forbidden", folder_rule="allow"
+    ),
+    "a_folder_allow": Row(
+        EXEC, "approve", "workspace_settings", folder_rule="allow", announced=True
+    ),
+    "a_folder_allow_works_unattended": Row(
+        EXEC, "approve", "workspace_settings", folder_rule="allow", attended=False, announced=True
+    ),
+    "a_folder_allow_does_not_lift_plan_mode": Row(
+        EXEC, "reject", "plan_mode", folder_rule="allow", plan=True
+    ),
+    "a_folder_allow_does_not_approve_a_command_outside_the_sandbox": Row(
+        COMMAND, "reject", "human", folder_rule="allow", human=False, asked=True
+    ),
+    "a_folder_ask_beats_preapproved": Row(
+        LOCAL, "approve", "human", folder_rule="ask", preapproved=True, human=True, asked=True
+    ),
+    "a_folder_rule_not_accepted_is_ignored": Row(
+        EXEC, "approve", "human", folder_rule="deny", folder_accepted=False, human=True, asked=True
+    ),
 }
 
 
@@ -297,6 +325,17 @@ def _write_exec_rule(session: ChatSessionLG, decision: str | None) -> None:
     )
 
 
+def _write_folder_rule(session: ChatSessionLG, row: Row) -> None:
+    if row.folder_rule is None:
+        return
+    folder = Path(session.workspace_root)
+    (folder / ".coscribe").mkdir(parents=True, exist_ok=True)
+    settings = {"permissions": {row.folder_rule: [row.tool, "other_tool(*)"]}}
+    (folder / ".coscribe" / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    if row.folder_accepted:
+        WorkspaceFolders(session.settings.state_dir).accept(folder)
+
+
 def _veto(monkeypatch: pytest.MonkeyPatch, session: ChatSessionLG, reason: str | None) -> None:
     async def veto(tool: str, args: dict[str, Any]) -> str | None:
         return reason
@@ -320,6 +359,7 @@ async def test_the_decision_for_one_situation(
     session.run_approval_mode = row.run_mode
     session.preapproved_tools = frozenset({row.tool}) if row.preapproved else frozenset()
     _write_exec_rule(session, row.exec_rule)
+    _write_folder_rule(session, row)
     _veto(monkeypatch, session, row.veto)
     sandbox = Path("codex.exe") if row.sandboxed else None
     monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: sandbox)

@@ -48,13 +48,16 @@ test("a workflow's page shows it as a canvas in plain words, then in detail, and
     await expect(simple).not.toContainText("list_files");
     await expect(simple).not.toContainText("{{");
 
-    await page.getByRole("button", { name: "Detailed" }).click();
+    await page.getByRole("tab", { name: /^Steps/ }).click();
+    await page.getByRole("group", { name: "Steps view" }).getByRole("button", { name: "Flowchart" }).click();
     const canvas = page.getByTestId("workflow-canvas");
     await expect(canvas).toContainText("Start");
-    await expect(canvas).toContainText("Repeats for each item");
+    await expect(canvas).toContainText("Repeats for each report");
     await expect(canvas.locator('[data-canvas-step="read"]')).toBeVisible();
-    await expect(canvas).toContainText("Then");
-    await expect(canvas).toContainText("Otherwise");
+    await expect(canvas).toContainText("If so");
+    await expect(canvas).toContainText("If not");
+    // The chart a person sees names steps by their titles only.
+    await expect(canvas).not.toContainText("list_files");
     await expect(canvas).toContainText("Done");
 
     await canvas.locator('[data-canvas-step="ok"]').click();

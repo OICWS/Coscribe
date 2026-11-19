@@ -40,8 +40,7 @@ test("a folder outside a task's reach is allowed for that task from its folder i
     expect(reach.task).toContain(outside);
     await dialog.getByRole("button", { name: "Cancel" }).click();
 
-    await page.getByRole("button", { name: "Detailed", exact: true }).click();
-    await page.getByRole("group", { name: "Workflow view" }).getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Settings" }).click();
     const section = page.getByRole("region", { name: "What this task can reach" });
     await expect(section).toContainText("this task only · read and write");
     await section.getByRole("button", { name: `Remove ${outside}` }).click();

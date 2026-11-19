@@ -38,6 +38,7 @@ test("a workflow task starts on an event a program sends it", async ({ page }) =
     await page.getByRole("button", { name: "Save", exact: true }).click();
 
     await expect(page.getByText("When a program on this computer sends it an event").first()).toBeVisible();
+    await page.getByRole("tab", { name: "Settings" }).click();
     const address = page.getByTestId("webhook-address");
     await expect(address).toBeVisible();
     const url = (await address.getByTestId("webhook-url").textContent()) ?? "";
@@ -61,6 +62,7 @@ test("a workflow task starts on an event a program sends it", async ({ page }) =
     await pickOption(page.getByLabel("Amount from"), "total · 12.5");
     await pickOption(page.getByLabel("Customer from"), "customer.name · Ada");
     await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("tab", { name: "Overview" }).click();
     await expect(page.getByText("the event's customer.name")).toBeVisible();
 
     expect((await send({ total: 3 }, "wrong")).status()).toBe(401);

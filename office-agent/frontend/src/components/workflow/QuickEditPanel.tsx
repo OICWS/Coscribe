@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { inputClass, primaryButton, secondaryButton } from "../../lib/formStyles";
 import { INPUT_TYPE_LABEL, isRelativeDate, resolveDate } from "../../lib/inputKinds";
@@ -9,7 +9,7 @@ import { applyQuick, type QuickField, quickFields, replaceStep } from "../../lib
 import { allSteps } from "../../lib/workflowTree";
 import { APP_HEADER_HEIGHT } from "../../lib/titleBar";
 import type { Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
-import { CloseIcon } from "../icons";
+import { CloseIcon, ExpandIcon } from "../icons";
 import { AutoTextarea, FieldLabel } from "./fields";
 import { InputValueControl } from "./InputValueControl";
 import { SelectMenu } from "../SelectMenu";
@@ -128,6 +128,9 @@ function tidy(step: WorkflowStep): WorkflowStep {
   return { ...step, sites: clean(step.sites), folders: clean(step.folders) };
 }
 
+const headerButton =
+  "flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]";
+
 function QuickSheet({
   title,
   subtitle,
@@ -147,50 +150,61 @@ function QuickSheet({
   onClose: () => void;
   onOpenEditor: () => void;
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  // The task page makes room for the card instead of sliding under it (ScheduledTaskDetail).
+  useEffect(() => {
+    document.body.dataset.quickEdit = "open";
+    return () => {
+      delete document.body.dataset.quickEdit;
+    };
+  }, []);
+  // A floating card like the dock's panels, with no backdrop: the page stays live beside it, so
+  // another step can be picked without closing this one first.
   return createPortal(
-    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-end bg-black/20" style={{ top: APP_HEADER_HEIGHT }} onClick={onClose}>
-      <aside
-        aria-label={title}
-        className="flex h-full w-[min(420px,100vw)] flex-col border-l border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">{title}</h2>
-            <div className="mt-0.5 text-[13px] text-[var(--muted)]">{subtitle}</div>
-          </div>
-          <button
-            type="button"
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)]"
-            onClick={onClose}
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-          {children}
-          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+    <aside
+      aria-label={title}
+      className="fixed right-2 bottom-2 z-50 flex w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden rounded-xl border border-[var(--panel-edge)] bg-[var(--panel-bg)] shadow-[var(--panel-shadow)]"
+      style={{ top: `calc(${APP_HEADER_HEIGHT} + 0.5rem)` }}
+    >
+      <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-[15px]">{title}</h2>
+          <div className="mt-0.5 truncate text-[13px] text-[var(--muted)]">{subtitle}</div>
         </div>
-        <footer className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3">
+        <div className="-mr-1 flex shrink-0 items-center gap-0.5">
           <button
             type="button"
-            className="text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
+            title="Open in the full editor"
+            aria-label="Open in the full editor"
+            className={headerButton}
             onClick={onOpenEditor}
           >
-            Open in the full editor
+            <ExpandIcon className="h-4 w-4" />
           </button>
-          <div className="flex gap-2">
-            <button type="button" className={secondaryButton} onClick={onClose}>
-              Cancel
-            </button>
-            <button type="button" className={primaryButton} disabled={!canSave} onClick={onSave}>
-              Save
-            </button>
-          </div>
-        </footer>
-      </aside>
-    </div>,
+          <button type="button" title="Close" aria-label="Close" className={headerButton} onClick={onClose}>
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+        {children}
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+      </div>
+      <footer className="flex items-center justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
+        <button type="button" className={secondaryButton} onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" className={primaryButton} disabled={!canSave} onClick={onSave}>
+          Save
+        </button>
+      </footer>
+    </aside>,
     document.body,
   );
 }
