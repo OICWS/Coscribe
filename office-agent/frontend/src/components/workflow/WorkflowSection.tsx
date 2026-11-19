@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ThisTask } from "../../lib/taskCalls";
 import type { Workflow } from "../../types/workflow";
-import { AutonomySetting } from "./AutonomySetting";
 import { WorkflowCanvas } from "./WorkflowCanvas";
 import { ViewToggle } from "./ViewToggle";
 import { WorkflowEditor, type Persist } from "./WorkflowEditor";
@@ -57,40 +55,5 @@ export function WorkflowSection({
       {view === "edit" && <WorkflowEditor workflow={workflow} persist={persist} focusStepId={focus} />}
       {tabs.find((tab) => tab.view === view)?.content}
     </div>
-  );
-}
-
-/** A saved task's workflow: its two views, then its settings -- the autonomy switch first
- * (decision 0030) -- and its runs. Its steps may run any other task, not this one (decision 0035). */
-export function TaskWorkflowSection({
-  taskId,
-  settings,
-  runs,
-  ...props
-}: {
-  taskId: string;
-  workflow: Workflow;
-  persist: Persist;
-  focusStepId?: string | null;
-  settings: ReactNode;
-  runs: ReactNode;
-}) {
-  const tabs: ExtraTab[] = [
-    {
-      view: "settings",
-      label: "Settings",
-      content: (
-        <div className="mt-2 flex flex-col gap-6">
-          <AutonomySetting workflow={props.workflow} persist={props.persist} />
-          {settings}
-        </div>
-      ),
-    },
-    { view: "runs", label: "Runs", content: <div className="mt-2">{runs}</div> },
-  ];
-  return (
-    <ThisTask.Provider value={taskId}>
-      <WorkflowSection {...props} tabs={tabs} />
-    </ThisTask.Provider>
   );
 }

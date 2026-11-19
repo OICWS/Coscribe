@@ -3,6 +3,7 @@ import { type PlainGroup, type PlainRow, plainOutline } from "../../lib/plainOut
 import { plainKind } from "../../lib/plainSteps";
 import { useTaskNames } from "../../lib/taskCalls";
 import type { Workflow, WorkflowInput } from "../../types/workflow";
+import { PencilIcon } from "../icons";
 import { PlainTile, plainColor } from "./WorkflowCanvas";
 
 /** A sentence with each input it reads as a chip, so what the person fills in stands out from
@@ -58,7 +59,7 @@ function Row({
         data-testid="plain-step"
         data-plain-step={step.id}
         aria-current={openId === step.id ? "true" : undefined}
-        className="group flex w-full items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-[var(--card-bg)] aria-[current]:bg-[var(--card-bg)]"
+        className="group flex w-full cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-[var(--card-bg)] aria-[current]:bg-[var(--card-bg)]"
         onClick={() => onOpen(step.id)}
       >
         {number !== null ? (
@@ -67,8 +68,10 @@ function Row({
         <PlainTile step={step} color={plainColor(step)} />
         <span className="min-w-0 flex-1">
           <span className="block text-sm leading-snug">{step.title}</span>
+          {/* The title already says what a step does; the generated sentence mostly repeats it, so
+              only a screen reader hears it, and the step's card shows it when opened. */}
           {row.detail && (
-            <span className="mt-0.5 block text-[13px] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">
+            <span className="sr-only">
               <PlainText text={row.detail} inputs={inputs} />
             </span>
           )}
@@ -89,7 +92,11 @@ function Row({
             </span>
           )}
         </span>
-        <span className="mt-px shrink-0 text-xs text-[var(--muted)]">{plainKind(step)}</span>
+        <span className="mt-px shrink-0 text-xs text-[var(--muted)] group-hover:hidden">{plainKind(step)}</span>
+        <span className="mt-px hidden shrink-0 items-center gap-1 text-xs font-medium text-[var(--fg)] group-hover:flex" aria-hidden="true">
+          <PencilIcon className="h-3 w-3" />
+          Change
+        </span>
       </button>
       {row.groups.map((group, index) => (
         <Group key={index} group={group} inputs={inputs} onOpen={onOpen} openId={openId} indent={number !== null} />
@@ -112,7 +119,7 @@ function Group({
   indent: boolean;
 }) {
   return (
-    <div className={`${indent ? "ml-9" : "ml-6"} border-l border-[var(--border)] pl-2`}>
+    <div className={`${indent ? "ml-9" : "ml-6"} pl-2`}>
       {group.label && <div className="px-2 pt-1.5 text-xs font-medium text-[var(--muted)]">{group.label}</div>}
       <ul>
         {group.rows.map((row) => (

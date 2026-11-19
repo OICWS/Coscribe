@@ -2,8 +2,7 @@ import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } 
 import { dataFlow, flowRole, type FlowRole, type StepFlow } from "../../lib/dataFlow";
 import { failureLine } from "../../lib/failureWords";
 import { AUTONOMY_LABEL, KIND_COLOR, KIND_LABEL } from "../../lib/workflowLabels";
-import { plainDetail, plainKind } from "../../lib/plainSteps";
-import { useTaskNames } from "../../lib/taskCalls";
+import { plainKind } from "../../lib/plainSteps";
 import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
 import { canRecover, everyStep, isBlock, placeSteps } from "../../lib/workflowTree";
 import type { ScheduledRun } from "../../types/settings";
@@ -195,21 +194,17 @@ export function PlainTile({ step, color }: { step: WorkflowStep; color: string }
   );
 }
 
+/** A step in the simple view's chart: its kind and title, nothing technical. */
 function PlainBody({
   step,
-  inputs,
-  memory,
   state,
   role,
 }: {
   step: WorkflowStep;
-  inputs: WorkflowInput[];
-  memory: MemoryEntry[];
   state?: NodeRunState;
   role: FlowRole;
 }) {
   const color = plainColor(step);
-  const detail = plainDetail(step, inputs, memory, useTaskNames());
   return (
     <>
       <span className="flex items-center gap-2">
@@ -233,7 +228,6 @@ function PlainBody({
       <span className="mt-1.5 line-clamp-2 block text-sm font-medium leading-snug" title={step.title}>
         {step.title}
       </span>
-      {detail && <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted)]">{detail}</span>}
     </>
   );
 }
@@ -248,7 +242,7 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
   const kind = step.kind === "agent" ? `Agent · ${AUTONOMY_LABEL[step.autonomy]}` : KIND_LABEL[step.kind];
   const body = ctx.plain ? (
     <>
-      <PlainBody step={step} inputs={ctx.plain.inputs} memory={ctx.plain.memory} state={state} role={role} />
+      <PlainBody step={step} state={state} role={role} />
       <FailureNote step={step} />
       {note && (
         <span

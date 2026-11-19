@@ -12,8 +12,7 @@ import { goToThread } from "../lib/nav";
 import { capitalize, formatRunTime, RUN_STATUS_LABEL, runDuration, runSourceLabel } from "../lib/runLabels";
 import { describeSchedule } from "../lib/scheduleLabels";
 import { TriggerNote, WebhookSection } from "./TriggerNote";
-import { loadTaskView, saveTaskView, type TaskView } from "../lib/taskView";
-import { countModelSteps } from "../lib/workflowLabels";
+import { ThisTask } from "../lib/taskCalls";
 import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
@@ -24,12 +23,12 @@ import { RunStatusIcon } from "./RunStatusIcon";
 import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
 import { TaskReachProvider, TaskReachSection } from "./TaskReachSection";
 import { TaskMemorySection } from "./TaskMemorySection";
-import { TaskVersionsSection } from "./TaskVersionsSection";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { RunInputsDialog } from "./workflow/RunInputsDialog";
+import { TaskSettingsTab } from "./workflow/TaskSettingsTab";
 import { ViewToggle } from "./workflow/ViewToggle";
-import { TaskWorkflowSection } from "./workflow/WorkflowSection";
-import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
+import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
+import { WorkflowEditor } from "./workflow/WorkflowEditor";
 
 // Mirrors tools/bookkeeping/scheduled_tasks.py's MAX_NOTES_CHARS.
 const MAX_NOTES_CHARS = 4000;
@@ -94,27 +93,6 @@ function InstructionsSection({ prompt }: { prompt: string }) {
 }
 
 type NotesState = "idle" | "saving" | "saved" | "error";
-
-/** Whether a failed run starts a conversation that looks into it. */
-function FailuresSection({ task, onChanged }: { task: ScheduledTask; onChanged: () => void }) {
-  const toggle = async () => {
-    await patchScheduledTask(task.trigger_id, { auto_investigate: !task.auto_investigate });
-    onChanged();
-  };
-  return (
-    <div>
-      <SectionLabel>When a run fails</SectionLabel>
-      <div className="flex items-start justify-between gap-4">
-        <div className="text-sm text-[var(--muted)]">
-          {task.auto_investigate
-            ? "Coscribe looks into it right away: it reproduces the failure and drafts a fix for you to review. It never saves the fix itself."
-            : "The run stops and you get a notification. You can ask Coscribe to look into it from the run's page."}
-        </div>
-        <ToggleSwitch on={task.auto_investigate ?? false} onClick={toggle} label="Look into failures automatically" />
-      </div>
-    </div>
-  );
-}
 
 /** The task's memory across runs: shown to every run at its start and
  * rewritten by the run itself, but also the user's to read and correct.
@@ -210,16 +188,17 @@ function NotesSection({ task, onChanged }: { task: ScheduledTask; onChanged: () 
 // The simple view lists the latest runs; older ones are a click away.
 const RECENT_RUNS = 5;
 
-function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: boolean }) {
-  const [all, setAll] = useState(!recent);
+/** A task's runs, newest first. `onShowAll` makes it the overview's short list of the latest
+ * few, which opens the Runs tab for the rest, under what the task keeps between runs. */
+function RunsSection({ task, onShowAll }: { task: ScheduledTask; onShowAll?: () => void }) {
+  const recent = Boolean(onShowAll);
   const newestFirst = [...task.runs].reverse();
-  const runs = all ? newestFirst : newestFirst.slice(0, RECENT_RUNS);
+  const runs = recent ? newestFirst.slice(0, RECENT_RUNS) : newestFirst;
   return (
     <>
-      <TaskMemorySection task={task} refresh={`${task.last_run_at}:${task.last_run_status}`} />
-      <WebhookSection task={task} />
+      {recent && <TaskMemorySection task={task} refresh={`${task.last_run_at}:${task.last_run_status}`} />}
       <div>
-        {recent ? <h2 className="mb-2 text-sm font-medium">Recent runs</h2> : <SectionLabel>Runs</SectionLabel>}
+        {recent && <h2 className="mb-2 text-sm font-medium">Recent runs</h2>}
         <TriggerNote task={task} />
         {runs.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No runs yet -- use Run now to try it out.</p>
@@ -264,7 +243,7 @@ function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: b
           <button
             type="button"
             className="mt-1 text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
-            onClick={() => setAll(true)}
+            onClick={onShowAll}
           >
             Show all {newestFirst.length} runs
           </button>
@@ -284,20 +263,6 @@ interface ScheduledTaskDetailProps {
   focusStepId?: string | null;
 }
 
-function WorkflowBadge({ task }: { task: ScheduledTask }) {
-  if (!task.workflow) return null;
-  const steps = allSteps(task.workflow).length;
-  const models = countModelSteps(task.workflow);
-  return (
-    <span className="text-sm text-[var(--muted)]">
-      Workflow · {steps} {steps === 1 ? "step" : "steps"}
-      {models > 0 && ` · ${models} ${models === 1 ? "uses" : "use"} a model`}
-    </span>
-  );
-}
-
-/** One scheduled task: its settings, its notes, and every run it has made --
- * each run opening its own conversation. */
 /** The name of the environment a task's runs use; it is edited from the picker below a message. */
 function EnvironmentName({
   id,
@@ -319,19 +284,8 @@ function EnvironmentName({
   return <span className={className}>{name}</span>;
 }
 
-/** Whether the task is on, when it runs next, and which way its page reads. */
-function StatusRow({
-  task,
-  view,
-  onView,
-  onToggle,
-}: {
-  task: ScheduledTask;
-  view: TaskView;
-  onView: (view: TaskView) => void;
-  onToggle: () => void;
-}) {
-  const workflow = task.workflow;
+/** Whether the task is on and when it runs next. */
+function StatusRow({ task, onToggle }: { task: ScheduledTask; onToggle: () => void }) {
   return (
     <div className="mt-2 flex items-center gap-2">
       <ToggleSwitch on={task.enabled} onClick={onToggle} label={task.enabled ? "Pause task" : "Resume task"} />
@@ -345,96 +299,30 @@ function StatusRow({
         {task.enabled ? "Active" : "Paused"}
       </span>
       <span className="text-sm text-[var(--muted)]">{formatNextRun(task)}</span>
-      {workflow && <span className="text-sm text-[var(--muted)]">·</span>}
-      <WorkflowBadge task={task} />
-      {workflow && (
-        <div className="ml-auto">
-          <ViewToggle
-            label="Page view"
-            views={[
-              { view: "simple", label: "Simple" },
-              { view: "detailed", label: "Detailed" },
-            ]}
-            value={view}
-            onChange={onView}
-          />
-        </div>
-      )}
     </div>
   );
 }
 
-/** Every setting of the task as it is stored: the workflow's canvas and editor, or its
- * instructions, then schedule, environment, permissions, failures, notes and runs. */
-function DetailedBody({
-  task,
-  persist,
-  focusStepId,
-  onChanged,
-}: {
-  task: ScheduledTask;
-  persist: (next: Workflow) => Promise<string | null>;
-  focusStepId?: string | null;
-  onChanged: () => void;
-}) {
-  const workflow = task.workflow;
-  const repeats = (
-    <div>
-      <SectionLabel>Repeats</SectionLabel>
-      <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
-    </div>
-  );
-  const environment = (
-    <div className="flex flex-col gap-3">
-      <div>
-        <SectionLabel>Workspace</SectionLabel>
-        <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
-      </div>
-      <TaskReachSection
-        taskId={task.trigger_id}
-        changed={JSON.stringify([task.environment, task.permissions?.folders])}
-        onChanged={onChanged}
-      />
-    </div>
-  );
-  if (workflow)
-    return (
-      <div className="mt-6 flex flex-col gap-6">
-        <TaskWorkflowSection
-          taskId={task.trigger_id}
-          workflow={workflow}
-          persist={persist}
-          focusStepId={focusStepId}
-          settings={
-            <>
-              {repeats}
-              {environment}
-              <div>
-                <SectionLabel>Permissions</SectionLabel>
-                <div className="text-sm text-[var(--muted)]">
-                  Steps run as saved, without asking each time. The run also pauses at approval steps, and at anything
-                  below it hasn’t been allowed.
-                </div>
-                <WorkflowPermissions
-                  workflow={workflow}
-                  triggerId={task.trigger_id}
-                  version={JSON.stringify(task.permissions ?? {})}
-                  className="mt-3"
-                />
-              </div>
-              <TaskVersionsSection task={task} onChanged={onChanged} />
-              <FailuresSection task={task} onChanged={onChanged} />
-            </>
-          }
-          runs={<RunsSection task={task} />}
-        />
-      </div>
-    );
+/** A task that runs from instructions rather than steps: everything on one page. */
+function InstructionsBody({ task, onChanged }: { task: ScheduledTask; onChanged: () => void }) {
   return (
     <div className="mt-6 flex flex-col gap-6">
       <InstructionsSection prompt={task.prompt} />
-      {repeats}
-      {environment}
+      <div>
+        <SectionLabel>Repeats</SectionLabel>
+        <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
+      </div>
+      <div className="flex flex-col gap-3">
+        <div>
+          <SectionLabel>Workspace</SectionLabel>
+          <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
+        </div>
+        <TaskReachSection
+          taskId={task.trigger_id}
+          changed={JSON.stringify([task.environment, task.permissions?.folders])}
+          onChanged={onChanged}
+        />
+      </div>
       <div>
         <SectionLabel>Permissions</SectionLabel>
         <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
@@ -442,31 +330,163 @@ function DetailedBody({
         <div className="text-sm text-[var(--muted)]">A run stops after {task.max_steps ?? 150} steps.</div>
       </div>
       <NotesSection task={task} onChanged={onChanged} />
+      <TaskMemorySection task={task} refresh={`${task.last_run_at}:${task.last_run_status}`} />
+      <WebhookSection task={task} />
       <RunsSection task={task} />
     </div>
   );
 }
 
-/** Which view the page shows, and the step the detailed view's editor opens on. */
-function useTaskView(focusStepId: string | null | undefined) {
-  const [view, setView] = useState<TaskView>(() => (focusStepId ? "detailed" : loadTaskView()));
-  // A run's "Edit step" opens the step, which only the detailed view shows.
+type Tab = "overview" | "steps" | "runs" | "settings";
+
+/** The workflow task page's tabs, as one row under the header. */
+function TaskTabs({ tab, onTab, runs, steps }: { tab: Tab; onTab: (tab: Tab) => void; runs: number; steps: number }) {
+  const tabs: { tab: Tab; label: string; count?: number }[] = [
+    { tab: "overview", label: "Overview" },
+    { tab: "steps", label: "Steps", count: steps },
+    { tab: "runs", label: "Runs", count: runs },
+    { tab: "settings", label: "Settings" },
+  ];
+  return (
+    <div role="tablist" aria-label="Task page" className="mt-4 flex gap-5 border-b border-[var(--border)]">
+      {tabs.map((item) => (
+        <button
+          key={item.tab}
+          type="button"
+          role="tab"
+          aria-selected={tab === item.tab}
+          className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 pb-2 pt-1 text-sm transition-colors ${
+            tab === item.tab
+              ? "border-[var(--fg)] font-medium text-[var(--fg)]"
+              : "border-transparent text-[var(--muted)] hover:text-[var(--fg)]"
+          }`}
+          onClick={() => onTab(item.tab)}
+        >
+          {item.label}
+          {item.count ? (
+            <span className="rounded-full bg-[var(--card-bg)] px-1.5 text-[11px] text-[var(--muted)]">{item.count}</span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The steps to edit, or the same steps as a flowchart; a step clicked on the chart opens in the list. */
+function StepsTab({
+  taskId,
+  workflow,
+  persist,
+  focus,
+  onFocus,
+}: {
+  taskId: string;
+  workflow: Workflow;
+  persist: (next: Workflow) => Promise<string | null>;
+  focus: string | null;
+  onFocus: (stepId: string) => void;
+}) {
+  const [chart, setChart] = useState(false);
+  return (
+    <ThisTask.Provider value={taskId}>
+      <div className="flex flex-col gap-3">
+        <ViewToggle
+          label="Steps view"
+          views={[
+            { view: "list", label: "List" },
+            { view: "chart", label: "Flowchart" },
+          ]}
+          value={chart ? "chart" : "list"}
+          onChange={(view) => setChart(view === "chart")}
+        />
+        {chart ? (
+          <WorkflowCanvas
+            workflow={workflow}
+            plain
+            onOpenStep={(stepId) => {
+              onFocus(stepId);
+              setChart(false);
+            }}
+          />
+        ) : (
+          <WorkflowEditor workflow={workflow} persist={persist} focusStepId={focus} />
+        )}
+      </div>
+    </ThisTask.Provider>
+  );
+}
+
+/** Which tab the page shows, and the step the Steps tab's editor opens on. */
+function useTab(focusStepId: string | null | undefined) {
+  const [tab, setTab] = useState<Tab>(focusStepId ? "steps" : "overview");
+  // A run's "Edit step" opens the step while the page is open.
   const [seenFocus, setSeenFocus] = useState(focusStepId);
   if (focusStepId !== seenFocus) {
     setSeenFocus(focusStepId);
-    if (focusStepId) setView("detailed");
+    if (focusStepId) setTab("steps");
   }
-  // A step clicked on the simple view's canvas opens in the detailed view's editor.
   const [openedStep, setOpenedStep] = useState<string | null>(null);
-  const chooseView = (next: TaskView) => {
-    setView(next);
-    saveTaskView(next);
-  };
   const openStep = (stepId: string) => {
     setOpenedStep(stepId);
-    chooseView("detailed");
+    setTab("steps");
   };
-  return { view, chooseView, focus: openedStep ?? focusStepId, openStep };
+  return { tab, setTab, focus: openedStep ?? focusStepId ?? null, openStep };
+}
+
+/** A workflow task's tabs and the one that is open. */
+function WorkflowTaskBody({
+  task,
+  workflow,
+  persist: saveWorkflow,
+  focusStepId,
+  onEdit,
+  onChanged,
+}: {
+  task: ScheduledTask;
+  workflow: Workflow;
+  persist: (next: Workflow) => Promise<string | null>;
+  focusStepId?: string | null;
+  onEdit: () => void;
+  onChanged: () => void;
+}) {
+  const { tab, setTab, focus, openStep } = useTab(focusStepId);
+  return (
+    <>
+      <TaskTabs tab={tab} onTab={setTab} runs={task.runs.length} steps={allSteps(workflow).length} />
+      <div className="mt-6">
+        {tab === "overview" && (
+          <ScheduledTaskSimple
+            task={task}
+            workflow={workflow}
+            persist={saveWorkflow}
+            onEditSteps={() => setTab("steps")}
+            onOpenStep={openStep}
+            onShowSettings={() => setTab("settings")}
+            onShowRuns={() => setTab("runs")}
+            runs={<RunsSection task={task} onShowAll={() => setTab("runs")} />}
+            environment={<EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} className="inline" />}
+          />
+        )}
+        {tab === "steps" && (
+          <StepsTab
+            taskId={task.trigger_id}
+            workflow={workflow}
+            persist={saveWorkflow}
+            focus={focus}
+            onFocus={openStep}
+          />
+        )}
+        {tab === "runs" && (
+          <div className="flex flex-col gap-6">
+            <RunsSection task={task} />
+          </div>
+        )}
+        {tab === "settings" && (
+          <TaskSettingsTab task={task} workflow={workflow} persist={saveWorkflow} onEdit={onEdit} onChanged={onChanged} />
+        )}
+      </div>
+    </>
+  );
 }
 
 export function ScheduledTaskDetail({
@@ -481,8 +501,6 @@ export function ScheduledTaskDetail({
   const [starting, setStarting] = useState(false);
   const [askingInputs, setAskingInputs] = useState(false);
   const workflow = task.workflow;
-  const { view, chooseView, focus, openStep } = useTaskView(focusStepId);
-  const simple = Boolean(workflow) && view === "simple";
 
   const start = (inputs?: Record<string, unknown>) => {
     setAskingInputs(false);
@@ -509,7 +527,7 @@ export function ScheduledTaskDetail({
 
   return (
     <TaskReachProvider taskId={task.trigger_id} onChanged={onChanged}>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 md:[body[data-quick-edit]_&]:pr-[440px]">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-4">
           <h1
@@ -522,7 +540,7 @@ export function ScheduledTaskDetail({
             <button
               type="button"
               aria-label="Edit"
-              title="Edit"
+              title="Rename or change when it runs"
               className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
               onClick={onEdit}
             >
@@ -549,31 +567,22 @@ export function ScheduledTaskDetail({
           </div>
         </div>
 
-        <StatusRow task={task} view={view} onView={chooseView} onToggle={toggleEnabled} />
+        <StatusRow task={task} onToggle={toggleEnabled} />
 
-        <div className="mt-4 border-t border-[var(--border)]" />
-
-        {simple && workflow ? (
-          <div className="mt-6">
-            <ScheduledTaskSimple
-              task={task}
-              workflow={workflow}
-              persist={saveWorkflow}
-              onEdit={onEdit}
-              onShowDetails={() => chooseView("detailed")}
-              onOpenStep={openStep}
-              onChanged={onChanged}
-              runs={<RunsSection task={task} recent />}
-              environment={
-                <EnvironmentName
-                  id={task.environment ?? DEFAULT_ENVIRONMENT}
-                  className="inline font-medium text-[var(--fg)]"
-                />
-              }
-            />
-          </div>
+        {workflow ? (
+          <WorkflowTaskBody
+            task={task}
+            workflow={workflow}
+            persist={saveWorkflow}
+            focusStepId={focusStepId}
+            onEdit={onEdit}
+            onChanged={onChanged}
+          />
         ) : (
-          <DetailedBody task={task} persist={saveWorkflow} focusStepId={focus} onChanged={onChanged} />
+          <>
+            <div className="mt-4 border-t border-[var(--border)]" />
+            <InstructionsBody task={task} onChanged={onChanged} />
+          </>
         )}
       </div>
 

@@ -28,7 +28,7 @@ export interface Notice {
   state?: string;
   /** Ready to act on (a draft whose test passed): the row turns lavender. */
   ready?: boolean;
-  /** Clicking the row's text, e.g. to scroll to what the notice is about. */
+  /** Clicking anywhere on the row outside its buttons, e.g. to scroll to what the notice is about. */
   onOpen?: () => void;
   openTitle?: string;
   actions: NoticeAction[];
@@ -68,10 +68,14 @@ function NoticeRow({ notice }: { notice: Notice }) {
       )}
     </>
   );
+  const opens = Boolean(notice.onOpen);
+  const bg = notice.ready
+    ? `bg-[var(--notice-ready-bg)] ${opens ? "hover:bg-[var(--notice-ready-hover-bg)]" : ""}`
+    : `bg-[var(--notice-bg)] ${opens ? "hover:bg-[var(--notice-hover-bg)]" : ""}`;
   return (
     <div
-      className={`flex min-h-[52px] min-w-0 items-center gap-3 rounded-xl px-4 font-mono text-[14px] ${fg} ${
-        notice.ready ? "bg-[var(--notice-ready-bg)]" : "bg-[var(--notice-bg)]"
+      className={`group/notice relative flex min-h-[52px] min-w-0 items-center gap-3 rounded-xl px-4 font-mono text-[14px] transition-colors ${fg} ${bg} ${
+        opens ? "cursor-pointer has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-[var(--border-hover)]" : ""
       }`}
       data-testid="notice"
     >
@@ -83,7 +87,12 @@ function NoticeRow({ notice }: { notice: Notice }) {
         </span>
       )}
       {notice.onOpen ? (
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" title={notice.openTitle} onClick={notice.onOpen}>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left outline-none after:absolute after:inset-0 after:rounded-xl after:content-['']"
+          title={notice.openTitle}
+          onClick={notice.onOpen}
+        >
           {text}
         </button>
       ) : (
@@ -94,7 +103,9 @@ function NoticeRow({ notice }: { notice: Notice }) {
         <button
           key={action.label}
           type="button"
-          className={`flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-[var(--notice-pill-bg)] font-sans text-[14px] text-[var(--notice-pill-fg)] hover:brightness-95 disabled:opacity-50 ${
+          className={`relative z-10 flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg bg-[var(--notice-pill-bg)] font-sans text-[14px] text-[var(--notice-pill-fg)] hover:brightness-95 ${
+            opens ? "group-hover/notice:bg-[var(--notice-pill-hover-bg)]" : ""
+          } disabled:cursor-default disabled:opacity-50 ${
             action.icon ? "w-8" : "px-2.5"
           }`}
           title={action.title ?? (action.icon ? action.label : undefined)}
@@ -110,7 +121,7 @@ function NoticeRow({ notice }: { notice: Notice }) {
           type="button"
           aria-label="Close"
           title={notice.dismissTitle ?? "Close"}
-          className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)]"
+          className="relative z-10 -mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)]"
           onClick={notice.onDismiss}
         >
           <CloseIcon className="h-[18px] w-[18px]" />
