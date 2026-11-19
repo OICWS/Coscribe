@@ -1331,6 +1331,71 @@ def test_a_workspaces_connectors_connect_once_accepted_for_its_conversations_onl
     assert connections[0].closed and len(connected) == 1
 
 
+def test_a_conversation_gets_its_new_folders_connectors_as_claude_code_writes_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import WorkspaceFolders
+
+    configs: dict[str, Any] = {}
+    attempts: list[str] = []
+
+    async def _fake_connect(name: str, config: Any, *args: Any, **kwargs: Any) -> Any:
+        attempts.append(name)
+        if name == "slow" and attempts.count("slow") == 1:
+            return [], None, "Timed out"
+        configs[name] = config
+        return [_connector_tool(name, "run")], _ManagedConnection(), None
+
+    monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect)
+    monkeypatch.setenv("HTTPS_PROXY", "http://me:hunter2@proxy.corp:8080")
+    first, second = tmp_path / "a", tmp_path / "b"
+    _workspace_with_connectors(first, {"deploy": {"command": "uvx", "args": ["deploy"]}})
+    _workspace_with_connectors(
+        second,
+        {
+            "docs": {"type": "http", "url": "https://docs.example/mcp"},
+            "slow": {"command": "node", "args": ["server.js"], "cwd": "tools"},
+        },
+    )
+    settings = _settings(tmp_path)
+    for folder in (first, second):
+        WorkspaceFolders(settings.state_dir).accept(folder)
+
+    class _Session:
+        def __init__(self, root: Path) -> None:
+            self.workspace_root = root
+            self.seen: list[Any] = []
+
+        async def refresh_extra_tools(self, tools: list[Any]) -> None:
+            self.seen = tools
+
+    moving, staying = _Session(first), _Session(second)
+    manager = ConnectorManager(settings, {"x": moving, "y": staying}, lambda *args: None)
+
+    async def prepare(session: _Session) -> None:
+        await manager.prepare(session)  # type: ignore[arg-type]
+        await asyncio.gather(*manager.sign_in_tasks)
+
+    asyncio.run(prepare(moving))
+    asyncio.run(prepare(staying))
+    assert [name_of(t) for t in moving.seen] == ["deploy_run"]
+    assert [name_of(t) for t in staying.seen] == ["docs_run"]
+    assert configs["docs"]["server_url"] == "https://docs.example/mcp"
+
+    # Moved to a folder already connected for another conversation: its tools, not the old ones.
+    moving.workspace_root = second
+    asyncio.run(prepare(moving))
+    assert [name_of(t) for t in moving.seen] == ["docs_run"]
+
+    # A server that failed is tried again on a later turn, once its wait is over.
+    manager.workspaces._connected[second].retry_at = 0
+    asyncio.run(prepare(moving))
+    assert sorted(name_of(t) for t in moving.seen) == ["docs_run", "slow_run"]
+    slow = configs["slow"]
+    assert slow["cwd"] == str(second / "tools")
+    assert slow["env"]["HTTPS_PROXY"] == "http://proxy.corp:8080"
+
+
 def test_saved_oauth_tokens_keep_a_refresh_token_left_out_and_no_metadata_from_before(
     tmp_path: Path,
 ) -> None:

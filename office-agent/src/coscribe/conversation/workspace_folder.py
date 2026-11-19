@@ -138,7 +138,12 @@ class WorkspaceFolders:
 
     def accepted_connectors(self, folder: Path) -> dict[str, Any]:
         """The folder's `mcp.json` servers once the person accepted them as they are now."""
-        return read_connectors(folder) if self.trust.trusted(folder, fingerprint(folder)) else {}
+        before = fingerprint(folder)
+        servers = read_connectors(folder)
+        # Read between two fingerprints: a file swapped after the check is not what connects.
+        if not self.trust.trusted(folder, before) or fingerprint(folder) != before:
+            return {}
+        return servers
 
     def accept(self, folder: Path) -> dict[str, Any] | None:
         self.trust.accept(folder)

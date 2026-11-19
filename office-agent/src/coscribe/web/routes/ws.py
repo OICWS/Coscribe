@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -25,7 +24,7 @@ def router(state: AppState) -> APIRouter:
     meta_store = state.meta_store
     _get_session = state.get_session
     _track_background = state.track_background
-    _watch_workspace = state.watch_workspace_connectors
+    _prepare_workspace = state.prepare_workspace_connectors
     _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
 
     @router.websocket("/ws/browser")
@@ -115,7 +114,7 @@ def router(state: AppState) -> APIRouter:
         # Written while the person types their first message, so it can carry the brief.
         session._assembly.folder_briefs.refresh(session._assembly.folders())
         try:
-            await _watch_workspace(Path(session.workspace_root))
+            await _prepare_workspace(session)
             await session.send_state(websocket, with_turn=True)
             await session.send_history(websocket)
             # A pending approval from before a restart or dropped connection
@@ -133,7 +132,7 @@ def router(state: AppState) -> APIRouter:
                 message_type = data.get("type")
                 if message_type == "user_message":
                     # Awaited: a folder connector the person no longer accepts leaves first.
-                    await _watch_workspace(Path(session.workspace_root))
+                    await _prepare_workspace(session)
                     asyncio.create_task(
                         session.handle_user_message(
                             data["text"],
@@ -144,6 +143,7 @@ def router(state: AppState) -> APIRouter:
                         )
                     )
                 elif message_type == "edit_message":
+                    await _prepare_workspace(session)
                     # Not awaited: the turn it reruns can wait on an approval that only this
                     # loop can deliver.
                     asyncio.create_task(

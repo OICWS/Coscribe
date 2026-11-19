@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from ..config import Settings
@@ -33,8 +32,8 @@ class AppState:
     sign_in_tasks: set[asyncio.Task[None]]
     get_session: Callable[..., ChatSessionLG]
     get_session_async: Callable[[str], Coroutine[Any, Any, ChatSessionLG]]
-    session_extra_tools: Callable[[], list[Any]]
-    watch_workspace_connectors: Callable[[Path], Coroutine[Any, Any, None]]
+    session_extra_tools: Callable[..., list[Any]]
+    prepare_workspace_connectors: Callable[[ChatSessionLG], Coroutine[Any, Any, None]]
     skills_by_name: Callable[[], dict[str, SkillInfo]]
     providers_info: Callable[..., dict[str, Any]]
     connector_tools: Callable[[str], list[dict[str, Any]]]

@@ -309,9 +309,9 @@ def _make_lifespan(
             # shutdown (a lingering Playwright browser, most visibly).
             for connection in connectors.connections.values():
                 await connection.close()
+            await connectors.workspaces.close()
             for task in list(connectors.sign_in_tasks):
                 task.cancel()
-            await connectors.workspaces.close()
             await app_callback.stop()
             await shutdown_code_services()
             await asyncio.gather(sweep, return_exceptions=True)
@@ -507,7 +507,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         # docstring for why -- runtime_lg can't import ChatSessionLG
         # directly, that would be circular) -- _get_session itself is
         # plain sync, this is just the async wrapper it needs.
-        return _get_session(thread_id)
+        session = _get_session(thread_id)
+        await connectors.prepare(session)
+        return session
 
     async def _delete_thread_data(thread_id: str) -> bool:
         """Delete a thread's checkpoints plus every sidecar file that belongs
@@ -571,7 +573,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         get_session=_get_session,
         get_session_async=_get_session_async,
         session_extra_tools=connectors.session_extra_tools,
-        watch_workspace_connectors=connectors.workspaces.watch,
+        prepare_workspace_connectors=connectors.prepare,
         skills_by_name=_skills_by_name,
         providers_info=lambda: _providers_info(settings),
         connector_tools=connectors.connector_tools,
