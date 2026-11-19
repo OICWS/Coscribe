@@ -67,8 +67,7 @@ test("a task runs another, and its versions can be compared and restored", async
       data: { workflow: { inputs: [], steps: [{ ...step, title: "Run the lister again" }] } },
     });
     await page.goto(`/?view=scheduled&task=${id}`);
-    await page.getByRole("button", { name: "Detailed", exact: true }).click();
-    await page.getByRole("group", { name: "Workflow view" }).getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("tab", { name: "Settings" }).click();
     const rows = page.getByTestId("version-row");
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText("Version 2");

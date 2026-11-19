@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import { neededAutonomy } from "../../lib/workflowLabels";
 import type { TaskAutonomy, Workflow } from "../../types/workflow";
-import { SelectMenu } from "../SelectMenu";
 
 export const AUTONOMY_LABEL: Record<TaskAutonomy, string> = {
   fixed: "Fixed",
@@ -83,8 +82,7 @@ export function AutonomySetting({
   const needed = neededAutonomy(workflow);
   return (
     <fieldset className="flex flex-col gap-2" data-testid="autonomy-setting">
-      <legend className="mb-1 text-[13px] font-medium">Autonomy</legend>
-      <p className="-mt-1 mb-1 text-[13px] text-[var(--muted)]">How much AI may decide when this task runs.</p>
+      <legend className="sr-only">Autonomy</legend>
       <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Autonomy">
         <Option
           checked={current === null}
@@ -114,45 +112,3 @@ export const PLAIN_LABEL: Record<TaskAutonomy, string> = {
   proactive: "Let its AI steps decide how",
   autonomous: "Let AI do the whole task",
 };
-
-const PLAIN_DESCRIPTION: Record<TaskAutonomy, string> = {
-  fixed: "The run stops where the step failed. You can ask Coscribe to suggest a fix from the run's page.",
-  self_healing:
-    "When a website changed and a step no longer fits it, Coscribe does that step on the page as it is now and tells you what it did. Anything that can't be undone waits for your OK.",
-  proactive:
-    "As above, and its AI steps may work out their part, using only the tools and sites they were given. If a step fails, AI may add a few steps to get past it; any that change something wait for your OK.",
-  autonomous: "Coscribe's AI may do the whole task its own way.",
-};
-
-/** The same switch in plain words, for the task page's simple view. A task without the setting
- * acts at the lowest level its steps need, so that is what it shows; a level below that would
- * refuse to save, so it can't be picked. */
-export function AutonomyChoice({
-  workflow,
-  persist,
-}: {
-  workflow: Workflow;
-  persist: (next: Workflow) => Promise<string | null>;
-}) {
-  const [problem, setProblem] = useState<string | null>(null);
-  const needed = neededAutonomy(workflow);
-  const current = workflow.autonomy ?? needed;
-  return (
-    <div className="flex flex-col gap-1.5" data-testid="autonomy-choice">
-      <SelectMenu
-        ariaLabel="If a step stops working"
-        variant="field"
-        className="self-start"
-        value={current}
-        options={LEVELS.map((level) => ({
-          value: level,
-          label: PLAIN_LABEL[level],
-          disabled: LEVELS.indexOf(level) < LEVELS.indexOf(needed),
-        }))}
-        onChange={async (autonomy) => setProblem(await persist({ ...workflow, autonomy }))}
-      />
-      <p className="text-[13px] text-[var(--muted)]">{PLAIN_DESCRIPTION[current]}</p>
-      {problem && <p className="text-[13px] text-[var(--danger)]">{problem}</p>}
-    </div>
-  );
-}

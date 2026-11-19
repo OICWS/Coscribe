@@ -1,6 +1,7 @@
 # 0037: The simple view says what a task does in words
 
 Status: proposed (2026-11-07, kurtosisOC; agreed with the maintainer in the project thread).
+Narrowed by 0054: the simple view is the task page's Overview tab, and Settings is a tab of its own.
 Issue #843.
 
 ## Context
