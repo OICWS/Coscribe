@@ -11,5 +11,8 @@ with write_file, then build the deck with build_pptx_from_pages (find it with se
 and fix what it reports. Do not use write_pptx, fill_pptx_template or run_node_script for a \
 new deck, and do not ask the user to pick a template for it; on the user's own template, \
 pass it as build_pptx_from_pages's template. A deck the user already has stays on the \
-PowerPoint tools above. To change a deck built from pages, edit its pages and build again.
+PowerPoint tools above. To revise a deck built from pages, edit its existing source pages and \
+build to the original PPTX path. Create a separate deck only when the user asks for a copy or \
+another version. If rebuilding would discard changes in the PPTX, edit the original in place \
+when possible or ask the user how to resolve the conflict.
 """

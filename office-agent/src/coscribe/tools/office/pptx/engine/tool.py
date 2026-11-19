@@ -25,6 +25,12 @@ _AFTER_A_CLEAN_BUILD = (
     "render_pptx_preview once and change only what is clearly wrong; this deck needs no "
     "review_work, the build has checked every page"
 )
+_REBUILD_CONFLICT = (
+    "Use the edit_pptx_* tools on the original if they can preserve its existing edits. "
+    "If rebuilding is necessary, ask the user before using replace_changes. "
+    "Do not build a temporary deck and move or copy it over the original. "
+    "Create a separate version only if the user requests one."
+)
 
 
 def build_engine_tools(
@@ -118,10 +124,7 @@ def build_engine_tools(
                     template=template_path,
                 )
             except DeckChangedError as e:
-                raise ValueError(
-                    f"{e}. Make this change with the edit_pptx_* tools on the .pptx instead, or "
-                    "ask the user whether their changes may be replaced (replace_changes)."
-                ) from e
+                raise ValueError(f"{e}. {_REBUILD_CONFLICT}") from e
         result = {**report.as_dict(), "path": scope.relative(out)}
         clean = report.ok and not report.warning_count()
         return {**result, "next": _AFTER_A_CLEAN_BUILD} if clean else result
