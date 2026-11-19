@@ -1,4 +1,4 @@
-# 0053: A provider has a protocol and many models, described by a bundled catalog
+# 0055: A provider has a protocol and many models, described by a bundled catalog
 
 Status: proposed (2026-11-19, OICWS).
 

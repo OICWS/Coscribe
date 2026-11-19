@@ -159,7 +159,7 @@ Last reviewed: 2026-11-18.
   canvas, and pages, need canvas elements beyond boards and notes in `.design.json`; an issue
   first, since the format changes.
 
-- **Providers: protocols and models** (decision 0053, proposed): a provider names its protocol
+- **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
   (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
   its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
   Parts: the catalog and its update job; the protocols; the provider page's Models section and
