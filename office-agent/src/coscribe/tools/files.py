@@ -404,16 +404,19 @@ class FileToolkit:
         dest_path = self._resolve(destination, write=True)
         if not source_path.exists():
             raise ValueError(f"Source does not exist: {source}")
-        deck_rename = (
+        deck_move = (
             source_path != dest_path
-            and source_path.parent == dest_path.parent
             and source_path.suffix.lower() == dest_path.suffix.lower() == ".pptx"
             and source_path.is_file()
         )
-        if deck_rename:
+        if deck_move:
             replaced = deck_files(dest_path)[1:] if dest_path.is_file() else []
             for folder in deck_files(source_path)[1:] + replaced:
                 self._resolve(str(folder / MANIFEST), write=True)
+            if source_path.parent != dest_path.parent:
+                for folder in deck_files(source_path)[1:]:
+                    self._resolve(str(folder), delete=True)
+                    self._resolve(str(dest_path.parent / folder.name), write=True)
         if dest_path.exists():
             if dest_path.is_dir():
                 # shutil.move's own behavior for an existing directory
@@ -428,10 +431,10 @@ class FileToolkit:
                 )
             if not overwrite:
                 raise FileExistsError(f"Destination already exists: {destination}")
-            if not deck_rename:
+            if not deck_move:
                 dest_path.unlink()
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        if deck_rename:
+        if deck_move:
             move_deck(source_path, dest_path)
         else:
             shutil.move(str(source_path), str(dest_path))

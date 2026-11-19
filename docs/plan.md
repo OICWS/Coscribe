@@ -62,6 +62,11 @@ Last reviewed: 2026-11-18.
 
 ## Open, smaller
 
+- **Leftover working files at the end of a turn** (`docs/log/2026-11-19-deck-record-paths.md`): the
+  instructions ask the model to keep check files in a temporary folder, but nothing checks it, and
+  files in `qa/`, `tmp/`, `scratch/` or a dot folder are hidden from the made-files list while they
+  stay in the workspace. A turn-end check could name what the turn wrote there and is still present.
+
 - **Connector credentials the redactor does not recognise** (`docs/log/2026-11-18-connection-string-passwords.md`):
   a scheme-less DSN (`user:pass@tcp(host)/db`), a password in an argument after a flag that does
   not name it, a password under 8 characters printed on its own, and a `name=value` password that

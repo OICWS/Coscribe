@@ -184,6 +184,14 @@ def test_revisions_update_one_deck_and_an_explicit_copy_has_its_own_pages(tmp_pa
     assert Presentation(str(tmp_path / "copy.pptx")).slides[0].shapes.title.text == "另一个版本"
 
 
+def test_pages_away_from_the_deck_are_refused(tmp_path: Path) -> None:
+    _write(tmp_path / "work" / "slides", "1.svg", _title_page("一"))
+    with pytest.raises(ValueError, match="same folder as the .pptx"):
+        _tool(tmp_path)("work/slides", "deck.pptx")
+    assert not (tmp_path / "deck.pptx").exists()
+    assert _tool(tmp_path)("work/slides", "work/deck.pptx")["ok"]
+
+
 def test_a_deck_changed_after_its_build_is_refused_with_the_way_out(tmp_path: Path) -> None:
     _write(tmp_path / "pages", "1.svg", _title_page("一"))
     tool = _tool(tmp_path)

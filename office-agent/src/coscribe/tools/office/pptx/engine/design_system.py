@@ -6,12 +6,11 @@ it; choosing a style writes the values into the element and marks it `data-text-
 from __future__ import annotations
 
 import json
-import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from ...._file_locks import file_lock, replace_with_retry
+from ...._file_locks import file_lock, write_atomically
 from .design_check import COLOUR, DESIGN_SYSTEM, FONT
 from .section_format import DEFAULT_FONT
 from .view import NotBuiltFromPages, pages_folder
@@ -64,9 +63,8 @@ def seed_design_system(folder: Path, seed: dict[str, Any] | None) -> None:
 
 
 def _write(path: Path, system: dict[str, Any]) -> None:
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(system, ensure_ascii=False, indent=2), encoding="utf-8")
-    replace_with_retry(tmp, path)
+    text = json.dumps(system, ensure_ascii=False, indent=2)
+    write_atomically(path, lambda tmp: tmp.write_text(text, encoding="utf-8"))
 
 
 def _load(path: Path) -> dict[str, Any] | None:
