@@ -5,6 +5,7 @@ so it waits until none of them is running a turn."""
 from __future__ import annotations
 
 import contextlib
+from asyncio import to_thread
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,8 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from ....conversation import ChatSessionLG
+from ....config import Settings
+from ....conversation import ChatSessionLG, add_allowed_folder
 from ....runtime import DEFAULT_ENVIRONMENT, EnvironmentRefused, Environments, SecretStore
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import SCHEDULED_THREAD_PREFIX, ScheduledTriggerStore
@@ -68,6 +70,14 @@ async def _move_folders(state_dir: Path, sessions: list[ChatSessionLG]) -> str |
             await session.send_state(sink)
         errors.extend(sink.errors)
     return errors[0] if errors else None
+
+
+def _into_allowed(settings: Settings, folders: list[str]) -> None:
+    """A folder a workspace adds that Settings' Allowed folders doesn't hold joins it, read and
+    write, so the one list says what each workspace may reach (decision 0053)."""
+    for folder in folders:
+        if settings.allowed_access(Path(folder)) is None:
+            add_allowed_folder(settings, Path(folder), "read-write")
 
 
 def _audit(
@@ -187,6 +197,7 @@ def router(state: AppState) -> APIRouter:
         except EnvironmentRefused as exc:
             return _refused(exc.reason)
         _audit(state_dir, env["id"], None, env)
+        await to_thread(_into_allowed, state.settings, env["folders"][1:])
         return env
 
     async def update_environment(env_id: str, payload: dict[str, Any]) -> Any:
@@ -205,6 +216,7 @@ def router(state: AppState) -> APIRouter:
         except EnvironmentRefused as exc:
             return _refused(exc.reason)
         _audit(state_dir, env_id, before, env)
+        await to_thread(_into_allowed, state.settings, env["folders"][1:])
         problem = await _move_folders(state_dir, sessions)
         return {**env, "warning": problem} if problem else env
 

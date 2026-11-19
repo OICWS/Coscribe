@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -25,6 +26,15 @@ def _no_carried_over_blanking(monkeypatch: pytest.MonkeyPatch) -> None:
     so no result depends on the order tests run in."""
     monkeypatch.setattr(secret_store, "_OTHER_FORMS", {})
     monkeypatch.setattr(secret_store, "_FORMS_CACHE", {})
+
+
+@pytest.fixture(autouse=True)
+def _allowed_folders_in_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Adding to Settings' Allowed folders writes the `.env` the server reads from its working
+    directory; a test's goes to its own folder, not the checkout's."""
+    from coscribe.conversation import folder_access
+
+    monkeypatch.setattr(folder_access, "ENV_FILE", tmp_path / ".env")
 
 
 @pytest.fixture(autouse=True)

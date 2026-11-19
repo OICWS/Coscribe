@@ -470,41 +470,11 @@ anything that sends, buys, posts, deletes or submits on the user's behalf, \
 say what you're about to do and get their go-ahead."""
 
 
-def _describe_extra_dirs(
-    extra_readable: Sequence[Path],
-    extra_writable: Sequence[Path],
-    extra_deletable: Sequence[Path] = (),
-) -> str:
-    """Extra INSTRUCTIONS paragraph naming the user's configured folders by their real paths. The
-    tool docstrings give only the rule, so without the paths the model never thinks to pass e.g.
-    the Downloads folder's absolute path before telling the user a download can't be found."""
-    if not extra_readable and not extra_writable:
-        return ""
-    writable_set = set(extra_writable)
-    lines = [
-        "You also have access to these directories outside the workspace "
-        "root, via the file/document/spreadsheet/presentation tools -- pass "
-        "their absolute path instead of a workspace-relative one:"
-    ]
-    for path in extra_writable:
-        access = "read, write and delete" if path in extra_deletable else "read and write"
-        lines.append(f"- {path} ({access})")
-    for path in extra_readable:
-        if path not in writable_set:
-            lines.append(f"- {path} (read only)")
-    lines.append(
-        "If a browser-automation tool just downloaded or exported a file and "
-        "its exact save location is unclear, check these directories (e.g. "
-        "list_files or search_files on the absolute path) before telling the "
-        "user the file can't be found. When asked broadly what files you "
-        "have access to, or what's in your working directory -- not a "
-        "question naming the workspace specifically -- check the workspace "
-        "root *and* every directory listed above, not just the workspace "
-        "root by default: from the user's side these are all part of what "
-        'you can reach, whether or not they used the words "readable" or '
-        '"writable directory" to ask.'
-    )
-    return "\n".join(lines)
+_ACCESS_WORDS = {
+    "read": "read only",
+    "read-write": "read and write",
+    "read-write-delete": "read, write and delete",
+}
 
 
 def conversation_context(
@@ -517,14 +487,15 @@ def conversation_context(
     user's message whenever it differs from what the conversation was last
     told, not in the system prompt."""
     root = workspace_root if workspace_root is not None else settings.workspace_root
-    parts = [_describe_folders(root, extra_folders)]
+    reached = [(f, settings.allowed_access(f) or "read-write") for f in extra_folders]
+    parts = [_describe_folders(root, reached)]
     memory = load_memory(settings.memory_path)
     if memory:
         parts.append(format_memory_section(memory))
     return "\n\n".join(parts)
 
 
-def _describe_folders(root: Path, extra_folders: Sequence[Path]) -> str:
+def _describe_folders(root: Path, extra_folders: Sequence[tuple[Path, str]]) -> str:
     """Names the folders by path: a user refers to them by name ("the
     reports folder"), and without the paths the model looks for a
     subfolder called that inside the workspace and reports it missing."""
@@ -536,7 +507,10 @@ def _describe_folders(root: Path, extra_folders: Sequence[Path]) -> str:
         f"- {root} (main folder: relative paths start inside it, so never prefix "
         f"them with {root.name + '/'!r})",
     ]
-    lines += [f"- {folder} (read and write; pass the absolute path)" for folder in extra_folders]
+    lines += [
+        f"- {folder} ({_ACCESS_WORDS[access]}; pass the absolute path)"
+        for folder, access in extra_folders
+    ]
     return "\n".join(lines)
 
 
@@ -595,14 +569,15 @@ def build_coordinator_agent(
     the /api/tools probe agent and any CLI caller keep the global default."""
     root = workspace_root if workspace_root is not None else settings.workspace_root
     granted, granted_writable, granted_deletable = _thread_folders(settings, thread_id)
-    extra_readable = [*settings.extra_readable_dirs, *extra_folders, *granted]
-    extra_writable = [*settings.extra_writable_dirs, *extra_folders, *granted_writable]
+    allowed_readable, allowed_writable, allowed_deletable = settings.reach_of(list(extra_folders))
+    extra_readable = [*allowed_readable, *granted]
+    extra_writable = [*allowed_writable, *granted_writable]
     detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
     # Only the file tools reach skills_dir (the skill creator writes there) and cut script output.
     cut_output = detachable.cut_output_dir(settings.state_dir)
     file_tool_readable = [*extra_readable, settings.skills_dir, cut_output]
     file_tool_writable = [*extra_writable, settings.skills_dir]
-    file_tool_deletable = [*settings.extra_deletable_dirs, *granted_deletable, settings.skills_dir]
+    file_tool_deletable = [*allowed_deletable, *granted_deletable, settings.skills_dir]
 
     def session_env() -> dict[str, str]:
         # Read at each run: the user can change them in Edit environment mid-conversation.
@@ -685,11 +660,6 @@ def build_coordinator_agent(
     if settings.code_module_enabled:
         instructions = f"{instructions}\n\n{CODE_MODULE_INSTRUCTIONS}"
     instructions = f"{instructions}\n\n{SECRETS_INSTRUCTIONS}"
-    extra_dirs_note = _describe_extra_dirs(
-        settings.extra_readable_dirs, settings.extra_writable_dirs, settings.extra_deletable_dirs
-    )
-    if extra_dirs_note:
-        instructions = f"{instructions}\n\n{extra_dirs_note}"
     skills = load_builtin_skills() + load_skills(settings.skills_dir)
     if skill_names is not None:
         skills = [skill for skill in skills if skill.name in skill_names]

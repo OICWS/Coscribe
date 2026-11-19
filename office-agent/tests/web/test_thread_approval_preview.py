@@ -14,6 +14,8 @@ from langchain_core.messages import (
 from openpyxl import Workbook, load_workbook
 from pptx import Presentation
 
+from coscribe.runtime import Environments
+
 from .helpers import (
     FakeToolCallingChatModel,
     _client_lg,
@@ -369,6 +371,9 @@ def test_approval_preview_resolves_a_file_in_an_extra_writable_directory(
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
     )
+    # One of Allowed folders, which reaches a workspace that uses it (decision 0053).
+    main = str(tmp_path / "workspace")
+    Environments(tmp_path / "state").use_folder("t_extra_writable", str(extra_dir), main)
     with _client_lg(tmp_path, monkeypatch, fake_model, extra_writable_dirs=[extra_dir]) as client:
         with client.websocket_connect("/ws/t_extra_writable") as ws:
             ws.receive_json()  # state

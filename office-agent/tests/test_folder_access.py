@@ -9,7 +9,7 @@ from dotenv import dotenv_values
 
 from coscribe.config import Settings
 from coscribe.conversation.folder_access import (
-    allow_everywhere,
+    add_allowed_folder,
     checked_folder,
     result_message,
 )
@@ -31,7 +31,7 @@ def test_allow_keeps_what_settings_wrote_since_the_server_started(tmp_path: Path
         _env_file=None, default_model="fake:model", extra_readable_dirs=[earlier]
     )
 
-    allow_everywhere(settings, allowed, "read", env_file)
+    add_allowed_folder(settings, allowed, "read", env_file)
 
     saved = dotenv_values(env_file)["COSCRIBE_EXTRA_READABLE_DIRS"]
     assert saved == f"{earlier}, {added_in_settings}, {allowed}"

@@ -348,3 +348,28 @@ class Settings(BaseSettings):
             self.exec_policy_path,
         )
         return [Path(".env"), *(path for path in configured if path is not None)]
+
+    def allowed_access(self, folder: Path) -> str | None:
+        """How far Settings' Allowed folders let a workspace that uses `folder` reach it, or None
+        when it isn't one of them (decision 0053)."""
+        key = os.path.normcase(str(folder))
+        for access, folders in (
+            ("read-write-delete", self.extra_deletable_dirs),
+            ("read-write", self.extra_writable_dirs),
+            ("read", self.extra_readable_dirs),
+        ):
+            if any(os.path.normcase(str(f)) == key for f in folders):
+                return access
+        return None
+
+    def reach_of(self, extra: list[Path]) -> tuple[list[Path], list[Path], list[Path]]:
+        """What a conversation's folders past its first give the file tools: (readable,
+        writable, deletable). One of Settings' Allowed folders, which a workspace reaches only
+        once it uses it, at the access set there; any other (a scheduled task's own) reads and
+        writes."""
+        levels = [(folder, self.allowed_access(folder) or "read-write") for folder in extra]
+        writing = ("read-write", "read-write-delete")
+        readable = [folder for folder, _ in levels]
+        writable = [folder for folder, access in levels if access in writing]
+        deletable = [folder for folder, access in levels if access == "read-write-delete"]
+        return readable, writable, deletable

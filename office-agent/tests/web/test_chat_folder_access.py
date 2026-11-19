@@ -78,16 +78,19 @@ def test_a_refused_folder_tells_the_model_how_to_ask(
     assert "Quote 42" not in str(messages[2].content)
 
 
-def test_allow_adds_the_folder_everywhere_and_the_next_call_reaches_it(
+def test_allow_adds_the_folder_to_the_workspace_and_the_next_call_reaches_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     folder = _outside(tmp_path)
     messages, _ = _run(tmp_path, monkeypatch, folder, "allow:read", "t_folder_allow")
-    assert "every workspace" in str(messages[1].content)
+    assert "this workspace" in str(messages[1].content)
     assert "Quote 42" in str(messages[2].content)
     env = (tmp_path / ".env").read_text(encoding="utf-8")
     assert f"COSCRIBE_EXTRA_READABLE_DIRS={folder.resolve()}" in env
-    assert Environments(tmp_path / "state").thread_folders("t_folder_allow") == {}
+    environments = Environments(tmp_path / "state")
+    assert environments.thread_folders("t_folder_allow") == {}
+    # Into Allowed folders, and used by this conversation's workspace only (decision 0053).
+    assert str(folder.resolve()) in environments.for_thread("t_folder_allow")["folders"]
     [entry] = [
         e for e in AuditLog(tmp_path / "state").read_all() if e.tool_name == "request_folder_access"
     ]
@@ -111,6 +114,10 @@ def test_a_folder_allowed_in_settings_reaches_an_open_conversation_without_a_res
 ) -> None:
     monkeypatch.chdir(tmp_path)
     folder = _outside(tmp_path)
+    # The workspace already uses it; Allowed folders don't hold it yet.
+    Environments(tmp_path / "state").use_folder(
+        "t_folder_settings", str(folder), str(tmp_path / "workspace")
+    )
     path = str(folder / "quote.txt")
     fake_model = FakeToolCallingChatModel(
         responses=[

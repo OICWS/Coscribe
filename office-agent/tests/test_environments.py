@@ -276,3 +276,16 @@ def test_the_global_list_moves_into_each_workspace_that_reaches_the_site(tmp_pat
         "Listed": {"example.com": "off"},
         "Offline": None,
     }
+
+
+def test_a_folder_taken_off_allowed_folders_leaves_every_workspace(tmp_path: Path) -> None:
+    environments = Environments(tmp_path / "state")
+    environments.use_folder("t1", str(tmp_path / "gone"), str(tmp_path / "main"))
+    environments.use_folder("t1", str(tmp_path / "kept"), str(tmp_path / "main"))
+
+    environments.drop_folders({str(tmp_path / "gone"), str(tmp_path / "main")})
+
+    assert environments.for_thread("t1")["folders"] == [
+        str(tmp_path / "main"),
+        str(tmp_path / "kept"),
+    ]

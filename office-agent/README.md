@@ -73,9 +73,10 @@ files under `COSCRIBE_WORKSPACE_ROOT` (defaults to `./workspace`).
 The built-in file/document/spreadsheet/presentation tools can also reach
 specific directories outside the workspace, if you configure them. In the
 web UI, Settings > Workspaces has an **Allowed folders** row (Manage) (a change applies without a
-restart, and a chat that needs another folder asks on a card whose Allow adds it there): you
-can add any number of directories, each with its own
-access (read only, read and write, or read, write and delete) -- add one with **Add folder**,
+restart, and a chat that needs another folder asks on a card whose Allow adds it there and to
+the conversation's workspace). A workspace reaches only the Allowed folders it picks (decision
+0053), and a folder added in a workspace joins the list. You can add any number of directories,
+each with its own access (read only, read and write, or read, write and delete) -- add one with **Add folder**,
 backed by a small server-side folder picker (`/api/browse-dirs`), not the
 browser's native file picker, which never exposes a selected folder's real
 absolute path for security reasons; this sidesteps that by listing real

@@ -320,6 +320,26 @@ class Environments:
             self._write(data)
         return env_id
 
+    def use_folder(self, thread_id: str, folder: str, main: str) -> None:
+        """The conversation's workspace uses one of Settings' Allowed folders from now on
+        (decision 0053); `main` is its folder when it had none of its own."""
+        with _LOCK:
+            data = self._read()
+            env = data["environments"][data["threads"].get(thread_id, DEFAULT_ID)]
+            env["folders"] = list(dict.fromkeys([*(env["folders"] or [main]), folder]))
+            self._write(data)
+
+    def drop_folders(self, folders: set[str]) -> None:
+        """Takes these folders off every workspace that uses them, never its main folder."""
+        with _LOCK:
+            data = self._read()
+            for env in data["environments"].values():
+                main, *rest = env["folders"] or [""]
+                kept = [f for f in rest if f not in folders]
+                if len(kept) != len(rest):
+                    env["folders"] = [main, *kept]
+            self._write(data)
+
     def thread_folders(self, thread_id: str) -> dict[str, str]:
         """Folders allowed for this conversation only (decision 0048), each with its access."""
         return dict(self._read()["thread_folders"].get(thread_id, {}))

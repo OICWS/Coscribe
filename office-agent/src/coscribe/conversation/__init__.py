@@ -34,6 +34,7 @@ from .design_canvas import (
     read_canvas,
     variables_style,
 )
+from .folder_access import add_allowed_folder
 from .page_shot import NoBrowser, PageShotError
 from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
@@ -88,4 +89,5 @@ __all__ = [
     "find_turn",
     "eval_candidate",
     "WorkspaceFolders",
+    "add_allowed_folder",
 ]

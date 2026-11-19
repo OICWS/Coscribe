@@ -52,7 +52,7 @@ tools, and repeat work on a schedule. It needs only a model API key.
 - **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows); the sidebar also
   opens the Artifacts page and, from "View all", the Sessions page of every conversation.
 - **Workspaces.** A workspace is a folder the person picks (decision 0048): its conversations and
-  tasks reach that folder, more folders it lists, Settings' Allowed folders, and the sites and
+  tasks reach that folder, the Allowed folders it picks (decision 0053), and the sites and
   secrets it is given; each of its sites has a browser level (decision 0050). The code and the
   API still call it an environment.
 - **Artifacts.** What coscribe makes from a source it owns opens in a panel beside the

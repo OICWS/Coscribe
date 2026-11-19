@@ -392,7 +392,7 @@ class WorkflowDrafting:
             workspace_root=Path(self._host.workspace_root),
             state_dir=Path(self._host.settings.state_dir),
             make_model=make_model,
-            extra_writable=[*self._host.settings.extra_writable_dirs, *self._host.extra_folders],
+            extra_writable=self._host.settings.reach_of(list(self._host.extra_folders))[1],
             run_agent=self._agent_runner(all_tools, model),
             outside_tools=frozenset(
                 tool_name(t)

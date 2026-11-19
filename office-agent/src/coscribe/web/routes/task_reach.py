@@ -1,6 +1,6 @@
-"""What a scheduled task can reach (decision 0048): its workspace's folders, the Allowed folders
-every workspace shares, and the folders allowed for this task only. The task's form shows them,
-and a folder input is checked against them before a run would stop to ask."""
+"""What a scheduled task can reach (decision 0048): its workspace's folder, the Allowed folders
+that workspace uses (decision 0053), and the folders allowed for this task only. The task's form
+shows them, and a folder input is checked against them before a run would stop to ask."""
 
 from __future__ import annotations
 
@@ -20,17 +20,11 @@ def _missing(trigger_id: str) -> JSONResponse:
     return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
 
 
-def _allowed(settings: Any) -> list[dict[str, str]]:
-    """Settings' Allowed folders, each with the most it permits."""
-    levels: dict[str, str] = {}
-    for key, level in (
-        ("extra_readable_dirs", "read"),
-        ("extra_writable_dirs", "write"),
-        ("extra_deletable_dirs", "delete"),
-    ):
-        for folder in getattr(settings, key):
-            levels[str(folder)] = level
-    return [{"path": path, "permission": level} for path, level in levels.items()]
+def _allowed(settings: Any, folders: list[str]) -> list[dict[str, str]]:
+    """The Allowed folders the workspace uses, each with the most it permits (decision 0053)."""
+    words = {"read": "read", "read-write": "write", "read-write-delete": "delete"}
+    found = [(folder, settings.allowed_access(Path(folder)) or "read-write") for folder in folders]
+    return [{"path": f, "permission": words[access]} for f, access in found]
 
 
 def _within(path: Path, root: str) -> bool:
@@ -48,9 +42,9 @@ def reach_of(settings: Any, env_id: str, task_folders: list[str]) -> dict[str, A
             "id": env_id,
             "name": environment["name"] if environment else env_id,
             # The default workspace with no folder of its own works in Coscribe's folder.
-            "folders": folders or [str(Path(settings.workspace_root).resolve())],
+            "folders": folders[:1] or [str(Path(settings.workspace_root).resolve())],
         },
-        "allowed": _allowed(settings),
+        "allowed": _allowed(settings, folders[1:]),
         "task": task_folders,
     }
 

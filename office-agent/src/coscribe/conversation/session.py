@@ -795,11 +795,8 @@ class ChatSessionLG:
         await websocket.send_json(state)
 
     def workspace_scope(self) -> WorkspaceScope:
-        return WorkspaceScope(
-            self.workspace_root,
-            extra_readable=[*self.settings.extra_readable_dirs, *self.extra_folders],
-            extra_writable=[*self.settings.extra_writable_dirs, *self.extra_folders],
-        )
+        readable, writable, _ = self.settings.reach_of(list(self.extra_folders))
+        return WorkspaceScope(self.workspace_root, extra_readable=readable, extra_writable=writable)
 
     def workflow_context(self, model: str | None) -> StepContext:
         return self._drafting.workflow_context(model)
@@ -912,8 +909,7 @@ class ChatSessionLG:
             tool_name_,
             args,
             self.workspace_root,
-            self.settings.extra_readable_dirs,
-            self.settings.extra_writable_dirs,
+            *self.settings.reach_of(list(self.extra_folders))[:2],
             Path(self.settings.state_dir),
         )
 

@@ -1,8 +1,9 @@
 """A folder outside the workspace, asked for from the chat (decision 0048).
 
 The model calls `request_folder_access` after a file tool refused a path; the person answers on a
-card. "Allow" adds the folder to Settings' Allowed folders, which every workspace can use, and
-"Only this chat" keeps it to the conversation (`Environments.allow_for_thread`). Either way the
+card. "Allow" adds the folder to Settings' Allowed folders and to the conversation's workspace,
+the only one that uses it until another picks it (decision 0053), and "Only this chat" keeps it
+to the conversation (`Environments.allow_for_thread`). Either way the
 conversation's tools are built again before the turn goes on, so the model's next call reaches it.
 """
 
@@ -69,17 +70,18 @@ def checked_folder(raw: str) -> tuple[Path | None, str]:
     return folder, ""
 
 
-def current_access(settings: Settings, thread_folders: dict[str, str], folder: Path) -> str | None:
-    """How far the folder is already allowed, outside the workspace's own folders."""
+def current_access(
+    settings: Settings, thread_folders: dict[str, str], used: list[Path], folder: Path
+) -> str | None:
+    """How far the folder is already allowed: by an Allowed folder the workspace uses, or for
+    this conversation only."""
     best: str | None = None
-    lists = [
-        ("read", settings.extra_readable_dirs),
-        ("read-write", settings.extra_writable_dirs),
-        ("read-write-delete", settings.extra_deletable_dirs),
-        *((access, [Path(f)]) for f, access in thread_folders.items()),
+    places = [
+        *((f, access) for f in used if (access := settings.allowed_access(f)) is not None),
+        *((Path(f), access) for f, access in thread_folders.items()),
     ]
-    for access, folders in lists:
-        if any(_under(folder, Path(f).expanduser().resolve()) for f in folders):
+    for place, access in places:
+        if _under(folder, place.expanduser().resolve()):
             if best is None or FOLDER_ACCESS.index(access) > FOLDER_ACCESS.index(best):
                 best = access
     return best
@@ -89,10 +91,13 @@ def enough(have: str | None, wanted: str) -> bool:
     return have is not None and (wanted == "read" or have != "read")
 
 
-def allow_everywhere(settings: Settings, folder: Path, access: str, env_file: Path) -> None:
+def add_allowed_folder(
+    settings: Settings, folder: Path, access: str, env_file: Path | None = None
+) -> None:
     """Into Settings' Allowed folders: the .env the Folder access page edits, merged into what it
     holds now (the page writes it without updating the running server), and the running server's
     settings, so it holds without a restart."""
+    env_file = env_file or ENV_FILE
     saved = dotenv_values(env_file) if env_file.is_file() else {}
     for key in _ENV_KEYS[access]:
         field = _FIELDS[key]
@@ -120,7 +125,7 @@ def parse_answer(answer: Any) -> tuple[str, str]:
 
 def result_message(choice: str, folder: Path, access: str, answer: Any, wanted: str) -> str:
     if choice in (ALLOW, THIS_CHAT):
-        where = "every workspace" if choice == ALLOW else "this conversation only"
+        where = "this workspace" if choice == ALLOW else "this conversation only"
         if not enough(access, wanted):
             return (
                 f"The user allowed {folder} for reading only ({where}), not writing. Read what "
@@ -151,13 +156,14 @@ async def decide_folder_request(
 ) -> dict[str, Any]:
     """The card for request_folder_access. The tools are built again after an allow, before the
     turn resumes, so the call the model repeats reaches the folder. The answer is audited like
-    an approval, since Allow widens every later conversation."""
+    an approval, since Allow widens the workspace's later conversations."""
     folder, problem = checked_folder(str(args.get("folder", "")))
     if folder is None:
         return {"type": "respond", "message": problem}
     environments = Environments(host.settings.state_dir)
     wanted = "read-write" if args.get("access") == "write" else "read"
-    have = current_access(host.settings, environments.thread_folders(host.thread_id), folder)
+    used = list(host.extra_folders)
+    have = current_access(host.settings, environments.thread_folders(host.thread_id), used, folder)
     if enough(have, wanted):
         # Allowed meanwhile, in Settings or on another conversation's card.
         failed = host._reconfigurer.refresh_folder_tools()
@@ -181,7 +187,11 @@ async def decide_folder_request(
         open_prompts.pop(request_id, None)
     choice, access = parse_answer(answer)
     if choice == ALLOW:
-        await to_thread(allow_everywhere, host.settings, folder, access, ENV_FILE)
+        await to_thread(add_allowed_folder, host.settings, folder, access)
+        main = str(host.workspace_root)
+        await to_thread(environments.use_folder, host.thread_id, str(folder), main)
+        if folder not in [Path(f) for f in host.extra_folders]:
+            host.extra_folders = [*host.extra_folders, folder]
     elif choice == THIS_CHAT:
         await to_thread(environments.allow_for_thread, host.thread_id, str(folder), access)
     message = result_message(choice, folder, access, answer, wanted)
