@@ -137,6 +137,7 @@ POST /api/mcp/servers/{name}/signin
 POST /api/memory
 POST /api/node-env/packages
 POST /api/providers
+POST /api/providers/models
 POST /api/reach/check
 POST /api/scheduled-tasks
 POST /api/scheduled-tasks/{trigger_id}/folders
