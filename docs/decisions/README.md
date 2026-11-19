@@ -62,3 +62,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0050](0050-a-workspace-lists-its-sites-each-with-a-browser-level.md) | A workspace lists its sites, each with a browser level |
 | [0051](0051-a-workflow-steps-sub-agents-keep-its-rules-and-never-wait.md) | A workflow step's sub-agents keep its rules and never wait for a person (accepted) |
 | [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
+| [0053](0053-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (proposed) |
