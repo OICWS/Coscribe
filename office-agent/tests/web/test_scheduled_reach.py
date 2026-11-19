@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.runtime import Environments
+from coscribe.runtime import DEFAULT_ENVIRONMENT, Environments
 from coscribe.runtime_lg import AuditLog
 
 from .helpers import FakeToolCallingChatModel, _client_lg
@@ -20,7 +20,10 @@ def _task(client: object) -> str:
 
 
 def _workspace_uses(tmp_path: Path, folder: Path) -> None:
-    Environments(tmp_path / "state").use_folder("any", str(folder), str(tmp_path / "workspace"))
+    environments = Environments(tmp_path / "state")
+    main = tmp_path / "workspace"
+    main.mkdir(exist_ok=True)
+    environments.update(DEFAULT_ENVIRONMENT, {"folders": [str(main), str(folder)]}, set())
 
 
 def test_a_task_lists_its_workspace_the_allowed_folders_and_its_own_folders(

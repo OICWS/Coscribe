@@ -15,10 +15,12 @@ conversations and scheduled tasks too, and nothing in a workspace said which one
 - **A workspace picks.** A workspace's other folders (`folders[1:]` of its environment) are the
   ones it reaches besides its main folder. A folder picked from the library keeps the library's
   access; a folder added in the workspace itself joins the library as read and write.
-- **Taking one off the library** takes it off every workspace that picked it. The main folder is
+- **Taking one off the library** takes it off every workspace that picked it, however its path
+  is spelled, and from their open conversations before their next turn. The main folder is
   never taken off.
-- **The chat card.** Allow adds the folder to the library and to the conversation's workspace;
-  Only this chat keeps it to the conversation, as before.
+- **The chat card.** Allow adds the folder to the library and to the conversation's workspace (a
+  conversation on Default first gets a workspace of its own, a scheduled run keeps it with the
+  run); Only this chat keeps it to the conversation, as before.
 - **What a conversation is told.** Its context names only its workspace's folders, each with its
   access; the folders in the library that the workspace didn't pick are not mentioned.
 - **Scheduled tasks** reach their workspace's picks, and what a task's page shows is those.

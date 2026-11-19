@@ -116,7 +116,7 @@ def test_a_folder_allowed_in_settings_reaches_an_open_conversation_without_a_res
     folder = _outside(tmp_path)
     # The workspace already uses it; Allowed folders don't hold it yet.
     Environments(tmp_path / "state").use_folder(
-        "t_folder_settings", str(folder), str(tmp_path / "workspace")
+        "t_folder_settings", str(folder), str(tmp_path / "workspace"), "Work"
     )
     path = str(folder / "quote.txt")
     fake_model = FakeToolCallingChatModel(
@@ -140,3 +140,36 @@ def test_a_folder_allowed_in_settings_reaches_an_open_conversation_without_a_res
     assert saved.json()["restart_required"] is False
     [read] = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
     assert "Quote 42" in str(read.content)
+
+
+def test_a_folder_taken_off_allowed_folders_leaves_an_open_conversation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    folder = _outside(tmp_path)
+    Environments(tmp_path / "state").use_folder(
+        "t_folder_gone", str(folder), str(tmp_path / "workspace"), "Work"
+    )
+    path = str(folder / "quote.txt")
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="hello"),
+            AIMessage(content="", tool_calls=[_tool_call("c1", "read_file", {"path": path})]),
+            AIMessage(content="done"),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        client.post("/api/config", json={"updates": {"COSCRIBE_EXTRA_READABLE_DIRS": str(folder)}})
+        with client.websocket_connect("/ws/t_folder_gone") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hi"})
+            _receive_until(ws, "agent_message")
+            client.post("/api/config", json={"updates": {"COSCRIBE_EXTRA_READABLE_DIRS": ""}})
+            ws.send_json({"type": "user_message", "text": "read the quote"})
+            _receive_until(ws, "agent_message")
+    stored = Environments(tmp_path / "state").for_thread("t_folder_gone")["folders"]
+    assert str(folder) not in stored
+    [read] = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
+    assert "Quote 42" not in str(read.content)
+

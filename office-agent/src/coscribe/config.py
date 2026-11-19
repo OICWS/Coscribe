@@ -352,13 +352,13 @@ class Settings(BaseSettings):
     def allowed_access(self, folder: Path) -> str | None:
         """How far Settings' Allowed folders let a workspace that uses `folder` reach it, or None
         when it isn't one of them (decision 0053)."""
-        key = os.path.normcase(str(folder))
+        key = _folder_key(folder)
         for access, folders in (
             ("read-write-delete", self.extra_deletable_dirs),
             ("read-write", self.extra_writable_dirs),
             ("read", self.extra_readable_dirs),
         ):
-            if any(os.path.normcase(str(f)) == key for f in folders):
+            if any(_folder_key(f) == key for f in folders):
                 return access
         return None
 
@@ -373,3 +373,9 @@ class Settings(BaseSettings):
         writable = [folder for folder, access in levels if access in writing]
         deletable = [folder for folder, access in levels if access == "read-write-delete"]
         return readable, writable, deletable
+
+
+def _folder_key(folder: Path) -> str:
+    """One spelling per folder (`~`, a link, `/` or `\\`, case on Windows), so a library entry
+    and a workspace's copy of it always meet."""
+    return os.path.normcase(str(Path(folder).expanduser().resolve()))

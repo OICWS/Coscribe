@@ -280,12 +280,25 @@ def test_the_global_list_moves_into_each_workspace_that_reaches_the_site(tmp_pat
 
 def test_a_folder_taken_off_allowed_folders_leaves_every_workspace(tmp_path: Path) -> None:
     environments = Environments(tmp_path / "state")
-    environments.use_folder("t1", str(tmp_path / "gone"), str(tmp_path / "main"))
-    environments.use_folder("t1", str(tmp_path / "kept"), str(tmp_path / "main"))
+    main = str(tmp_path / "main")
+    environments.use_folder("t1", str(tmp_path / "gone"), main, "Work")
+    environments.use_folder("t1", str(tmp_path / "kept"), main, "Work")
 
-    environments.drop_folders({str(tmp_path / "gone"), str(tmp_path / "main")})
+    # Another spelling of the same folder still takes it off; the main folder never goes.
+    environments.drop_folders({str(tmp_path / "x" / ".." / "gone"), main})
 
-    assert environments.for_thread("t1")["folders"] == [
-        str(tmp_path / "main"),
-        str(tmp_path / "kept"),
-    ]
+    assert environments.for_thread("t1")["folders"] == [main, str(tmp_path / "kept")]
+
+
+def test_using_a_folder_from_default_gives_the_conversation_its_own_workspace(
+    tmp_path: Path,
+) -> None:
+    environments = Environments(tmp_path / "state")
+
+    environments.use_folder("t1", str(tmp_path / "shared"), str(tmp_path / "main"), "shared")
+
+    assert environments.environment_of("t1") != DEFAULT_ENVIRONMENT
+    assert (
+        environments.for_thread("t2")["folders"] == environments.get(DEFAULT_ENVIRONMENT)["folders"]
+    )
+    assert str(tmp_path / "shared") not in environments.for_thread("t2")["folders"]

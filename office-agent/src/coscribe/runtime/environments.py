@@ -320,22 +320,22 @@ class Environments:
             self._write(data)
         return env_id
 
-    def use_folder(self, thread_id: str, folder: str, main: str) -> None:
+    def use_folder(self, thread_id: str, folder: str, main: str, name: str) -> None:
         """The conversation's workspace uses one of Settings' Allowed folders from now on
-        (decision 0053); `main` is its folder when it had none of its own."""
-        with _LOCK:
-            data = self._read()
-            env = data["environments"][data["threads"].get(thread_id, DEFAULT_ID)]
-            env["folders"] = list(dict.fromkeys([*(env["folders"] or [main]), folder]))
-            self._write(data)
+        (decision 0053); `main` is its folder when it had none of its own. One on Default gets
+        a workspace of its own, as `add_folders` gives it."""
+        env = self.for_thread(thread_id)
+        folders = [*(env["folders"] or [main]), folder]
+        self.add_folders(thread_id, folders, name)
 
     def drop_folders(self, folders: set[str]) -> None:
         """Takes these folders off every workspace that uses them, never its main folder."""
         with _LOCK:
             data = self._read()
+            gone = {_folder_key(f) for f in folders}
             for env in data["environments"].values():
                 main, *rest = env["folders"] or [""]
-                kept = [f for f in rest if f not in folders]
+                kept = [f for f in rest if _folder_key(f) not in gone]
                 if len(kept) != len(rest):
                     env["folders"] = [main, *kept]
             self._write(data)
@@ -451,3 +451,7 @@ class Environments:
             suffix = f" ({n})"
             name, n = f"{base[: MAX_NAME - len(suffix)]}{suffix}", n + 1
         return name
+
+
+def _folder_key(folder: str) -> str:
+    return os.path.normcase(str(Path(folder).expanduser().resolve()))

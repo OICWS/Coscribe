@@ -373,7 +373,7 @@ def test_approval_preview_resolves_a_file_in_an_extra_writable_directory(
     )
     # One of Allowed folders, which reaches a workspace that uses it (decision 0053).
     main = str(tmp_path / "workspace")
-    Environments(tmp_path / "state").use_folder("t_extra_writable", str(extra_dir), main)
+    Environments(tmp_path / "state").use_folder("t_extra_writable", str(extra_dir), main, "Work")
     with _client_lg(tmp_path, monkeypatch, fake_model, extra_writable_dirs=[extra_dir]) as client:
         with client.websocket_connect("/ws/t_extra_writable") as ws:
             ws.receive_json()  # state

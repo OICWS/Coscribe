@@ -11,6 +11,8 @@ from coscribe.config import Settings
 from coscribe.conversation.folder_access import (
     add_allowed_folder,
     checked_folder,
+    current_access,
+    join_library,
     result_message,
 )
 
@@ -42,3 +44,42 @@ def test_less_access_than_asked_says_so() -> None:
     message = result_message("chat", Path("/x"), "read", "chat:read", "read-write")
     assert "reading only" in message
     assert "Call the refused tool again" not in message
+
+
+def test_a_workspace_folder_joins_allowed_folders_unless_the_list_cant_hold_it(
+    tmp_path: Path,
+) -> None:
+    new, read_only, comma = (tmp_path / n for n in ("New", "Read only", "Smith, Jones"))
+    for folder in (new, read_only, comma):
+        folder.mkdir()
+    settings = Settings(  # type: ignore[call-arg]
+        _env_file=None, default_model="fake:model", extra_readable_dirs=[read_only]
+    )
+
+    join_library(settings, [str(new), str(read_only), str(comma)])
+
+    assert settings.allowed_access(new) == "read-write"
+    assert settings.allowed_access(read_only) == "read"
+    assert settings.allowed_access(comma) is None
+
+
+def test_the_library_matches_a_folder_however_it_is_spelled(tmp_path: Path) -> None:
+    shared = tmp_path / "Shared"
+    shared.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(shared)
+    settings = Settings(  # type: ignore[call-arg]
+        _env_file=None, default_model="fake:model", extra_readable_dirs=[link]
+    )
+
+    assert settings.allowed_access(shared) == "read"
+    assert settings.allowed_access(tmp_path / "x" / ".." / "Shared") == "read"
+    assert settings.reach_of([shared]) == ([shared], [], [])
+
+
+def test_a_workspace_folder_outside_the_library_already_reads_and_writes(tmp_path: Path) -> None:
+    settings = Settings(_env_file=None, default_model="fake:model")  # type: ignore[call-arg]
+
+    have = current_access(settings, {}, [tmp_path], tmp_path / "a")
+
+    assert have == "read-write"

@@ -17,6 +17,7 @@ from ..runtime import Environments
 from ..tools import SCHEDULED_THREAD_PREFIX, load_builtin_skills, load_skills
 from .agent_assembly import AgentAssembly
 from .events import EventSink
+from .folder_access import join_library
 from .turn_lock import TurnLock
 
 
@@ -113,6 +114,7 @@ class SessionReconfigurer:
             return False
         if not host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
             Environments(host.settings.state_dir).add_folders(host.thread_id, paths, folder.name)
+            await asyncio.to_thread(join_library, host.settings, [str(folder)])
             await host.send_state(websocket)
         return True
 
@@ -178,7 +180,19 @@ class SessionReconfigurer:
     def apply_folder_change(self) -> None:
         if self._folders_changed:
             self._folders_changed = False
+            self._drop_gone_folders()
             self.refresh_folder_tools()
+
+    def _drop_gone_folders(self) -> None:
+        """A folder taken off Allowed folders has left the workspace's stored folders; the open
+        conversation lets go of it too, or `reach_of` would count it as the workspace's own and
+        give it read and write."""
+        host = self._host
+        if host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return
+        stored = Environments(host.settings.state_dir).for_thread(host.thread_id)["folders"]
+        kept = {str(Path(f)) for f in stored[1:]}
+        host.extra_folders = [f for f in host.extra_folders if str(Path(f)) in kept]
 
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True
