@@ -72,7 +72,7 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await editEnvironment(page, name);
   const dialog = page.getByRole("dialog", { name: "Edit workspace" });
   await expect(dialog.getByText("Used by 1 conversation")).toBeVisible();
-  for (const section of ["Folder", "More folders for this workspace", "Sites", "Secrets"]) {
+  for (const section of ["Folder", "Allowed folders this workspace uses", "Sites", "Secrets"]) {
     await expect(dialog.getByRole("heading", { name: section, exact: true })).toBeVisible();
   }
   // Every page keeps the main page's size, so the dialog does not jump while moving between them.

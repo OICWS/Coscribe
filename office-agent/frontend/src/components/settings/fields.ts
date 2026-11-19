@@ -91,6 +91,9 @@ const DIR_KEYS: Record<DirPermission, string> = {
   "read-write-delete": DELETABLE_DIRS_KEY,
 };
 
+/** A window event: something other than Settings changed Allowed folders on the server. */
+export const ALLOWED_FOLDERS_CHANGED = "coscribe:allowed-folders-changed";
+
 export interface DirEntry {
   path: string;
   permission: DirPermission;
