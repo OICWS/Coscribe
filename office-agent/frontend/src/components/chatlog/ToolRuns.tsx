@@ -61,7 +61,7 @@ export function ToolRunGroupView({
       <button
         type="button"
         aria-expanded={open}
-        className="inline-flex max-w-full items-center gap-1 text-left text-[var(--muted)] hover:text-[var(--fg)]"
+        className="inline-flex max-w-full items-center gap-1 text-left text-[var(--muted)] [overflow-wrap:anywhere] hover:text-[var(--fg)]"
         onClick={() => {
           // A lone call's detail is its group's body; it stays open when more calls join.
           if (single) toggleCall(single.id);
