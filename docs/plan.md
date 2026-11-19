@@ -55,7 +55,8 @@ Last reviewed: 2026-11-18.
    reach (what it reaches, its folder inputs picked from it, a folder outside it allowed on the
    spot) is in `docs/log/2026-11-18-task-reach-server.md` and `-ui.md`. B is in
    `docs/log/2026-11-18-uploads-in-workspace.md`. C's server part (the first workspace) is in `docs/log/2026-11-18-first-workspace-server.md`.
-   Next: the first-start dialog, then a conversation with no workspace only chats, then D.
+   The first-start dialog is in `docs/log/2026-11-18-first-workspace-ui.md`. Next: a conversation
+   with no workspace only chats, then D.
 
 ## Open, smaller
 

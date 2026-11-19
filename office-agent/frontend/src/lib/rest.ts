@@ -619,6 +619,12 @@ export async function uploadFile(file: File, threadId: string, pasted = false): 
 
 // -- Secrets and session environments -------------------------------------
 
+/** Whether the first start still has to choose a workspace (decision 0048), and the folder offered. */
+export const getFirstWorkspace = () => getJson<{ needed: boolean; suggested: string }>("/api/workspace/first");
+
+/** Default works in `folder` from now on; the folder is made if its parent exists. */
+export const chooseFirstWorkspace = (folder: string) => sendForResult<{ folder: string }>("/api/workspace/first", "POST", { folder });
+
 export const getSecrets = () => getJson<SecretsResponse>("/api/secrets");
 
 /** The server's own wording for a refusal (a short value, no keychain, a bad host) is shown as it is. */

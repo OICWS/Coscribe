@@ -32,6 +32,8 @@ export async function checkBrowserOverlay(app, window, until) {
       { key: "free_space", label: "Free space", tokens: 225769 },
     ],
   } }));
+  // A fresh profile would ask for its first workspace over the page under test.
+  await window.route("**/api/workspace/first", route => route.fulfill({ json: { needed: false, suggested: "" } }));
   await window.reload();
   await window.getByTitle("Context window", { exact: true }).waitFor();
   await app.evaluate(({ BrowserWindow, screen }) => {
