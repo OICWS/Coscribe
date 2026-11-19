@@ -22,6 +22,7 @@ a question belongs to the person talking to the parent, not to a
 delegated run.
 """
 
+import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Literal, NotRequired
 
@@ -255,9 +256,23 @@ def react_to_message(emoji: str) -> str:
     Args:
         emoji: one emoji, e.g. "👍".
     """
-    if not emoji.strip() or len(emoji.strip()) > 8:
-        raise ValueError("emoji must be one emoji, e.g. \"👍\".")
+    if not _is_one_emoji(emoji.strip()):
+        raise ValueError(f'{emoji!r} is not one emoji; pass one, e.g. "👍", or reply in words.')
     return "Reacted."
+
+
+# The standard library has no grapheme clusters, so this allows what one emoji can be made of:
+# pictographs and the joiners, variation selectors and skin tones between them (a family is
+# about ten code points), and no letters, digits or spaces, which a word would need.
+_EMOJI_MAX_CODE_POINTS = 16
+
+
+def _is_one_emoji(text: str) -> bool:
+    return (
+        0 < len(text) <= _EMOJI_MAX_CODE_POINTS
+        and any(unicodedata.category(c) == "So" for c in text)
+        and not any(c.isalnum() or c.isspace() for c in text)
+    )
 
 
 def build_interaction_tools() -> list[Callable[..., Any]]:

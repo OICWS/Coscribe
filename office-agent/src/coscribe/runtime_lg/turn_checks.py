@@ -15,7 +15,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
 
-from langchain.agents.middleware import AgentMiddleware, after_model
+from langchain.agents.middleware import AgentMiddleware, after_model, hook_config
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
 
@@ -57,6 +57,26 @@ def _worked_on_plan(turn: Sequence[Any]) -> bool:
     )
 
 
+def _end_notes(
+    turn: Sequence[Any],
+    open_tasks: Callable[[], str] | None,
+    writers: set[str],
+    resolve_file: Callable[[str], Path] | None,
+) -> list[str]:
+    if any(is_plan_check(m) for m in turn):
+        return []
+    notes = []
+    if open_tasks is not None and _worked_on_plan(turn):
+        tasks = open_tasks()
+        if tasks:
+            notes.append(PLAN_CHECK.format(tasks=tasks))
+    if resolve_file is not None:
+        broken = broken_office_files(turn, writers, resolve_file)
+        if broken:
+            notes.append(DELIVERY_CHECK.format(files="\n".join(broken)))
+    return notes
+
+
 def _turn_end(
     open_tasks: Callable[[], str] | None,
     writers: set[str],
@@ -71,23 +91,52 @@ def _turn_end(
         last = messages[-1] if messages else None
         if not isinstance(last, AIMessage) or last.tool_calls:
             return None
-        turn = _this_turn(messages)
-        if any(is_plan_check(m) for m in turn):
-            return None
-        notes = []
-        if open_tasks is not None and _worked_on_plan(turn):
-            tasks = open_tasks()
-            if tasks:
-                notes.append(PLAN_CHECK.format(tasks=tasks))
-        if resolve_file is not None:
-            broken = broken_office_files(turn, writers, resolve_file)
-            if broken:
-                notes.append(DELIVERY_CHECK.format(files="\n".join(broken)))
+        notes = _end_notes(_this_turn(messages), open_tasks, writers, resolve_file)
         if not notes:
             return None
         return {"messages": [plan_check_message("\n\n".join(notes))], "jump_to": "model"}
 
     return turn_end_check
+
+
+_ENDED_TURN = "ends_turn"
+
+
+class _EndsTurnMiddleware(AgentMiddleware):
+    """A step whose calls were all to tools that end the turn (an emoji on the user's message)
+    ends it there, with no model call to follow; the turn-end checks still get their say first.
+    A call that failed goes back to the model like any other, so it sees the error. Such a
+    call's result is marked by `repeat_note` (`_ENDED_TURN` in its response_metadata, which no
+    provider is sent), so the page can also tell a turn that ended this way from a model that
+    went quiet."""
+
+    def __init__(
+        self,
+        open_tasks: Callable[[], str] | None,
+        writers: set[str],
+        resolve_file: Callable[[str], Path] | None,
+    ) -> None:
+        super().__init__()
+        self._checks = (open_tasks, writers, resolve_file)
+
+    @hook_config(can_jump_to=["end"])
+    def before_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        messages = state["messages"]
+        results: list[Any] = []
+        for message in reversed(messages):
+            if not isinstance(message, ToolMessage):
+                break
+            results.append(message)
+        if not results or not all(m.response_metadata.get(_ENDED_TURN) for m in results):
+            return None
+        notes = _end_notes(_this_turn(messages), *self._checks)
+        if notes:
+            return {"messages": [plan_check_message("\n\n".join(notes))]}
+        return {"jump_to": "end"}
+
+    @hook_config(can_jump_to=["end"])
+    async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self.before_model(state, runtime)
 
 
 def _key(name: str, args: dict[str, Any]) -> tuple[str, str]:
@@ -117,14 +166,18 @@ _WATCHED_CATEGORIES = frozenset({"filesystem", "documents", "web"})
 
 
 def repeat_note(tools: Sequence[Callable[..., Any] | BaseTool]) -> Callable[[Any, Any], Any]:
-    """What adds the repeat note to a tool call's result. It runs inside the middleware that
+    """What adds the repeat note to a tool call's result, and marks the result of one that ends
+    the turn (`_EndsTurnMiddleware`). It runs inside the middleware that
     catches tool errors, which has the sync hook a sub-agent's own run needs as well as the
     async one."""
     watched: set[str] = set()
     changers: set[str] = set()
+    ending: set[str] = set()
     for tool in tools:
         name = str(getattr(tool, "name", None) or getattr(tool, "__name__", ""))
         metadata = get_tool_metadata(cast(Callable[..., Any], tool))
+        if metadata.ends_turn:
+            ending.add(name)
         if metadata.risk_category != "READ" or metadata.category == "subagents":
             changers.add(name)
         elif metadata.category in _WATCHED_CATEGORIES:
@@ -133,6 +186,9 @@ def repeat_note(tools: Sequence[Callable[..., Any] | BaseTool]) -> Callable[[Any
     def note(request: Any, result: Any) -> Any:
         call = request.tool_call
         name, _ = unwrap_use_tool_call(call["name"], call.get("args") or {})
+        if name in ending and isinstance(result, ToolMessage) and result.status != "error":
+            marks = {**result.response_metadata, _ENDED_TURN: True}
+            return result.model_copy(update={"response_metadata": marks})
         if (
             name not in watched
             or not isinstance(result, ToolMessage)
@@ -150,11 +206,17 @@ def turn_end(
     tools: Sequence[Callable[..., Any] | BaseTool],
     resolve_file: Callable[[str], Path] | None,
 ) -> list[AgentMiddleware]:
-    if open_tasks is None and resolve_file is None:
-        return []
-    writers = {
-        str(getattr(t, "name", None) or getattr(t, "__name__", ""))
+    metadata = {
+        str(getattr(t, "name", None) or getattr(t, "__name__", "")): get_tool_metadata(
+            cast(Callable[..., Any], t)
+        )
         for t in tools
-        if get_tool_metadata(cast(Callable[..., Any], t)).risk_category == "WRITE_LOCAL"
     }
-    return [_turn_end(open_tasks, writers, resolve_file)]
+    writers = {name for name, m in metadata.items() if m.risk_category == "WRITE_LOCAL"}
+    ending = {name for name, m in metadata.items() if m.ends_turn}
+    middleware: list[AgentMiddleware] = []
+    if open_tasks is not None or resolve_file is not None:
+        middleware.append(_turn_end(open_tasks, writers, resolve_file))
+    if ending:
+        middleware.append(_EndsTurnMiddleware(open_tasks, writers, resolve_file))
+    return middleware

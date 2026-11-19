@@ -16,8 +16,13 @@ describe("takeReaction", () => {
     expect(takeReaction([user, react({ result: "Reacted." })])).toEqual({ items: [user], reaction: "👍" });
   });
 
+  it("waits for the call's result", () => {
+    expect(takeReaction([user, react()]).reaction).toBeNull();
+  });
+
   it("finds one made through use_tool", () => {
-    const viaUseTool = react({ toolName: "use_tool", arguments: { name: "react_to_message", arguments: { emoji: "🙏" } } });
+    const viaUseTool = react({ result: "Reacted.", toolName: "use_tool",
+      arguments: { name: "react_to_message", arguments: { emoji: "🙏" } } });
     expect(takeReaction([user, viaUseTool]).reaction).toBe("🙏");
   });
 

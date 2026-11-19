@@ -601,3 +601,42 @@ def test_a_reaction_on_its_own_ends_the_turn_and_alongside_work_does_not() -> No
     )
     assert model.i == 2
     assert result["messages"][-1].content == "done it"
+
+
+def test_a_reaction_that_fails_or_leaves_plan_tasks_open_goes_back_to_the_model() -> None:
+    from coscribe.tools import build_interaction_tools
+
+    def task_update() -> str:
+        """Update a task."""
+        return "updated"
+
+    tools = [*build_interaction_tools(), task_update]
+    bad = {"name": "react_to_message", "args": {"emoji": ""}, "id": "r1"}
+    model = _FakeModel(
+        responses=[AIMessage(content="", tool_calls=[bad]), AIMessage(content="Noted.")]
+    )
+    agent = build_langgraph_agent(model, tools, "be helpful", checkpointer=InMemorySaver())
+    agent.invoke(
+        {"messages": [HumanMessage(content="ok")]}, config={"configurable": {"thread_id": "a"}}
+    )
+    assert model.i == 2
+
+    model = _FakeModel(
+        responses=[
+            AIMessage(content="", tool_calls=[{"name": "task_update", "args": {}, "id": "t1"}]),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "react_to_message", "args": {"emoji": "👍"}, "id": "r2"}],
+            ),
+            AIMessage(content="Finishing the last task."),
+        ]
+    )
+    agent = build_langgraph_agent(
+        model, tools, "be helpful", checkpointer=InMemorySaver(), open_tasks=lambda: "- [ ] Send it"
+    )
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="ok thanks")]},
+        config={"configurable": {"thread_id": "b"}},
+    )
+    assert model.i == 3
+    assert result["messages"][-1].content == "Finishing the last task."

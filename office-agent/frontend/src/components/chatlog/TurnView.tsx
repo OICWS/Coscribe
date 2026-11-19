@@ -67,7 +67,9 @@ export function TurnView({
   onDismissTaskDraft?: (item: TaskDraftItem) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
-  const { items, reaction } = takeReaction(turn.items);
+  // A message drawn as a card (a run's prompt, a report) has no bubble to carry an emoji.
+  const plain = turn.userItem !== null && !isCardMessage(turn.userItem.text);
+  const { items, reaction } = plain ? takeReaction(turn.items) : { items: turn.items, reaction: null };
   const entries = foldTaskCard(groupToolRuns(items), turn.taskPlaces);
   const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
   const waiting = turn.hasPendingApproval || turn.items.some(asksThePerson);
@@ -129,6 +131,20 @@ export function TurnView({
       )}
     </div>
   );
+}
+
+const CARD_PREFIXES = [
+  RUN_PROMPT_PREFIX,
+  INVESTIGATION_PREFIX,
+  REVISION_PREFIX,
+  SUBAGENT_REPORT_PREFIX,
+  BACKGROUND_REPORT_PREFIX,
+  CONNECTED_NOTE_PREFIX,
+  CONVERSATION_MESSAGE_PREFIX,
+];
+
+function isCardMessage(text: string): boolean {
+  return CARD_PREFIXES.some((prefix) => text.startsWith(prefix));
 }
 
 export function LogItemView({

@@ -3,7 +3,8 @@ import type { LogItem } from "../state/reducer";
 const REACTION_TOOL = "react_to_message";
 
 function reactionOf(item: LogItem): string | null {
-  if (item.kind !== "tool" || item.isError) return null;
+  // Only once it worked: a call that fails stays a row, and the model is told why.
+  if (item.kind !== "tool" || item.result === undefined || item.isError) return null;
   const inner = item.arguments.name;
   const viaUseTool = item.toolName === "use_tool" && inner === REACTION_TOOL;
   if (item.toolName !== REACTION_TOOL && !viaUseTool) return null;

@@ -123,6 +123,13 @@ def _ask(question: dict[str, Any]) -> str | None:
     return raw.strip()
 
 
+def _tool_line(result: dict[str, Any]) -> str:
+    # A reaction can be the model's whole answer: an emoji on the user's message.
+    if result["tool_name"] == "react_to_message":
+        return f"reacted {result['arguments'].get('emoji', '')}"
+    return f"ran {result['tool_name']}"
+
+
 class _CliSocket:
     """Duck-typed WebSocket stand-in -- see this module's docstring."""
 
@@ -193,7 +200,7 @@ class _CliSocket:
                 typer.echo()
             self._streamed = ""
         elif kind == "tool_result":
-            typer.echo(f"\n  ran {data['tool_name']}")
+            typer.echo(f"\n  {_tool_line(data)}")
         elif kind == "approval_required":
             typer.echo(f"\n[approval required] {data['tool_name']}({data['arguments']})")
             approved = typer.confirm("Allow this action?", default=False)
