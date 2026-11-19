@@ -68,8 +68,10 @@ function Row({
         <PlainTile step={step} color={plainColor(step)} />
         <span className="min-w-0 flex-1">
           <span className="block text-sm leading-snug">{step.title}</span>
+          {/* The title already says what a step does; the generated sentence mostly repeats it, so
+              only a screen reader hears it, and the step's card shows it when opened. */}
           {row.detail && (
-            <span className="mt-0.5 block text-[13px] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">
+            <span className="sr-only">
               <PlainText text={row.detail} inputs={inputs} />
             </span>
           )}
@@ -117,7 +119,7 @@ function Group({
   indent: boolean;
 }) {
   return (
-    <div className={`${indent ? "ml-9" : "ml-6"} border-l border-[var(--border)] pl-2`}>
+    <div className={`${indent ? "ml-9" : "ml-6"} pl-2`}>
       {group.label && <div className="px-2 pt-1.5 text-xs font-medium text-[var(--muted)]">{group.label}</div>}
       <ul>
         {group.rows.map((row) => (

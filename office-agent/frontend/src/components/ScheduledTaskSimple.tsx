@@ -68,7 +68,7 @@ function Inputs({
         {workflow.inputs.map((input) => {
           if (input.name in filled)
             return (
-              <li key={input.name} className="flex items-baseline gap-3">
+              <li key={input.name} className="flex min-h-8 items-center justify-between gap-3">
                 <span className="min-w-0">
                   {input.label || input.name}
                   <span className="text-[var(--muted)]"> · {filled[input.name]}</span>
@@ -77,7 +77,7 @@ function Inputs({
             );
           const usual = plainDefault(input);
           return (
-            <li key={input.name} className="flex items-baseline gap-3">
+            <li key={input.name} className="flex min-h-8 items-center justify-between gap-3">
               <span className="min-w-0">
                 {input.label || input.name}
                 {input.required === false && <span className="text-[var(--muted)]"> (optional)</span>}
@@ -88,7 +88,7 @@ function Inputs({
                   </span>
                 )}
               </span>
-              <button type="button" className={linkButton} onClick={() => onChange(input.name)}>
+              <button type="button" className={`${linkButton} shrink-0`} onClick={() => onChange(input.name)}>
                 Change
               </button>
             </li>

@@ -163,7 +163,6 @@ function SimplePermissions({ p, className }: { p: PermissionsResult["permissions
           {unbounded.map((a) => a.title).join(", ")} may use any of Coscribe’s tools
         </SimpleLine>
       )}
-      <li className="text-[13px] text-[var(--muted)]">Anything else makes a run stop and ask you first.</li>
     </ul>
   );
 }

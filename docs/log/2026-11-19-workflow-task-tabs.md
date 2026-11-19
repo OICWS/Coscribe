@@ -10,7 +10,9 @@ notice opened only from its text with nothing on hover to say it could.
 - `ScheduledTaskSimple.tsx` is the Overview: four tiles (when it runs, last run, if a step stops
   working, workspace), each opening the tab that changes it, in place of the folded Settings.
 - The Overview's sections are cards; its steps show a pointer and "Change" on hover, and its
-  actions are outlined buttons. The flowchart's cards (`WorkflowCanvas.tsx`, plain mode, now used
+  actions are outlined buttons. A step lists only its title (the plain sentence under it is
+  screen-reader only now), nested steps have no rule beside them, the inputs' Change buttons
+  sit at the right, and "Anything else makes a run stop" is gone. The flowchart's cards (`WorkflowCanvas.tsx`, plain mode, now used
   by the Steps tab too) show only each step's kind and title.
 - `workflow/TaskSettingsTab.tsx`: every setting once, in four cards; the webhook address moved
   here from the runs list. The plain autonomy dropdown is gone; the radio levels stay.
