@@ -411,7 +411,8 @@ class FileToolkit:
             and source_path.is_file()
         )
         if deck_rename:
-            for folder in deck_files(source_path)[1:]:
+            replaced = deck_files(dest_path)[1:] if dest_path.is_file() else []
+            for folder in deck_files(source_path)[1:] + replaced:
                 self._resolve(str(folder / MANIFEST), write=True)
         if dest_path.exists():
             if dest_path.is_dir():
@@ -427,7 +428,8 @@ class FileToolkit:
                 )
             if not overwrite:
                 raise FileExistsError(f"Destination already exists: {destination}")
-            dest_path.unlink()
+            if not deck_rename:
+                dest_path.unlink()
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         if deck_rename:
             move_deck(source_path, dest_path)

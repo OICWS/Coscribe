@@ -64,6 +64,22 @@ def test_moving_a_finished_deck_over_its_delivery_name_keeps_its_pages(tmp_path:
     assert not final.exists()
 
 
+def test_a_finished_deck_from_other_pages_replaces_the_old_record(tmp_path: Path) -> None:
+    target = _deck(tmp_path, COVER)
+    final_pages = tmp_path / "final-pages"
+    final_pages.mkdir()
+    for i, page in enumerate((COVER, CARDS), start=1):
+        (final_pages / f"{i:02d}.svg").write_text(page, encoding="utf-8")
+    assert build_deck(final_pages, tmp_path / "deck-final.pptx", resource_root=tmp_path).ok
+
+    FileToolkit(tmp_path).move_file("deck-final.pptx", target.name, overwrite=True)
+
+    view = read_deck(target)
+    assert view["folder"] == "final-pages" and not view["changed"]
+    assert len(view["slides"]) == 2
+    assert not (tmp_path / "pages" / "build.json").exists()
+
+
 def test_a_slide_is_one_svg_with_nothing_outside_it(tmp_path: Path) -> None:
     deck = _deck(tmp_path, OBJECTS)
     svg = slide_svg(deck, 0, tmp_path)

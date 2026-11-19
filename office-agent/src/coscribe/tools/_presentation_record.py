@@ -54,9 +54,14 @@ def _point_record_at(folder: Path, deck: Path) -> None:
 
 
 def move_deck(deck: Path, target: Path) -> None:
-    """Renames the deck; its pages folder stays where it is and follows by its record."""
+    """Renames the deck, over `target` when it exists; its pages folder stays where it is and
+    follows by its record."""
     folder = pages_folder(deck)
-    deck.rename(target)
+    replaced = pages_folder(target) if target.exists() else None
+    deck.replace(target)
+    # Two records naming one deck would let whichever folder is listed first answer for it.
+    if replaced is not None and replaced != folder:
+        (replaced / MANIFEST).unlink(missing_ok=True)
     if folder is not None:
         _point_record_at(folder, target)
 
