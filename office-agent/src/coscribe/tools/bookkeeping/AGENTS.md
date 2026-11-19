@@ -5,8 +5,8 @@ Owns the tools that keep the model's own state, and the stores behind them: the 
 plan drafts (`tasks.py`), scheduled tasks, their runs and triggers (`scheduled_tasks.py`,
 `scheduled_run.py`, `schedule_rule.py`), sub-agent
 runs (`subagent_tasks.py`), background commands (`background_tasks.py`), self-wakes and signals
-(`selfwake.py`), messages between conversations (`conversations.py`), questions and plan choices
-(`interaction.py`) and the memory file (`memory.py`). Does not own running a scheduled task or
+(`selfwake.py`), messages between conversations (`conversations.py`), questions, plan choices and
+the emoji the model answers a message with (`interaction.py`) and the memory file (`memory.py`). Does not own running a scheduled task or
 resuming a wake (`runtime_lg/scheduled_tasks.py`, `runtime_lg/selfwake.py`), the scripts a
 background command starts (`tools/exec`) or the routes that show these (`web/routes/`).
 
