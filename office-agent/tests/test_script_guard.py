@@ -15,7 +15,6 @@ from coscribe.tools.exec.script_guard import (
     locked_file_note,
     node_guard_args,
     refusal_note,
-    scratch_temp_env,
     suggested_folder,
     without_guard_warnings,
     writable_roots,
@@ -75,7 +74,7 @@ def test_the_wrapper_pins_temp_to_the_scratch_folder_when_asked(
     script.write_text(_UNDELETABLE_TEMP, encoding="utf-8")
     env = {**os.environ, "TEMP": str(other), "TMP": str(other), "TMPDIR": str(other)}
     if pinned:
-        env |= scratch_temp_env(scratch) | {"TEMP": str(other), "TMP": str(other)}
+        env[script_guard.SCRATCH_TEMP_VAR] = str(scratch)
     done = subprocess.run(
         [sys.executable, str(wrapper), str(config), str(script)],
         capture_output=True,

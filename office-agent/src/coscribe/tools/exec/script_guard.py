@@ -26,15 +26,8 @@ from pathlib import Path
 from ...runtime import Environments
 
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
-_SCRATCH_VAR = "COSCRIBE_SCRATCH_TEMP"
-
-
-def scratch_temp_env(scratch_dir: Path) -> dict[str, str]:
-    """The variables that make a contained run's temp folder its scratch folder. Windows
-    replaces TEMP and TMP in an AppContainer, so the Python wrapper restores them from
-    `COSCRIBE_SCRATCH_TEMP`, which it leaves alone."""
-    folder = str(scratch_dir)
-    return {"TEMP": folder, "TMP": folder, _SCRATCH_VAR: folder}
+# Windows replaces TEMP and TMP in an AppContainer; the wrapper restores them from this one.
+SCRATCH_TEMP_VAR = "COSCRIBE_SCRATCH_TEMP"
 
 
 PYTHON_WRAPPER = r"""
@@ -116,7 +109,7 @@ atexit.register(report)
 sys.addaudithook(hook)
 sys.argv = [script]
 runpy.run_path(script, run_name="__main__")
-""".replace("@@MARK@@", _BLOCKED_MARK).replace("@@SCRATCH_VAR@@", _SCRATCH_VAR)
+""".replace("@@MARK@@", _BLOCKED_MARK).replace("@@SCRATCH_VAR@@", SCRATCH_TEMP_VAR)
 
 
 def writable_roots(workspace_root: Path, extra_writable: list[Path]) -> list[str]:

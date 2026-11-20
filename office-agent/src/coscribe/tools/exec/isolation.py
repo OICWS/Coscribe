@@ -41,6 +41,7 @@ from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
 from .env_allowlist import child_env
 from .script_env import ensure_script_env, venv_python
+from .script_guard import SCRATCH_TEMP_VAR
 
 Access = Literal["read", "write", "scratch"]
 _ACCESSES: tuple[Access, ...] = ("read", "write", "scratch")
@@ -238,6 +239,8 @@ def start(
         )
     if argv and PureWindowsPath(argv[0]).stem.lower() == "node":
         argv = [argv[0], *_NODE_CONTAINED, *argv[1:]]
+    if env.get("TEMP"):
+        env = {**env, SCRATCH_TEMP_VAR: env["TEMP"]}
     capabilities, _failed = capabilities_for(isolation)
     return _appcontainer.start(argv, str(Path(cwd).resolve()), env, capabilities)
 

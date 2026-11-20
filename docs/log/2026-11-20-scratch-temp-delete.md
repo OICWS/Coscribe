@@ -8,7 +8,8 @@ directory, the workspace. There it could write its probe files but not delete th
 
 ## Shipped
 - The Python wrapper (`tools/exec/script_guard.py`) pins `tempfile.tempdir`, TEMP and TMP to the
-  run's scratch folder, from `COSCRIBE_SCRATCH_TEMP` (`scratch_temp_env`), so the probe never runs.
+  run's scratch folder, from `COSCRIBE_SCRATCH_TEMP`, which `isolation.start` copies from the TEMP
+  it was given, so the probe never runs.
 - `script-scratch`, coscribe's own folder for a run's files, is granted `RX,W,D` under a new
   `scratch` capability (`tools/exec/isolation.py`), so temp files there can be deleted. The
   person's folders keep `RX,W` without DELETE. Decision

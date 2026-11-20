@@ -586,3 +586,16 @@ def test_the_line_python_3_13_prints_in_the_container_is_dropped() -> None:
     )
     traceback = "Traceback (most recent call last):\n  ValueError: bad\n"
     assert isolation.quiet_stderr(stderr) == traceback
+
+
+def test_the_container_gets_its_temp_folder_under_a_name_windows_leaves_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    envs: list[dict[str, str]] = []
+    monkeypatch.setattr(isolation, "capabilities_for", lambda iso: ([], []))
+    monkeypatch.setattr(
+        isolation._appcontainer, "start", lambda argv, cwd, env, caps: envs.append(dict(env))
+    )
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {"TEMP": "S"}, Isolation(tmp_path))
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {}, Isolation(tmp_path))
+    assert envs == [{"TEMP": "S", "COSCRIBE_SCRATCH_TEMP": "S"}, {}]
