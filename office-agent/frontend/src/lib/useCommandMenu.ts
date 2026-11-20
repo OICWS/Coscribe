@@ -60,19 +60,19 @@ export function useCommandMenu(commands: CommandInfo[], text: string) {
     setIndex(-1);
   };
 
-  const update = (next: string) => {
+  const update = (next: string, keep?: string) => {
     if (!next.startsWith("/") || next.includes(" ")) return hide();
     const prefix = next.slice(1).toLowerCase();
     const found = commands.filter((cmd) => cmd.name.toLowerCase().startsWith(prefix));
     // Nothing left to complete once the typed prefix is the only candidate's full name.
     if (found.length === 1 && found[0].name.toLowerCase() === prefix) return hide();
     setMatches(found);
-    setIndex(found.length > 0 ? 0 : -1);
+    setIndex(Math.max(keep ? found.findIndex((cmd) => cmd.name === keep) : -1, found.length > 0 ? 0 : -1));
   };
 
-  // A refetch can change the list under an open menu.
+  // A refetch can change the list under an open menu; the highlight stays on its command.
   useEffect(() => {
-    update(text);
+    update(text, matches[index]?.name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands]);
 

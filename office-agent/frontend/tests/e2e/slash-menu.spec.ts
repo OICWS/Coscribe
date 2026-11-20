@@ -53,6 +53,31 @@ test("a skill made after the page loaded is offered the next time the menu opens
   await expect(page.getByRole("option", { name: "weekly-report" })).toBeVisible();
 });
 
+test("a list fetched again while the menu is open keeps the highlighted command", async ({ page }) => {
+  let hold = false;
+  let answer: (() => Promise<void>) | null = null;
+  await page.route("**/api/commands", (route) => {
+    if (hold) answer = () => route.fulfill({ json: many });
+    else return route.fulfill({ json: many });
+  });
+  await page.goto(freshThreadPath("slash"));
+  await waitForConnected(page);
+  const box = page.locator("textarea");
+  await box.fill("/");
+  await expect(page.getByRole("option", { name: "skill-00" })).toBeVisible();
+  await box.fill("");
+
+  hold = true;
+  await box.pressSequentially("/");
+  await expect.poll(() => answer !== null).toBe(true);
+  await page.keyboard.press("ArrowDown");
+  const second = page.getByRole("option", { name: "skill-01" });
+  await expect(second).toHaveAttribute("aria-selected", "true");
+  await answer!();
+  await expect(page.getByRole("tooltip")).toHaveText("Skill number 1");
+  await expect(second).toHaveAttribute("aria-selected", "true");
+});
+
 test("the highlighted command's description shows beside the list", async ({ page }) => {
   await serveCommands(page, [many]);
   await page.goto(freshThreadPath("slash"));
