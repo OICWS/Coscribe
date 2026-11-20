@@ -197,11 +197,10 @@ def build_script_tools(
         task doesn't fit the built-in document/spreadsheet/presentation
         tools' shape -- e.g. processing thousands of rows, or a multi-step
         transformation those tools can't express in one call. Any other
-        package the script needs must already be installed in that
-        environment (the user manages this from the Capabilities settings
-        tab) -- `import` a package that isn't there and the script will
-        fail with the normal Python ModuleNotFoundError; this tool cannot
-        install packages on its own.
+        package the script needs must be installed in that environment
+        first -- `import` a package that isn't there and the script fails
+        with the normal Python ModuleNotFoundError; then ask the user to
+        install it with install_package and run the script again.
 
         `description` is a short, plain-language summary of what the
         script does (e.g. "Sum the Revenue column in sales.xlsx and print

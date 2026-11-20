@@ -222,6 +222,32 @@ export interface FolderAccessRequiredEvent {
 }
 
 /**
+ * install_package: a script needs a package missing from coscribe's environment for
+ * `runtime`. Answered with question_response's `answer`: "install", or anything else to
+ * decline; package_install_finished follows an install.
+ */
+export interface PackageInstallRequiredEvent {
+  type: "package_install_required";
+  id: string;
+  runtime: "python" | "node";
+  /** As the model asked, with any version; `name` is the package alone. */
+  package: string;
+  name: string;
+  reason: string;
+  /** Set when another version is installed and the model asked for a different one. */
+  installed_version: string | null;
+}
+
+/** The install the person allowed on a package_install_required card has ended. */
+export interface PackageInstallFinishedEvent {
+  type: "package_install_finished";
+  id: string;
+  installed: boolean;
+  version?: string | null;
+  error?: string;
+}
+
+/**
  * A scheduled run just started on this thread; `text` is the run's prompt (it never came
  * from this tab, so there is no local echo).
  */
@@ -505,6 +531,8 @@ export type ServerEvent =
   | PlanReadyEvent
   | QuestionRequiredEvent
   | FolderAccessRequiredEvent
+  | PackageInstallRequiredEvent
+  | PackageInstallFinishedEvent
   | ScheduledRunStartedEvent
   | WorkflowStepEvent
   | WorkflowTestProgressEvent

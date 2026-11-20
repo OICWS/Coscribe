@@ -85,6 +85,7 @@ import type { WorkflowDraftEntry } from "./lib/transcriptGrouping";
 import { EMPTY_WORKFLOW } from "./lib/workflowEdit";
 import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowProgress";
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
+import { cardAnswers } from "./components/folderActions";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
 import { QuestionPanel } from "./components/QuestionCard";
 import type { CommandInfo, ThreadSummary } from "./types/session";
@@ -695,10 +696,6 @@ function App() {
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
   };
-  const onAnswerFolderAccess = (id: string, answer: string) => {
-    dispatch({ type: "local_folder_access_answered", id, answer });
-    socketRef.current?.send({ type: "question_response", id, answer });
-  };
   const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
@@ -975,7 +972,7 @@ function App() {
                       busy: state.turnInFlight,
                       onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
                       onTryAgain: () => sendRaw("I added the folder. Please try again."),
-                      onAnswerFolderAccess,
+                      ...cardAnswers(dispatch, (message) => socketRef.current?.send(message)),
                       onOpenFolderSettings: () => showSettings("workspace", null),
                     }}
                     onPptxShapePicked={onPptxShapePicked}

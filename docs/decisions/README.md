@@ -64,3 +64,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
 | [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (proposed; narrows 0048) |
 | [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (proposed) |
+| [0056](0056-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (proposed) |

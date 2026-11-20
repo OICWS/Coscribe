@@ -631,8 +631,8 @@ def build_background_task_tools(
         it; unisolated, only writes outside those folders are refused. Runs with
         its working directory set to the workspace root and against the exact
         same dedicated Python/Node environment
-        run_python_script/run_node_script use (same pre-installed packages, same
-        "you manage extra packages from the Capabilities settings tab" rule).
+        run_python_script/run_node_script use (same packages; ask for a
+        missing one with install_package).
 
         This call does NOT return the script's output -- only a task_id
         confirming it started. When it ends, its outcome and the end of its

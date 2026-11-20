@@ -7,6 +7,7 @@ import type { ProgressItem } from "../lib/workflowProgress";
 import { planTasksField } from "../lib/planTasksResult";
 import { closeStreamingBubble } from "./streamingBubble";
 import { isFolderAccessEvent, reduceFolderAccess, type FolderAccessAction, type FolderAccessItem } from "./folderAccess";
+import { isPackageInstallEvent, reducePackageInstall, type PackageInstallAction, type PackageInstallItem } from "./packageInstall";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -15,6 +16,7 @@ export const TASK_DRAFT_SAVED_PREFIX = "The user reviewed the draft and saved it
 
 export type LogItem =
   | FolderAccessItem
+  | PackageInstallItem
   // turnIndex: 0-based among the "user" items only, the index EditMessageOut expects (the backend
   // counts its checkpointed HumanMessages the same way). Set at creation, so later items can't move it.
   // sentAt: ISO time it was sent; absent for a message from before the server recorded it.
@@ -227,7 +229,8 @@ export type LocalAction =
   | { type: "local_connection_reset" }
   | { type: "local_switch_thread" }
   | { type: "local_request_older_messages" }
-  | FolderAccessAction;
+  | FolderAccessAction
+  | PackageInstallAction;
 
 export type ChatAction = WsServerEvent | LocalAction;
 
@@ -368,6 +371,7 @@ function withToolResult(state: ChatState, action: Extract<ChatAction, { type: "t
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   if (isFolderAccessEvent(action)) return reduceFolderAccess(state, action);
+  if (isPackageInstallEvent(action)) return reducePackageInstall(state, action);
   switch (action.type) {
     case "local_connection_reset":
       // The server's paging cursor lives on the session, so a new connection starts it over:

@@ -169,8 +169,8 @@ Last reviewed: 2026-11-18.
 - **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
   itself when 8790 is taken, and the listener's message stops naming a Settings row; a diagnostic
-  log to export in place of Log level; a package a script needs installed from the chat, with
-  approval; the models for code and for side jobs picked without a row; a proxy change that
+  log to export in place of Log level; Settings › Packages' Add field, once installing from the
+  chat (decision 0056) has been used for a while; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 

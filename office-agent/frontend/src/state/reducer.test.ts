@@ -618,6 +618,21 @@ describe("questions, plans and task drafts", () => {
     expect(next.items[1]).toMatchObject({ status: "answered", answer: "chat:read" });
   });
 
+  it("follows a package install card from the question to the install's end", () => {
+    const event = { type: "package_install_required", id: "p1", runtime: "python", package: "extract-msg", name: "extract-msg", reason: "emails", installed_version: null } as const;
+    const base = run(stateWith(), event, event);
+    expect(base.items).toHaveLength(1);
+    expect(base.items[0]).toMatchObject({ kind: "package_install", status: "pending" });
+    const installing = run(base, { type: "local_package_install_answered", id: "p1", answer: "install" });
+    expect(installing.items[0]).toMatchObject({ status: "installing" });
+    const done = run(installing, { type: "package_install_finished", id: "p1", installed: true, version: "0.48.0" });
+    expect(done.items[0]).toMatchObject({ status: "installed", version: "0.48.0" });
+    const failed = run(installing, { type: "package_install_finished", id: "p1", installed: false, error: "No matching distribution" });
+    expect(failed.items[0]).toMatchObject({ status: "failed", error: "No matching distribution" });
+    const declined = run(base, { type: "local_package_install_answered", id: "p1", answer: "decline", reply: "use the CSV" });
+    expect(declined.items[0]).toMatchObject({ status: "declined", reply: "use the CSV" });
+  });
+
   it("records the answers only on the matching question", () => {
     const base = run(
       stateWith(),

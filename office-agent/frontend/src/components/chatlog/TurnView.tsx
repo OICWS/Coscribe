@@ -22,6 +22,7 @@ import { TaskCard } from "./TaskCard";
 import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
 import { CONNECTED_NOTE_PREFIX, ConnectorConnectedNote, ConnectorOfferCard } from "./ConnectorOfferCard";
 import { FolderAccessCard } from "./FolderAccessCard";
+import { PackageInstallCard } from "./PackageInstallCard";
 import { asksThePerson } from "../../state/folderAccess";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
@@ -107,6 +108,7 @@ export function TurnView({
           <WorkflowDraftCard key={entry.id} entry={entry} />
         ) : entry.kind === "connector_offer" ? (<ConnectorOfferCard key={entry.id} entry={entry} />
         ) : entry.kind === "folder_access" ? (<FolderAccessCard key={entry.id} item={entry} />
+        ) : entry.kind === "package_install" ? (<PackageInstallCard key={entry.id} item={entry} />
         ) : entry.kind === "steer" ? (
           <SteerView key={entry.id} item={entry} />
         ) : (
