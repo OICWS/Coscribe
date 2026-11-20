@@ -131,6 +131,9 @@ function PythonChoices({ found, configured, disabled, onChoose }: PythonChoicesP
   );
 }
 
+// The download and file buttons stack in one column, so they share a width.
+const sideButtonWidth = "w-32 shrink-0";
+
 const PYTHON_FILES = { title: "Choose a Python interpreter", filters: [{ name: "Python", extensions: ["exe"] }, { name: "All files", extensions: ["*"] }] };
 
 /** Another Python by its file: the system's own file picker in the desktop app, a typed path in a
@@ -146,8 +149,8 @@ function OtherPython({ configured, disabled, onChoose }: { configured: string | 
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-[var(--muted)]">
         <span className="min-w-[12rem] flex-1">Another Python on this computer? Pick its python.exe.</span>
-        <button type="button" className={secondaryButtonClass} disabled={disabled} onClick={() => void browse()}>
-          Choose file…
+        <button type="button" className={`${secondaryButtonClass} ${sideButtonWidth}`} disabled={disabled} onClick={() => void browse()}>
+          Choose file
         </button>
       </div>
     );
@@ -200,7 +203,7 @@ export function PythonInterpreterDialog({ onClose }: { onClose: () => void }) {
         {own?.available && !own.downloaded && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-[var(--muted)]">
             <span className="min-w-[12rem] flex-1">No suitable Python here? Download Coscribe's own Python {own.version}, about 30 MB.</span>
-            <button type="button" className={secondaryButtonClass} disabled={busy !== null} onClick={download}>
+            <button type="button" className={`${secondaryButtonClass} ${sideButtonWidth}`} disabled={busy !== null} onClick={download}>
               Download
             </button>
           </div>
