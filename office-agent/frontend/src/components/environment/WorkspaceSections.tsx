@@ -42,7 +42,18 @@ function accessLabel(permission: string | undefined): string {
 
 /** The workspace's folder and the Allowed folders it uses (decision 0053): picked from Settings'
  * list, or a new folder, which joins that list as read and write when the workspace is saved. */
-export function FoldersSection({ folders, library, onChange }: { folders: string[]; library: DirEntry[]; onChange: (folders: string[]) => void }) {
+export function FoldersSection({
+  part,
+  folders,
+  library,
+  onChange,
+}: {
+  /** The main page shows the workspace's own folder; the Allowed folders page the others. */
+  part: "main" | "more";
+  folders: string[];
+  library: DirEntry[];
+  onChange: (folders: string[]) => void;
+}) {
   const [browsing, setBrowsing] = useState<"main" | "more" | null>(null);
   const [main, ...more] = folders;
   const access = new Map(library.map((entry) => [entry.path, entry.permission]));
@@ -56,8 +67,9 @@ export function FoldersSection({ folders, library, onChange }: { folders: string
   };
   return (
     <>
-      <Section
-        title="Folder"
+      {part === "main" && (
+        <Section
+          title="Folder"
         description="New files, screenshots and artifacts go here."
         action={
           <button type="button" className={`${smallButton} flex items-center gap-1.5`} onClick={() => setBrowsing("main")}>
@@ -69,9 +81,11 @@ export function FoldersSection({ folders, library, onChange }: { folders: string
         <span className={`truncate text-[13px] ${main === undefined ? "text-[var(--muted)]" : ""}`} title={main}>
           {main ?? "Coscribe's default workspace folder"}
         </span>
-      </Section>
-      <Section
-        title="Allowed folders this workspace uses"
+        </Section>
+      )}
+      {part === "more" && (
+        <Section
+          title="Allowed folders this workspace uses"
         description="Pick from Allowed folders in Settings, or add a new folder, which joins them as read and write. Other workspaces don't reach these."
         action={
           <div className="flex items-center gap-2">
@@ -126,7 +140,8 @@ export function FoldersSection({ folders, library, onChange }: { folders: string
             </tbody>
           </table>
         )}
-      </Section>
+        </Section>
+      )}
       {browsing && <DirBrowserModal onClose={() => setBrowsing(null)} onSelect={pick} />}
     </>
   );

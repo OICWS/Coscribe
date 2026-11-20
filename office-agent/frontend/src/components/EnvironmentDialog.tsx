@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { folderName } from "../lib/folderName";
 import { createEnvironment, deleteEnvironment, getConfig, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
 import { ALLOWED_FOLDERS_CHANGED, buildDirEntries, type DirEntry } from "./settings/fields";
 import type { Environment, EnvironmentFields, SecretInfo } from "../types/settings";
@@ -18,13 +19,22 @@ import { ArrowLeftIcon, CloseIcon } from "./icons";
 import { ScriptsPage } from "./environment/ScriptsPage";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "./settings/SettingRow";
 
-type Page = "main" | "scripts" | "variables";
+type Page = "main" | "folders" | "sites" | "secrets" | "scripts" | "variables";
 
 const PAGE_TITLES: Record<Page, string> = {
   main: "Edit workspace",
+  folders: "Allowed folders",
+  sites: "Sites",
+  secrets: "Secrets",
   scripts: "Scripts and commands",
   variables: "Environment variables",
 };
+
+function listSummary(names: string[], none: string): string {
+  if (names.length === 0) return none;
+  const shown = names.slice(0, 3).join(", ");
+  return names.length > 3 ? `${shown} and ${names.length - 3} more` : shown;
+}
 
 export const DEFAULT_ENVIRONMENT = "default";
 
@@ -167,20 +177,25 @@ function EditorHeader({
 
 function MainPage({
   draft,
-  secrets,
   library,
   limits,
   onOpen,
 }: {
   draft: EnvironmentDraft;
-  secrets: SecretInfo[];
   library: DirEntry[];
   limits: MachineLimits;
   onOpen: (page: Exclude<Page, "main">) => void;
 }) {
   const parsed = parseEnvText(draft.variablesText);
   const variableCount = "variables" in parsed ? Object.keys(parsed.variables).length : 0;
+  const access = new Map(library.map((entry) => [entry.path, entry.permission]));
+  const more = draft.folders.slice(1).map((folder) => `${folderName(folder)}${access.get(folder) === "read" ? " (read only)" : ""}`);
+  const { network } = draft;
+  const sites = network.mode === "none" ? "None" : network.mode === "any" ? "Any site" : listSummary(network.sites, "None listed");
   const summaries: [Exclude<Page, "main">, string][] = [
+    ["folders", listSummary(more, "None")],
+    ["sites", sites],
+    ["secrets", listSummary([...draft.chosen].sort(), "None")],
     ["scripts", runSummary(draft.run, limits)],
     ["variables", variableCount === 0 ? "None" : `${variableCount} variable${variableCount === 1 ? "" : "s"}`],
   ];
@@ -197,9 +212,7 @@ function MainPage({
           onChange={(e) => draft.setName(e.target.value)}
         />
       </label>
-      <FoldersSection folders={draft.folders} library={library} onChange={draft.setFolders} />
-      <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />
-      <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />
+      <FoldersSection part="main" folders={draft.folders} library={library} onChange={draft.setFolders} />
       <div className="flex flex-col gap-2">
         {summaries.map(([target, value]) => (
           <EnvironmentRow key={target} title={PAGE_TITLES[target]} value={value} onOpen={() => onOpen(target)} />
@@ -245,10 +258,10 @@ function EditorFooter({
   );
 }
 
-// One height on every page (a floor as tall as the tallest, Network) so moving between pages does not
-// make the dialog jump; only a long list grows it, up to the viewport, then the body scrolls.
+// One height on every page, the main page's, so moving between pages does not make the dialog jump;
+// a longer page (many sites or folders) scrolls inside it.
 const dialogClass =
-  "flex h-[min(48rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
+  "flex h-[min(42rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
 
 function EnvironmentEditor({
   environment,
@@ -309,7 +322,7 @@ function EnvironmentEditor({
   // A click beside the dialog closes it only when nothing is changed in it: a stray click must
   // not throw an edit away.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={() => !draft.dirty && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={() => !draft.dirty && onClose()}>
       <div
         role="dialog"
         aria-label={environment ? "Edit workspace" : "New workspace"}
@@ -318,7 +331,10 @@ function EnvironmentEditor({
       >
         <EditorHeader page={page} environment={environment} onBack={() => setPage("main")} onClose={onClose} />
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pt-1">
-          {page === "main" && <MainPage draft={draft} secrets={secrets} library={library} limits={limits} onOpen={setPage} />}
+          {page === "main" && <MainPage draft={draft} library={library} limits={limits} onOpen={setPage} />}
+          {page === "folders" && <FoldersSection part="more" folders={draft.folders} library={library} onChange={draft.setFolders} />}
+          {page === "sites" && <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />}
+          {page === "secrets" && <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />}
           {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
           {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
           {error && (
