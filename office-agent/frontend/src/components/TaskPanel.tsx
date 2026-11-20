@@ -508,10 +508,40 @@ function shownBriefs(activity: ThreadActivity): FolderBrief[] {
   return (activity.folders ?? []).filter((folder) => folder.brief || folder.writing || folder.workspace);
 }
 
+function count(n: number, noun: string): string {
+  return n === 1 ? `1 ${noun}` : `${n} ${noun}s`;
+}
+
 function notesSummary(notes: WorkspaceNotes): string {
-  const skills = notes.skills.length === 1 ? "1 skill" : `${notes.skills.length} skills`;
-  if (notes.notes && notes.skills.length) return `its own notes and ${skills}`;
-  return notes.notes ? "its own notes" : skills;
+  const parts = [
+    notes.notes && "its own notes",
+    notes.skills.length > 0 && count(notes.skills.length, "skill"),
+    notes.settings && "settings",
+    notes.connectors.length > 0 && count(notes.connectors.length, "connector"),
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "settings");
+}
+
+/** What accepting would let the folder do, named before the person says yes. */
+function NotesDetail({ notes }: { notes: WorkspaceNotes }) {
+  const lines: [string, string[]][] = [
+    ["Skills", notes.skills],
+    ["Connectors", notes.connectors],
+    ["Runs without asking", notes.rules.allow],
+    ["Always asks", notes.rules.ask],
+    ["Never runs", notes.rules.deny],
+  ];
+  const shown = lines.filter(([, items]) => items.length > 0);
+  if (shown.length === 0) return null;
+  return (
+    <ul className="mt-1.5 flex flex-col gap-0.5 text-[var(--muted)]">
+      {shown.map(([label, items]) => (
+        <li key={label} className="break-words">
+          <span className="text-[var(--fg)]">{label}:</span> {items.join(", ")}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** A folder's `.coscribe` notes and skills are instructions from whoever can write the folder, so
@@ -535,9 +565,10 @@ function FolderNotes({ notes, onAccept }: { notes: WorkspaceNotes; onAccept: () 
   return (
     <div className="mt-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs" title={title}>
       <p>
-        This folder keeps {notesSummary(notes)} in .coscribe. They are instructions from whoever can change the folder,
-        so they are used only once you say so.
+        This folder keeps {notesSummary(notes)} in .coscribe. They come from whoever can change the folder, so they are
+        used only once you say so.
       </p>
+      <NotesDetail notes={notes} />
       <div className="mt-1.5 flex items-center gap-2">
         <button
           type="button"
