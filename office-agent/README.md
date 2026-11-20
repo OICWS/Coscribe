@@ -185,8 +185,8 @@ task's run follows the task's own approval setting instead.
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
-  write a project overview to `OVERVIEW.md` at its root, analogous to Claude
-  Code's own `/init`.
+  write a project overview to `OVERVIEW.md` at its root (refreshing one that
+  is already there), analogous to Claude Code's own `/init`.
 - `/<skill-name>` -- invoke a loaded skill directly by its name (e.g.
   `/pdf-extract summarize report.pdf`), splicing its full instructions
   straight into that turn instead of relying on the model to notice it's
