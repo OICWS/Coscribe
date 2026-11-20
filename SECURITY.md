@@ -26,6 +26,9 @@ coscribe runs on your own computer.
   settings themselves. A script you approve can do anything inside the folders it was given, and
   prompt injection is not removed: the approval prompts and permission modes stay, and the aim is
   the least access plus your approval.
+- **Packages for scripts** are installed only by you: from Settings, or from a card in the chat
+  when a script needs one (decision 0056), which no permission mode answers for you. pip or npm
+  then runs as you, outside the sandbox, with the package's own install code.
 - **Secrets** (provider keys, connector tokens, the global secrets): values go
   to the operating system's keychain where there is one. The promise is that
   the *model* cannot see a value in its tool output, the transcript, approval
