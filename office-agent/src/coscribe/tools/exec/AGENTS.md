@@ -52,7 +52,8 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
   background hand-over and Stop use it.
 - A folder's grant is recorded in `folder-grants.json` before `icacls` writes it, so an ACE is
   never on a folder without an entry to remove it by. Read-write grants carry no DELETE: a
-  container cannot remove or rename, only a trusted tool can. At each start the server takes
+  container cannot remove or rename the person's files, only a trusted tool can. Only
+  coscribe's own `script-scratch` (TEMP) is granted DELETE too (decision 0056). At each start the server takes
   the grants off folders no longer in Settings or any conversation (`sweep_folder_grants`), and
   the uninstaller takes all of them off (`coscribe-server --revoke-folder-grants`).
 

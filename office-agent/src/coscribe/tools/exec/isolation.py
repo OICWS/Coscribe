@@ -9,6 +9,10 @@ Rights, per folder:
 - read: read and list (`RX`).
 - write: read plus create, overwrite and append (`RX,W`), without DELETE. Removing, renaming and
   replace-by-rename are refused by Windows, so a delete can only go through a trusted tool.
+- scratch: write plus DELETE (`RX,W,D`), only on coscribe's own `script-scratch` folder, which
+  holds no file of the person's (decision 0056). Python's `tempfile` deletes a probe file before
+  it trusts a folder, and Windows opens `NamedTemporaryFile` with delete-on-close; without DELETE
+  in TEMP it falls through to the working directory and leaves its probes in the workspace.
 
 Every grant is recorded in `folder-grants.json` before `icacls` writes it, so a crash between the
 two leaves an entry that `revoke` still removes. Volumes without ACLs (FAT, exFAT) cannot be
@@ -38,9 +42,10 @@ from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnav
 from .env_allowlist import child_env
 from .script_env import ensure_script_env, venv_python
 
-Access = Literal["read", "write"]
+Access = Literal["read", "write", "scratch"]
+_ACCESSES: tuple[Access, ...] = ("read", "write", "scratch")
 
-_RIGHTS: dict[Access, str] = {"read": "RX", "write": "RX,W"}
+_RIGHTS: dict[Access, str] = {"read": "RX", "write": "RX,W", "scratch": "RX,W,D"}
 _REGISTRY = "folder-grants.json"
 _SELF_TEST = "isolation-self-test.json"
 _lock = threading.Lock()
@@ -49,10 +54,12 @@ _lock = threading.Lock()
 @dataclass(frozen=True)
 class Isolation:
     """The folders and the network one run may use. `runtime` is what the interpreter needs to
-    start (the venv, its base installation, the npm directory): read only, like `readable`."""
+    start (the venv, its base installation, the npm directory): read only, like `readable`.
+    `scratch` is coscribe's own folder for the run's files and TEMP: writable, and deletable."""
 
     state_dir: Path
     writable: tuple[Path, ...] = ()
+    scratch: tuple[Path, ...] = ()
     readable: tuple[Path, ...] = ()
     runtime: tuple[Path, ...] = ()
     network: bool = True
@@ -164,7 +171,7 @@ class FolderGrants:
         """Takes both ACEs off a folder the person removed."""
         key = os.path.normcase(str(path.resolve()))
         with _lock:
-            for access in ("read", "write"):
+            for access in _ACCESSES:
                 grant = self._grants.get((key, access))
                 if grant is None:
                     continue
@@ -197,6 +204,7 @@ def capabilities_for(isolation: Isolation) -> tuple[list[str], list[Path]]:
     failed: list[Path] = []
     wanted: list[tuple[Path, Access]] = [
         *((p, "write") for p in isolation.writable),
+        *((p, "scratch") for p in isolation.scratch),
         *((p, "read") for p in (*isolation.readable, *isolation.runtime)),
     ]
     for path, access in wanted:
@@ -416,7 +424,8 @@ def for_scripts(
         )
     return Isolation(
         state_dir,
-        writable=(*writable, scratch_root(state_dir)),
+        writable=tuple(writable),
+        scratch=(scratch_root(state_dir),),
         readable=tuple(readable),
         runtime=(*python_runtime, *runtime),
         network=NetworkGuard(state_dir, thread_id).scripts_online(),

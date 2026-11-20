@@ -28,9 +28,15 @@ from ...runtime import Environments
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
 
 PYTHON_WRAPPER = r"""
-import atexit, json, os, runpy, sys
+import atexit, json, os, runpy, sys, tempfile
 
 config = json.load(open(sys.argv[1], encoding="utf-8"))
+scratch = os.path.dirname(os.path.realpath(sys.argv[1]))
+# In the container TEMP is the run's scratch folder. Pinned, tempfile skips its probe, which
+# falls through to the working directory (the workspace) when a probe file can't be deleted.
+temp = os.environ.get("TEMP")
+if temp and os.path.normcase(os.path.realpath(temp)) == os.path.normcase(scratch):
+    tempfile.tempdir = scratch
 script = sys.argv[2]
 roots = [os.path.normcase(os.path.realpath(p)) for p in config["write"]]
 blocked = []
