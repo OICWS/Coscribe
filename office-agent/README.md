@@ -119,7 +119,7 @@ For multi-step requests, the Coordinator can plan and track progress with
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
 Several commands are typed as a message mid-session (not startup flags). In
-the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/saveskill` and
+the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/create-skill` and
 the skills; the others below have a control of their own (the mode button,
 Stop) but still work typed. During a reply a typed command waits in the box,
 except `/stop`.

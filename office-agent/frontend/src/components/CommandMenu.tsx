@@ -3,7 +3,7 @@ import type { useCommandMenu } from "../lib/useCommandMenu";
 type Menu = ReturnType<typeof useCommandMenu>;
 
 /** The "/" menu: names only, so a long description cannot widen the list or wrap a row; the
- * highlighted command's description shows beside it. */
+ * highlighted command's description shows beside it, whole. */
 export function CommandMenu({ menu, onPick }: { menu: Menu; onPick: (index: number) => void }) {
   const current = menu.matches[menu.index];
   return (
@@ -33,11 +33,12 @@ export function CommandMenu({ menu, onPick }: { menu: Menu; onPick: (index: numb
       </div>
       {current?.description && (
         <div
+          ref={menu.tipRef}
           role="tooltip"
           style={{ top: menu.tipTop }}
-          className="absolute left-[calc(14rem+0.5rem)] mt-1 w-max max-w-72 rounded-md bg-[var(--fg)] px-2 py-1 text-xs leading-snug text-[var(--bg)]"
+          className="absolute left-[calc(14rem+0.5rem)] w-max max-w-sm rounded-md bg-[var(--fg)] px-2 py-1 text-xs leading-snug text-[var(--bg)]"
         >
-          <span className="line-clamp-3">{current.description}</span>
+          {current.description}
         </div>
       )}
     </div>

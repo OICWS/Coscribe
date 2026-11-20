@@ -8,7 +8,8 @@ maintainer chose what to keep in the issue's thread of decisions (2026-11-20).
 
 ## Shipped
 - `frontend/src/components/CommandMenu.tsx`: the menu lists names only in a narrow column; the
-  highlighted command's description shows beside it (three lines at most). The highlighted row
+  highlighted command's description shows beside it, whole, lifted to end where the list ends
+  when it is long. The highlighted row
   scrolls into view on each arrow key, with wrap (`lib/useCommandMenu.ts`).
 - The menu leaves out `/plan`, `/accept-edits`, `/stop` and `/saveworkflow`
   (`web/routes/settings/catalog.py`): the mode button and Stop do the same. Typed, they still run.
@@ -20,6 +21,7 @@ maintainer chose what to keep in the issue's thread of decisions (2026-11-20).
   (`useClearToNewChat`); no confirmation, since the archived one can be restored. The CLI's
   `/clear` still erases in place.
 - `useSlashCommands` fetches `/api/commands` after every turn and when "/" opens the menu.
+- `/saveskill` is now `/create-skill`, with no alias (the app has not been released).
 - Descriptions corrected: `/init` refreshes an existing `OVERVIEW.md`.
 - `tests/e2e/slash-menu.spec.ts` (nightly `e2e.yml`): scrolling, refresh, the description's
   place, `/clear` keeping the workspace, the held command during a reply, "Switching". The first
@@ -29,6 +31,4 @@ maintainer chose what to keep in the issue's thread of decisions (2026-11-20).
 - The menu in the Electron app on Windows; checked in Chromium on Linux only.
 
 ## Follow-ups
-- `/saveskill` renamed to `/create-skill` (waits on the maintainer's answer on a hidden alias);
-  `/doctor` and `/changes` (proposals to the maintainer first); the rest of the issue's comment
-  is in `docs/plan.md`.
+- `/doctor` is agreed and next; `/changes` waits on the maintainer (`docs/plan.md`).

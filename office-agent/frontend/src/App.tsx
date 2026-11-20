@@ -776,7 +776,7 @@ function App() {
     saveDraft: (entry) => saveWorkflowDraft(entry),
     reviewDraft: reviewWorkflowDraft,
     saveAsWorkflow: startWorkflowDraft,
-    saveAsSkill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
+    saveAsSkill: (name) => onSend({ displayText: `/create-skill ${name}`, outgoingText: `/create-skill ${name}`, isInstant: false }),
     dismissOffer: () => dispatch({ type: "local_save_offer_dismissed" }),
     viewFile,
   });

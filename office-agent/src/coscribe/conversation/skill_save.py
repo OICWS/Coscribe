@@ -1,4 +1,4 @@
-"""/saveskill: the curator proposes a skill from the conversation, may ask a few
+"""/create-skill: the curator proposes a skill from the conversation, may ask a few
 clarifying questions, and writes it once the person confirms. It lives apart from
 ChatSessionLG because it is a small dialogue of its own that takes over the next
 messages; the session keeps the pending state and decides when a message goes here.
@@ -13,7 +13,7 @@ from ..runtime_lg import SkillSaveProposal, propose_skill_save_lg, write_skill_l
 from ..tools import load_builtin_skills, slugify_skill_name
 from .events import EventSink
 
-# How many rounds of clarifying question/answer /saveskill goes through
+# How many rounds of clarifying question/answer /create-skill goes through
 # before giving up.
 MAX_SAVE_CLARIFICATION_ROUNDS = 3
 
@@ -38,12 +38,12 @@ class SkillSave:
         self._host = host
 
     async def _handle_save_skill(self, name: str, websocket: EventSink) -> None:
-        """/saveskill's own entry point: validate the name, require a
+        """/create-skill's own entry point: validate the name, require a
         non-empty conversation, run one curator round
         (propose_skill_save_lg), present it."""
         name = name.strip()
         if not name:
-            await websocket.send_json({"type": "error", "message": "Usage: /saveskill <name>"})
+            await websocket.send_json({"type": "error", "message": "Usage: /create-skill <name>"})
             return
         messages = await self._host._current_messages()
         if not messages:
@@ -128,7 +128,7 @@ class SkillSave:
                 await websocket.send_json(
                     {
                         "type": "agent_message",
-                        "text": "Still unclear after a few tries -- try /saveskill again "
+                        "text": "Still unclear after a few tries -- try /create-skill again "
                         "with a more specific name, or once the conversation has a "
                         "clearer single task in it.",
                     }
@@ -152,7 +152,7 @@ class SkillSave:
             await websocket.send_json(
                 {
                     "type": "agent_message",
-                    "text": "Discarded -- refine your request and try /saveskill again.",
+                    "text": "Discarded -- refine your request and try /create-skill again.",
                 }
             )
             return
@@ -170,7 +170,7 @@ class SkillSave:
                 {
                     "type": "error",
                     "message": f"/{slug} is already a built-in skill -- choose a "
-                    "different name for /saveskill.",
+                    "different name for /create-skill.",
                 }
             )
             return

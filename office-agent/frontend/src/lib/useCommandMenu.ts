@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import { getCommands, setThreadMeta } from "./rest";
 import { startNewThread } from "./nav";
 import type { CommandInfo } from "../types/session";
@@ -51,6 +51,7 @@ export function useCommandMenu(commands: CommandInfo[], text: string) {
   const [matches, setMatches] = useState<CommandInfo[]>([]);
   const [index, setIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const tipRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const [tipTop, setTipTop] = useState(0);
 
@@ -75,14 +76,18 @@ export function useCommandMenu(commands: CommandInfo[], text: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands]);
 
-  // The description sits beside the highlighted row, outside the list, whose scrolling would clip it.
+  // The description sits beside the highlighted row, outside the list, whose scrolling would clip
+  // it; a long one is lifted to end where the list ends rather than run over the message box.
   const placeTip = useCallback(() => {
     const item = itemRefs.current[index];
-    if (item && listRef.current) setTipTop(item.offsetTop - listRef.current.scrollTop);
+    const list = listRef.current;
+    if (!item || !list) return;
+    const lowest = list.offsetHeight - (tipRef.current?.offsetHeight ?? 0);
+    setTipTop(Math.max(0, Math.min(item.offsetTop - list.scrollTop, lowest)));
   }, [index]);
 
   // Enter runs the highlighted command, so it must stay in sight.
-  useEffect(() => {
+  useLayoutEffect(() => {
     itemRefs.current[index]?.scrollIntoView({ block: "nearest" });
     placeTip();
   }, [index, placeTip]);
@@ -90,5 +95,5 @@ export function useCommandMenu(commands: CommandInfo[], text: string) {
   const move = (step: 1 | -1) => setIndex((i) => (i + step + matches.length) % matches.length);
   const itemRef = (i: number) => (el: HTMLElement | null) => void (itemRefs.current[i] = el);
 
-  return { matches, index, setIndex, open: matches.length > 0, update, hide, move, itemRef, listRef, tipTop, placeTip };
+  return { matches, index, setIndex, open: matches.length > 0, update, hide, move, itemRef, listRef, tipRef, tipTop, placeTip };
 }

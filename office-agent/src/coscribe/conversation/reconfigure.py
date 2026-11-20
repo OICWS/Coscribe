@@ -226,7 +226,7 @@ class SessionReconfigurer:
             return
         host.lg_agent = new_lg_agent
         host._gated_tool_risks = new_gated_tool_risks
-        # Re-scanned so a skill /saveskill just wrote is usable as /<slug> in this same
+        # Re-scanned so a skill /create-skill just wrote is usable as /<slug> in this same
         # session, and the lookup (unrestricted by enabled_skill_names) matches the disk.
         host.skills_by_slug = {
             skill.slug: skill

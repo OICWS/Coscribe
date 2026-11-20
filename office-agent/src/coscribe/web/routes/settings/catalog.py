@@ -29,8 +29,8 @@ FIXED_COMMANDS = [
     },
     {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
-        "name": "saveskill",
-        "description": "Save this conversation as a reusable Skill (usage: /saveskill <name>)",
+        "name": "create-skill",
+        "description": "Turn this conversation into a reusable skill (usage: /create-skill <name>)",
     },
 ]
 
