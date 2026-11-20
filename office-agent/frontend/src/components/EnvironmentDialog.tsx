@@ -261,7 +261,7 @@ function EditorFooter({
 // One height on every page, the main page's, so moving between pages does not make the dialog jump;
 // a longer page (many sites or folders) scrolls inside it.
 const dialogClass =
-  "flex h-[min(42rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
+  "flex h-[min(45rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
 
 function EnvironmentEditor({
   environment,
