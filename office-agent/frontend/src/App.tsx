@@ -117,11 +117,10 @@ function App() {
   // The file each conversation's viewer shows.
   const [viewerFiles, setViewerFiles] = useState<Record<string, string>>({});
   const viewerFile = openPanels.includes("viewer") ? viewerFiles[threadId] : undefined;
-  const setPanelOpen = (panel: ConversationPanel, open: boolean) =>
+  const setPanelOpen = (panel: ConversationPanel, open: boolean, thread = threadIdRef.current) =>
     setPanelsByThread((panels) => {
-      const current = threadIdRef.current;
-      const list = (panels[current] ?? []).filter((p) => p !== panel);
-      return { ...panels, [current]: open ? [...list, panel] : list };
+      const list = (panels[thread] ?? []).filter((p) => p !== panel);
+      return { ...panels, [thread]: open ? [...list, panel] : list };
     });
   const togglePanel = (panel: ConversationPanel) =>
     setPanelsByThread((panels) => {
@@ -408,7 +407,8 @@ function App() {
     !state.turnInFlight &&
     !handingOff &&
     !isScheduledTaskThread &&
-    threadWorkflow === null;
+    threadWorkflow === null &&
+    !viewerFile;
   const taskPanelShown =
     navMode === "create" &&
     taskPanelWanted &&
@@ -769,7 +769,7 @@ function App() {
   });
   const artifacts = artifactActions((id, path) => {
     setViewerFiles((files) => ({ ...files, [id]: path }));
-    setPanelOpen("viewer", true);
+    setPanelOpen("viewer", true, id);
   }, artifactStart.start, (id) => showSettings("design-systems", id ?? "new"));
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
