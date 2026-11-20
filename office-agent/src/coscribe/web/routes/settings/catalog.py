@@ -20,12 +20,19 @@ from ....workflows import describe_params, tool_description
 from ...state import AppState
 
 FIXED_COMMANDS = [
-    {"name": "plan", "description": "Toggle Plan Mode (read-only tools only)"},
-    {"name": "accept-edits", "description": "Toggle Accept-Edits Mode (no approval prompts)"},
-    {"name": "compact", "description": "Summarize this thread to reclaim context"},
-    {"name": "clear", "description": "Wipe this thread's conversation history and start fresh"},
-    {"name": "stop", "description": "Stop the current in-progress run"},
-    {"name": "init", "description": "Explore the workspace and write OVERVIEW.md"},
+    {
+        "name": "plan",
+        "description": "Toggle Plan: research and write a plan to approve before any change",
+    },
+    {
+        "name": "accept-edits",
+        "description": "Toggle Accept Edits: file edits need no approval; "
+        "code and outside actions still ask",
+    },
+    {"name": "compact", "description": "Summarize this conversation to free up context"},
+    {"name": "clear", "description": "Erase this conversation's history and start fresh"},
+    {"name": "stop", "description": "Stop the reply in progress"},
+    {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
         "name": "saveworkflow",
         "description": "Draft a workflow from what this conversation did "

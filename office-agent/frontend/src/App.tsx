@@ -45,6 +45,7 @@ import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
+import { useSlashCommands } from "./lib/useCommandMenu";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
@@ -56,7 +57,6 @@ import { PageHeader, TitleBar } from "./components/AppHeader";
 import { ThreadHeader } from "./components/ThreadHeader";
 import {
   answerWorkflowStep,
-  getCommands,
   getScheduledTasks,
   getThreads,
   investigateWorkflowRun,
@@ -87,7 +87,7 @@ import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowPro
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
 import { QuestionPanel } from "./components/QuestionCard";
-import type { CommandInfo, ThreadSummary } from "./types/session";
+import type { ThreadSummary } from "./types/session";
 import type { ScheduledRun, ScheduledTask } from "./types/settings";
 import type { StepRecord, Workflow } from "./types/workflow";
 
@@ -198,7 +198,7 @@ function App() {
       .then(setScheduledTasks)
       .catch(() => {});
   }, []);
-  const [commands, setCommands] = useState<CommandInfo[]>([]);
+  const [commands, refreshCommands] = useSlashCommands(state.turnTick);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [threads, setThreads] = useState<ThreadSummary[] | null>(null);
   const refreshThreads = useCallback(() => {
@@ -376,10 +376,6 @@ function App() {
     if (state.historyReceived) run();
     else pendingLocalSendsRef.current.push(run);
   };
-
-  useEffect(() => {
-    getCommands().then(setCommands);
-  }, []);
 
   // Refetched whenever a turn finishes (turnTick, same signal
   // RunPanel's refreshKey uses), not just on mount -- a brand-new thread
@@ -797,6 +793,7 @@ function App() {
       totalTokens={state.totalTokens}
       workflowTest={state.workflowTest}
       commands={commands}
+      onCommandsWanted={refreshCommands}
       modePill={
         onHome ? null : (
           <ModePill
