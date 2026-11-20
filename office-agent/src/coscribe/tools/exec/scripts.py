@@ -42,6 +42,7 @@ from .script_guard import (
     blocked_write,
     locked_file_note,
     refusal_note,
+    scratch_temp_env,
     suggested_folder,
     writable_roots,
     write_python_wrapper,
@@ -101,7 +102,7 @@ def _run_python_script(
     }
     if isolation is not None:
         # The system temp folder is outside what the container may reach.
-        env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
+        env |= scratch_temp_env(scratch_dir)
     wrapper, guard_config = write_python_wrapper(
         scratch_dir, writable_roots(workspace_root, [*extra_writable, scratch_dir])
     )

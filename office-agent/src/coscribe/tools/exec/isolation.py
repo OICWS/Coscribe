@@ -10,9 +10,9 @@ Rights, per folder:
 - write: read plus create, overwrite and append (`RX,W`), without DELETE. Removing, renaming and
   replace-by-rename are refused by Windows, so a delete can only go through a trusted tool.
 - scratch: write plus DELETE (`RX,W,D`), only on coscribe's own `script-scratch` folder, which
-  holds no file of the person's (decision 0056). Python's `tempfile` deletes a probe file before
-  it trusts a folder, and Windows opens `NamedTemporaryFile` with delete-on-close; without DELETE
-  in TEMP it falls through to the working directory and leaves its probes in the workspace.
+  holds no file of the person's (decision 0056). A Python run's temp files go there
+  (`scratch_temp_env`), and Windows opens `NamedTemporaryFile` with delete-on-close, so they
+  need DELETE.
 
 Every grant is recorded in `folder-grants.json` before `icacls` writes it, so a crash between the
 two leaves an entry that `revoke` still removes. Volumes without ACLs (FAT, exFAT) cannot be

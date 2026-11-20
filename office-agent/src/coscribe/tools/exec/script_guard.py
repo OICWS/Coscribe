@@ -26,17 +26,28 @@ from pathlib import Path
 from ...runtime import Environments
 
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
+_SCRATCH_VAR = "COSCRIBE_SCRATCH_TEMP"
+
+
+def scratch_temp_env(scratch_dir: Path) -> dict[str, str]:
+    """The variables that make a contained run's temp folder its scratch folder. Windows
+    replaces TEMP and TMP in an AppContainer, so the Python wrapper restores them from
+    `COSCRIBE_SCRATCH_TEMP`, which it leaves alone."""
+    folder = str(scratch_dir)
+    return {"TEMP": folder, "TMP": folder, _SCRATCH_VAR: folder}
+
 
 PYTHON_WRAPPER = r"""
 import atexit, json, os, runpy, sys, tempfile
 
 config = json.load(open(sys.argv[1], encoding="utf-8"))
-scratch = os.path.dirname(os.path.realpath(sys.argv[1]))
-# In the container TEMP is the run's scratch folder. Pinned, tempfile skips its probe, which
-# falls through to the working directory (the workspace) when a probe file can't be deleted.
-temp = os.environ.get("TEMP")
-if temp and os.path.normcase(os.path.realpath(temp)) == os.path.normcase(scratch):
-    tempfile.tempdir = scratch
+# Windows points an AppContainer process's TEMP and TMP at the container's own folder, which
+# this guard refuses; tempfile's probe then falls through to the working directory, the
+# workspace, and its probe files stay there because a container can't delete them. Pinned,
+# tempfile never probes.
+scratch = os.environ.get("@@SCRATCH_VAR@@")
+if scratch:
+    tempfile.tempdir = os.environ["TEMP"] = os.environ["TMP"] = scratch
 script = sys.argv[2]
 roots = [os.path.normcase(os.path.realpath(p)) for p in config["write"]]
 blocked = []
@@ -105,7 +116,7 @@ atexit.register(report)
 sys.addaudithook(hook)
 sys.argv = [script]
 runpy.run_path(script, run_name="__main__")
-""".replace("@@MARK@@", _BLOCKED_MARK)
+""".replace("@@MARK@@", _BLOCKED_MARK).replace("@@SCRATCH_VAR@@", _SCRATCH_VAR)
 
 
 def writable_roots(workspace_root: Path, extra_writable: list[Path]) -> list[str]:

@@ -65,6 +65,7 @@ from ..exec import (
     node_guard_args,
     refusal_note,
     require_capability,
+    scratch_temp_env,
     script_scratch_root,
     start_command,
     suggested_folder,
@@ -483,7 +484,7 @@ async def _start_contained(
     if isolation is None:
         return None
     if scratch_dir is not None:
-        env = env | {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
+        env = env | scratch_temp_env(scratch_dir)
     loop = asyncio.get_running_loop()
 
     def start() -> str:

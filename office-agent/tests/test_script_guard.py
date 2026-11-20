@@ -15,6 +15,7 @@ from coscribe.tools.exec.script_guard import (
     locked_file_note,
     node_guard_args,
     refusal_note,
+    scratch_temp_env,
     suggested_folder,
     without_guard_warnings,
     writable_roots,
@@ -58,12 +59,13 @@ _UNDELETABLE_TEMP = (
 )
 
 
-@pytest.mark.parametrize("temp_is_scratch", [True, False])
-def test_the_wrapper_pins_temp_to_the_scratch_folder_only_when_temp_points_there(
-    tmp_path: Path, temp_is_scratch: bool
+@pytest.mark.parametrize("pinned", [True, False])
+def test_the_wrapper_pins_temp_to_the_scratch_folder_when_asked(
+    tmp_path: Path, pinned: bool
 ) -> None:
-    # Where a probe file can't be deleted, tempfile's check of TEMP falls through to the working
-    # directory and leaves its probes there (issue #974).
+    # Where a probe file can't be deleted, tempfile's check of a folder falls through to the
+    # working directory and leaves its probes there (issue #974). Windows sets a contained run's
+    # TEMP to a folder of its own, so the pin can't rely on TEMP.
     scratch, work, other = tmp_path / "scratch", tmp_path / "work", tmp_path / "other"
     for folder in (scratch, work, other):
         folder.mkdir()
@@ -71,8 +73,9 @@ def test_the_wrapper_pins_temp_to_the_scratch_folder_only_when_temp_points_there
     wrapper, config = write_python_wrapper(scratch, roots)
     script = scratch / "script.py"
     script.write_text(_UNDELETABLE_TEMP, encoding="utf-8")
-    temp = scratch if temp_is_scratch else other
-    env = {**os.environ, "TEMP": str(temp), "TMP": str(temp), "TMPDIR": str(temp)}
+    env = {**os.environ, "TEMP": str(other), "TMP": str(other), "TMPDIR": str(other)}
+    if pinned:
+        env |= scratch_temp_env(scratch) | {"TEMP": str(other), "TMP": str(other)}
     done = subprocess.run(
         [sys.executable, str(wrapper), str(config), str(script)],
         capture_output=True,
@@ -80,7 +83,7 @@ def test_the_wrapper_pins_temp_to_the_scratch_folder_only_when_temp_points_there
         cwd=str(work),
         env=env,
     )
-    if temp_is_scratch:
+    if pinned:
         assert done.returncode == 0, done.stderr
         assert Path(done.stdout.strip()).resolve() == scratch.resolve()
         assert list(work.iterdir()) == []

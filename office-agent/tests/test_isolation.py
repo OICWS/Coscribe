@@ -366,6 +366,8 @@ def test_a_script_is_held_to_its_folders(folders: tuple[Path, ...], tmp_path: Pa
 
 _TEMP_USER = r"""
 import os, sys, tempfile
+if len(sys.argv) > 1:
+    tempfile.tempdir = sys.argv[1]
 with tempfile.NamedTemporaryFile() as fh:
     fh.write(b"x")
 with tempfile.TemporaryDirectory() as folder:
@@ -383,8 +385,8 @@ def test_temp_files_work_in_the_scratch_folder_and_none_land_in_the_workspace(
     run_dir = scratch / "run"
     run_dir.mkdir()
     spec = Isolation(state, writable=(work,), scratch=(scratch,), runtime=_runtime())
-    env = {**dict(os.environ), "TEMP": str(run_dir), "TMP": str(run_dir)}
-    argv = [sys.executable, "-I", "-c", _TEMP_USER]
+    env = dict(os.environ)
+    argv = [sys.executable, "-I", "-c", _TEMP_USER, str(run_dir)]
     command = RunningCommand(argv, str(work), env, spec)
     assert command.wait(120) == "exited"
     assert command.returncode == 0, command.stderr_text()
