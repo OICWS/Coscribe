@@ -41,12 +41,16 @@ export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillP
   const rootRef = useRef<HTMLDivElement>(null);
   useClickOutside(rootRef, () => setOpen(false), open);
   const current = currentMode({ planMode, acceptEdits, autoMode });
+  // During a reply the server applies a change only when the reply ends.
+  const [switchingFrom, setSwitchingFrom] = useState<Mode | null>(null);
+  if (switchingFrom !== null && switchingFrom !== current) setSwitchingFrom(null);
 
   // The server keeps one mode at a time: switching on a mode switches the
   // others off, and switching the current one off returns to Manual.
   const changeMode = (target: Mode) => {
     setOpen(false);
     if (target === current) return;
+    setSwitchingFrom(current);
     sendRaw(target === "manual" ? `/${current}` : `/${target}`);
   };
 
@@ -59,7 +63,7 @@ export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillP
         className="flex h-8 max-w-full items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="truncate">{MODES.find((m) => m.mode === current)?.label}</span>
+        <span className="truncate">{switchingFrom ? "Switching" : MODES.find((m) => m.mode === current)?.label}</span>
       </button>
       {open && (
         <div

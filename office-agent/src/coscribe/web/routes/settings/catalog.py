@@ -19,25 +19,15 @@ from ....tools import (
 from ....workflows import describe_params, tool_description
 from ...state import AppState
 
+# The app's own controls cover /plan, /accept-edits, /auto, /stop and /saveworkflow: typed, they
+# still run, but the menu leaves them out.
 FIXED_COMMANDS = [
-    {
-        "name": "plan",
-        "description": "Toggle Plan: research and write a plan to approve before any change",
-    },
-    {
-        "name": "accept-edits",
-        "description": "Toggle Accept Edits: file edits need no approval; "
-        "code and outside actions still ask",
-    },
     {"name": "compact", "description": "Summarize this conversation to free up context"},
-    {"name": "clear", "description": "Erase this conversation's history and start fresh"},
-    {"name": "stop", "description": "Stop the reply in progress"},
-    {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
-        "name": "saveworkflow",
-        "description": "Draft a workflow from what this conversation did "
-        "(usage: /saveworkflow [name])",
+        "name": "clear",
+        "description": "Archive this conversation and start a new one in the same workspace",
     },
+    {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
         "name": "saveskill",
         "description": "Save this conversation as a reusable Skill (usage: /saveskill <name>)",

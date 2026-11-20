@@ -210,7 +210,7 @@ def test_get_tools_lists_builtin_tools_with_metadata(
     assert tools["list_wakes"]["requires_approval"] is False
 
 
-def test_get_commands_includes_plan_accept_edits_and_compact(
+def test_get_commands_leaves_out_what_a_control_does(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_model = FakeToolCallingChatModel(responses=[])
@@ -219,7 +219,8 @@ def test_get_commands_includes_plan_accept_edits_and_compact(
 
     assert response.status_code == 200
     names = {command["name"] for command in response.json()}
-    assert {"init", "plan", "accept-edits", "compact"} <= names
+    assert {"init", "compact", "clear", "saveskill"} <= names
+    assert not {"plan", "accept-edits", "auto", "stop", "saveworkflow"} & names
 
 
 def test_unknown_slash_command_is_still_rejected_lg(

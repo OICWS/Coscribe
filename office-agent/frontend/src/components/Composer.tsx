@@ -2,7 +2,8 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
-import { useCommandMenu } from "../lib/useCommandMenu";
+import { isCommand, useCommandMenu } from "../lib/useCommandMenu";
+import { CommandMenu, CommandsAfterReply } from "./CommandMenu";
 import { useWindowFileDrop } from "../lib/useWindowFileDrop";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
@@ -199,7 +200,10 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   useComposerAction("open-file", () => fileInputRef.current?.click());
 
-  const autocompleteOpen = menu.open;
+  const autocompleteOpen = menu.open && !turnInFlight;
+  // During a reply a command would reach the model as a note; it waits in the box instead.
+  const heldDuringReply = (text: string) => turnInFlight && !/^\/stop\s*$/i.test(text.trim()) && isCommand(text, commands);
+  const showReplyNote = turnInFlight && !/^\/stop$/i.test(value) && /^\/\S*$/.test(value);
   useReportDraft(onHasDraftChange, value.trim() !== "" || [pendingImages, pendingFiles, pendingPastes].some((list) => list.length > 0));
 
   useEffect(() => {
@@ -321,6 +325,7 @@ export function Composer({
     };
     // While a reply is being worked on, a message goes to it as a note, attachments and all (or
     // answers the card it waits on), rather than queuing behind it; "/stop" still stops it.
+    if (heldDuringReply(text)) return;
     if (turnInFlight && text.trim().toLowerCase() !== "/stop") {
       onSteer({ ...message, displayText: message.displayText.trim(), outgoingText: message.outgoingText.trim() });
     } else {
@@ -483,24 +488,8 @@ export function Composer({
             : "border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-hover)]"
         }`}
       >
-        {autocompleteOpen && (
-          <div className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
-            {menu.matches.map((cmd, i) => (
-              <div
-                key={cmd.name}
-                ref={menu.itemRef(i)}
-                className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${i === menu.index ? "bg-[var(--card-bg)]" : ""}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  selectAutocomplete(i);
-                }}
-              >
-                <span className="font-mono text-[var(--accent)]">/{cmd.name}</span>
-                <span className="truncate text-xs text-[var(--muted)]">{cmd.description}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {autocompleteOpen && <CommandMenu menu={menu} onPick={selectAutocomplete} />}
+        {showReplyNote && <CommandsAfterReply />}
 
         {/* Attachment tray -- inside the composer box now (used to sit
          * above it, outside the border, reading as a separate element),

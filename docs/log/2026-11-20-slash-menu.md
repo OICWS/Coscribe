@@ -1,25 +1,34 @@
-# The "/" menu keeps its highlight in view and offers new skills (partly shipped)
+# The "/" menu: a short list, new skills, and commands the app's controls already cover (shipped)
 
 Why: issue #1003. Arrow keys moved the highlight past the menu's visible edge, so Enter could run
-a command the person could not see; the menu fetched skills once when the app loaded, so a skill
-made later was missing until a reload; and some command descriptions no longer said what the
-command does.
+a command the person could not see; the menu fetched skills once, so a skill made later was
+missing until a reload; long descriptions widened the menu or wrapped its rows; several entries
+repeated a control; and a command typed during a reply reached the model as a note. The
+maintainer chose what to keep in the issue's thread of decisions (2026-11-20).
 
 ## Shipped
-- `frontend/src/lib/useCommandMenu.ts`: the menu's matching and highlight, moved out of
-  `Composer.tsx`; the highlighted row scrolls into view on each move (both arrow keys, with wrap).
-- `useSlashCommands` fetches `/api/commands` after every turn and each time "/" opens the menu,
-  so a skill made in chat, in Settings or on disk is offered without a reload.
-- `web/routes/settings/catalog.py`: `/accept-edits` says that only file edits skip approval
-  (`approvals.py` auto-approves `WRITE_LOCAL` alone), `/plan` uses the mode button's wording,
-  `/init` says it refreshes an existing `OVERVIEW.md` (the prompt already did).
-- `tests/e2e/slash-menu.spec.ts` (in the nightly `e2e.yml` list): both specs fail on `main` and
-  pass with the change.
+- `frontend/src/components/CommandMenu.tsx`: the menu lists names only in a narrow column; the
+  highlighted command's description shows beside it (three lines at most). The highlighted row
+  scrolls into view on each arrow key, with wrap (`lib/useCommandMenu.ts`).
+- The menu leaves out `/plan`, `/accept-edits`, `/stop` and `/saveworkflow`
+  (`web/routes/settings/catalog.py`): the mode button and Stop do the same. Typed, they still run.
+- During a reply "/" shows "Commands are available once this reply finishes." instead of the
+  list, and a typed command stays in the box rather than reaching the model; `/stop` still stops.
+- The mode button reads "Switching" from a pick until the server's state shows the new mode
+  (during a reply the server applies it when the reply ends).
+- `/clear` in the app archives the conversation and opens a blank one in the same environment
+  (`useClearToNewChat`); no confirmation, since the archived one can be restored. The CLI's
+  `/clear` still erases in place.
+- `useSlashCommands` fetches `/api/commands` after every turn and when "/" opens the menu.
+- Descriptions corrected: `/init` refreshes an existing `OVERVIEW.md`.
+- `tests/e2e/slash-menu.spec.ts` (nightly `e2e.yml`): scrolling, refresh, the description's
+  place, `/clear` keeping the workspace, the held command during a reply, "Switching". The first
+  two fail on `main`; the `/clear` one fails with the environment carry switched off.
 
 ## Not verified
 - The menu in the Electron app on Windows; checked in Chromium on Linux only.
 
 ## Follow-ups
-- The rest of #1003 waits on the maintainer: which commands leave the menu, what a typed command
-  does during a reply, the mode button's pending state, `/clear`, `/saveskill`'s name and the
-  new commands from the issue's comment (`docs/plan.md`).
+- `/saveskill` renamed to `/create-skill` (waits on the maintainer's answer on a hidden alias);
+  `/doctor` and `/changes` (proposals to the maintainer first); the rest of the issue's comment
+  is in `docs/plan.md`.

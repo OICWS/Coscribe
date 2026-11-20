@@ -45,7 +45,7 @@ import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
-import { useSlashCommands } from "./lib/useCommandMenu";
+import { useClearToNewChat, useSlashCommands } from "./lib/useCommandMenu";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
@@ -478,6 +478,7 @@ function App() {
 
   // A task made from this conversation works in the conversation's folder.
   const threadEnvironment = state.environment;
+  const clearToNewChat = useClearToNewChat(threadId, threadEnvironment, socketRef);
 
   const startWorkflowDraft = (nameHint: string) => {
     setWorkflowDraft({ threadId, threadTitle: sessionLabel, nameHint, environment: threadEnvironment });
@@ -633,12 +634,9 @@ function App() {
       startWorkflowDraft((saveWorkflow[1] ?? "").trim());
       return;
     }
+    if (payload.displayText.trim().toLowerCase() === "/clear") return clearToNewChat();
     if (payload.displayText.trim().toLowerCase() === "/stop") {
-      // Reaches the currently-running turn directly, not queued behind it
-      // like a normal message would -- see conversation/session.py's request_stop().
-      // Not routed through runOrQueueSend: a turn has to already be
-      // running for /stop to mean anything, which itself requires
-      // history to have long since arrived.
+      // Reaches the running turn directly instead of queuing behind it (session.py's request_stop()).
       dispatch({ type: "local_user_message", text: payload.displayText, instant: true });
       onStop();
       return;
@@ -796,7 +794,7 @@ function App() {
       onCommandsWanted={refreshCommands}
       modePill={
         onHome ? null : (
-          <ModePill
+          <ModePill key={threadId}
             planMode={state.planMode}
             acceptEdits={state.acceptEdits}
             autoMode={state.autoMode}
