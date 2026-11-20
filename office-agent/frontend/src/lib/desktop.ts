@@ -10,7 +10,7 @@
  * shell is ever added again, this is the one place that would need to
  * know. */
 
-import { isElectron, pickFolderNative as pickFolderNativeElectron } from "./electron";
+import { isElectron, nativeFilePicker, pickFolderNative as pickFolderNativeElectron, type PickFileOptions } from "./electron";
 
 export type DesktopKind = "electron" | "web";
 
@@ -30,4 +30,9 @@ export async function pickFolderNative(): Promise<string | null> {
   const kind = desktopKind();
   if (kind === "electron") return pickFolderNativeElectron();
   throw new Error("pickFolderNative() called outside a desktop shell");
+}
+
+/** The native file picker of the desktop shell, or null in a browser tab or an older shell. */
+export function filePickerNative(): ((options?: PickFileOptions) => Promise<string | null>) | null {
+  return desktopKind() === "electron" ? nativeFilePicker() : null;
 }

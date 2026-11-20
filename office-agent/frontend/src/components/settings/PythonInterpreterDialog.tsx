@@ -6,12 +6,10 @@ import {
   setScriptEnvInterpreter,
 } from "../../lib/rest";
 import type { FoundPython, ScriptEnvInterpreterInfo, ScriptIsolation } from "../../types/settings";
+import { filePickerNative } from "../../lib/desktop";
 import { CHECK_WORDS } from "../environment/checkWords";
+import { SettingsDialog } from "./SettingsDialog";
 import { fieldClass, secondaryButtonClass } from "./SettingRow";
-
-interface PythonInterpreterSectionProps {
-  active: boolean;
-}
 
 type Status = { text: string; error: boolean } | null;
 
@@ -41,7 +39,6 @@ const failure = (err: unknown, fallback: string): Status => ({
 // work. The download happens only on the person's click (#586).
 function usePythonChoice(active: boolean) {
   const [info, setInfo] = useState<ScriptEnvInterpreterInfo | null>(null);
-  const [path, setPath] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>(null);
   // Shown checked at once; the save and the setup after it take a while.
@@ -49,10 +46,7 @@ function usePythonChoice(active: boolean) {
 
   const refresh = () => {
     getScriptEnvInterpreter()
-      .then((loaded) => {
-        setInfo(loaded);
-        setPath(loaded.configured && !loaded.found.some((f) => f.path === loaded.configured) ? loaded.configured : "");
-      })
+      .then(setInfo)
       .catch((err) => setStatus(failure(err, "Could not look for Python.")));
   };
 
@@ -89,7 +83,7 @@ function usePythonChoice(active: boolean) {
     void apply("Downloading Coscribe's Python (about 30 MB)…", "Could not download Python.", downloadOwnPython);
 
   const configured = picked !== undefined ? picked : (info?.configured ?? null);
-  return { info, path, setPath, busy, status, configured, choose, download };
+  return { info, busy, status, configured, choose, download };
 }
 
 interface PythonChoicesProps {
@@ -118,6 +112,7 @@ function PythonChoices({ found, configured, disabled, onChoose }: PythonChoicesP
       </span>
     </label>
   );
+  const other = configured !== null && !found.some((python) => python.path === configured) ? configured : null;
   return (
     <div className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-xl border border-[var(--border)]">
       {row(
@@ -131,62 +126,91 @@ function PythonChoices({ found, configured, disabled, onChoose }: PythonChoicesP
       {found.map((python) =>
         row(python.path, configured === python.path, python.path, `Python ${python.version}`, python.path, true),
       )}
+      {other !== null && row("other", true, other, "Chosen file", other, true)}
     </div>
   );
 }
 
-export function PythonInterpreterSection({ active }: PythonInterpreterSectionProps) {
-  const { info, path, setPath, busy, status, configured, choose, download } = usePythonChoice(active);
-  const own = info?.own_python;
+const PYTHON_FILES = { title: "Choose a Python interpreter", filters: [{ name: "Python", extensions: ["exe"] }, { name: "All files", extensions: ["*"] }] };
 
-  return (
-    <div className="flex flex-col gap-3 pt-4">
-      <div>
-        <div className="text-[15px]">Interpreter</div>
-        <p className="mt-1 text-[13px] leading-snug text-[var(--muted)]">
-          Which Python runs scripts. Coscribe makes its own environment from it, so nothing you installed is changed.
-        </p>
-      </div>
-
-      {info !== null && (
-        <PythonChoices found={info.found} configured={configured} disabled={busy !== null} onChoose={choose} />
-      )}
-
-      {own?.available && !own.downloaded && (
-        <div className="flex items-center gap-3 text-[13px] text-[var(--muted)]">
-          <span className="flex-1">
-            No suitable Python here? Coscribe can download its own Python {own.version} from GitHub.
-          </span>
-          <button type="button" className={secondaryButtonClass} disabled={busy !== null} onClick={download}>
-            Download (about 30 MB)
-          </button>
-        </div>
-      )}
-
-      <div className="flex items-center gap-2">
-        <input
-          aria-label="Python interpreter path"
-          className={`${fieldClass} min-w-0 flex-1 font-mono text-[13px]`}
-          placeholder="Or another python.exe path"
-          value={path}
-          disabled={busy !== null}
-          onChange={(e) => setPath(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && path.trim() && choose(path.trim())}
-        />
-        <button
-          type="button"
-          className={secondaryButtonClass}
-          disabled={busy !== null || !path.trim() || path.trim() === configured}
-          onClick={() => choose(path.trim())}
-        >
-          Use
+/** Another Python by its file: the system's own file picker in the desktop app, a typed path in a
+ * browser tab, which has no way to give a page a file's full path. */
+function OtherPython({ configured, disabled, onChoose }: { configured: string | null; disabled: boolean; onChoose: (path: string) => void }) {
+  const [path, setPath] = useState("");
+  const pick = filePickerNative();
+  if (pick) {
+    const browse = async () => {
+      const chosen = await pick(PYTHON_FILES);
+      if (chosen && chosen !== configured) onChoose(chosen);
+    };
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-[var(--muted)]">
+        <span className="min-w-[12rem] flex-1">Another Python on this computer? Pick its python.exe.</span>
+        <button type="button" className={secondaryButtonClass} disabled={disabled} onClick={() => void browse()}>
+          Choose file…
         </button>
       </div>
-
-      {busy && <p className="text-[13px] text-[var(--muted)]">{busy}</p>}
-      {!busy && status && (
-        <p className={`text-[13px] ${status.error ? "text-red-500" : "text-[var(--muted)]"}`}>{status.text}</p>
-      )}
+    );
+  }
+  const use = () => {
+    const chosen = path.trim();
+    if (chosen && chosen !== configured) onChoose(chosen);
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        aria-label="Python interpreter path"
+        className={`${fieldClass} min-w-0 flex-1 font-mono text-[13px]`}
+        placeholder="Or another python.exe path"
+        value={path}
+        disabled={disabled}
+        onChange={(e) => setPath(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && use()}
+      />
+      <button type="button" className={secondaryButtonClass} disabled={disabled || !path.trim() || path.trim() === configured} onClick={use}>
+        Use
+      </button>
     </div>
+  );
+}
+
+/** The interpreter scripts run on, chosen in its own dialog from Settings › Capabilities › Advanced. */
+export function PythonInterpreterDialog({ onClose }: { onClose: () => void }) {
+  const { info, busy, status, configured, choose, download } = usePythonChoice(true);
+  const own = info?.own_python;
+  // Looking for every Python on the computer takes a few seconds on Windows.
+  const searching = info === null && status === null;
+
+  return (
+    <SettingsDialog
+      title="Python for scripts"
+      description="Which Python runs scripts. Coscribe makes its own environment from it, so nothing you installed is changed."
+      onClose={onClose}
+    >
+      <div className="flex flex-col gap-4">
+        {searching && (
+          <p role="status" className="flex items-center gap-2 py-2 text-sm text-[var(--muted)]">
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--muted)] border-t-transparent" />
+            Searching for Python…
+          </p>
+        )}
+
+        {info !== null && <PythonChoices found={info.found} configured={configured} disabled={busy !== null} onChoose={choose} />}
+
+        {own?.available && !own.downloaded && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-[var(--muted)]">
+            <span className="min-w-[12rem] flex-1">No suitable Python here? Download Coscribe's own Python {own.version}, about 30 MB.</span>
+            <button type="button" className={secondaryButtonClass} disabled={busy !== null} onClick={download}>
+              Download
+            </button>
+          </div>
+        )}
+
+        {info !== null && <OtherPython configured={configured} disabled={busy !== null} onChoose={choose} />}
+
+        {busy && <p className="text-[13px] text-[var(--muted)]">{busy}</p>}
+        {!busy && status && <p className={`text-[13px] ${status.error ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>{status.text}</p>}
+      </div>
+    </SettingsDialog>
   );
 }
