@@ -72,12 +72,10 @@ test("the workspace picker makes, chooses, edits and deletes a workspace", async
   await editEnvironment(page, name);
   const dialog = page.getByRole("dialog", { name: "Edit workspace" });
   await expect(dialog.getByText("Used by 1 conversation")).toBeVisible();
-  for (const section of ["Folder", "Allowed folders this workspace uses", "Sites", "Secrets"]) {
-    await expect(dialog.getByRole("heading", { name: section, exact: true })).toBeVisible();
-  }
+  await expect(dialog.getByRole("heading", { name: "Folder", exact: true })).toBeVisible();
   // Every page keeps the main page's size, so the dialog does not jump while moving between them.
   const mainHeight = (await dialog.boundingBox())?.height;
-  for (const page_ of ["Scripts and commands", "Environment variables"]) {
+  for (const page_ of ["Allowed folders", "Sites", "Secrets", "Scripts and commands", "Environment variables"]) {
     await dialog.getByRole("button", { name: new RegExp(page_) }).click();
     expect((await dialog.boundingBox())?.height).toBe(mainHeight);
     await dialog.getByRole("button", { name: "Back" }).click();
@@ -105,6 +103,7 @@ test("a workspace's Sites limit its conversations to the sites listed", async ({
   try {
     await editEnvironment(page, name);
     const dialog = page.getByRole("dialog", { name: "Edit workspace" });
+    await dialog.getByRole("button", { name: /^Sites/ }).click();
     await expect(dialog.getByRole("button", { name: "Any site", pressed: true })).toBeVisible();
     await dialog.getByRole("button", { name: "Listed sites" }).click();
 
@@ -131,6 +130,7 @@ test("a workspace's Sites limit its conversations to the sites listed", async ({
     const kept = await request.post(`/api/threads/${threadId}/browser-site`, { data: { site: "docs.python.org", level: "off" } });
     expect(kept.ok()).toBe(true);
     await editEnvironment(page, name);
+    await dialog.getByRole("button", { name: /^Sites/ }).click();
     await expect(dialog.getByRole("button", { name: "Listed sites", pressed: true })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "docs.python.org in the browser" })).toHaveText("Not in the browser");
     await dialog.getByRole("button", { name: "Remove docs.python.org" }).click();

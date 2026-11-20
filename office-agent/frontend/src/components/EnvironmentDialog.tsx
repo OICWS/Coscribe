@@ -263,6 +263,33 @@ function EditorFooter({
 const dialogClass =
   "flex h-[min(45rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
 
+function EditorPage({
+  page,
+  draft,
+  secrets,
+  library,
+  limits,
+  onOpen,
+}: {
+  page: Page;
+  draft: ReturnType<typeof useEnvironmentDraft>;
+  secrets: SecretInfo[];
+  library: DirEntry[];
+  limits: ReturnType<typeof useMachineLimits>;
+  onOpen: (page: Page) => void;
+}) {
+  return (
+    <>
+      {page === "main" && <MainPage draft={draft} library={library} limits={limits} onOpen={onOpen} />}
+      {page === "folders" && <FoldersSection part="more" folders={draft.folders} library={library} onChange={draft.setFolders} />}
+      {page === "sites" && <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />}
+      {page === "secrets" && <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />}
+      {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
+      {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
+    </>
+  );
+}
+
 function EnvironmentEditor({
   environment,
   secrets,
@@ -331,12 +358,7 @@ function EnvironmentEditor({
       >
         <EditorHeader page={page} environment={environment} onBack={() => setPage("main")} onClose={onClose} />
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pt-1">
-          {page === "main" && <MainPage draft={draft} library={library} limits={limits} onOpen={setPage} />}
-          {page === "folders" && <FoldersSection part="more" folders={draft.folders} library={library} onChange={draft.setFolders} />}
-          {page === "sites" && <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />}
-          {page === "secrets" && <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />}
-          {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
-          {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
+          <EditorPage page={page} draft={draft} secrets={secrets} library={library} limits={limits} onOpen={setPage} />
           {error && (
             <p role="alert" className="pt-4 text-sm text-[var(--danger)]">
               {error}

@@ -40,6 +40,50 @@ function accessLabel(permission: string | undefined): string {
   return permission ? ACCESS_LABELS[permission] : "Read and write (new)";
 }
 
+function PickedFolders({
+  more,
+  access,
+  onRemove,
+}: {
+  more: string[];
+  access: Map<string, DirEntry["permission"]>;
+  onRemove: (folder: string) => void;
+}) {
+  if (more.length === 0) return null;
+  return (
+    <table className="w-full table-fixed border-collapse text-[13px]">
+      <thead>
+        <tr className="text-left text-[var(--muted)]">
+          <th className={`${cell} w-[34%] py-1.5 font-normal`}>Folder</th>
+          <th className={`${cell} py-1.5 font-normal`}>Location</th>
+          <th className={`${cell} w-[150px] py-1.5 font-normal`}>Access</th>
+          <th className={`${cell} w-[84px] py-1.5`}>
+            <span className="sr-only">Remove</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {more.map((folder) => (
+          <tr key={folder} className="[&:last-child>td]:border-b-0">
+            <td className={`${cell} truncate pr-3`}>{folderName(folder)}</td>
+            <td className={`${cell} truncate pr-3 text-[var(--muted)]`} title={folder}>
+              {folder}
+            </td>
+            <td className={`${cell} truncate pr-3 text-[var(--muted)]`}>
+              {accessLabel(access.get(folder))}
+            </td>
+            <td className={`${cell} text-right`}>
+              <button type="button" aria-label={`Remove ${folder}`} className={smallButton} onClick={() => onRemove(folder)}>
+                Remove
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** The workspace's folder and the Allowed folders it uses (decision 0053): picked from Settings'
  * list, or a new folder, which joins that list as read and write when the workspace is saved. */
 export function FoldersSection({
@@ -108,38 +152,7 @@ export function FoldersSection({
           </div>
         }
       >
-        {more.length > 0 && (
-          <table className="w-full table-fixed border-collapse text-[13px]">
-            <thead>
-              <tr className="text-left text-[var(--muted)]">
-                <th className={`${cell} w-[34%] py-1.5 font-normal`}>Folder</th>
-                <th className={`${cell} py-1.5 font-normal`}>Location</th>
-                <th className={`${cell} w-[150px] py-1.5 font-normal`}>Access</th>
-                <th className={`${cell} w-[84px] py-1.5`}>
-                  <span className="sr-only">Remove</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {more.map((folder) => (
-                <tr key={folder} className="[&:last-child>td]:border-b-0">
-                  <td className={`${cell} truncate pr-3`}>{folderName(folder)}</td>
-                  <td className={`${cell} truncate pr-3 text-[var(--muted)]`} title={folder}>
-                    {folder}
-                  </td>
-                  <td className={`${cell} truncate pr-3 text-[var(--muted)]`}>
-                    {accessLabel(access.get(folder))}
-                  </td>
-                  <td className={`${cell} text-right`}>
-                    <button type="button" aria-label={`Remove ${folder}`} className={smallButton} onClick={() => onChange(folders.filter((f) => f !== folder))}>
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <PickedFolders more={more} access={access} onRemove={(folder) => onChange(folders.filter((f) => f !== folder))} />
         </Section>
       )}
       {browsing && <DirBrowserModal onClose={() => setBrowsing(null)} onSelect={pick} />}

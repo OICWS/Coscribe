@@ -57,7 +57,10 @@ test("a secret is added, kept write-only, given to a conversation and deleted", 
     await dialog.getByLabel("Environment variables", { exact: true }).fill("# mode\nMODE=fast");
     await dialog.getByRole("button", { name: "Back" }).click();
     await expect(dialog.getByRole("button", { name: /Environment variables/ })).toContainText("1 variable");
+    await dialog.getByRole("button", { name: /^Secrets/ }).click();
     await dialog.getByRole("checkbox", { name: new RegExp(name) }).check();
+    await dialog.getByRole("button", { name: "Back" }).click();
+    await expect(dialog.getByRole("button", { name: /^Secrets/ })).toContainText(name);
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
 
