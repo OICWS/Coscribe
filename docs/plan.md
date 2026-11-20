@@ -67,6 +67,11 @@ Last reviewed: 2026-11-18.
 
 ## Open, smaller
 
+- **A run's code is in a folder every contained run can write** (decision 0056, review on #1009):
+  `script.py`, the Python wrapper and its guard config sit under `script-scratch`, which every
+  run holds with `RX,W,D`, so one conversation's script can read or swap another run's code just
+  before it starts and gain that run's folders and network. Write them to a folder only the
+  server writes, granted read-only, and keep only TEMP under `script-scratch`.
 - **Node's temp folder in the container** (`docs/log/2026-11-20-scratch-temp-delete.md`): Windows
   gives a contained Node run the container's own `AC\Temp` as TEMP, which Node's permission flags
   don't allow, so `os.tmpdir()` writes fail there. Python's `tempfile` is pinned to the scratch

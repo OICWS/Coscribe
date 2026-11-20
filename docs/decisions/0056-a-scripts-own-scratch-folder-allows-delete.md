@@ -23,9 +23,12 @@ fail the same way, since that folder had no DELETE either, and `NamedTemporaryFi
   files, and deletes still go through a trusted tool.
 
 ## Consequences
-- A script can delete files in any run's scratch folder, another conversation's included. It
-  could already overwrite them, and they hold only the script text, its guard config and temp
-  files, which coscribe removes when the run ends.
+- Every run holds the same capability on the whole `script-scratch` tree, so any run can read,
+  change and delete another run's script, wrapper and guard config, another conversation's
+  included. Swapped before it starts, that code runs with the other run's folders and network,
+  and a script can read another conversation's script text. Write access already allowed this;
+  DELETE makes a swap easier (delete and recreate, rename into place). Open risk until a run's
+  code is written to a folder only the server can write, granted read-only (`docs/plan.md`).
 - Native code and Node still get the container's `AC\Temp` from Windows; only Python's
   `tempfile` is pinned.
 - The old `write` ACE on `script-scratch` stays until the folder is swept; it is harmless.

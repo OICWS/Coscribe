@@ -114,6 +114,10 @@ Text the model reads (files, pages, messages from other conversations) is covere
   audited. Command lines run in Codex's Windows sandbox where Settings set it up
   (`tools/exec/command_sandbox.py`, the real sandbox in `tests/test_windows_real.py`); otherwise
   only once the person allowed commands without it, and each is approved.
+- Open risk (decision 0056): every contained run holds one capability on all of
+  `script-scratch`, where each run's `script.py`, wrapper and guard config are written, so a
+  script can read or swap another run's code before it starts and so reach that run's folders
+  and network. Closing it means writing the code to a folder only the server can write.
 - Off Windows and outside the container, code runs as the user. The folder guard
   (`tools/exec/script_guard.py`, `tests/test_script_guard.py`) then catches mistakes and is not a
   boundary; the UI and docs must not promise more.
