@@ -1,8 +1,10 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { listProviderModels } from "../../../lib/rest";
 import type { ProviderCatalogEntry, ProviderInfo } from "../../../types/settings";
 import { ArrowLeftIcon, CheckIcon, ExternalLinkIcon } from "../../icons";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "../SettingRow";
 import { ProviderIcon } from "./ProviderIcon";
+import { canListModels } from "./catalog";
 import { providerKind } from "./kind";
 
 export interface ProviderForm {
@@ -102,7 +104,7 @@ export function ProviderPage({
           )}
         </div>
 
-        <ProviderFields form={form} onChange={setForm} showName={isNewCustom} showBaseUrl={!builtin} maskedKey={info?.masked_key ?? null} />
+        <ProviderFields form={form} onChange={setForm} showName={isNewCustom} builtin={builtin} info={info} />
 
         <div className="flex items-center justify-end gap-3">
           {status && (
@@ -124,16 +126,17 @@ function ProviderFields({
   form,
   onChange,
   showName,
-  showBaseUrl,
-  maskedKey,
+  builtin,
+  info,
 }: {
   form: ProviderForm;
   onChange: (form: ProviderForm) => void;
   showName: boolean;
-  showBaseUrl: boolean;
-  maskedKey: string | null;
+  builtin: boolean;
+  info: ProviderInfo | null;
 }) {
   const set = (key: keyof ProviderForm) => (e: ChangeEvent<HTMLInputElement>) => onChange({ ...form, [key]: e.target.value });
+  const maskedKey = info?.masked_key ?? null;
   return (
     <div className="grid grid-cols-1 gap-x-3 gap-y-3 md:grid-cols-2">
       {showName && (
@@ -142,7 +145,7 @@ function ProviderFields({
           <input className={fieldClass} placeholder="e.g. my-gateway" value={form.name} onChange={set("name")} />
         </label>
       )}
-      {showBaseUrl && (
+      {!builtin && (
         <label className={labelClass}>
           <span className={labelText}>Base URL</span>
           <input className={fieldClass} placeholder="https://api.example.com/v1" value={form.baseUrl} onChange={set("baseUrl")} />
@@ -159,10 +162,88 @@ function ProviderFields({
           onChange={set("apiKey")}
         />
       </label>
-      <label className={labelClass}>
-        <span className={labelText}>Default model (optional)</span>
-        <input className={fieldClass} placeholder="The model ID the provider lists" value={form.defaultModel} onChange={set("defaultModel")} />
-      </label>
+      <ModelField
+        form={form}
+        onChange={onChange}
+        canList={canListModels(form.name, builtin)}
+        listOnOpen={Boolean(info?.masked_key && !info.default_model)}
+      />
+    </div>
+  );
+}
+
+type ModelList = { state: "idle" | "loading" } | { state: "listed"; models: string[] } | { state: "failed"; error: string };
+
+/** The default model, typed or picked from what the provider lists at /models. */
+function ModelField({
+  form,
+  onChange,
+  canList,
+  listOnOpen,
+}: {
+  form: ProviderForm;
+  onChange: (form: ProviderForm) => void;
+  /** Whether the provider lists its models at /models (OpenAI-compatible). */
+  canList: boolean;
+  /** List at once: an added provider without a model can't be picked in the chat. */
+  listOnOpen: boolean;
+}) {
+  const [list, setList] = useState<ModelList>({ state: "idle" });
+  const listModels = async () => {
+    setList({ state: "loading" });
+    try {
+      const result = await listProviderModels(form.name.trim(), form.baseUrl.trim(), form.apiKey.trim());
+      setList(result.error ? { state: "failed", error: result.error } : { state: "listed", models: result.models });
+    } catch (err) {
+      setList({ state: "failed", error: err instanceof Error ? err.message : "Couldn't list the models." });
+    }
+  };
+  useEffect(() => {
+    if (listOnOpen && canList) void listModels();
+    // Only when the page opens: later the person lists on demand.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className={labelClass}>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor="provider-default-model" className={labelText}>
+          Default model
+        </label>
+        {canList && (
+          <button
+            type="button"
+            className="text-[13px] text-[var(--accent)] underline-offset-2 hover:underline disabled:opacity-50"
+            disabled={list.state === "loading"}
+            onClick={() => void listModels()}
+          >
+            {list.state === "loading" ? "Listing models..." : "List the provider's models"}
+          </button>
+        )}
+      </div>
+      <input
+        id="provider-default-model"
+        className={fieldClass}
+        placeholder="The model ID the provider lists"
+        value={form.defaultModel}
+        onChange={(e) => onChange({ ...form, defaultModel: e.target.value })}
+      />
+      {list.state === "listed" && (
+        <select
+          aria-label="Models the provider lists"
+          className={fieldClass}
+          value={list.models.includes(form.defaultModel) ? form.defaultModel : ""}
+          onChange={(e) => e.target.value && onChange({ ...form, defaultModel: e.target.value })}
+        >
+          <option value="">Pick one of {list.models.length} models</option>
+          {list.models.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      )}
+      {list.state === "failed" && <span className="text-[13px] text-[var(--danger)]">{list.error} Type the model ID instead.</span>}
     </div>
   );
 }
