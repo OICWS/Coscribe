@@ -189,10 +189,15 @@ export interface FolderBrief {
   workspace?: WorkspaceNotes | null;
 }
 
-/** A folder's own notes and skills, read into a conversation only once the person accepted them. */
+/** A folder's own notes, skills, settings and connectors, used only once the person accepted them. */
 export interface WorkspaceNotes {
   notes: boolean;
   skills: string[];
+  settings: boolean;
+  /** The `permissions` rules of its settings.json that apply. */
+  rules: { deny: string[]; ask: string[]; allow: string[] };
+  /** The servers its mcp.json names. */
+  connectors: string[];
   /** False while what is there now (new, or changed outside coscribe) wasn't accepted. */
   trusted: boolean;
 }
