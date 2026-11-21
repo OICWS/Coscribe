@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,8 @@ _MAX_NOTES_CHARS = 12_000
 # Beyond this a file counts by size and time, not content: the fingerprint is taken every turn.
 _HASHED_BYTES = 1_000_000
 _MAX_FILES = 500
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+_MAX_ENV = 100
 
 
 def notes_path(folder: Path) -> Path:
@@ -55,6 +58,16 @@ def read_settings(folder: Path) -> dict[str, Any]:
     except (OSError, ValueError):
         return {}
     return raw if isinstance(raw, dict) else {}
+
+
+def settings_env(settings: dict[str, Any]) -> dict[str, str]:
+    """The plain variables of a `settings.json` `env`, as Claude Code's: names and text only.
+    A `{{secret:NAME}}` in a value stays as written, since secrets are the workspace's to give."""
+    env = settings.get("env")
+    if not isinstance(env, dict):
+        return {}
+    named = [(k, v) for k, v in env.items() if isinstance(k, str) and _ENV_NAME.fullmatch(k)]
+    return {k: v for k, v in named if isinstance(v, str)}
 
 
 def read_connectors(folder: Path) -> dict[str, Any]:
@@ -159,6 +172,10 @@ class WorkspaceFolders:
     def accepted_settings(self, folder: Path) -> dict[str, Any]:
         """The folder's `settings.json` once the person accepted it as it is now."""
         return self._accepted(folder, read_settings)
+
+    def accepted_env(self, folder: Path) -> dict[str, str]:
+        """The variables the folder's accepted `settings.json` gives scripts and commands."""
+        return dict(list(settings_env(self.accepted_settings(folder)).items())[:_MAX_ENV])
 
     def accept(self, folder: Path) -> dict[str, Any] | None:
         self.trust.accept(folder)

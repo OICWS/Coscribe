@@ -1,6 +1,8 @@
 """A folder's own `.coscribe/` notes and skills: read only once the person accepted them."""
 
+import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -158,3 +160,48 @@ def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path)
         {"permissions": {"deny": [f"tool_{n}" for n in range(300)]}}, tmp_path
     )
     assert many.decide("tool_299", {}) == ("deny", "tool_299")
+
+
+def test_a_folders_env_reaches_scripts_only_once_accepted_and_as_plain_text(tmp_path: Path) -> None:
+    folder = tmp_path / "Sales"
+    (folder / ".coscribe").mkdir(parents=True)
+    env = {"REGION": "eu", "TOKEN": "{{secret:CRM}}", "bad name": "x", "COUNT": 3}
+    (folder / ".coscribe" / "settings.json").write_text(json.dumps({"env": env}))
+    folders = WorkspaceFolders(tmp_path / "state")
+    before = folders.accepted_env(folder)
+    folders.accept(folder)
+
+    assert before == {}
+    assert folders.accepted_env(folder) == {"REGION": "eu", "TOKEN": "{{secret:CRM}}"}
+
+
+def test_the_workspaces_own_variables_win_over_the_folders_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coscribe.coordinator as coordinator
+    from coscribe.config import Settings
+    from coscribe.runtime import Environments
+
+    seen: dict[str, Any] = {}
+
+    def record(*args: Any, session_env: Any, **kwargs: Any) -> list[Any]:
+        seen["env"] = session_env
+        return []
+
+    monkeypatch.setattr(coordinator, "build_script_tools", record)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        default_model="fake:model",
+        workspace_root=tmp_path / "ws",
+        state_dir=tmp_path / "state",
+        skills_dir=tmp_path / "skills",
+        memory_path=tmp_path / "MEMORY.md",
+    )
+    environments = Environments(settings.state_dir)
+    reports = environments.create({"name": "Reports", "variables": {"REGION": "us"}}, set())
+    environments.assign("t1", reports["id"])
+    coordinator.build_coordinator_agent(
+        settings, "t1", folder_env=lambda: {"REGION": "eu", "MODE": "fast"}
+    )
+
+    assert seen["env"]() == {"REGION": "us", "MODE": "fast"}

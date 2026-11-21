@@ -145,6 +145,11 @@ class AgentAssembly:
     def folders(self) -> list[Path]:
         return [Path(self._host.workspace_root), *self._host.extra_folders]
 
+    def folder_env(self) -> dict[str, str]:
+        """The `env` of the main folder's accepted `settings.json`, read at each run so a change
+        to the file waits for the person again."""
+        return self.workspace_folders.accepted_env(Path(self._host.workspace_root))
+
     def shown_folders(self) -> list[dict[str, Any]]:
         """For the side panel: each folder's brief and what it keeps in `.coscribe/`."""
         return [

@@ -63,7 +63,7 @@ Last reviewed: 2026-11-18.
    (`settings.json`'s permissions decide gated calls) in `docs/log/2026-11-19-workspace-permissions.md`.
    A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
    `docs/log/2026-11-19-allowed-folders-per-workspace.md`, the dialog's picker in
-   `docs/log/2026-11-19-workspace-folder-picker.md`. Next: `settings.json`'s env, and the "Use them" card naming the settings and connectors.
+   `docs/log/2026-11-19-workspace-folder-picker.md`. `settings.json`'s env reaches scripts and commands in `docs/log/2026-11-21-workspace-settings-env.md`.
 
 ## Open, smaller
 

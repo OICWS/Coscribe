@@ -10,7 +10,7 @@ fit a given sub-task, not a hardcoded per-domain agent roster.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
@@ -553,6 +553,7 @@ def build_coordinator_agent(
     workspace_root: Path | None = None,
     extra_folders: Sequence[Path] = (),
     conversation_source: ConversationSource | None = None,
+    folder_env: Callable[[], Mapping[str, str]] | None = None,
 ) -> Agent:
     """skill_names=None (the default) splices every skill found -- built-in
     plus the user-local settings.skills_dir -- exactly like before this
@@ -585,7 +586,8 @@ def build_coordinator_agent(
         variables: dict[str, str] = SessionEnvironments(settings.state_dir).get(thread_id)[
             "variables"
         ]
-        return variables
+        # The folder's accepted `settings.json` env goes under the workspace's own variables.
+        return {**(folder_env() if folder_env else {}), **variables}
 
     network = NetworkGuard(settings.state_dir, thread_id)
 
