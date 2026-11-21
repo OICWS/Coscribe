@@ -25,8 +25,31 @@ _MAX_NOTES_CHARS = 12_000
 # Beyond this a file counts by size and time, not content: the fingerprint is taken every turn.
 _HASHED_BYTES = 1_000_000
 _MAX_FILES = 500
+# The limits Edit workspace puts on its own variables (`runtime.secret_store`).
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
-_MAX_ENV = 100
+_MAX_ENV, _MAX_ENV_VALUE = 100, 4096
+# A folder's file may not set what loads code into a runtime, picks which program runs, routes
+# traffic or names where tools keep their files: that would run the folder's code beside the
+# script the person approved. Every name scripts take from the system is among these
+# (`tools.exec.env_allowlist`, kept so by a test).
+_SYSTEM_PREFIXES = (
+    "PYTHON", "NODE_", "NPM_CONFIG_", "LD_", "DYLD_", "GIT_", "LC_", "COMMONPROGRAM", "PROCESSOR_",
+    "ONEDRIVE",
+)  # fmt: skip
+_SYSTEM_NAMES = frozenset(
+    {
+        "PATH", "PATHEXT", "COMSPEC", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "PROGRAMDATA",
+        "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432", "ALLUSERSPROFILE", "APPDATA",
+        "LOCALAPPDATA", "USERPROFILE", "HOME", "HOMEDRIVE", "HOMEPATH", "PUBLIC", "TEMP", "TMP",
+        "TMPDIR", "USERNAME", "USERDOMAIN", "COMPUTERNAME", "OS", "LANG", "LANGUAGE", "TERM", "TZ",
+        "USER", "SHELL", "LOGNAME", "XDG_CONFIG_HOME", "XDG_RUNTIME_DIR", "CODEX_HOME",
+        "PSMODULEPATH", "NUMBER_OF_PROCESSORS", "BASH_ENV", "ENV", "PERL5LIB",
+        "PERL5OPT", "RUBYOPT", "RUBYLIB", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS",
+        "JDK_JAVA_OPTIONS", "SSLKEYLOGFILE", "ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+        "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE", "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
+    }
+)  # fmt: skip
 
 
 def notes_path(folder: Path) -> Path:
@@ -61,13 +84,23 @@ def read_settings(folder: Path) -> dict[str, Any]:
 
 
 def settings_env(settings: dict[str, Any]) -> dict[str, str]:
-    """The plain variables of a `settings.json` `env`, as Claude Code's: names and text only.
-    A `{{secret:NAME}}` in a value stays as written, since secrets are the workspace's to give."""
+    """The plain variables of a `settings.json` `env`, as Claude Code's: names and text only, and
+    none that would load code or pick a program or proxy (`_SYSTEM_NAMES`). A `{{secret:NAME}}`
+    in a value stays as written, since secrets are the workspace's to give."""
     env = settings.get("env")
     if not isinstance(env, dict):
         return {}
-    named = [(k, v) for k, v in env.items() if isinstance(k, str) and _ENV_NAME.fullmatch(k)]
-    return {k: v for k, v in named if isinstance(v, str)}
+    kept = {
+        k: v
+        for k, v in env.items()
+        if isinstance(k, str)
+        and _ENV_NAME.fullmatch(k)
+        and k.upper() not in _SYSTEM_NAMES
+        and not k.upper().startswith(_SYSTEM_PREFIXES)
+        and isinstance(v, str)
+        and len(v) <= _MAX_ENV_VALUE
+    }
+    return dict(list(kept.items())[:_MAX_ENV])
 
 
 def read_connectors(folder: Path) -> dict[str, Any]:
@@ -175,7 +208,7 @@ class WorkspaceFolders:
 
     def accepted_env(self, folder: Path) -> dict[str, str]:
         """The variables the folder's accepted `settings.json` gives scripts and commands."""
-        return dict(list(settings_env(self.accepted_settings(folder)).items())[:_MAX_ENV])
+        return settings_env(self.accepted_settings(folder))
 
     def accept(self, folder: Path) -> dict[str, Any] | None:
         self.trust.accept(folder)

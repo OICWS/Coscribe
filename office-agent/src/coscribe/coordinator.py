@@ -546,6 +546,13 @@ def _thread_folders(settings: Settings, thread_id: str) -> tuple[list[Path], ...
     )
 
 
+def _under(from_folder: Mapping[str, str], variables: dict[str, str]) -> dict[str, str]:
+    """The folder's accepted `settings.json` env under the workspace's own variables, compared
+    without case: Windows would keep both `Region` and `REGION` and either could win."""
+    own = {name.upper() for name in variables}
+    return {**{k: v for k, v in from_folder.items() if k.upper() not in own}, **variables}
+
+
 def build_coordinator_agent(
     settings: Settings,
     thread_id: str,
@@ -586,8 +593,7 @@ def build_coordinator_agent(
         variables: dict[str, str] = SessionEnvironments(settings.state_dir).get(thread_id)[
             "variables"
         ]
-        # The folder's accepted `settings.json` env goes under the workspace's own variables.
-        return {**(folder_env() if folder_env else {}), **variables}
+        return _under(folder_env() if folder_env else {}, variables)
 
     network = NetworkGuard(settings.state_dir, thread_id)
 

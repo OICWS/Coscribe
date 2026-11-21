@@ -165,7 +165,12 @@ def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path)
 def test_a_folders_env_reaches_scripts_only_once_accepted_and_as_plain_text(tmp_path: Path) -> None:
     folder = tmp_path / "Sales"
     (folder / ".coscribe").mkdir(parents=True)
-    env = {"REGION": "eu", "TOKEN": "{{secret:CRM}}", "bad name": "x", "COUNT": 3}
+    env = {
+        "REGION": "eu", "TOKEN": "{{secret:CRM}}", "bad name": "x", "COUNT": 3, "LONG": "x" * 5000,
+        # Each would run the folder's code, pick the program or reroute traffic.
+        "PATH": "x", "path": "x", "PYTHONPATH": "x", "NODE_OPTIONS": "x", "HTTPS_PROXY": "x",
+        "SSL_CERT_FILE": "x", "LD_PRELOAD": "x", "GIT_SSH_COMMAND": "x", "ComSpec": "x",
+    }  # fmt: skip
     (folder / ".coscribe" / "settings.json").write_text(json.dumps({"env": env}))
     folders = WorkspaceFolders(tmp_path / "state")
     before = folders.accepted_env(folder)
@@ -175,7 +180,7 @@ def test_a_folders_env_reaches_scripts_only_once_accepted_and_as_plain_text(tmp_
     assert folders.accepted_env(folder) == {"REGION": "eu", "TOKEN": "{{secret:CRM}}"}
 
 
-def test_the_workspaces_own_variables_win_over_the_folders_env(
+def test_the_workspaces_own_variables_win_over_the_folders_env_whatever_the_case(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import coscribe.coordinator as coordinator
@@ -201,7 +206,17 @@ def test_the_workspaces_own_variables_win_over_the_folders_env(
     reports = environments.create({"name": "Reports", "variables": {"REGION": "us"}}, set())
     environments.assign("t1", reports["id"])
     coordinator.build_coordinator_agent(
-        settings, "t1", folder_env=lambda: {"REGION": "eu", "MODE": "fast"}
+        settings, "t1", folder_env=lambda: {"Region": "eu", "MODE": "fast"}
     )
 
     assert seen["env"]() == {"REGION": "us", "MODE": "fast"}
+
+
+def test_a_folder_can_never_set_a_name_scripts_take_from_the_system() -> None:
+    from coscribe.conversation.workspace_folder import settings_env
+    from coscribe.tools.exec.env_allowlist import _PASSED, _PROXIES
+
+    names = [name for name in (*_PASSED, *_PROXIES) if "(" not in name]
+    env = {name: "x" for name in names} | {name.lower(): "x" for name in names}
+
+    assert settings_env({"env": env}) == {}
