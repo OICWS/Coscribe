@@ -2,8 +2,8 @@
  * splits, each a row or a column of children with their shares of its
  * length. Pure functions only. */
 
-export type PanelId = "task" | "browser" | "background" | "viewer" | "plan" | "files";
-export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background", "viewer", "plan", "files"];
+export type PanelId = "task" | "browser" | "background" | "viewer" | "plan" | "files" | "side";
+export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background", "viewer", "plan", "files", "side"];
 
 export const PANEL_TITLES: Record<PanelId, string> = {
   task: "Task details",
@@ -12,7 +12,11 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   viewer: "Viewer",
   plan: "Plan",
   files: "Files",
+  side: "Side chat",
 };
+
+/** Panels whose state lives only in the panel, so a window of their own would start them empty. */
+export const STAYS_IN_MAIN_WINDOW: readonly PanelId[] = ["side"];
 
 export type Direction = "row" | "col";
 export type Edge = "left" | "right" | "top" | "bottom";

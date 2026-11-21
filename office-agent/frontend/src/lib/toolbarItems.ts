@@ -2,14 +2,14 @@ import { useState } from "react";
 import { readStored, writeStored } from "./storage";
 
 /** Everything the bar can hold; the person pins some and the rest wait in its menu. */
-export const TOOLBAR_ITEMS = ["sidebar", "artifacts", "task", "plan", "files", "browser", "background"] as const;
+export const TOOLBAR_ITEMS = ["sidebar", "artifacts", "task", "plan", "files", "browser", "background", "side"] as const;
 export type ToolbarItem = (typeof TOOLBAR_ITEMS)[number];
 
 /** Panels belong to one conversation, so outside it only the other items are offered. */
-export const CONVERSATION_ITEMS: readonly ToolbarItem[] = ["task", "plan", "files", "browser", "background"];
+export const CONVERSATION_ITEMS: readonly ToolbarItem[] = ["task", "plan", "files", "browser", "background", "side"];
 
 /** The sidebar already links to Artifacts, so that one starts in the menu. */
-export const DEFAULT_PINNED: readonly ToolbarItem[] = ["sidebar", "task", "plan", "files", "browser", "background"];
+export const DEFAULT_PINNED: readonly ToolbarItem[] = ["sidebar", "task", "plan", "files", "browser", "background", "side"];
 
 const KEY = "coscribe.toolbar.pinned";
 

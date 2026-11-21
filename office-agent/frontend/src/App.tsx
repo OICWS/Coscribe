@@ -29,6 +29,7 @@ import { SettingsModal, type SettingsCategory } from "./components/settings/Sett
 import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
+import { SideChatPanel } from "./components/SideChatPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
 import { PlanPanel } from "./components/PlanPanel";
 import { FilesPanel } from "./components/files/FilesPanel";
@@ -744,6 +745,7 @@ function App() {
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
       plan: { panel: "plan", threadId, ...plans.panelState, busy: state.turnInFlight },
       files: { panel: "files", threadId, refreshKey },
+      side: { panel: "side", threadId },
     },
     titles: PANEL_TITLES,
     threadId,
@@ -857,6 +859,7 @@ function App() {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
     if (panel === "files") return <FilesPanel threadId={threadId} refreshKey={refreshKey} onView={viewFile} />;
+    if (panel === "side") return <SideChatPanel key={threadId} threadId={threadId} />;
     if (panel === "plan") return <PlanPanel {...plans.panelProps} busy={state.turnInFlight} />;
     return <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />;
   };

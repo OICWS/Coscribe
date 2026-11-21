@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -23,6 +24,7 @@ from ..runtime_lg import render_transcript_lg as _render_transcript_lg
 from ..tools import TaskToolkit
 from .events import EventSink
 from .export_text import conversation_markdown
+from .side_chat import answer_side_question
 from .turn_lock import TurnLock
 
 if TYPE_CHECKING:
@@ -361,6 +363,10 @@ class ConversationHistory:
     async def export_markdown(self) -> str:
         entries = serialize_history_for_ws_lg(await self._current_messages())
         return conversation_markdown(self._host.thread_id, entries)
+
+    async def answer_side_question(self, messages: Sequence[Mapping[str, str]]) -> str:
+        """Side chat: answered from the conversation as it is now, adding nothing to it."""
+        return await answer_side_question(self._host.model, await self.export_markdown(), messages)
 
     async def _current_messages(self) -> list[Any]:
         """This thread's checkpointed message history right now -- the

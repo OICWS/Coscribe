@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -43,11 +44,14 @@ from ..schemas import (
     FolderBriefRequest,
     GroupRename,
     OpenFileRequest,
+    SideChatRequest,
     ThreadMetaPatch,
     ThreadRename,
     WorkflowDraftRequest,
 )
 from ..state import AppState
+
+logger = logging.getLogger(__name__)
 
 
 async def _threads_waiting_for_input(state: AppState) -> set[str]:
@@ -349,6 +353,20 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         )
 
     router.add_api_route("/api/threads/{thread_id}/export", export_thread, methods=["GET"])
+
+    async def side_chat(thread_id: str, body: SideChatRequest) -> JSONResponse:
+        if body.messages[-1].role != "user":
+            return JSONResponse({"error": "The last message must be the question."}, 400)
+        session = await _get_session_async(thread_id)
+        messages = [m.model_dump() for m in body.messages]
+        try:
+            answer = await session._history.answer_side_question(messages)
+        except Exception as exc:  # the provider's own error, shown under the question
+            logger.warning("side chat for %s failed: %s", thread_id, exc)
+            return JSONResponse({"error": f"The model could not answer: {exc}"}, 502)
+        return JSONResponse({"text": answer})
+
+    router.add_api_route("/api/threads/{thread_id}/side-chat", side_chat, methods=["POST"])
 
     @router.post("/api/threads/{thread_id}/workflow-draft")
     async def draft_thread_workflow(

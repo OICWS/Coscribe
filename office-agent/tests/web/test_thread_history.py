@@ -488,3 +488,42 @@ def test_export_returns_the_conversation_as_a_markdown_download(
     assert 'filename="conversation-t_export.md"' in response.headers["content-disposition"]
     assert "## You\n\nhello" in response.text
     assert "## Coscribe\n\nhi there!" in response.text
+
+
+def test_side_chat_answers_from_the_conversation_and_adds_nothing_to_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi there!")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_side") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hello"})
+            _receive_until(ws, "tasks_changed")
+        fake_model.responses = [AIMessage(content="You said hello.")]
+        fake_model.i = 0
+        calls = len(fake_model.received)
+        response = client.post(
+            "/api/threads/t_side/side-chat",
+            json={"messages": [{"role": "user", "text": "What did I say?"}]},
+        )
+        exported = client.get("/api/threads/t_side/export").text
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "You said hello."}
+    side_call = fake_model.received[calls]
+    assert "## You\n\nhello" in str(side_call[0].content)
+    assert "## Coscribe\n\nhi there!" in str(side_call[0].content)
+    assert side_call[-1].content == "What did I say?"
+    assert "What did I say?" not in exported
+    assert "You said hello." not in exported
+
+
+def test_side_chat_needs_a_question_last(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi there!")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        response = client.post(
+            "/api/threads/t_side_bad/side-chat",
+            json={"messages": [{"role": "assistant", "text": "An answer"}]},
+        )
+    assert response.status_code == 400
