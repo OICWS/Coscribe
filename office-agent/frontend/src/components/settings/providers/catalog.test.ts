@@ -8,6 +8,7 @@ const form = (over: Partial<ProviderForm>): ProviderForm => ({
   name: "deepseek",
   baseUrl: "https://api.deepseek.com/v1",
   apiKey: "",
+  models: ["deepseek-chat"],
   defaultModel: "deepseek-chat",
   ...over,
 });
@@ -19,8 +20,8 @@ describe("formProblem", () => {
     expect(formProblem(form({ name: "gemini", baseUrl: "" }), catalog, true)).toBeNull();
   });
 
-  it("needs a default model, or the model picker has nothing to offer", () => {
-    expect(formProblem(form({ defaultModel: " " }), catalog, true)).toBe("Choose a default model.");
+  it("needs a model turned on, or the model picker has nothing to offer", () => {
+    expect(formProblem(form({ models: [], defaultModel: "" }), catalog, true)).toBe("Turn on at least one model.");
   });
 
   it("still needs a base URL for a custom provider with a saved key", () => {

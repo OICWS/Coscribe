@@ -25,6 +25,9 @@ from ...provider_catalog import (
     BUILTIN_CATALOG,
     BUILTIN_PROVIDERS,
     PROVIDER_CATALOG,
+    builtin_models,
+    custom_models,
+    model_row,
 )
 from ...schemas import (
     ProviderModelsRequest,
@@ -48,12 +51,12 @@ def _save_builtin_key(env_key: str, api_key: str) -> bool:
     return True
 
 
-def _save_builtin(provider: dict[str, str], api_key: str, default_model: str) -> bool:
-    """`_save_builtin_key`, then the default model when one is given."""
+def _save_builtin(provider: dict[str, str], api_key: str, models: tuple[list[str], str]) -> bool:
+    """`_save_builtin_key`, then the models turned on and the default one."""
     if not _save_builtin_key(provider["api_key_env"], api_key):
         return False
-    if default_model:
-        set_key(".env", provider["default_model_env"], default_model)
+    set_key(".env", provider["models_env"], ",".join(models[0]))
+    set_key(".env", provider["default_model_env"], models[1])
     return True
 
 
@@ -76,66 +79,76 @@ def _custom_key(
         return "the saved key can't be read here; enter it again"
 
 
-_OPENAI_BASE_URL = "https://api.openai.com/v1"
+# Each built-in's own model list. Anthropic's is not OpenAI-compatible; Gemini serves one through
+# its OpenAI compatibility layer.
+_BUILTIN_MODEL_LISTS = {
+    "openai": "https://api.openai.com/v1/models",
+    "anthropic": "https://api.anthropic.com/v1/models?limit=1000",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/models",
+}
 
 
-def _builtin_has_model(provider: dict[str, str]) -> bool:
-    """Whether a built-in provider already has a model the picker can offer, the same way
-    `_providers_info` finds one: its own setting, or the global default naming it."""
-    env = dotenv_values(".env")
-    if env.get(provider["default_model_env"]):
-        return True
-    key, _, model = (env.get("COSCRIBE_DEFAULT_MODEL") or "").partition(":")
-    return key == provider["key"] and bool(model)
+def _list_headers(provider: str, api_key: str) -> dict[str, str]:
+    if provider == "anthropic":
+        return {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+    return {"Authorization": f"Bearer {api_key}"}
 
 
-def _model_to_save(
-    builtin: dict[str, str] | None, payload_model: str, existing: dict[str, Any] | None
-) -> str | None:
-    """The default model to save: the payload's, else "" to keep the one already saved;
-    None when there is none, since the model picker offers a provider's default model and
-    nothing else."""
-    model = payload_model.strip()
-    if model:
-        return model
-    if builtin is not None:
-        return "" if _builtin_has_model(builtin) else None
-    return (existing or {}).get("default_model") or None
+def _models_to_save(
+    builtin: dict[str, str] | None, payload: ProviderUpdate, existing: dict[str, Any] | None
+) -> tuple[list[str], str] | None:
+    """(the models turned on, the default one) to save: the payload's, else the ones already
+    saved; None when there are none, since the model picker offers nothing else."""
+    models = list(dict.fromkeys(m.strip() for m in payload.models if m.strip()))
+    default = payload.default_model.strip()
+    if not models and not default:
+        if builtin is not None:
+            models, default = builtin_models(builtin, dotenv_values(".env"))
+        else:
+            models, default = (
+                custom_models(existing or {}),
+                (existing or {}).get("default_model", ""),
+            )
+    if default and default not in models:
+        models.insert(0, default)
+    if not models:
+        return None
+    return models, default if default in models else models[0]
 
 
 def _models_target(
     payload: ProviderModelsRequest, providers_config_path: Path | None
-) -> tuple[str, str] | str:
-    """(base URL, API key) to list a provider's models with, a blank key falling back to
+) -> tuple[str, dict[str, str]] | str:
+    """(the URL listing a provider's models, the headers it needs), a blank key falling back to
     the saved one; or why it can't be listed."""
     name = payload.name.strip()
     api_key = payload.api_key.strip()
-    if name.lower() == "openai":
-        base_url, api_key = _OPENAI_BASE_URL, api_key or os.environ.get("OPENAI_API_KEY", "")
-    elif any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS):
-        return "Listing models works for OpenAI-compatible providers."
+    builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+    if builtin is not None:
+        url = _BUILTIN_MODEL_LISTS[builtin["key"]]
+        api_key = api_key or os.environ.get(builtin["api_key_env"], "")
     else:
         base_url = payload.base_url.strip()
+        if not base_url:
+            return "Enter the base URL first."
+        url = base_url.rstrip("/") + "/models"
         if not api_key and providers_config_path is not None:
             stored = _read_providers_raw(providers_config_path)["providers"].get(name, {})
             try:
                 api_key = resolve_secret(stored.get("api_key")) or ""
             except RuntimeError:
                 api_key = ""
-    if not base_url:
-        return "Enter the base URL first."
     if not api_key:
         return "Enter the API key first."
-    return base_url, api_key
+    return url, _list_headers(name.lower(), api_key)
 
 
-async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
-    """The model IDs an OpenAI-compatible service lists at `GET {base_url}/models`, or why
-    they couldn't be listed."""
-    url = base_url.rstrip("/") + "/models"
+async def list_provider_models(url: str, headers: dict[str, str]) -> dict[str, Any]:
+    """The model IDs a provider lists at `url` (`{"data": [{"id": ...}]}`, as OpenAI-compatible
+    services and Anthropic answer), or why they couldn't be listed."""
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url, headers={"Authorization": f"Bearer {api_key}"})
+            response = await client.get(url, headers=headers)
     except httpx.TimeoutException:
         return {"models": [], "error": "The provider didn't answer within 15 s."}
     except httpx.HTTPError as exc:
@@ -150,7 +163,10 @@ async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
         data = None
     if not isinstance(data, list):
         return {"models": [], "error": "The provider doesn't list its models at /models."}
-    ids = sorted({str(m["id"]) for m in data if isinstance(m, dict) and m.get("id")})
+    # Gemini's compatibility layer may name a model "models/<id>"; chat requests take the bare ID.
+    ids = sorted(
+        {str(m["id"]).removeprefix("models/") for m in data if isinstance(m, dict) and m.get("id")}
+    )
     if not ids:
         return {"models": [], "error": "The provider listed no models."}
     return {"models": ids, "error": None}
@@ -159,10 +175,16 @@ async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
 async def _provider_models(
     payload: ProviderModelsRequest, providers_config_path: Path | None
 ) -> dict[str, Any]:
+    """Each model the provider lists for this key, as `model_row` describes it."""
+    name = payload.name.strip()
     target = _models_target(payload, providers_config_path)
     if isinstance(target, str):
         return {"models": [], "error": target}
-    return await list_provider_models(*target)
+    listed = await list_provider_models(*target)
+    builtin = any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS)
+    lookup_url = "" if builtin else payload.base_url.strip()
+    listed["models"] = [model_row(m, name, lookup_url) for m in listed["models"]]
+    return listed
 
 
 def router(state: AppState) -> APIRouter:
@@ -202,12 +224,12 @@ def router(state: AppState) -> APIRouter:
         builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
         path = settings.providers_config_path or Path("./providers.json").resolve()
         raw = _read_providers_raw(path)
-        default_model = _model_to_save(builtin, payload.default_model, raw["providers"].get(name))
-        if default_model is None:
-            return {"restart_required": False, "rejected": {name: "default_model cannot be blank"}}
+        models = _models_to_save(builtin, payload, raw["providers"].get(name))
+        if models is None:
+            return {"restart_required": False, "rejected": {name: "models cannot be empty"}}
 
         if builtin is not None:
-            if not _save_builtin(builtin, payload.api_key, default_model):
+            if not _save_builtin(builtin, payload.api_key, models):
                 return blank_key
             # Nothing caches the key: resolve_chat_model and the context-window lookup
             # both build their client fresh on every call.
@@ -225,7 +247,8 @@ def router(state: AppState) -> APIRouter:
         entry: dict[str, Any] = {
             "base_url": payload.base_url,
             "api_key": stored_key,
-            "default_model": default_model,
+            "models": models[0],
+            "default_model": models[1],
         }
 
         # .resolve() matters here: this path gets persisted both into
