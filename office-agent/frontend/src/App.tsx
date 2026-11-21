@@ -887,6 +887,7 @@ function App() {
       open={(panel) => panelOpen(panel) || poppedOut.includes(panel)}
       onToggle={(panel) => (panel === "task" ? toggleTaskPanel() : togglePanelOrWindow(panel))}
       inConversation={inConversation}
+      onStartScreen={navMode === "create" && onHome && !artifactsOpen && pageView !== "sessions"}
       pinned={pinnedItems}
       onPinnedChange={setPinnedItems}
       sidebar={{ open: navPinned, toggle: () => setNavPinned(!navPinned) }}
