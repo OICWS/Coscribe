@@ -1,5 +1,6 @@
 """A folder's own `.coscribe/` notes and skills: read only once the person accepted them."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,7 @@ def test_notes_and_skills_reach_the_context_only_once_accepted(tmp_path: Path) -
         "notes": True,
         "skills": ["Weekly report"],
         "settings": False,
+        "rules": {"deny": [], "ask": [], "allow": []},
         "connectors": [],
         "trusted": False,
     }
@@ -158,3 +160,19 @@ def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path)
         {"permissions": {"deny": [f"tool_{n}" for n in range(300)]}}, tmp_path
     )
     assert many.decide("tool_299", {}) == ("deny", "tool_299")
+
+
+def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> None:
+    folder = tmp_path / "Sales"
+    (folder / ".coscribe").mkdir(parents=True)
+    settings = {"permissions": {"allow": ["write_file(docs/*)", "*"], "deny": ["github_delete_*"]}}
+    (folder / ".coscribe" / "settings.json").write_text(json.dumps(settings))
+    (folder / ".coscribe" / "mcp.json").write_text('{"mcpServers": {"crm": {"command": "x"}}}')
+
+    shown = WorkspaceFolders(tmp_path / "state").shown(folder)
+
+    assert shown is not None
+    # A bare `*` applies to nothing, so the card doesn't list it.
+    rules = {"deny": ["github_delete_*"], "ask": [], "allow": ["write_file(docs/*)"]}
+    assert shown["rules"] == rules
+    assert shown["connectors"] == ["crm"]
