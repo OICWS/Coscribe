@@ -188,7 +188,13 @@ test("drag: a text box dropped on a container becomes its child, and dragged out
   });
 
   await test.step("dragged out of the container it is back on the slide with a place of its own", async () => {
-    await expect.poll(async () => (await partsOf(page, name, 2))?.parts.length).toBe(4);
+    // The parts can be read before the row has laid out its new third child, when that box
+    // still covers the second; wait until it sits after the second.
+    await settled(page);
+    await expect.poll(async () => {
+      const [second, loose] = [await boxOf(2), await boxOf(3)];
+      return loose[0] >= second[0] + second[2] - 1;
+    }).toBe(true);
     const loose = await boxOf(3);
     await dragOnSlide(page, [loose[0] + loose[2] / 2, loose[1] + loose[3] / 2], [900, 800]);
     await expect.poll(stack).toEqual(["first", "second"]);
