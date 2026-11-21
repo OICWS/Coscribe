@@ -106,6 +106,7 @@ from .provider_catalog import (
     builtin_models,
     custom_models,
     model_row,
+    provider_title,
 )
 from .routes import include_routers
 from .routes.shared import _mask, _read_providers_raw
@@ -339,6 +340,7 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
             continue
         models, default_model = builtin_models(provider, env_values)
         result[provider["key"]] = {
+            "title": provider_title(provider["key"]),
             "base_url": None,
             "default_model": default_model,
             "models": [model_row(m, provider["key"]) for m in models],
@@ -351,6 +353,7 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
             api_key = resolve_secret(entry.get("api_key")) or ""
             base_url = entry.get("base_url", "")
             result[name] = {
+                "title": provider_title(name),
                 "base_url": base_url,
                 "default_model": entry.get("default_model", ""),
                 "models": [model_row(m, name, base_url) for m in custom_models(entry)],

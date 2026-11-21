@@ -8,12 +8,15 @@ model could do; now the person turns on the models they want and sees each one's
   in `providers.json`, `COSCRIBE_<PROVIDER>_MODELS` and `_DEFAULT_MODEL` in `.env` for a built-in.
   One saved with only a default still has that one. Saving with no model is refused.
 - `GET /api/providers` gives each provider's models as rows (`web/provider_catalog.py`
-  `model_row`): images, effort levels, context window, tool calls, kind, and whether the bundled
-  catalog lists it. `POST /api/providers/models` lists what the provider offers this key, as the
+  `model_row`): native input and output modalities, effort levels, context window, tool calls,
+  kind, whether the bundled catalog lists it, and the provider's title. The catalog keeps
+  models.dev's output modalities where a model makes more than text (`outputs`, 344 rows added
+  without a refresh). `POST /api/providers/models` lists what the provider offers this key, as the
   same rows: `/models` for an OpenAI-compatible one, Anthropic's `GET /v1/models`, Gemini's
   OpenAI compatibility layer.
 - Settings > Providers: a provider's page has a Models section, a switch per model, a filter
-  past 12, Make default, and a dark tip on hover with what the model can do. A typed model ID
+  past 12, Make default, and a tip beside its info icon on hover: the model and provider, cards for its
+  native input and output (Vision, PDF, Audio, Video, Image), effort levels and context. A typed model ID
   only when the provider can't list its models. The list column shows the default and how many
   more are on.
 - The composer's model pill shows four models (the current one and the most recently picked,

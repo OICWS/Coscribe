@@ -3,6 +3,8 @@ import type { ModelRow } from "../types/settings";
 /** One model the picker offers; `value` is "provider:model". */
 export interface ModelChoice {
   provider: string;
+  /** The provider's title, for the hover tip. */
+  title: string;
   value: string;
   row: ModelRow;
 }

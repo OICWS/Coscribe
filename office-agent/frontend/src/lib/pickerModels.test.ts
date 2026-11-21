@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { typedModelRow } from "./modelMarks";
 import { rememberModel, splitChoices, type ModelChoice } from "./pickerModels";
 
-const choice = (value: string): ModelChoice => ({ provider: value.split(":")[0], value, row: typedModelRow(value.split(":")[1]) });
+const choice = (value: string): ModelChoice => ({ provider: value.split(":")[0], title: value.split(":")[0], value, row: typedModelRow(value.split(":")[1]) });
 const all = ["a:1", "a:2", "a:3", "b:1", "b:2", "b:3"].map(choice);
 const values = (list: ModelChoice[]) => list.map((c) => c.value);
 

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
-import { modelMarks } from "../lib/modelMarks";
 import { rememberModel, splitChoices, type ModelChoice } from "../lib/pickerModels";
 import { getProviders } from "../lib/rest";
 import { useClickOutside } from "../lib/useClickOutside";
@@ -32,7 +31,7 @@ function saveRecent(recent: string[]) {
 
 function choicesOf(providers: Awaited<ReturnType<typeof getProviders>>): ModelChoice[] {
   return Object.entries(providers).flatMap(([provider, info]) =>
-    info.models.filter((row) => row.kind === "chat").map((row) => ({ provider, value: `${provider}:${row.id}`, row })),
+    info.models.filter((row) => row.kind === "chat").map((row) => ({ provider, title: info.title, value: `${provider}:${row.id}`, row })),
   );
 }
 
@@ -91,7 +90,7 @@ export function ModelPicker({ currentModel, onSwitch }: ModelPickerProps) {
       active={choice.value === currentModel}
       shortcut={shortcut}
       onPick={() => pick(choice.value)}
-      onHover={(e) => setTip({ rect: e.currentTarget.getBoundingClientRect(), lines: [choice.provider, ...modelMarks(choice.row)], side })}
+      onHover={(e) => setTip({ rect: e.currentTarget.getBoundingClientRect(), row: choice.row, provider: choice.title, side })}
       onLeave={() => setTip(null)}
     />
   );

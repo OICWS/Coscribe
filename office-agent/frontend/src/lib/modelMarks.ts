@@ -7,19 +7,23 @@ export function contextLabel(tokens: number): string {
   return String(tokens);
 }
 
-/** What a model can do, one line each, for the tip shown on hover. A model the catalog doesn't
- * list says only that, since anything else would be a guess. */
-export function modelMarks(row: ModelRow): string[] {
-  if (!row.known) return ["Not in the bundled catalog: what it can do is unknown"];
-  const marks: string[] = [];
-  if (row.vision) marks.push("Reads images");
-  if (row.effort_levels.length > 0) marks.push(`Effort: ${row.effort_levels.join(", ")}`);
-  if (row.context) marks.push(`${contextLabel(row.context)} context`);
-  if (!row.tools) marks.push("No tool calls");
-  return marks;
+const INPUT_LABELS: Record<string, string> = { image: "Vision", pdf: "PDF", audio: "Audio", video: "Video" };
+const OUTPUT_LABELS: Record<string, string> = { image: "Image", audio: "Audio", video: "Video" };
+
+/** The modalities as card labels, in the catalog's order; one the labels don't know keeps its name. */
+export const inputCards = (row: ModelRow) => row.inputs.map((m) => INPUT_LABELS[m] ?? m);
+export const outputCards = (row: ModelRow) => row.outputs.map((m) => OUTPUT_LABELS[m] ?? m);
+
+/** The plain lines under the cards: effort levels, context window, and no tool calls. */
+export function modelFacts(row: ModelRow): string[] {
+  const facts: string[] = [];
+  if (row.effort_levels.length > 0) facts.push(`Effort: ${row.effort_levels.join(" · ")}`);
+  if (row.context) facts.push(`${contextLabel(row.context)} context`);
+  if (!row.tools) facts.push("No tool calls");
+  return facts;
 }
 
 /** A row for a model the server hasn't described: one saved but no longer listed. */
 export function typedModelRow(id: string): ModelRow {
-  return { id, name: id, vision: false, effort_levels: [], context: null, tools: false, kind: "chat", known: false };
+  return { id, name: id, inputs: [], outputs: [], effort_levels: [], context: null, tools: false, kind: "chat", known: false };
 }

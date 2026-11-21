@@ -1,7 +1,8 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { modelMarks, typedModelRow } from "../../../lib/modelMarks";
+import { typedModelRow } from "../../../lib/modelMarks";
 import { listProviderModels } from "../../../lib/rest";
 import type { ModelRow } from "../../../types/settings";
+import { InfoIcon } from "../../modelIcons";
 import { ModelTip, type ModelTipAnchor } from "../../ModelTip";
 import { ToggleSwitch } from "../../ToggleSwitch";
 import { fieldClass, secondaryButtonClass } from "../SettingRow";
@@ -24,11 +25,13 @@ function mergeRows(saved: ModelRow[], listed: ModelRow[], turnedOn: string[]): M
 /** The models this provider's key can use: switch on the ones the model picker should offer. */
 export function ModelsSection({
   form,
+  providerTitle,
   saved,
   listOnOpen,
   onChange,
 }: {
   form: ProviderForm;
+  providerTitle: string;
   /** The rows the server has for this provider's turned-on models. */
   saved: ModelRow[];
   listOnOpen: boolean;
@@ -95,7 +98,7 @@ export function ModelsSection({
               isDefault={row.id === form.defaultModel}
               onToggle={() => toggle(row.id)}
               onMakeDefault={() => onChange({ ...form, defaultModel: row.id })}
-              onHover={(e) => setTip({ rect: e.currentTarget.getBoundingClientRect(), lines: modelMarks(row) })}
+              onHover={(anchor) => setTip({ rect: anchor.getBoundingClientRect(), row, provider: providerTitle })}
               onLeave={() => setTip(null)}
             />
           ))}
@@ -126,14 +129,22 @@ function ModelSwitchRow({
   isDefault: boolean;
   onToggle: () => void;
   onMakeDefault: () => void;
-  onHover: (e: MouseEvent<HTMLSpanElement>) => void;
+  /** With the info icon, which the tip sits beside whichever part of the row is hovered. */
+  onHover: (anchor: Element) => void;
   onLeave: () => void;
 }) {
+  const hover = (e: MouseEvent<HTMLLIElement>) => {
+    const icon = e.currentTarget.querySelector("[data-tip-anchor]");
+    if (icon) onHover(icon);
+  };
   return (
-    <li className="group flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 last:border-b-0">
-      <span className="min-w-0 truncate text-sm" onMouseEnter={onHover} onMouseLeave={onLeave}>
-        {row.name}
-      </span>
+    <li
+      className="group flex items-center gap-2 border-b border-[var(--border)] px-4 py-2.5 last:border-b-0 hover:bg-[var(--card-bg)]"
+      onMouseEnter={hover}
+      onMouseLeave={onLeave}
+    >
+      <span className="min-w-0 truncate text-sm">{row.name}</span>
+      <InfoIcon data-tip-anchor className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" aria-hidden />
       {isDefault && on && <span className="shrink-0 rounded-md bg-[var(--card-bg)] px-1.5 py-0.5 text-xs text-[var(--muted)]">Default</span>}
       {!isDefault && on && (
         <button

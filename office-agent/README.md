@@ -1164,8 +1164,9 @@ takes effect in already-open conversations too. A provider's page has a
 Anthropic's own `GET /v1/models`, Gemini's through its OpenAI compatibility
 layer. Switch on the ones the model pill should offer; **Make default** picks a
 new conversation's model. Hovering a model shows what the bundled catalog says
-it can do (images, effort levels, context window, no tool calls), or that the
-catalog doesn't list it (decision 0055). Only when a provider can't list its
+it can do: its native input and output (vision, PDF, audio, video), effort
+levels, context window, no tool calls; or that the catalog doesn't list it
+(decision 0055). Only when a provider can't list its
 models does the page take a typed model ID. The pill shows four models (the
 current one and the most recently picked, in this browser) and the rest under
 **More models**, with the same hover tip.

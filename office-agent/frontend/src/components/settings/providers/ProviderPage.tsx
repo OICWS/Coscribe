@@ -107,7 +107,7 @@ export function ProviderPage({
         <ProviderFields form={form} onChange={setForm} showName={isNewCustom} builtin={builtin} info={info} />
       </section>
 
-      <ModelsSection form={form} saved={info?.models ?? []} listOnOpen={Boolean(info?.masked_key)} onChange={setForm} />
+      <ModelsSection form={form} providerTitle={title} saved={info?.models ?? []} listOnOpen={Boolean(info?.masked_key)} onChange={setForm} />
 
       <div className="flex items-center justify-end gap-3">
         {status && (

@@ -438,12 +438,14 @@ def test_a_provider_saves_its_models_and_keeps_them_when_none_are_sent(
         providers = client.get("/api/providers").json()
 
     assert providers["deepseek"]["default_model"] == "deepseek-flash"
+    assert providers["deepseek"]["title"] == "DeepSeek"
     flash, tuned = providers["deepseek"]["models"]
     assert flash["id"] == "deepseek-flash" and flash["known"] and flash["kind"] == "chat"
     assert tuned == {
         "id": "my-tuned",
         "name": "my-tuned",
-        "vision": False,
+        "inputs": [],
+        "outputs": [],
         "effort_levels": [],
         "context": None,
         "tools": False,

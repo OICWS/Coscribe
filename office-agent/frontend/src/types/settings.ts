@@ -299,7 +299,10 @@ export interface ProviderCatalogEntry {
 export interface ModelRow {
   id: string;
   name: string;
-  vision: boolean;
+  /** Native modalities beyond text: "image" (vision), "pdf", "audio", "video". */
+  inputs: string[];
+  /** What it makes beyond text: "image", "audio", "video". */
+  outputs: string[];
   effort_levels: string[];
   context: number | null;
   tools: boolean;
@@ -310,6 +313,8 @@ export interface ModelRow {
 }
 
 export interface ProviderInfo {
+  /** The name people know it by: the catalog's title, else the name it was added as. */
+  title: string;
   base_url: string | null;
   default_model: string;
   masked_key: string | null;

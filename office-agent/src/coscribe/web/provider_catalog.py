@@ -245,6 +245,12 @@ def custom_models(entry: dict[str, Any]) -> list[str]:
     return models
 
 
+def provider_title(name: str) -> str:
+    """The name people know a provider by: the catalog's title, else the name it was added as."""
+    entries = [*BUILTIN_CATALOG, *PROVIDER_CATALOG]
+    return next((e["title"] for e in entries if e["name"] == name.lower()), name)
+
+
 def model_row(
     model: str, provider: str, base_url: str = "", info: ModelInfo | None = None
 ) -> dict[str, Any]:
@@ -254,7 +260,8 @@ def model_row(
     return {
         "id": model,
         "name": info.name if info else model,
-        "vision": bool(info and "image" in info.inputs),
+        "inputs": [m for m in info.inputs if m != "text"] if info else [],
+        "outputs": [m for m in info.outputs if m != "text"] if info else [],
         "effort_levels": list(info.effort_levels) if info else [],
         "context": info.context if info else None,
         "tools": bool(info and info.tools),

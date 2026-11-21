@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ModelRow } from "../types/settings";
-import { contextLabel, modelMarks, typedModelRow } from "./modelMarks";
+import { contextLabel, inputCards, modelFacts, outputCards } from "./modelMarks";
 
 const row = (over: Partial<ModelRow>): ModelRow => ({
   id: "m",
   name: "M",
-  vision: false,
+  inputs: [],
+  outputs: [],
   effort_levels: [],
   context: null,
   tools: true,
@@ -22,16 +23,14 @@ describe("modelMarks", () => {
     expect(contextLabel(512)).toBe("512");
   });
 
-  it("lists images, effort levels and context for a known model", () => {
-    expect(modelMarks(row({ vision: true, effort_levels: ["low", "high"], context: 200_000 }))).toEqual([
-      "Reads images",
-      "Effort: low, high",
-      "200K context",
-    ]);
-    expect(modelMarks(row({ tools: false }))).toEqual(["No tool calls"]);
+  it("names native modalities as cards, image input as vision", () => {
+    const voice = row({ inputs: ["image", "pdf", "audio", "3d"], outputs: ["audio"] });
+    expect(inputCards(voice)).toEqual(["Vision", "PDF", "Audio", "3d"]);
+    expect(outputCards(voice)).toEqual(["Audio"]);
   });
 
-  it("claims nothing about a model the catalog doesn't list", () => {
-    expect(modelMarks(typedModelRow("my-tuned"))).toEqual(["Not in the bundled catalog: what it can do is unknown"]);
+  it("lists effort levels, context and missing tool calls as plain lines", () => {
+    expect(modelFacts(row({ effort_levels: ["low", "high"], context: 200_000 }))).toEqual(["Effort: low · high", "200K context"]);
+    expect(modelFacts(row({ tools: false }))).toEqual(["No tool calls"]);
   });
 });
