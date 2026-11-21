@@ -262,7 +262,7 @@ export function SettingsModal({ open, initialCategory, start, onDescribeDesignSy
            * right padding keeps rows clear of the close button as they scroll past it. */}
           <div ref={content} className="mb-3 mr-1.5 mt-3 min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] pl-10 pr-16 pt-[9px]">
             <div className="pb-8">
-              {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+              {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} onStatus={setStatus} />}
               {category === "workspace" && <WorkspaceTab dirEntries={dirEntries} onDirEntriesChange={setDirEntries} />}
               {category === "providers" && <ProvidersTab active={category === "providers"} />}
               {category === "skills" && <SkillsTab active={category === "skills"} onCreateSkill={onCreateSkill} />}

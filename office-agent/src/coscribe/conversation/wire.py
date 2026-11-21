@@ -224,6 +224,32 @@ class FolderAccessRequiredEvent(TypedDict):
     reason: str
 
 
+class PackageInstallRequiredEvent(TypedDict):
+    """install_package: a script needs a package missing from coscribe's environment for
+    `runtime`. Answered with question_response's `answer`: "install", or anything else to
+    decline; package_install_finished follows an install."""
+
+    type: Literal["package_install_required"]
+    id: str
+    runtime: Literal["python", "node"]
+    # As the model asked, with any version; `name` is the package alone.
+    package: str
+    name: str
+    reason: str
+    # Set when another version is installed and the model asked for a different one.
+    installed_version: str | None
+
+
+class PackageInstallFinishedEvent(TypedDict):
+    """The install the person allowed on a package_install_required card has ended."""
+
+    type: Literal["package_install_finished"]
+    id: str
+    installed: bool
+    version: NotRequired[str | None]
+    error: NotRequired[str]
+
+
 class ScheduledRunStartedEvent(TypedDict):
     """A scheduled run just started on this thread; `text` is the run's prompt (it
     never came from this tab, so there is no local echo)."""
@@ -438,7 +464,7 @@ class ErrorEvent(TypedDict):
 
 class AgentMessageEvent(TypedDict):
     """A chat bubble from the assistant: the final answer to a turn, and also the
-    /saveskill curator's questions and previews."""
+    /create-skill curator's questions and previews."""
 
     type: Literal["agent_message"]
     text: str
@@ -466,7 +492,7 @@ class RewoundEvent(TypedDict):
 
 
 class SkillSavedEvent(TypedDict):
-    """/saveskill's success confirmation. `slug` is the skill's directory name and
+    """/create-skill's success confirmation. `slug` is the skill's directory name and
     its /<slug> force-load token."""
 
     type: Literal["skill_saved"]
@@ -502,6 +528,8 @@ ServerEvent = (
     | PlanReadyEvent
     | QuestionRequiredEvent
     | FolderAccessRequiredEvent
+    | PackageInstallRequiredEvent
+    | PackageInstallFinishedEvent
     | ScheduledRunStartedEvent
     | WorkflowStepEvent
     | WorkflowTestProgressEvent

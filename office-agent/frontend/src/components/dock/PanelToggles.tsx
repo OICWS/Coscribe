@@ -17,6 +17,7 @@ export function PanelToggles({
   open,
   onToggle,
   inConversation,
+  onStartScreen,
   pinned,
   onPinnedChange,
   sidebar,
@@ -29,6 +30,8 @@ export function PanelToggles({
   onToggle: (panel: PanelId) => void;
   /** Panels belong to a conversation; elsewhere only the other items are offered. */
   inConversation: boolean;
+  /** The empty New session page, before the first message. */
+  onStartScreen: boolean;
   pinned: readonly ToolbarItem[];
   onPinnedChange: (pinned: ToolbarItem[]) => void;
   sidebar: { open: boolean; toggle: () => void };
@@ -87,7 +90,10 @@ export function PanelToggles({
             {badge && <span className="absolute -right-0.5 -top-0.5 motion-safe:animate-pulse">{badge}</span>}
           </button>
         ))}
-      <ToolbarMenu entries={offered.filter((e) => !pinned.includes(e.id))} onEdit={() => setEditing(true)} />
+      {/* On the start page the menu would hold only Artifacts, which the sidebar links to as well,
+       * and Edit toolbar, whose items are mostly a conversation's panels. Other pages keep it so
+       * the toolbar can still be edited from there. */}
+      {!onStartScreen && <ToolbarMenu entries={offered.filter((e) => !pinned.includes(e.id))} onEdit={() => setEditing(true)} />}
       {editing && <ToolbarDialog entries={entries} pinned={pinned} onChange={onPinnedChange} onClose={() => setEditing(false)} />}
     </>
   );

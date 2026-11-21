@@ -55,3 +55,15 @@ test("the sidebar's button always stays on the bar: Edit toolbar does not list i
   await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByTitle("Pin navigation open")).toBeVisible();
 });
+
+test("the empty New session page has no menu arrow; a conversation and the Artifacts page do", async ({ page }) => {
+  await page.goto(freshThreadPath("toolbar"));
+  await waitForConnected(page);
+  await expect(page.locator("textarea")).toBeVisible();
+  await expect(page.getByRole("button", { name: "More", exact: true })).toHaveCount(0);
+  await inAConversation(page);
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Artifacts" }).click();
+  await expect(page.getByRole("heading", { name: "Artifacts" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "More", exact: true })).toBeVisible();
+});

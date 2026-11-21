@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState, type Dispatch } from "react";
 import type { ChatAction, ChatState, LogItem } from "../state/reducer";
 import { asksThePerson } from "../state/folderAccess";
+import { PACKAGE_DECLINE } from "../state/packageInstall";
 import type { WsClientMessage } from "../types/wire";
+
+/** A card that waits for the person, turned down by a stop or by what they wrote in the chat instead. */
+function answeredWith(card: LogItem, text?: string): ChatAction {
+  if (card.kind === "folder_access") return { type: "local_folder_access_answered", id: card.id, answer: "deny", reply: text };
+  if (card.kind === "package_install") return { type: "local_package_install_answered", id: card.id, answer: PACKAGE_DECLINE, reply: text };
+  return { type: "local_question_answered", id: card.id, answers: [], reply: text };
+}
 
 /** What a note sent while the reply is being worked on can still do. */
 export interface SteerActions {
@@ -72,7 +80,7 @@ export function useSteerNotes(
   const denyApprovals = () =>
     state.items.forEach((item) => {
       if (item.kind === "approval" && item.status === "pending") dispatch({ type: "local_approval_resolved", id: item.id, approved: false });
-      if (item.kind === "folder_access" && item.status === "pending") dispatch({ type: "local_folder_access_answered", id: item.id, answer: "deny" });
+      if ((item.kind === "folder_access" || item.kind === "package_install") && item.status === "pending") dispatch(answeredWith(item));
     });
   const backToComposer = (notes: Note[]) => {
     const message = asMessage(notes);
@@ -115,7 +123,7 @@ export function useSteerNotes(
       const text = draft.outgoingText;
       const attached = (draft.images?.length ?? 0) > 0 || (draft.files?.length ?? 0) > 0;
       if (question && !attached) {
-        dispatch(question.kind === "folder_access" ? { type: "local_folder_access_answered", id: question.id, answer: "deny", reply: text } : { type: "local_question_answered", id: question.id, answers: [], reply: text });
+        dispatch(answeredWith(question, text));
         send({ type: "question_response", id: question.id, reply: text });
         return;
       }

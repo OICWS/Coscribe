@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import httpx
 import keyring.errors
 import pytest
 
@@ -23,6 +24,7 @@ from langchain_core.messages.ai import UsageMetadata
 
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
+from coscribe.web.routes.settings import providers as settings_provider_routes
 from coscribe.web.routes.settings import proxy as settings_proxy_routes
 
 from .helpers import (
@@ -134,6 +136,7 @@ def test_switch_model_picks_up_a_provider_added_after_the_session_was_created(
                     "name": "deepseek",
                     "base_url": "https://api.deepseek.com/v1",
                     "api_key": "sk-test",
+                    "default_model": "m-1",
                 },
             )
             assert response.status_code == 200
@@ -317,6 +320,7 @@ def test_post_and_delete_provider_round_trip(
                 "name": "deepseek",
                 "base_url": "https://api.deepseek.com/v1",
                 "api_key": "sk-deepseek",
+                "default_model": "m-1",
             },
         )
         assert response.status_code == 200
@@ -348,9 +352,12 @@ def test_post_provider_with_a_blank_key_keeps_the_saved_one(
                 "name": "deepseek",
                 "base_url": "https://api.deepseek.com/v1",
                 "api_key": "sk-ds",
+                "default_model": "m-1",
             },
         )
-        client.post("/api/providers", json={"name": "gemini", "api_key": "g-key"})
+        client.post(
+            "/api/providers", json={"name": "gemini", "api_key": "g-key", "default_model": "m-1"}
+        )
 
         kept_custom = client.post(
             "/api/providers",
@@ -387,13 +394,96 @@ def test_post_provider_with_a_blank_key_is_rejected_for_a_new_provider(
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         custom = client.post(
             "/api/providers",
-            json={"name": "glm", "base_url": "https://open.bigmodel.cn/api/paas/v4", "api_key": ""},
+            json={
+                "name": "glm",
+                "base_url": "https://open.bigmodel.cn/api/paas/v4",
+                "api_key": "",
+                "default_model": "m-1",
+            },
         )
-        builtin = client.post("/api/providers", json={"name": "gemini", "api_key": ""})
+        builtin = client.post(
+            "/api/providers", json={"name": "gemini", "api_key": "", "default_model": "m-1"}
+        )
         assert custom.json()["rejected"] == {"glm": "api_key cannot be blank"}
         assert builtin.json()["rejected"] == {"gemini": "api_key cannot be blank"}
         assert "glm" not in client.get("/api/providers").json()
     assert not (tmp_path / "providers.json").exists()
+
+
+def test_post_provider_without_a_default_model_is_rejected_unless_one_is_saved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model picker offers only a provider's default model."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    deepseek = {"name": "deepseek", "base_url": "https://api.deepseek.com/v1", "api_key": "sk-ds"}
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        custom = client.post("/api/providers", json=deepseek)
+        builtin = client.post("/api/providers", json={"name": "openai", "api_key": "sk-oa"})
+        assert custom.json()["rejected"] == {"deepseek": "default_model cannot be blank"}
+        assert builtin.json()["rejected"] == {"openai": "default_model cannot be blank"}
+        assert client.get("/api/providers").json() == {}
+
+        client.post("/api/providers", json={**deepseek, "default_model": "deepseek-chat"})
+        kept = client.post("/api/providers", json={**deepseek, "api_key": ""})
+        assert kept.json()["rejected"] == {}
+        assert client.get("/api/providers").json()["deepseek"]["default_model"] == "deepseek-chat"
+
+
+def _models_transport(seen: list[httpx.Request], response: httpx.Response) -> Any:
+    real_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return response
+
+    return lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs)
+
+
+def test_provider_models_lists_ids_with_the_saved_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    seen: list[httpx.Request] = []
+    listed = httpx.Response(
+        200, json={"object": "list", "data": [{"id": "b-model"}, {"id": "a-model"}, {}]}
+    )
+    monkeypatch.setattr(
+        settings_provider_routes.httpx, "AsyncClient", _models_transport(seen, listed)
+    )
+    deepseek = {"name": "deepseek", "base_url": "https://api.deepseek.com/v1/"}
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        unsaved = client.post("/api/providers/models", json=deepseek).json()
+        client.post(
+            "/api/providers", json={**deepseek, "api_key": "sk-ds", "default_model": "a-model"}
+        )
+        saved = client.post("/api/providers/models", json=deepseek).json()
+
+    assert unsaved == {"models": [], "error": "Enter the API key first."}
+    assert saved == {"models": ["a-model", "b-model"], "error": None}
+    assert str(seen[0].url) == "https://api.deepseek.com/v1/models"
+    assert seen[0].headers["authorization"] == "Bearer sk-ds"
+
+
+@pytest.mark.parametrize(
+    ("response", "error"),
+    [
+        (httpx.Response(401, json={}), "The provider refused the API key."),
+        (httpx.Response(404, text="nope"), "The provider answered 404 at /models."),
+        (httpx.Response(200, json={"data": []}), "The provider listed no models."),
+        (httpx.Response(200, text="<html>"), "The provider doesn't list its models at /models."),
+    ],
+)
+async def test_provider_models_says_why_nothing_was_listed(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response, error: str
+) -> None:
+    monkeypatch.setattr(
+        settings_provider_routes.httpx, "AsyncClient", _models_transport([], response)
+    )
+    result = await settings_provider_routes.list_provider_models("https://x.test/v1", "k")
+    assert result == {"models": [], "error": error}
 
 
 def test_get_providers_falls_back_to_the_global_default_model(
@@ -462,6 +552,7 @@ def test_post_provider_persists_an_absolute_path_not_a_cwd_relative_one(
                 "name": "glm",
                 "base_url": "https://open.bigmodel.cn/api/paas/v4",
                 "api_key": "sk-glm",
+                "default_model": "m-1",
             },
         )
         assert response.status_code == 200
@@ -486,6 +577,7 @@ def test_post_provider_stores_via_keyring_when_available(
                 "name": "deepseek",
                 "base_url": "https://api.deepseek.com/v1",
                 "api_key": "sk-deepseek-real",
+                "default_model": "m-1",
             },
         )
 
@@ -516,7 +608,12 @@ def test_post_provider_builtin_key_stored_via_keyring_when_available(
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         client.post(
             "/api/providers",
-            json={"name": "gemini", "base_url": "", "api_key": "sk-gemini-real"},
+            json={
+                "name": "gemini",
+                "base_url": "",
+                "api_key": "sk-gemini-real",
+                "default_model": "m-1",
+            },
         )
 
         env_value = dotenv_values(tmp_path / ".env")["GEMINI_API_KEY"]
@@ -549,11 +646,12 @@ def test_provider_files_get_owner_only_permissions(
                 "name": "deepseek",
                 "base_url": "https://api.deepseek.com/v1",
                 "api_key": "sk-deepseek",
+                "default_model": "m-1",
             },
         )
         client.post(
             "/api/providers",
-            json={"name": "gemini", "base_url": "", "api_key": "sk-gemini"},
+            json={"name": "gemini", "base_url": "", "api_key": "sk-gemini", "default_model": "m-1"},
         )
 
     assert stat.S_IMODE((tmp_path / "providers.json").stat().st_mode) == 0o600
