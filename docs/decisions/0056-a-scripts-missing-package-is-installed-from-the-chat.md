@@ -22,7 +22,7 @@ folders or reach the network, and outside it each command needs the person's app
   pypi.org or npmjs.com, and has Install and Not now. It then shows the install running and ends
   as the installed version or the installer's own error.
 - **The same installer as Settings**, into the same environment, run as the user outside the
-  AppContainer and the command sandbox, as an install from Settings is. The card says so.
+  AppContainer and the command sandbox, as an install from Settings is.
 - **A plain name only**: a name with at most a version (`openpyxl`, `openpyxl==3.1.2`,
   `sharp@0.33.5`). A URL, a path, a git address, an option or several names are refused before
   any card.

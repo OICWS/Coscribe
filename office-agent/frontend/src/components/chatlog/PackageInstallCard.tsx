@@ -164,19 +164,14 @@ export function PackageInstallCard({ item }: { item: PackageInstallItem }) {
           </span>
         </div>
       ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={primaryButton} onClick={() => answer(PACKAGE_INSTALL)}>
-              Install
-            </button>
-            <button type="button" className={secondaryButton} onClick={() => answer(PACKAGE_DECLINE)}>
-              Not now
-            </button>
-          </div>
-          <p className="text-xs text-[var(--muted)]">
-            Installed with {runtime.tool}, as from Settings › Packages. The package’s own setup runs on this computer.
-          </p>
-        </>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button type="button" className={secondaryButton} onClick={() => answer(PACKAGE_DECLINE)}>
+            Not now
+          </button>
+          <button type="button" className={primaryButton} onClick={() => answer(PACKAGE_INSTALL)}>
+            Install
+          </button>
+        </div>
       )}
     </div>
   );
