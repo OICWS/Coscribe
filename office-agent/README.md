@@ -118,7 +118,11 @@ For multi-step requests, the Coordinator can plan and track progress with
 `task_create`/`task_update`/`task_list`, persisted per-thread alongside the
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
-Several commands are typed as a message mid-session (not startup flags):
+Several commands are typed as a message mid-session (not startup flags). In
+the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/create-skill` and
+the skills; the others below have a control of their own (the mode button,
+Stop) but still work typed. During a reply a typed command waits in the box,
+except `/stop`.
 
 The permission modes follow Claude Code's
 (code.claude.com/docs/en/permission-modes). One is on at a time; typing a
@@ -163,10 +167,11 @@ task's run follows the task's own approval setting instead.
   tool results (not the plan, skills or answers) are left out of what the
   model is sent, and the model calls the tool again if it needs one -- see
   [Scheduled / unattended runs](#scheduled--unattended-runs) below for why.
-- `/clear` -- wipe the current thread's conversation history outright and
-  start fresh (unlike `/compact`, which summarizes rather than discards).
-  Doesn't touch Plan Mode/Accept Edits Mode (those are session-level
-  toggles, not conversation content) or memory/tasks/scheduled tasks.
+- `/clear` -- start fresh. In the web UI the conversation is archived (it
+  stays under Sessions > Archived and can be restored) and a blank one opens
+  in the same workspace. In the CLI it erases the thread's history in place
+  (unlike `/compact`, which summarizes rather than discards), without
+  touching the permission mode or memory/tasks/scheduled tasks.
 - `/saveworkflow [name]` -- turn what this conversation just did into a
   reusable workflow. In the web UI this drafts a
   [workflow](#workflows----fixed-steps-instead-of-a-prompt) (fixed steps,
@@ -185,8 +190,8 @@ task's run follows the task's own approval setting instead.
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
-  write a project overview to `OVERVIEW.md` at its root, analogous to Claude
-  Code's own `/init`.
+  write a project overview to `OVERVIEW.md` at its root (refreshing one that
+  is already there), analogous to Claude Code's own `/init`.
 - `/<skill-name>` -- invoke a loaded skill directly by its name (e.g.
   `/pdf-extract summarize report.pdf`), splicing its full instructions
   straight into that turn instead of relying on the model to notice it's

@@ -441,7 +441,7 @@ export interface ErrorEvent {
 }
 
 /**
- * A chat bubble from the assistant: the final answer to a turn, and also the /saveskill
+ * A chat bubble from the assistant: the final answer to a turn, and also the /create-skill
  * curator's questions and previews.
  */
 export interface AgentMessageEvent {
@@ -470,8 +470,8 @@ export interface RewoundEvent {
 }
 
 /**
- * /saveskill's success confirmation. `slug` is the skill's directory name and its /<slug>
- * force-load token.
+ * /create-skill's success confirmation. `slug` is the skill's directory name and its
+ * /<slug> force-load token.
  */
 export interface SkillSavedEvent {
   type: "skill_saved";

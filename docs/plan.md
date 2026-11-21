@@ -185,6 +185,10 @@ Last reviewed: 2026-11-18.
 
 ## For the maintainer (settings and decisions)
 
+- Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`): `/doctor` is agreed (read-only
+  checks shown as a card); `/changes` waits on the maintainer; `/fork`, a temporary side chat,
+  `/export` and `/recap` are not scheduled.
+
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
   its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
   count, `docs/log/2026-11-15-windows-night-1110.md`), and it now runs on every pull request
