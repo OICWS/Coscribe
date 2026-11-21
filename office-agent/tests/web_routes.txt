@@ -125,6 +125,7 @@ POST /api/config
 POST /api/design-systems
 POST /api/design-systems/{system_id}/assets
 POST /api/design-systems/{system_id}/duplicate
+POST /api/doctor
 POST /api/environments
 POST /api/environments/import-browser-sites
 POST /api/libreoffice

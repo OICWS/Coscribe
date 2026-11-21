@@ -241,3 +241,20 @@ covers = [
   "office-agent/frontend/knip.json",
 ]
 added_or_removed = ["office-agent/frontend/src/types/", "office-agent/frontend/src/state/"]
+
+# /doctor's checks call these modules' lookups; a change to one may change what its check says.
+[[doc]]
+path = "office-agent/src/coscribe/web/routes/settings/doctor.py"
+covers = [
+  "office-agent/src/coscribe/tools/exec/script_env.py",
+  "office-agent/src/coscribe/tools/exec/find_python.py",
+  "office-agent/src/coscribe/tools/exec/own_python.py",
+  "office-agent/src/coscribe/tools/exec/node_env.py",
+  "office-agent/src/coscribe/tools/exec/isolation.py",
+  "office-agent/src/coscribe/tools/exec/command_sandbox.py",
+  "office-agent/src/coscribe/tools/libreoffice.py",
+  "office-agent/src/coscribe/conversation/page_shot.py",
+  "office-agent/src/coscribe/web/browser_panel.py",
+  "office-agent/src/coscribe/web/browser_detect.py",
+  "office-agent/src/coscribe/runtime_lg/providers.py",
+]

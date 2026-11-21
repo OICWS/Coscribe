@@ -2984,6 +2984,26 @@
         "summary": "Duplicate Design System"
       }
     },
+    "/api/doctor": {
+      "post": {
+        "operationId": "doctor_api_doctor_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Doctor Api Doctor Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Doctor"
+      }
+    },
     "/api/environments": {
       "get": {
         "operationId": "list_environments_api_environments_get",

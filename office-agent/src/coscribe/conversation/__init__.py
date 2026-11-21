@@ -35,7 +35,7 @@ from .design_canvas import (
     variables_style,
 )
 from .folder_access import add_allowed_folder, join_library
-from .page_shot import NoBrowser, PageShotError
+from .page_shot import NoBrowser, PageShotError, find_browser
 from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
@@ -80,6 +80,7 @@ __all__ = [
     "export_board",
     "PageShotError",
     "NoBrowser",
+    "find_browser",
     "NotSquare",
     "DashboardDataError",
     "is_dashboard",

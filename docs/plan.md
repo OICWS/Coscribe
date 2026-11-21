@@ -176,6 +176,11 @@ Last reviewed: 2026-11-18.
 
 ## For the maintainer (settings and decisions)
 
+- `/doctor` (#1003, `docs/log/2026-11-21-doctor-checks.md`): the server's checks are in; the
+  card in the app follows once #1005 is merged. `/changes` is not needed for now (the Outputs
+  panel and the notices above the message box show what a conversation made); it would need
+  deletes, renames and before/after content recorded first.
+
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
   its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
   count, `docs/log/2026-11-15-windows-night-1110.md`), and it now runs on every pull request
