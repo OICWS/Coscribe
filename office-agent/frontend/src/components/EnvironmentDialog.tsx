@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { folderName } from "../lib/folderName";
+import { DIALOG_BACKDROP_CLASS } from "../lib/titleBar";
 import { createEnvironment, deleteEnvironment, getConfig, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
 import { ALLOWED_FOLDERS_CHANGED, buildDirEntries, type DirEntry } from "./settings/fields";
 import type { Environment, EnvironmentFields, SecretInfo } from "../types/settings";
@@ -103,7 +104,7 @@ export function EnvironmentDialog(props: EnvironmentDialogProps) {
 
   if (loaded === null) {
     return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
+      <div className={DIALOG_BACKDROP_CLASS} onClick={onClose}>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-6 py-8 text-sm text-[var(--muted)]">
           {error ?? "Loading..."}
         </div>
@@ -260,6 +261,9 @@ function EditorFooter({
 
 // One height on every page, the main page's, so moving between pages does not make the dialog jump;
 // a longer page (many sites or folders) scrolls inside it.
+// The editor stays clear of the desktop title bar like every dialog, but without the dim.
+const EDITOR_BACKDROP_CLASS = DIALOG_BACKDROP_CLASS.replace(" bg-black/40", "");
+
 const dialogClass =
   "flex h-[min(45rem,100%)] w-full max-w-[42.5rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
 
@@ -349,7 +353,7 @@ function EnvironmentEditor({
   // A click beside the dialog closes it only when nothing is changed in it: a stray click must
   // not throw an edit away.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={() => !draft.dirty && onClose()}>
+    <div className={EDITOR_BACKDROP_CLASS} onClick={() => !draft.dirty && onClose()}>
       <div
         role="dialog"
         aria-label={environment ? "Edit workspace" : "New workspace"}

@@ -29,9 +29,10 @@
 
 import { contextBridge, ipcRenderer } from "electron";
 
-// Keep this in sync with dialog.ts's own PICK_FOLDER_CHANNEL -- cannot be
+// Keep these in sync with dialog.ts's own channel constants -- cannot be
 // a shared import, see this file's own header comment above.
 const PICK_FOLDER_CHANNEL = "dialog:pick-folder";
+const PICK_FILE_CHANNEL = "dialog:pick-file";
 // Keep in sync with docPdf.ts.
 const DOC_PDF_CHANNEL = "doc:print-to-pdf";
 
@@ -193,6 +194,12 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
    * the user cancelled. */
   pickFolder(): Promise<string | null> {
     return ipcRenderer.invoke(PICK_FOLDER_CHANNEL);
+  },
+
+  /** Native OS file picker for one file. Returns its absolute path, or null if the user
+   * cancelled. */
+  pickFile(options?: { title?: string; filters?: { name: string; extensions: string[] }[] }): Promise<string | null> {
+    return ipcRenderer.invoke(PICK_FILE_CHANNEL, options);
   },
 
   /** The page as it is now, printed to an A4 PDF: its bytes. */
