@@ -30,6 +30,7 @@ import type {
   NpmLatestVersionResponse,
   ProviderCatalogEntry,
   ProviderDeleteResult,
+  ProviderModelsResult,
   ProviderUpdateResult,
   ProvidersResponse,
   ScheduledRun,
@@ -350,6 +351,9 @@ export const addProvider = (name: string, baseUrl: string, apiKey: string, defau
     api_key: apiKey,
     default_model: defaultModel,
   });
+/** A blank key lists with the key already saved for `name`. */
+export const listProviderModels = (name: string, baseUrl: string, apiKey: string) =>
+  postJson<ProviderModelsResult>("/api/providers/models", { name, base_url: baseUrl, api_key: apiKey });
 export const removeProvider = (name: string) => del<ProviderDeleteResult>(`/api/providers/${encodeURIComponent(name)}`);
 
 // -- Environment (script-env packages) -------------------------------------

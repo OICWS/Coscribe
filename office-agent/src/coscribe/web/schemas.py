@@ -296,6 +296,13 @@ class ProviderUpdate(BaseModel):
     default_model: str = ""
 
 
+class ProviderModelsRequest(BaseModel):
+    name: str = ""
+    base_url: str = ""
+    # Blank uses the key already saved for `name`.
+    api_key: str = ""
+
+
 class ProxyUpdate(BaseModel):
     mode: Literal["system", "manual", "none"]
     address: str = ""

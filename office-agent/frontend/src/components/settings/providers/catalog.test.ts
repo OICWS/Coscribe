@@ -19,6 +19,10 @@ describe("formProblem", () => {
     expect(formProblem(form({ name: "gemini", baseUrl: "" }), catalog, true)).toBeNull();
   });
 
+  it("needs a default model, or the model picker has nothing to offer", () => {
+    expect(formProblem(form({ defaultModel: " " }), catalog, true)).toBe("Choose a default model.");
+  });
+
   it("still needs a base URL for a custom provider with a saved key", () => {
     expect(formProblem(form({ baseUrl: " " }), catalog, true)).toBe("Base URL cannot be blank.");
   });

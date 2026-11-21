@@ -171,9 +171,14 @@ Last reviewed: 2026-11-18.
   canvas, and pages, need canvas elements beyond boards and notes in `.design.json`; an issue
   first, since the format changes.
 
+- **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
+  (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
+  its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
+  Parts: the catalog and its update job; the protocols; the provider page's Models section and
+  the model picker; pasting a vendor's Codex or Claude Code setup.
+
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
-  a provider's models read from its own list, and a first-run page that takes a compatible
-  provider and checks the key; steps and time per task in the agentic evaluation.
+  a first-run page that takes a compatible provider and checks the key; steps and time per task in the agentic evaluation.
 
 - **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves

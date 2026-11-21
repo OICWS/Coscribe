@@ -863,6 +863,27 @@
         "title": "PermissionsRequest",
         "type": "object"
       },
+      "ProviderModelsRequest": {
+        "properties": {
+          "api_key": {
+            "default": "",
+            "title": "Api Key",
+            "type": "string"
+          },
+          "base_url": {
+            "default": "",
+            "title": "Base Url",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "ProviderModelsRequest",
+        "type": "object"
+      },
       "ProviderUpdate": {
         "properties": {
           "api_key": {
@@ -4209,6 +4230,47 @@
           }
         },
         "summary": "Get Providers Catalog"
+      }
+    },
+    "/api/providers/models": {
+      "post": {
+        "description": "A POST although it changes nothing: the request carries an API key.",
+        "operationId": "get_provider_models_api_providers_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Provider Models Api Providers Models Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provider Models"
       }
     },
     "/api/providers/{name}": {

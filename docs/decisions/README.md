@@ -64,4 +64,5 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
 | [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (proposed; narrows 0048) |
 | [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (proposed) |
+| [0055](0055-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (proposed) |
 | [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (proposed) |
