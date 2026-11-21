@@ -408,7 +408,7 @@ function App() {
     !handingOff &&
     !isScheduledTaskThread &&
     threadWorkflow === null &&
-    !viewerFile;
+    !viewerFile; // the start page has no panels, so a file opened into a new conversation would not show
   const taskPanelShown =
     navMode === "create" &&
     taskPanelWanted &&

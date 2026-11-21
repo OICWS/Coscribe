@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { deleteScheduledTask, deleteThread } from "../lib/rest";
+import { deleteScheduledTask } from "../lib/rest";
+import { useThreadDeletion } from "../lib/useThreadDeletion";
 import { useClickOutside } from "../lib/useClickOutside";
 import { showArtifacts, startNewThread } from "../lib/nav";
 import { threadLabel } from "../lib/threadStatus";
@@ -320,11 +321,10 @@ export function NavRail({
     if (expanded) onThreadsChanged();
   }, [expanded, onThreadsChanged]);
 
+  const deletion = useThreadDeletion(threads, onThreadsChanged);
   const confirmDelete = () => {
-    const ids = deleteTargets.map((t) => t.thread_id);
     setDeleteTargets([]);
-    if (ids.includes(threadId)) startNewThread(); // leave it before it is gone
-    Promise.all(ids.map((id) => deleteThread(id))).then(onThreadsChanged);
+    deletion.remove(deleteTargets.map((t) => t.thread_id), threadId);
   };
 
   return (
@@ -397,7 +397,7 @@ export function NavRail({
               <div className="flex min-h-0 flex-1 flex-col gap-0.5">
                 <SessionLinks artifactsOpen={artifactsOpen} />
                 <ThreadList
-                  threads={threads}
+                  threads={deletion.listed}
                   currentId={threadId}
                   onChanged={onThreadsChanged}
                   onRenamed={onThreadRenamed}
