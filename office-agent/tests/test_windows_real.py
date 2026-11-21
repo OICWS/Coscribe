@@ -453,7 +453,7 @@ def _icacls(*paths: Path) -> str:
 
 @real
 async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usable(
-    tmp_path: Path, sandboxed_state: Path
+    tmp_path: Path, sandboxed_state: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # The grants coscribe adds: a read-only folder in Documents and a program on PATH in
     # LOCALAPPDATA, both inside folders the profile denies.
@@ -469,7 +469,9 @@ async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usab
     program.mkdir()
     (program / "coscribe-hello.cmd").write_text("@echo HELLO-PROGRAM\r\n")
     Capabilities(sandboxed_state).set("commands", True)
-    env = {**os.environ, "PATH": f"{program};{os.environ['PATH']}"}
+    # The sandbox reads programs from the server's PATH, not the command's.
+    monkeypatch.setenv("PATH", f"{program};{os.environ['PATH']}")
+    env = dict(os.environ)
     folders = {"writable": [workspace], "readable": [reference]}
 
     try:
