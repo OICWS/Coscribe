@@ -1,6 +1,6 @@
 # 0054: A workflow task's page is one row of tabs
 
-Status: proposed (2026-11-19, OICWS). Narrows 0037: its simple view is now the page's Overview tab.
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-19, OICWS). Narrows 0037: its simple view is now the page's Overview tab.
 
 ## Context
 A workflow task's page had two levels of views: a Simple / Detailed switch for the page, and

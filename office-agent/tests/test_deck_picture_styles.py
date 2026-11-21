@@ -128,3 +128,24 @@ def test_a_shadow_that_is_not_one_is_refused_with_what_to_write(tmp_path: Path) 
     )
     report = build_deck(pages, tmp_path / "o.pptx", resource_root=tmp_path)
     assert any("box-shadow is" in e for page in report.pages for e in page.errors)
+
+
+def test_a_rounded_picture_keeps_its_shadow(tmp_path: Path) -> None:
+    xml = _slide_xml(
+        tmp_path, "border-radius:40px;border:6px solid #112233;box-shadow:0px 8px 24px #112233"
+    )
+    (pic,) = re.findall(r"<p:pic>.*?</p:pic>", xml, re.S)
+    assert 'prst="roundRect"' in pic and '<a:ln w="38100">' in pic
+    assert '<a:outerShdw blurRad="152400" dist="50800"' in pic
+
+
+def test_the_panels_rounded_picture_with_a_shadow_keeps_its_border() -> None:
+    root = section_drawing(
+        f'<section><img src="a.png" style="{BOX};border-radius:40px;border:6px solid #112233;'
+        'box-shadow:0px 8px 24px #112233"/></section>'
+    )
+    s = "{http://www.w3.org/2000/svg}"
+    outline = [r for r in root.iter(f"{s}rect") if r.get("stroke")]
+    assert len(outline) == 1 and outline[0].get("rx") == "40"
+    (carrier,) = [g for g in root.iter(f"{s}g") if g.get("filter")]
+    assert [child.tag for child in carrier] == [f"{s}image"]

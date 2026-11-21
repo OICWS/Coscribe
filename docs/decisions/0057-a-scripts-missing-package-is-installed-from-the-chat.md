@@ -1,7 +1,7 @@
 # 0057: A script's missing package is installed from the chat, after the person says yes
 
 ## Status
-Proposed (2026-11-20, OICWS approved the plan in the project thread and chose that an install
+Accepted (2026-11-21, by the maintainer; proposed 2026-11-20, OICWS approved the plan in the project thread and chose that an install
 behaves as one from Settings). Adds to 0021 and 0022, which it does not change. Issue #1007,
 from #1002.
 

@@ -1375,6 +1375,19 @@
         "title": "TaskNotesUpdate",
         "type": "object"
       },
+      "ThreadFork": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ThreadFork",
+        "type": "object"
+      },
       "ThreadMetaPatch": {
         "properties": {
           "archived": {
@@ -8347,6 +8360,53 @@
           }
         },
         "summary": "Reread Folder Brief"
+      }
+    },
+    "/api/threads/{thread_id}/fork": {
+      "post": {
+        "operationId": "fork_thread_api_threads__thread_id__fork_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadFork"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fork Thread"
       }
     },
     "/api/threads/{thread_id}/meta": {

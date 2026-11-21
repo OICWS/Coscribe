@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -147,3 +148,40 @@ def test_powershell_parses_each_script(suffix: str, tmp_path: Path) -> None:
     )
 
     assert done.returncode == 0, done.stdout.decode(errors="replace")
+
+
+def test_a_timeout_ends_the_office_program_com_started_for_the_job(
+    office: _FakeOffice, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # COM starts the program outside PowerShell's process tree, so killing that tree on a
+    # timeout leaves it running hidden with the file open.
+    def hang_then_clean(
+        command: list[str], timeout: float, env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[bytes]:
+        office.runs.append({"script": command[-1], "env": env, "timeout": timeout})
+        if len(office.runs) == 1:
+            raise subprocess.TimeoutExpired(command, timeout)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(_office_com, "run_killable", hang_then_clean)
+    (tmp_path / "a.xlsx").write_bytes(b"x")
+
+    with pytest.raises(ValueError, match="took too long"):
+        _office_com.convert(tmp_path / "a.xlsx", tmp_path / "a.pdf", "pdf", 30)
+
+    convert_run, cleanup = office.runs
+    assert cleanup["env"]["COSCRIBE_IMAGE"] == "et.exe"
+    assert "Embedding" in cleanup["script"] and "$since" in cleanup["script"]
+    assert cleanup["env"]["COSCRIBE_SINCE"] <= datetime.now(UTC).isoformat()
+
+
+def test_a_file_the_program_cannot_open_still_closes_the_program() -> None:
+    for script in _office_com._OPEN_AND_SAVE.values():
+        opened = script.index(".Open(")
+        assert script.rindex("try {", 0, opened) < opened < script.index("} finally { if ($open")
+
+
+def test_every_office_program_has_its_process_name() -> None:
+    assert {p for names in _office_com._PROGRAMS.values() for p in names} == set(
+        _office_com._IMAGES
+    )

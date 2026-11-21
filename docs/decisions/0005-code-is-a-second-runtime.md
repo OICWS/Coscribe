@@ -1,6 +1,6 @@
 # 0005: Code is a second runtime, never inside a fixed workflow
 
-Status: accepted (recorded 2026-10-08); partly superseded by 0028 (proposed): a run may contain
+Status: accepted (recorded 2026-10-08); partly superseded by 0028: a run may contain
 an agent step, never the code module. See `ARCHITECTURE.md`, "Code is a second runtime".
 
 ## Context

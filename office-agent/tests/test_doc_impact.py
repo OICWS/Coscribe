@@ -45,6 +45,15 @@ def test_a_document_whose_code_changed_must_be_changed_or_named_as_checked() -> 
     assert doc_impact.not_looked_at(_m("office-agent/.env.example"), nested, readmes)
 
 
+def test_a_module_kept_as_a_document_can_be_named_as_checked() -> None:
+    doctor = "office-agent/src/coscribe/web/routes/settings/doctor.py"
+    lookup = "office-agent/src/coscribe/tools/_office_com.py"
+    mapped = {doctor: {"covers": [lookup], "added_or_removed": []}}
+    assert doc_impact.not_looked_at(_m(lookup), "", mapped)
+    checked = f"Docs checked: {doctor} (uses installed_office, unchanged)"
+    assert doc_impact.not_looked_at(_m(lookup), checked, mapped) == {}
+
+
 def test_an_added_or_removed_path_counts_only_when_a_file_comes_or_goes() -> None:
     skill = "office-agent/src/coscribe/builtin_skills/design/SKILL.md"
 

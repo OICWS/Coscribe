@@ -3,16 +3,19 @@ through COM (decision 0012): Microsoft Office, or WPS Office, which registers th
 model under its own names.
 
 The job runs in a PowerShell process, which every Windows has: no Python COM package is needed,
-and a hung job can be killed on a timeout like any other process. Paths reach the script through
-environment variables, never inside its text, so no file name can change what it runs."""
+and a hung job can be killed on a timeout, PowerShell and the office program COM started for it.
+Paths reach the script through environment variables, never inside its text, so no file name can
+change what it runs."""
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import subprocess
 import sys
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ._office_bins import run_killable
@@ -40,32 +43,61 @@ _FORMATS = {
 
 # Each script opens the file read-only and without a window. It hides the program, and closes
 # it, only when no file of the user's is open in it: PowerPoint has one instance per user, and
-# closing or hiding the one the user works in would take their presentations with it.
+# closing or hiding the one the user works in would take their presentations with it. The close
+# sits in a `finally` so that a file the program cannot open does not leave it running hidden.
 _OPEN_AND_SAVE = {
     "word": """
 $open = $app.Documents.Count
 if ($open -eq 0) { $app.Visible = $false; $app.DisplayAlerts = 0 }
-$doc = $app.Documents.Open($env:COSCRIBE_SOURCE, $false, $true, $false)
-try { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) } finally { $doc.Close($false) }
-if ($open -eq 0) { $app.Quit() }
+try {
+  $doc = $app.Documents.Open($env:COSCRIBE_SOURCE, $false, $true, $false)
+  try { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
+  finally { $doc.Close($false) }
+} finally { if ($open -eq 0) { $app.Quit() } }
 """,
     "excel": """
 $open = $app.Workbooks.Count
 if ($open -eq 0) { $app.Visible = $false; $app.DisplayAlerts = $false }
-$book = $app.Workbooks.Open($env:COSCRIBE_SOURCE, 0, $true)
 try {
-  if ($env:COSCRIBE_FORMAT -eq 'pdf') { $book.ExportAsFixedFormat(0, $env:COSCRIBE_TARGET) }
-  else { $book.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
-} finally { $book.Close($false) }
-if ($open -eq 0) { $app.Quit() }
+  $book = $app.Workbooks.Open($env:COSCRIBE_SOURCE, 0, $true)
+  try {
+    if ($env:COSCRIBE_FORMAT -eq 'pdf') { $book.ExportAsFixedFormat(0, $env:COSCRIBE_TARGET) }
+    else { $book.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
+  } finally { $book.Close($false) }
+} finally { if ($open -eq 0) { $app.Quit() } }
 """,
     "powerpoint": """
 $open = $app.Presentations.Count
-$deck = $app.Presentations.Open($env:COSCRIBE_SOURCE, -1, 0, 0)
-try { $deck.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) } finally { $deck.Close() }
-if ($open -eq 0) { $app.Quit() }
+try {
+  $deck = $app.Presentations.Open($env:COSCRIBE_SOURCE, -1, 0, 0)
+  try { $deck.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) } finally { $deck.Close() }
+} finally { if ($open -eq 0) { $app.Quit() } }
 """,
 }
+
+# The program file behind each COM name. COM starts an office program for a script with
+# `-Embedding` on its command line and as a child of its own service, not of PowerShell, so
+# killing PowerShell's tree on a timeout leaves the program running, hidden, with the file open.
+_IMAGES = {
+    "Word.Application": "WINWORD.EXE",
+    "KWps.Application": "wps.exe",
+    "Excel.Application": "EXCEL.EXE",
+    "Ket.Application": "et.exe",
+    "PowerPoint.Application": "POWERPNT.EXE",
+    "Kwpp.Application": "wpp.exe",
+}
+
+# Ends the copies of the program that COM started since the job began. One the user opened has
+# no `-Embedding`, and one that was already running (the user's PowerPoint, which a script
+# shares) is older than the job, so neither is touched.
+_END_STARTED_FOR_JOB = """
+$since = [datetime]::Parse($env:COSCRIBE_SINCE).ToUniversalTime()
+Get-CimInstance Win32_Process -Filter "Name='$env:COSCRIBE_IMAGE'" |
+  Where-Object {
+    $_.CommandLine -like '*Embedding*' -and $_.CreationDate.ToUniversalTime() -ge $since
+  } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+"""
 
 # Office shows one document at a time well; parallel jobs in one instance fail at random.
 _LOCK = threading.Lock()
@@ -112,6 +144,15 @@ def script(source: Path, prog_id: str) -> str:
     )
 
 
+def _end_started_since(prog_id: str, started: datetime) -> None:
+    """Ends what COM started for a job that ran out of time; best effort, since the job has
+    already failed and the person is told so either way."""
+    env = {**os.environ, "COSCRIBE_SINCE": started.isoformat(), "COSCRIBE_IMAGE": _IMAGES[prog_id]}
+    command = ["powershell", "-NoProfile", "-NonInteractive", "-Command", _END_STARTED_FOR_JOB]
+    with contextlib.suppress(subprocess.SubprocessError, OSError):
+        run_killable(command, 30, env=env)
+
+
 def convert(source: Path, target: Path, to_format: str, timeout: float) -> str | None:
     """Writes `source` as `to_format` ("pdf", "docx", "xlsx" or "pptx") to `target` with the
     installed office program. Returns the program's COM name, or None when no program can do it.
@@ -131,9 +172,11 @@ def convert(source: Path, target: Path, to_format: str, timeout: float) -> str |
         "COSCRIBE_FORMAT": str(code),
     }
     with _LOCK:
+        started = datetime.now(UTC)
         try:
             run_killable(command, timeout, env=env)
         except subprocess.TimeoutExpired:
+            _end_started_since(prog_id, started)
             raise ValueError(f"{prog_id} took too long to convert this file.") from None
         except (subprocess.CalledProcessError, OSError) as error:
             detail = getattr(error, "stderr", b"") or b""

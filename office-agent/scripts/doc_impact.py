@@ -28,7 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DOC_MAP = ROOT / "docs" / "doc-map.toml"
 _CHECKED = re.compile(r"^\s*[-*]?\s*Docs checked:(.*)$", re.I | re.M)
-_PATH = re.compile(r"(?<![\w/.-])[\w./-]+\.md\b")
+# A documented module, such as /doctor's checks, is named the same way as a Markdown file.
+_PATH = re.compile(r"(?<![\w/.-])[\w./-]+\.(?:md|py)\b")
 
 
 Changes = list[tuple[str, str]]
