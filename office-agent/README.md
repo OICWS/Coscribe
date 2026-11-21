@@ -190,9 +190,9 @@ task's run follows the task's own approval setting instead.
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
 - `/doctor` -- check what coscribe needs on this computer: one short request
-  to the default model, Python and Node.js for scripts, LibreOffice, Edge or
-  Chrome, the script container's last self-test and the command sandbox. Web UI
-  only; the results show as a card above the message box, problems first, each
+  to the default model, Python and Node.js for scripts, Office conversion (Microsoft Office
+  first, LibreOffice when there is none), Edge or Chrome, the script
+  container's last self-test and the command sandbox. Web UI only; the results show as a card above the message box, problems first, each
   with its next step and, where the fix is in Settings, a link there. Nothing
   goes to the conversation.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and

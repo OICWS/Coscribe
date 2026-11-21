@@ -83,6 +83,17 @@ def _registered(prog_id: str) -> bool:
         return False
 
 
+def installed_office() -> str | None:
+    """The office program that converts before LibreOffice is tried, by its product name, or
+    None: Microsoft Office over WPS, as `program_for` picks them."""
+    if shutil.which("powershell") is None:
+        return None
+    for index, name in enumerate(("Microsoft Office", "WPS Office")):
+        if any(_registered(names[index]) for names in _PROGRAMS.values()):
+            return name
+    return None
+
+
 def program_for(source: Path) -> str | None:
     """The COM name of the installed program that opens `source`, or None."""
     kind = _KIND.get(source.suffix.lower())

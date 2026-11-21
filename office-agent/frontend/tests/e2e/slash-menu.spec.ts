@@ -188,3 +188,18 @@ test("/doctor runs the real checks and Escape closes the card", async ({ page })
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
 });
+
+test("a /doctor card taller than the room above the box scrolls with the wheel", async ({ page }) => {
+  const checks = Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, name: `Check ${i}`, state: "problem", detail: "Detail.", fix: "Fix it.", page: null }));
+  await page.setViewportSize({ width: 1000, height: 600 });
+  await page.route("**/api/doctor", (route) => route.fulfill({ json: { checks } }));
+  await page.goto(freshThreadPath("doctor"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill("/doctor");
+  await page.locator("textarea").press("Enter");
+  const list = page.getByRole("region", { name: "Coscribe check" }).getByRole("list");
+  await expect(list.getByRole("listitem")).toHaveCount(9);
+  await list.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});

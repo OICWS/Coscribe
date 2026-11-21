@@ -101,12 +101,12 @@ function DoctorCard({
       {report.status === "running" && (
         <p role="status" className="flex items-center gap-2.5 px-4 py-4 text-sm text-[var(--muted)]">
           <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
-          Asking the model and looking for Python, Node.js, LibreOffice, a browser and the sandbox.
+          Asking the model and looking for Python, Node.js, Office or LibreOffice, a browser and the sandbox.
         </p>
       )}
       {report.status === "failed" && <p className="px-4 py-4 text-sm text-[var(--danger)]">{report.message}</p>}
       {checks.length > 0 && (
-        <ul className="overflow-y-auto p-1.5">
+        <ul className="min-h-0 overflow-y-auto p-1.5">
           {checks.map((check) => (
             <CheckRow key={check.id} check={check} onOpenSettings={onOpenSettings} />
           ))}

@@ -253,6 +253,7 @@ covers = [
   "office-agent/src/coscribe/tools/exec/isolation.py",
   "office-agent/src/coscribe/tools/exec/command_sandbox.py",
   "office-agent/src/coscribe/tools/libreoffice.py",
+  "office-agent/src/coscribe/tools/_office_com.py",
   "office-agent/src/coscribe/conversation/page_shot.py",
   "office-agent/src/coscribe/web/browser_panel.py",
   "office-agent/src/coscribe/web/browser_detect.py",

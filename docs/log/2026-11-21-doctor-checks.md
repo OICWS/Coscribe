@@ -6,8 +6,9 @@ features are added.
 
 ## Shipped
 - `POST /api/doctor` (`web/routes/settings/doctor.py`): one short request to the default model
-  (30 s limit), then Python for scripts, Node.js, LibreOffice, Edge or Chrome, the script
-  container's last self-test (not rerun) and the command sandbox. Each answers `ok`, `problem` or
+  (30 s limit), then Python for scripts, Node.js, Office conversion (Microsoft or WPS Office
+  first, as conversion itself picks, LibreOffice when there is none; `libreoffice_status` now
+  also names the office program), Edge or Chrome, the script container's last self-test (not rerun) and the command sandbox. Each answers `ok`, `problem` or
   `off` (not set up, or not on this platform), a detail, a fix and the Settings page it is on.
   POST because the model request costs a call.
 - Each check calls the lookup its feature uses (`find_pythons`, `libreoffice_status`,

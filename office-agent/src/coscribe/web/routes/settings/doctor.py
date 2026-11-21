@@ -102,18 +102,24 @@ def check_node(settings: Settings) -> Check:
     return _check("node", name, "problem", detail, "Install Node.js from nodejs.org.")
 
 
-def check_libreoffice(settings: Settings) -> Check:
-    """Office conversion: PDF export and the pictures of documents and decks."""
-    name = "Office conversion (LibreOffice)"
+def check_office_conversion(settings: Settings) -> Check:
+    """PDF export and the pictures of documents and decks: the Windows office program converts
+    first, LibreOffice when there is none (decision 0012)."""
+    name = "Office conversion"
     status = libreoffice_status(settings.state_dir)
-    if not status["found"]:
-        fix = "Download LibreOffice."
-        return _check("libreoffice", name, "problem", "Not found.", fix, "capabilities")
-    if status["version"] is None:
-        detail = f"Found at {status['path']} but it does not start."
-        fix = "Download coscribe's own copy."
-        return _check("libreoffice", name, "problem", detail, fix, "capabilities")
-    return _check("libreoffice", name, "ok", f"LibreOffice {status['version']}.")
+    if status["office"]:
+        return _check("conversion", name, "ok", f"{status['office']} converts documents.")
+    if status["found"] and status["version"]:
+        return _check(
+            "conversion", name, "ok", f"LibreOffice {status['version']} converts documents."
+        )
+    if status["found"]:
+        detail = f"No Microsoft Office; LibreOffice at {status['path']} does not start."
+        fix = "Install Microsoft Office, or download coscribe's own LibreOffice."
+        return _check("conversion", name, "problem", detail, fix, "capabilities")
+    detail = "Neither Microsoft Office nor LibreOffice found."
+    fix = "Install Microsoft Office, or download LibreOffice."
+    return _check("conversion", name, "problem", detail, fix, "capabilities")
 
 
 def check_browser(settings: Settings) -> Check:
@@ -176,7 +182,7 @@ LocalCheck = Callable[[Settings], Check]
 LOCAL_CHECKS: tuple[LocalCheck, ...] = (
     check_python,
     check_node,
-    check_libreoffice,
+    check_office_conversion,
     check_browser,
     check_script_isolation,
     check_command_sandbox,
