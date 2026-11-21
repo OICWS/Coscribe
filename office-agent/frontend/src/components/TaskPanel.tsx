@@ -9,6 +9,7 @@ import {
 } from "../lib/rest";
 import { formatRunTime, runSourceLabel } from "../lib/runLabels";
 import { toolLabel } from "../lib/toolLabels";
+import { primaryButton } from "../lib/formStyles";
 import { readStored, writeStored } from "../lib/storage";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
 import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity, WorkspaceNotes } from "../types/session";
@@ -534,13 +535,20 @@ function NotesDetail({ notes }: { notes: WorkspaceNotes }) {
   const shown = lines.filter(([, items]) => items.length > 0);
   if (shown.length === 0) return null;
   return (
-    <ul className="mt-1.5 flex flex-col gap-0.5 text-[var(--muted)]">
+    <dl className="mt-3 flex flex-col gap-2.5">
       {shown.map(([label, items]) => (
-        <li key={label} className="break-words">
-          <span className="text-[var(--fg)]">{label}:</span> {items.join(", ")}
-        </li>
+        <div key={label}>
+          <dt className="mb-1 text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">{label}</dt>
+          <dd className="flex flex-wrap gap-1">
+            {items.map((item) => (
+              <code key={item} className="break-all rounded bg-[var(--card-bg)] px-1.5 py-0.5 font-mono text-[11.5px]">
+                {item}
+              </code>
+            ))}
+          </dd>
+        </div>
       ))}
-    </ul>
+    </dl>
   );
 }
 
@@ -563,19 +571,14 @@ function FolderNotes({ notes, onAccept }: { notes: WorkspaceNotes; onAccept: () 
       .catch(() => setState("failed"));
   };
   return (
-    <div className="mt-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs" title={title}>
-      <p>
-        This folder keeps {notesSummary(notes)} in .coscribe. They come from whoever can change the folder, so they are
-        used only once you say so.
+    <div className="mt-2 rounded-lg border border-[var(--border-hover)] bg-[var(--bg)] p-3 text-xs" title={title}>
+      <p className="text-[13px] font-medium">This folder brings its own {notesSummary(notes)}</p>
+      <p className="mt-0.5 text-[var(--muted)]">
+        Whoever can change the folder wrote them, so they apply only once you say so.
       </p>
       <NotesDetail notes={notes} />
-      <div className="mt-1.5 flex items-center gap-2">
-        <button
-          type="button"
-          disabled={state === "busy"}
-          className="rounded border border-[var(--border)] px-2 py-0.5 font-medium hover:border-[var(--border-hover)] hover:bg-[var(--card-bg)] disabled:opacity-60"
-          onClick={accept}
-        >
+      <div className="mt-3 flex items-center gap-2">
+        <button type="button" disabled={state === "busy"} className={primaryButton} onClick={accept}>
           Use them
         </button>
         {state === "failed" && <span className="text-[var(--danger)]">Couldn't save that</span>}
