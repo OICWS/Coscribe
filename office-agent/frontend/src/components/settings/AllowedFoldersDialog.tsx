@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DIALOG_BACKDROP_CLASS } from "../../lib/titleBar";
 import { browseDirs } from "../../lib/rest";
 import { folderName } from "../../lib/folderName";
 import { CloseIcon, PlusIcon } from "../icons";
@@ -100,7 +101,7 @@ export function AllowedFoldersDialog({ entries, onChange, onClose }: { entries: 
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={DIALOG_BACKDROP_CLASS} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div
         role="dialog"
         aria-modal="true"
@@ -113,8 +114,8 @@ export function AllowedFoldersDialog({ entries, onChange, onClose }: { entries: 
               Allowed folders
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-              Every workspace can use these folders and the folders inside them. When a chat needs another folder, it asks first, and Allow adds
-              it here. Remove one and Coscribe asks again next time.
+              A workspace reaches only the ones it picks, in its own settings, and the folders inside them. When a chat needs another folder, it
+              asks first, and Allow adds it here and to that workspace. Remove one and it leaves every workspace that uses it.
             </p>
           </div>
           <button

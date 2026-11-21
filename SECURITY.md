@@ -14,7 +14,8 @@ coscribe runs on your own computer.
 
 - **Scripts run in a Windows sandbox, where it works** (decisions 0021, 0022). Python and
   Node scripts the assistant writes run in an AppContainer that reaches only the conversation's
-  own folders (read-write folders without delete) and the interpreter. A self-test on each machine
+  own folders (read-write folders without delete), a scratch folder of coscribe's own for its
+  temporary files (with delete, decision 0056) and the interpreter. A self-test on each machine
   decides whether it is used; where it fails, scripts are off unless you let a conversation run
   them without isolation, a choice that is recorded. Command lines run in Codex's Windows sandbox
   where Settings set it up: they write only the conversation's read-write folders, have network
@@ -64,6 +65,11 @@ coscribe runs on your own computer.
   check steps, every value they write must already be in the task or the loop's item, and each
   tool that does more than read waits for your yes, even with no one watching. They are kept
   only when you save them.
+- **A workspace folder's own settings and connectors** (`.coscribe/settings.json` and
+  `mcp.json`, decision 0048) are written by whoever can write the folder, so nothing reads them
+  until you accept the folder, and a change waits for you again. Its rules never allow a call
+  that leaves the machine, and its connectors get none of your sign-ins, secrets or proxy
+  credentials, and every one of their calls asks. The file tools refuse to write these files.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 

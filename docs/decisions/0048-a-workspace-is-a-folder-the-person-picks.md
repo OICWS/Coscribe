@@ -1,7 +1,7 @@
 # 0048: A workspace is a folder the person picks; other folders are allowed when needed
 
 Status: proposed (2026-11-16, OICWS: "like other agents, an office worker picks a workspace the
-way a developer does, and what they make is kept there"). Builds on 0044; held to 0021; sites narrowed by 0050.
+way a developer does, and what they make is kept there"). Builds on 0044; held to 0021; sites narrowed by 0050; Allowed folders narrowed by 0053.
 
 ## Context
 A conversation with no folder works in a hidden `workspace` under the app's data folder, where
@@ -20,8 +20,8 @@ gets only a text refusal, while a workflow run already stops and asks (`NeedsPer
   conversation without one only chats: its attachments go to the state folder and are deleted
   with it, and it asks for a workspace before it saves a file. An old hidden workspace holding
   files becomes a workspace named for it; nothing is moved or deleted.
-- **Reach.** Code and file tools reach the workspace, the Allowed folders (Settings' list, every
-  workspace), the folders allowed for this conversation or task only, and what scripts need to
+- **Reach.** Code and file tools reach the workspace, the Allowed folders the workspace picked
+  (0053), the folders allowed for this conversation or task only, and what scripts need to
   run (interpreter, scratch, skills). The AppContainer is granted exactly that set (0021).
 - **Asked when needed.** A file tool refused outside that set shows a card in the chat (folder,
   access preset to the need): Allow adds it to Allowed folders; Only this chat keeps it to the

@@ -18,6 +18,7 @@ import {
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
+  ALLOWED_FOLDERS_CHANGED,
   buildDirEntries,
   changedDirs,
   type DirEntry,
@@ -104,6 +105,21 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+/** A workspace saved elsewhere can add Allowed folders; Settings reloads them, or saving its own
+ * older copy would take them off again. */
+function useAllowedFoldersReload(open: boolean, setConfig: (config: ConfigResponse) => void, setEntries: (entries: DirEntry[]) => void) {
+  useEffect(() => {
+    if (!open) return;
+    const reload = () =>
+      void getConfig().then((cfg) => {
+        setConfig(cfg);
+        setEntries(buildDirEntries(cfg as unknown as Record<string, string | null>));
+      });
+    window.addEventListener(ALLOWED_FOLDERS_CHANGED, reload);
+    return () => window.removeEventListener(ALLOWED_FOLDERS_CHANGED, reload);
+  }, [open, setConfig, setEntries]);
+}
+
 export function SettingsModal({ open, initialCategory, start, onDescribeDesignSystem, onCreateSkill, onClose }: SettingsModalProps) {
   const [category, setCategory] = useState<SettingsCategory>(initialCategory ?? "general");
   const [config, setConfig] = useState<ConfigResponse | null>(null);
@@ -120,14 +136,13 @@ export function SettingsModal({ open, initialCategory, start, onDescribeDesignSy
     setTarget(null);
     getConfig().then((cfg) => {
       setConfig(cfg);
-      const initial: Record<string, string> = {};
-      for (const key of CONFIG_KEYS) initial[key] = (cfg as unknown as Record<string, string | null>)[key] ?? "";
-      setValues(initial);
+      setValues(Object.fromEntries(CONFIG_KEYS.map((key) => [key, (cfg as unknown as Record<string, string | null>)[key] ?? ""])));
       setDirEntries(buildDirEntries(cfg as unknown as Record<string, string | null>));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useAllowedFoldersReload(open, setConfig, setDirEntries);
   const dirty = useMemo(() => {
     const changed: Record<string, string> = {};
     if (!config) return changed;
@@ -247,7 +262,7 @@ export function SettingsModal({ open, initialCategory, start, onDescribeDesignSy
            * right padding keeps rows clear of the close button as they scroll past it. */}
           <div ref={content} className="mb-3 mr-1.5 mt-3 min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] pl-10 pr-16 pt-[9px]">
             <div className="pb-8">
-              {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+              {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} onStatus={setStatus} />}
               {category === "workspace" && <WorkspaceTab dirEntries={dirEntries} onDirEntriesChange={setDirEntries} />}
               {category === "providers" && <ProvidersTab active={category === "providers"} />}
               {category === "skills" && <SkillsTab active={category === "skills"} onCreateSkill={onCreateSkill} />}

@@ -78,7 +78,8 @@ def _rules(raw: Any, verdict: FolderVerdict) -> list[_Rule]:
     if not isinstance(raw, list):
         return []
     rules = []
-    for item in raw[:_MAX_RULES]:
+    # Every deny holds however long the list is; only what loosens is capped.
+    for item in raw if verdict == "deny" else raw[:_MAX_RULES]:
         match = _RULE.match(item.strip()) if isinstance(item, str) else None
         if not match:
             continue

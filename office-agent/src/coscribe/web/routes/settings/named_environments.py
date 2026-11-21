@@ -5,6 +5,7 @@ so it waits until none of them is running a turn."""
 from __future__ import annotations
 
 import contextlib
+from asyncio import to_thread
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from ....conversation import ChatSessionLG
+from ....conversation import ChatSessionLG, join_library
 from ....runtime import DEFAULT_ENVIRONMENT, EnvironmentRefused, Environments, SecretStore
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import SCHEDULED_THREAD_PREFIX, ScheduledTriggerStore
@@ -187,6 +188,7 @@ def router(state: AppState) -> APIRouter:
         except EnvironmentRefused as exc:
             return _refused(exc.reason)
         _audit(state_dir, env["id"], None, env)
+        await to_thread(join_library, state.settings, env["folders"][1:])
         return env
 
     async def update_environment(env_id: str, payload: dict[str, Any]) -> Any:
@@ -205,6 +207,7 @@ def router(state: AppState) -> APIRouter:
         except EnvironmentRefused as exc:
             return _refused(exc.reason)
         _audit(state_dir, env_id, before, env)
+        await to_thread(join_library, state.settings, env["folders"][1:])
         problem = await _move_folders(state_dir, sessions)
         return {**env, "warning": problem} if problem else env
 

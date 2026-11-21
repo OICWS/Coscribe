@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { createEnvironment, deleteEnvironment, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
+import { DIALOG_BACKDROP_CLASS } from "../lib/titleBar";
+import { createEnvironment, deleteEnvironment, getConfig, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
+import { ALLOWED_FOLDERS_CHANGED, buildDirEntries, type DirEntry } from "./settings/fields";
 import type { Environment, EnvironmentFields, SecretInfo } from "../types/settings";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EnvironmentRow, VariablesPage } from "./environment/EnvironmentPages";
@@ -65,18 +67,18 @@ interface EnvironmentDialogProps {
 /** One environment: where its conversations work and what they may reach, one page per part.
  * Save keeps every page's edits at once. */
 export function EnvironmentDialog(props: EnvironmentDialogProps) {
-  const [loaded, setLoaded] = useState<{ environment: Environment | null; secrets: SecretInfo[] } | null>(null);
+  const [loaded, setLoaded] = useState<{ environment: Environment | null; secrets: SecretInfo[]; library: DirEntry[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { environmentId, onClose } = props;
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getEnvironments(), getSecrets()])
-      .then(([{ environments }, known]) => {
+    Promise.all([getEnvironments(), getSecrets(), getConfig()])
+      .then(([{ environments }, known, config]) => {
         if (cancelled) return;
         const environment = environments.find((e) => e.id === environmentId) ?? null;
         if (environmentId !== null && environment === null) setError("This workspace no longer exists.");
-        else setLoaded({ environment, secrets: known.secrets });
+        else setLoaded({ environment, secrets: known.secrets, library: buildDirEntries(config as unknown as Record<string, string | null>) });
       })
       .catch(() => !cancelled && setError("Couldn't load the workspace."));
     return () => {
@@ -92,7 +94,7 @@ export function EnvironmentDialog(props: EnvironmentDialogProps) {
 
   if (loaded === null) {
     return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
+      <div className={DIALOG_BACKDROP_CLASS} onClick={onClose}>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-6 py-8 text-sm text-[var(--muted)]">
           {error ?? "Loading..."}
         </div>
@@ -100,7 +102,7 @@ export function EnvironmentDialog(props: EnvironmentDialogProps) {
       document.body,
     );
   }
-  return <EnvironmentEditor {...props} environment={loaded.environment} secrets={loaded.secrets} />;
+  return <EnvironmentEditor {...props} environment={loaded.environment} secrets={loaded.secrets} library={loaded.library} />;
 }
 
 /** Every page's edits, kept until Save. */
@@ -167,11 +169,13 @@ function EditorHeader({
 function MainPage({
   draft,
   secrets,
+  library,
   limits,
   onOpen,
 }: {
   draft: EnvironmentDraft;
   secrets: SecretInfo[];
+  library: DirEntry[];
   limits: MachineLimits;
   onOpen: (page: Exclude<Page, "main">) => void;
 }) {
@@ -194,7 +198,7 @@ function MainPage({
           onChange={(e) => draft.setName(e.target.value)}
         />
       </label>
-      <FoldersSection folders={draft.folders} onChange={draft.setFolders} />
+      <FoldersSection folders={draft.folders} library={library} onChange={draft.setFolders} />
       <SitesSection network={draft.network} secrets={secrets} chosen={draft.chosen} />
       <SecretsSection secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />
       <div className="flex flex-col gap-2">
@@ -250,10 +254,11 @@ const dialogClass =
 function EnvironmentEditor({
   environment,
   secrets,
+  library,
   onSaved,
   onDeleted,
   onClose,
-}: EnvironmentDialogProps & { environment: Environment | null; secrets: SecretInfo[] }) {
+}: EnvironmentDialogProps & { environment: Environment | null; secrets: SecretInfo[]; library: DirEntry[] }) {
   const [page, setPage] = useState<Page>("main");
   const draft = useEnvironmentDraft(environment ?? BLANK);
   const limits = useMachineLimits();
@@ -284,6 +289,8 @@ function EnvironmentEditor({
       setError(result.error);
       return;
     }
+    // Saving can add folders to Allowed folders; an open Settings reloads them before it saves its own copy.
+    window.dispatchEvent(new Event(ALLOWED_FOLDERS_CHANGED));
     onSaved(result);
     onClose();
   };
@@ -303,7 +310,7 @@ function EnvironmentEditor({
   // A click beside the dialog closes it only when nothing is changed in it: a stray click must
   // not throw an edit away.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={() => !draft.dirty && onClose()}>
+    <div className={DIALOG_BACKDROP_CLASS} onClick={() => !draft.dirty && onClose()}>
       <div
         role="dialog"
         aria-label={environment ? "Edit workspace" : "New workspace"}
@@ -312,7 +319,7 @@ function EnvironmentEditor({
       >
         <EditorHeader page={page} environment={environment} onBack={() => setPage("main")} onClose={onClose} />
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pt-1">
-          {page === "main" && <MainPage draft={draft} secrets={secrets} limits={limits} onOpen={setPage} />}
+          {page === "main" && <MainPage draft={draft} secrets={secrets} library={library} limits={limits} onOpen={setPage} />}
           {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
           {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
           {error && (

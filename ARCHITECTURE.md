@@ -52,7 +52,7 @@ tools, and repeat work on a schedule. It needs only a model API key.
 - **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows); the sidebar also
   opens the Artifacts page and, from "View all", the Sessions page of every conversation.
 - **Workspaces.** A workspace is a folder the person picks (decision 0048): its conversations and
-  tasks reach that folder, more folders it lists, Settings' Allowed folders, and the sites and
+  tasks reach that folder, the Allowed folders it picks (decision 0053), and the sites and
   secrets it is given; each of its sites has a browser level (decision 0050). The code and the
   API still call it an environment.
 - **Artifacts.** What coscribe makes from a source it owns opens in a panel beside the
@@ -113,8 +113,8 @@ conversation's menu (decision 0052).
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in
 an AppContainer when the machine passed coscribe's self-test (decision 0021):
-they reach only the conversation's folders (read only, read and write, or read,
-write and delete) and what their interpreter needs, and their children inherit
+they reach only the conversation's folders (read only, or read and write without
+delete) and what their interpreter needs, and their children inherit
 that; to let a script read another place, the person adds it as a read-only folder. coscribe's own process and its
 trusted tools stay outside. Where the self-test failed, scripts are refused
 unless the person lets that one conversation run them without isolation
@@ -284,6 +284,10 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   every conversation. The model cannot write to it: it can offer a line (`remember`), and only
   the person's Save on that card writes it. A folder can keep its own notes and skills in
   `.coscribe/`, read into conversations there once the person accepted them (decision 0044).
+  The same acceptance covers its `settings.json`, whose `deny`, `ask` and `allow` rules decide
+  the calls that would ask (never allowing one that leaves the machine), and its `mcp.json`,
+  whose connectors join only that folder's conversations and get none of the person's sign-ins
+  or secrets (decision 0048).
 
 ## Scope
 
@@ -292,8 +296,9 @@ Not built, on purpose:
 - Hand-written mail/calendar integrations (MCP covers them), OAuth
   infrastructure, OpenAPI-to-tool generation, A2A.
 - A general workflow canvas.
-- Multi-level permission sources and team features: coscribe is local and
-  single-user.
+- Managed (organization) permission policies and team features: coscribe is local and
+  single-user. Its permission sources are the person's own settings and a workspace's accepted
+  `.coscribe/settings.json`.
 - Personas: memory and instructions cover the same need.
 
 Known limits: schedules use the machine's time zone; the code module has

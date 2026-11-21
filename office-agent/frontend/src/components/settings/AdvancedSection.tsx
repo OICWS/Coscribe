@@ -12,7 +12,8 @@ import type { useCodeStatus } from "../../lib/useCodeStatus";
 import { useLibreOffice } from "../../lib/useLibreOffice";
 import type { CapabilityFolders } from "../../types/settings";
 import { PackageListSection } from "./PackageListSection";
-import { PythonInterpreterSection } from "./PythonInterpreterSection";
+import { PythonInterpreterDialog } from "./PythonInterpreterDialog";
+import { SettingsDialog } from "./SettingsDialog";
 import { secondaryButtonClass, SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 function megabytes(bytes: number): string {
@@ -99,30 +100,36 @@ function CodexRow({ code, folder, runsSandbox }: { code: ReturnType<typeof useCo
   );
 }
 
-function Packages({ active, folders }: { active: boolean; folders: CapabilityFolders | null }) {
+function PackagesDialog({ folders, onClose }: { folders: CapabilityFolders | null; onClose: () => void }) {
   return (
-    <div className="sub-rows pb-4">
-      <PackageListSection
-        title="Python packages"
-        description={folders ? `Kept in ${folders.python_packages}.` : ""}
-        placeholder="Library name, e.g. numpy"
-        emptyStateText="None yet -- scripts can use Python's standard library only."
-        active={active}
-        getPackages={getScriptEnvPackages}
-        installPackage={installScriptEnvPackage}
-        removePackage={removeScriptEnvPackage}
-      />
-      <PackageListSection
-        title="Node.js packages"
-        description={`Node.js scripts need Node.js installed on this computer.${folders ? ` Kept in ${folders.node_packages}.` : ""}`}
-        placeholder="Package name, e.g. sharp"
-        emptyStateText="None added beyond pptxgenjs."
-        active={active}
-        getPackages={getNodeEnvPackages}
-        installPackage={installNodeEnvPackage}
-        removePackage={removeNodeEnvPackage}
-      />
-    </div>
+    <SettingsDialog
+      title="Packages for scripts"
+      description="Python and Node.js libraries that scripts can use, beyond the ones that come with Coscribe."
+      onClose={onClose}
+    >
+      <div className="[&>:first-child]:pt-0">
+        <PackageListSection
+          title="Python packages"
+          description={folders ? `Kept in ${folders.python_packages}.` : ""}
+          placeholder="Library name, e.g. numpy"
+          emptyStateText="None yet -- scripts can use Python's standard library only."
+          active
+          getPackages={getScriptEnvPackages}
+          installPackage={installScriptEnvPackage}
+          removePackage={removeScriptEnvPackage}
+        />
+        <PackageListSection
+          title="Node.js packages"
+          description={`Node.js scripts need Node.js installed on this computer.${folders ? ` Kept in ${folders.node_packages}.` : ""}`}
+          placeholder="Package name, e.g. sharp"
+          emptyStateText="None added beyond pptxgenjs."
+          active
+          getPackages={getNodeEnvPackages}
+          installPackage={installNodeEnvPackage}
+          removePackage={removeNodeEnvPackage}
+        />
+      </div>
+    </SettingsDialog>
   );
 }
 
@@ -141,9 +148,9 @@ export function AdvancedSection({ active, code, codexRunsSandbox }: AdvancedSect
   useEffect(() => {
     if (active) getCapabilityFolders().then(setFolders, () => setFolders(null));
   }, [active]);
-  const expander = (name: "python" | "packages", closed: string) => (
-    <button type="button" className={secondaryButtonClass} aria-expanded={open === name} onClick={() => setOpen(open === name ? null : name)}>
-      {open === name ? "Done" : closed}
+  const opener = (name: "python" | "packages", label: string) => (
+    <button type="button" className={secondaryButtonClass} aria-haspopup="dialog" onClick={() => setOpen(name)}>
+      {label}
     </button>
   );
   return (
@@ -152,22 +159,18 @@ export function AdvancedSection({ active, code, codexRunsSandbox }: AdvancedSect
         <SettingRow
           label="Python for scripts"
           description="Which Python runs scripts. Coscribe picks one that works; choose another, or download Coscribe's own, if scripts can't start."
-          control={expander("python", "Choose")}
+          control={opener("python", "Choose")}
         />
-        {open === "python" && (
-          <div className="sub-rows pb-4">
-            <PythonInterpreterSection active={active} />
-          </div>
-        )}
         <SettingRow
           label="Packages for scripts"
           description="Python and Node.js libraries that scripts can use, beyond the ones that come with Coscribe."
-          control={expander("packages", "Manage")}
+          control={opener("packages", "Manage")}
         />
-        {open === "packages" && <Packages active={active} folders={folders} />}
         <LibreOfficeRow active={active} />
         <CodexRow code={code} folder={folders?.codex} runsSandbox={codexRunsSandbox} />
       </SettingRows>
+      {open === "python" && <PythonInterpreterDialog onClose={() => setOpen(null)} />}
+      {open === "packages" && <PackagesDialog folders={folders} onClose={() => setOpen(null)} />}
     </SettingsSection>
   );
 }

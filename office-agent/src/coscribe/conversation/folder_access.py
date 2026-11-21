@@ -1,8 +1,9 @@
 """A folder outside the workspace, asked for from the chat (decision 0048).
 
 The model calls `request_folder_access` after a file tool refused a path; the person answers on a
-card. "Allow" adds the folder to Settings' Allowed folders, which every workspace can use, and
-"Only this chat" keeps it to the conversation (`Environments.allow_for_thread`). Either way the
+card. "Allow" adds the folder to Settings' Allowed folders and to the conversation's workspace,
+the only one that uses it until another picks it (decision 0053), and "Only this chat" keeps it
+to the conversation (`Environments.allow_for_thread`). Either way the
 conversation's tools are built again before the turn goes on, so the model's next call reaches it.
 """
 
@@ -19,6 +20,7 @@ from dotenv import dotenv_values, set_key
 from ..config import Settings
 from ..runtime import Environments
 from ..runtime_lg import AuditLog, record_decision
+from ..tools import SCHEDULED_THREAD_PREFIX
 from .events import EventSink
 
 # Where the server and the Folder access page read Settings from (`config.Settings`).
@@ -69,17 +71,18 @@ def checked_folder(raw: str) -> tuple[Path | None, str]:
     return folder, ""
 
 
-def current_access(settings: Settings, thread_folders: dict[str, str], folder: Path) -> str | None:
-    """How far the folder is already allowed, outside the workspace's own folders."""
+def current_access(
+    settings: Settings, thread_folders: dict[str, str], used: list[Path], folder: Path
+) -> str | None:
+    """How far the folder is already allowed: by a folder the workspace uses (its access in
+    Allowed folders, as `Settings.reach_of` gives it), or for this conversation only."""
     best: str | None = None
-    lists = [
-        ("read", settings.extra_readable_dirs),
-        ("read-write", settings.extra_writable_dirs),
-        ("read-write-delete", settings.extra_deletable_dirs),
-        *((access, [Path(f)]) for f, access in thread_folders.items()),
+    places = [
+        *((f, settings.allowed_access(f) or "read-write") for f in used),
+        *((Path(f), access) for f, access in thread_folders.items()),
     ]
-    for access, folders in lists:
-        if any(_under(folder, Path(f).expanduser().resolve()) for f in folders):
+    for place, access in places:
+        if _under(folder, place.expanduser().resolve()):
             if best is None or FOLDER_ACCESS.index(access) > FOLDER_ACCESS.index(best):
                 best = access
     return best
@@ -89,10 +92,13 @@ def enough(have: str | None, wanted: str) -> bool:
     return have is not None and (wanted == "read" or have != "read")
 
 
-def allow_everywhere(settings: Settings, folder: Path, access: str, env_file: Path) -> None:
+def add_allowed_folder(
+    settings: Settings, folder: Path, access: str, env_file: Path | None = None
+) -> None:
     """Into Settings' Allowed folders: the .env the Folder access page edits, merged into what it
     holds now (the page writes it without updating the running server), and the running server's
     settings, so it holds without a restart."""
+    env_file = env_file or ENV_FILE
     saved = dotenv_values(env_file) if env_file.is_file() else {}
     for key in _ENV_KEYS[access]:
         field = _FIELDS[key]
@@ -103,6 +109,16 @@ def allow_everywhere(settings: Settings, folder: Path, access: str, env_file: Pa
                 current.append(folder)
         setattr(settings, field, running)
         set_key(str(env_file), key, ", ".join(str(p) for p in listed), quote_mode="never")
+
+
+def join_library(settings: Settings, folders: list[str]) -> None:
+    """A folder a workspace adds that Allowed folders doesn't hold joins it, read and write, so
+    the one list says what each workspace may reach (decision 0053). One the list can't hold (a
+    comma in its path, a whole drive) stays the workspace's only."""
+    for raw in folders:
+        folder, _ = checked_folder(raw)
+        if folder is not None and settings.allowed_access(folder) is None:
+            add_allowed_folder(settings, folder, "read-write")
 
 
 def parse_answer(answer: Any) -> tuple[str, str]:
@@ -120,7 +136,7 @@ def parse_answer(answer: Any) -> tuple[str, str]:
 
 def result_message(choice: str, folder: Path, access: str, answer: Any, wanted: str) -> str:
     if choice in (ALLOW, THIS_CHAT):
-        where = "every workspace" if choice == ALLOW else "this conversation only"
+        where = "this workspace" if choice == ALLOW else "this conversation only"
         if not enough(access, wanted):
             return (
                 f"The user allowed {folder} for reading only ({where}), not writing. Read what "
@@ -151,13 +167,14 @@ async def decide_folder_request(
 ) -> dict[str, Any]:
     """The card for request_folder_access. The tools are built again after an allow, before the
     turn resumes, so the call the model repeats reaches the folder. The answer is audited like
-    an approval, since Allow widens every later conversation."""
+    an approval, since Allow widens the workspace's later conversations."""
     folder, problem = checked_folder(str(args.get("folder", "")))
     if folder is None:
         return {"type": "respond", "message": problem}
     environments = Environments(host.settings.state_dir)
     wanted = "read-write" if args.get("access") == "write" else "read"
-    have = current_access(host.settings, environments.thread_folders(host.thread_id), folder)
+    used = list(host.extra_folders)
+    have = current_access(host.settings, environments.thread_folders(host.thread_id), used, folder)
     if enough(have, wanted):
         # Allowed meanwhile, in Settings or on another conversation's card.
         failed = host._reconfigurer.refresh_folder_tools()
@@ -181,8 +198,16 @@ async def decide_folder_request(
         open_prompts.pop(request_id, None)
     choice, access = parse_answer(answer)
     if choice == ALLOW:
-        await to_thread(allow_everywhere, host.settings, folder, access, ENV_FILE)
-    elif choice == THIS_CHAT:
+        await to_thread(add_allowed_folder, host.settings, folder, access)
+    if choice == ALLOW and not host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+        main = str(host.workspace_root)
+        await to_thread(environments.use_folder, host.thread_id, str(folder), main, folder.name)
+        if folder not in [Path(f) for f in host.extra_folders]:
+            host.extra_folders = [*host.extra_folders, folder]
+        host._workspace_explicit = True
+        await host.send_state(websocket)
+    elif choice in (ALLOW, THIS_CHAT):
+        # A scheduled run keeps what it was allowed with the run, never in Default.
         await to_thread(environments.allow_for_thread, host.thread_id, str(folder), access)
     message = result_message(choice, folder, access, answer, wanted)
     if choice in (ALLOW, THIS_CHAT):

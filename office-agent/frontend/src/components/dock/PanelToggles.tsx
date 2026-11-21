@@ -87,7 +87,9 @@ export function PanelToggles({
             {badge && <span className="absolute -right-0.5 -top-0.5 motion-safe:animate-pulse">{badge}</span>}
           </button>
         ))}
-      <ToolbarMenu entries={offered.filter((e) => !pinned.includes(e.id))} onEdit={() => setEditing(true)} />
+      {/* Outside a conversation the menu would hold only Artifacts, which the sidebar links to as
+       * well, and Edit toolbar, whose items are mostly a conversation's panels. */}
+      {inConversation && <ToolbarMenu entries={offered.filter((e) => !pinned.includes(e.id))} onEdit={() => setEditing(true)} />}
       {editing && <ToolbarDialog entries={entries} pinned={pinned} onChange={onPinnedChange} onClose={() => setEditing(false)} />}
     </>
   );

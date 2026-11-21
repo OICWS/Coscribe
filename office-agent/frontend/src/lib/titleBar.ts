@@ -7,6 +7,11 @@ export const TITLE_BAR_PLATFORM = titleBarPlatform();
 export const DRAWS_TITLE_BAR = TITLE_BAR_PLATFORM !== null;
 export const APP_HEADER_HEIGHT = DRAWS_TITLE_BAR ? "2.5rem" : "3rem";
 
+/** A dialog's dimmed layer. In the desktop app the OS window buttons sit over the top 2.5rem and
+ * no dialog may reach under them, so a dialog is centred in the window below that row, with the
+ * same margin above and below it. */
+export const DIALOG_BACKDROP_CLASS = `fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6${DRAWS_TITLE_BAR ? " pt-16" : ""}`;
+
 /** Width of the top-left cluster (menu, sidebar toggle, back, forward)
  * while the sidebar is collapsed: 32px buttons, 2px gaps, 6px padding. */
 export const COLLAPSED_CLUSTER_WIDTH = DRAWS_TITLE_BAR ? 4 * 34 + 10 : 48;

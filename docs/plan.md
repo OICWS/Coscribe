@@ -61,10 +61,21 @@ Last reviewed: 2026-11-18.
    `docs/log/2026-11-19-workspace-settings-trust.md`. D part 2 (an accepted `mcp.json` connects
    for that workspace's conversations) is in `docs/log/2026-11-19-workspace-connectors.md`, part 3
    (`settings.json`'s permissions decide gated calls) in `docs/log/2026-11-19-workspace-permissions.md`.
-   Next: `settings.json`'s env, and the "Use them" card naming the settings and connectors.
+   A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
+   `docs/log/2026-11-19-allowed-folders-per-workspace.md`, the dialog's picker in
+   `docs/log/2026-11-19-workspace-folder-picker.md`. Next: `settings.json`'s env, and the "Use them" card naming the settings and connectors.
 
 ## Open, smaller
 
+- **A run's code is in a folder every contained run can write** (decision 0056, review on #1009):
+  `script.py`, the Python wrapper and its guard config sit under `script-scratch`, which every
+  run holds with `RX,W,D`, so one conversation's script can read or swap another run's code just
+  before it starts and gain that run's folders and network. Write them to a folder only the
+  server writes, granted read-only, and keep only TEMP under `script-scratch`.
+- **Node's temp folder in the container** (`docs/log/2026-11-20-scratch-temp-delete.md`): Windows
+  gives a contained Node run the container's own `AC\Temp` as TEMP, which Node's permission flags
+  don't allow, so `os.tmpdir()` writes fail there. Python's `tempfile` is pinned to the scratch
+  folder; Node could be pointed there the same way.
 - **Leftover working files at the end of a turn** (`docs/log/2026-11-19-deck-record-paths.md`): the
   instructions ask the model to keep check files in a temporary folder, but nothing checks it, and
   files in `qa/`, `tmp/`, `scratch/` or a dot folder are hidden from the made-files list while they
