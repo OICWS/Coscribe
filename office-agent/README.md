@@ -611,9 +611,10 @@ chooses the Python); `run_background_command` runs a command line. All are `EXEC
 under the permission mode.
 
 - On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches
-  only the conversation's folders (read-write folders without delete) and the interpreter
-  (decision 0021). Where it failed, scripts are refused unless the person lets that conversation
-  run without isolation, which is recorded.
+  only the conversation's folders (read-write folders without delete), coscribe's own scratch
+  folder for its temporary files (with delete, decision 0056) and the interpreter (decision
+  0021). Where it failed, scripts are refused unless the person lets that conversation run
+  without isolation, which is recorded.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
   workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
