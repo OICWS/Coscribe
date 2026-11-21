@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
-import { getProviders } from "./rest";
+import { getProviders, providerModelIds } from "./rest";
 
-/** "provider:model" for every provider set up with a default model. */
+/** "provider:model" for every model a provider has turned on. */
 export function useConfiguredModels(): string[] {
   const [models, setModels] = useState<string[]>([]);
   useEffect(() => {
     getProviders()
-      .then((providers) =>
-        setModels(
-          Object.entries(providers)
-            .filter(([, info]) => info.default_model)
-            .map(([key, info]) => `${key}:${info.default_model}`),
-        ),
-      )
+      .then((providers) => setModels(providerModelIds(providers)))
       .catch(() => {});
   }, []);
   return models;

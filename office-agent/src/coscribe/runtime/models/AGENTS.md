@@ -27,7 +27,7 @@ No other coscribe package.
 `tests/test_model_catalog.py`.
 
 ## Verify by hand
-Nothing: no caller reads the catalog yet.
+Settings > Providers: hovering a model in a provider's Models section, or in the model picker, shows what it can do.
 
 ## Reviewed
 2026-11-21 (first card).
