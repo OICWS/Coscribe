@@ -1,6 +1,6 @@
 # 0029: A test run stops before a step that can't be taken back
 
-Status: proposed (2026-10-31, kurtosisOC; needs the maintainer's acceptance). Builds on 0028
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-10-31, kurtosisOC). Builds on 0028
 (the repair layers, P4). Issue #757.
 
 ## Context

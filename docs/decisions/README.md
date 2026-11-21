@@ -38,32 +38,32 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
 | [0026](0026-libreoffice-is-an-optional-engine-found-or-installed-on-request.md) | LibreOffice is an optional engine, found or installed on request |
 | [0027](0027-an-artifact-is-what-coscribe-made-from-a-source-it-owns.md) | An artifact is what coscribe made from a source it owns |
-| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed; narrowed by 0042, 0051) |
-| [0029](0029-a-test-run-stops-before-a-step-that-cant-be-taken-back.md) | A test run stops before a step that can't be taken back (proposed) |
+| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (accepted; narrowed by 0042, 0051) |
+| [0029](0029-a-test-run-stops-before-a-step-that-cant-be-taken-back.md) | A test run stops before a step that can't be taken back (accepted) |
 | [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted; narrowed by 0032) |
-| [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
-| [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed; narrowed by 0042) |
-| [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |
-| [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed; narrowed by 0039, 0040) |
-| [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
-| [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed; narrowed by 0047) |
-| [0037](0037-the-simple-view-says-what-a-task-does-in-words.md) | The simple view says what a task does in words (proposed; narrowed by 0054) |
-| [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (proposed) |
-| [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (proposed) |
-| [0040](0040-a-task-starts-on-an-event-another-program-sends.md) | A task starts on an event another program on the machine sends (proposed) |
-| [0042](0042-a-run-may-add-steps-when-a-step-fails.md) | A run may add steps when a step fails, at proactive or above (proposed) |
-| [0043](0043-a-run-asks-before-its-models-use-more.md) | A run asks before its models use more tokens, with no setting (proposed) |
-| [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (proposed) |
-| [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (proposed) |
-| [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (proposed) |
+| [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (accepted) |
+| [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (accepted; narrowed by 0042) |
+| [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (accepted) |
+| [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (accepted; narrowed by 0039, 0040) |
+| [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (accepted; narrowed by 0036) |
+| [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (accepted; narrowed by 0047) |
+| [0037](0037-the-simple-view-says-what-a-task-does-in-words.md) | The simple view says what a task does in words (accepted; narrowed by 0054) |
+| [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (accepted) |
+| [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (accepted) |
+| [0040](0040-a-task-starts-on-an-event-another-program-sends.md) | A task starts on an event another program on the machine sends (accepted) |
+| [0042](0042-a-run-may-add-steps-when-a-step-fails.md) | A run may add steps when a step fails, at proactive or above (accepted) |
+| [0043](0043-a-run-asks-before-its-models-use-more.md) | A run asks before its models use more tokens, with no setting (accepted) |
+| [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (accepted) |
+| [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (accepted) |
+| [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (accepted) |
 | [0047](0047-browser-operations-follow-their-target-tab.md) | Browser operations follow their target tab |
-| [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (proposed; sites narrowed by 0050, Allowed folders by 0053) |
-| [0049](0049-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |
+| [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (accepted; sites narrowed by 0050, Allowed folders by 0053) |
+| [0049](0049-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (accepted) |
 | [0050](0050-a-workspace-lists-its-sites-each-with-a-browser-level.md) | A workspace lists its sites, each with a browser level |
 | [0051](0051-a-workflow-steps-sub-agents-keep-its-rules-and-never-wait.md) | A workflow step's sub-agents keep its rules and never wait for a person (accepted) |
-| [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
-| [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (proposed; narrows 0048) |
-| [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (proposed) |
-| [0055](0055-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (proposed) |
-| [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (proposed) |
-| [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (proposed) |
+| [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (accepted) |
+| [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (accepted; narrows 0048) |
+| [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (accepted) |
+| [0055](0055-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (accepted) |
+| [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (accepted) |
+| [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (accepted) |

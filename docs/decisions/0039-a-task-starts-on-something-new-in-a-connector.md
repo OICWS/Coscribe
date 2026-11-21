@@ -1,6 +1,6 @@
 # 0039: A task starts on something new in a connector
 
-Status: proposed (2026-11-08, OICWS; agreed with the maintainer in the project thread). Narrows
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-08, OICWS; agreed with the maintainer in the project thread). Narrows
 0034 (a task may now start on a connector's new items). Issue #850, part of #843. A local webhook
 is 0040.
 
