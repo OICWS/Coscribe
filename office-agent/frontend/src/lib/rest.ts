@@ -58,6 +58,7 @@ import type {
 import type { ProxySettings, ProxyTestResult, ProxyUpdate } from "../types/proxy";
 import type {
   CommandsResponse,
+  DoctorCheck,
   ContextBreakdown,
   BackgroundScriptLog,
   FolderBrief,
@@ -603,6 +604,7 @@ export const getContextBreakdown = (threadId: string) =>
 // -- Slash commands -----------------------------------------------------
 
 export const getCommands = () => getJson<CommandsResponse>("/api/commands");
+export const runDoctor = () => postJson<{ checks: DoctorCheck[] }>("/api/doctor", {});
 
 // -- Uploads --------------------------------------------------------------
 

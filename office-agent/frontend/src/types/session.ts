@@ -40,6 +40,17 @@ export interface CommandInfo {
 
 export type CommandsResponse = CommandInfo[];
 
+/** One row of /doctor (web/routes/settings/doctor.py): "off" is not set up, or not on this
+ * platform; `page` is the Settings page the fix is on. */
+export interface DoctorCheck {
+  id: string;
+  name: string;
+  state: "ok" | "problem" | "off";
+  detail: string;
+  fix: string;
+  page: "providers" | "capabilities" | "workspace" | null;
+}
+
 export type UploadResult = { path: string; bytes_written: number } | { error: string };
 
 /** A delegated sub-agent run -- tools/bookkeeping/subagent_tasks.py's

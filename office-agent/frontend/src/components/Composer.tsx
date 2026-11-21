@@ -111,6 +111,8 @@ interface ComposerProps {
   effortPicker: ReactNode;
   usageRing: ReactNode;
   onSend: (payload: ComposerSendPayload) => void;
+  /** A card shown above the box, such as /doctor's, while the command menu is closed. */
+  card?: ReactNode;
   /** A message sent while a reply is being worked on, attachments included: a note the model
    * reads before its next step, instead of a message waiting for the reply. */
   onSteer: (note: SteerDraft) => void;
@@ -172,7 +174,7 @@ export function Composer({
   modelPicker,
   effortPicker,
   usageRing,
-  onSend,
+  onSend, card,
   onSteer,
   onStop,
   stopping = false,
@@ -490,6 +492,7 @@ export function Composer({
       >
         {autocompleteOpen && <CommandMenu menu={menu} onPick={selectAutocomplete} />}
         {showReplyNote && <CommandsAfterReply />}
+        {!autocompleteOpen && !showReplyNote && card}
 
         {/* Attachment tray -- inside the composer box now (used to sit
          * above it, outside the border, reading as a separate element),

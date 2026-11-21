@@ -1,8 +1,8 @@
-# /doctor, part 1: the server's checks of what coscribe needs on this computer (partly shipped)
+# /doctor: checks of what coscribe needs on this computer, shown as a card
 
 Why: issue #1003's comment proposed `/doctor`; the maintainer agreed on read-only checks shown as
 a card, failures first, each with its next step, and on keeping the checks from drifting as
-features are added. This part is the server side; nothing in the app calls it yet.
+features are added.
 
 ## Shipped
 - `POST /api/doctor` (`web/routes/settings/doctor.py`): one short request to the default model
@@ -17,10 +17,17 @@ features are added. This part is the server side; nothing in the app calls it ye
 - Keeping it current: `docs/doc-map.toml` lists `doctor.py` against those lookups' modules, so a
   pull request changing one is asked about it; the web card says a new dependency gets a check;
   `tests/web/test_settings.py` runs every check on the machine it runs on, Windows included.
+- `/doctor` in the "/" menu runs them and shows a card above the message box
+  (`components/DoctorCard.tsx`): problems first, then what is not set up, then what works; each
+  row's next step, and "Open Settings" on the page that holds the fix. Escape or × closes it; a
+  second `/doctor` replaces the answer; nothing reaches the model or the transcript. On an empty
+  conversation, where the box sits mid-window, the card only takes the room above it.
+- e2e: `slash-menu.spec.ts` checks the order and the Settings link (a fixed report) and the real
+  checks against the live server.
 
 ## Not verified
 - The checks on Windows by hand (the Windows CI job runs the test); the model check against a
   real provider (tested with a fake model and a refusing one).
 
 ## Follow-ups
-- Part 2: `/doctor` in the app, as a card; after #1005 (the "/" menu) is merged.
+- The CLI has no `/doctor`; it would need its own printing of the same checks.

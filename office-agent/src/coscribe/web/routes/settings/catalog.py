@@ -27,6 +27,7 @@ FIXED_COMMANDS = [
         "name": "clear",
         "description": "Archive this conversation and start a new one in the same workspace",
     },
+    {"name": "doctor", "description": "Check what coscribe needs on this computer"},
     {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
         "name": "create-skill",

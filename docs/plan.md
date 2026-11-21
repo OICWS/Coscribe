@@ -186,7 +186,7 @@ Last reviewed: 2026-11-18.
 ## For the maintainer (settings and decisions)
 
 - Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`, `docs/log/2026-11-21-doctor-checks.md`):
-  `/doctor` is being built (read-only checks shown as a card). `/changes` is not needed for now
+  `/doctor` shipped in the web UI; the CLI has none. `/changes` is not needed for now
   (the Outputs panel and the notices above the message box show what a conversation made); it
   would need deletes, renames and before/after content recorded first. `/fork`, a temporary side
   chat, `/export` and `/recap` are not scheduled.
