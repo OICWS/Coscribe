@@ -1159,14 +1159,16 @@ conveniences, not a limit: **Add → Add custom provider** takes any other
 OpenAI-compatible API. None pre-fills a guessed default model (see above).
 Adding or removing a provider is saved immediately, no restart needed, and
 takes effect in already-open conversations too. A provider's page has a
-**Models** section: tick the models the pill should offer and pick the default
-among them. **List the provider's models** (`POST /api/providers/models`) asks an
-OpenAI-compatible provider's `/models`; Anthropic and Gemini list the bundled
-catalog's models instead (decision 0055). The page lists at once for a provider
-already added. Each row shows what the bundled catalog says the model can do
-(images, effort levels, context window, no tool calls), or "Not in catalog";
-a model ID typed under the list is turned on as it is. The pill groups the
-models by provider with the same marks.
+**Models** section listing the models the provider offers this key
+(`POST /api/providers/models`): an OpenAI-compatible provider's `/models`,
+Anthropic's own `GET /v1/models`, Gemini's through its OpenAI compatibility
+layer. Switch on the ones the model pill should offer; **Make default** picks a
+new conversation's model. Hovering a model shows what the bundled catalog says
+it can do (images, effort levels, context window, no tool calls), or that the
+catalog doesn't list it (decision 0055). Only when a provider can't list its
+models does the page take a typed model ID. The pill shows four models (the
+current one and the most recently picked, in this browser) and the rest under
+**More models**, with the same hover tip.
 
 ## Secrets storage
 

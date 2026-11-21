@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
+import { modelMarks, typedModelRow } from "../../../lib/modelMarks";
 import { listProviderModels } from "../../../lib/rest";
-import { typedModelRow } from "../../../lib/modelMarks";
 import type { ModelRow } from "../../../types/settings";
-import { ModelMarks } from "../../ModelMarks";
-import { SelectMenu } from "../../SelectMenu";
+import { ModelTip, type ModelTipAnchor } from "../../ModelTip";
+import { ToggleSwitch } from "../../ToggleSwitch";
 import { fieldClass, secondaryButtonClass } from "../SettingRow";
 import type { ProviderForm } from "./ProviderPage";
 
@@ -12,15 +12,16 @@ type Listing = { state: "idle" | "loading" } | { state: "listed"; rows: ModelRow
 // Past this many rows a filter is quicker than scrolling.
 const FILTER_FROM = 12;
 
-/** Every row to show, once each: the saved ones, then what the provider lists, then IDs typed in. */
+/** Every chat model to show, once each: the saved ones first, so turning one on or off doesn't
+ * move it, then what the provider lists for this key. */
 function mergeRows(saved: ModelRow[], listed: ModelRow[], turnedOn: string[]): ModelRow[] {
   const byId = new Map<string, ModelRow>();
-  for (const row of [...saved, ...listed]) if (!byId.has(row.id)) byId.set(row.id, row);
+  for (const row of [...saved, ...listed]) if (row.kind === "chat" && !byId.has(row.id)) byId.set(row.id, row);
   for (const id of turnedOn) if (!byId.has(id)) byId.set(id, typedModelRow(id));
   return [...byId.values()];
 }
 
-/** The models a provider offers: tick the ones the model picker should show, then the default. */
+/** The models this provider's key can use: switch on the ones the model picker should offer. */
 export function ModelsSection({
   form,
   saved,
@@ -35,6 +36,7 @@ export function ModelsSection({
 }) {
   const [listing, setListing] = useState<Listing>({ state: "idle" });
   const [filter, setFilter] = useState("");
+  const [tip, setTip] = useState<ModelTipAnchor | null>(null);
 
   const list = async () => {
     setListing({ state: "loading" });
@@ -42,10 +44,7 @@ export function ModelsSection({
       const result = await listProviderModels(form.name.trim(), form.baseUrl.trim(), form.apiKey.trim());
       setListing(result.error ? { state: "failed", error: result.error } : { state: "listed", rows: result.models });
     } catch (err) {
-      setListing({
-        state: "failed",
-        error: err instanceof Error ? err.message : "Couldn't list the models.",
-      });
+      setListing({ state: "failed", error: err instanceof Error ? err.message : "Couldn't list the models." });
     }
   };
   useEffect(() => {
@@ -63,8 +62,6 @@ export function ModelsSection({
   const rows = mergeRows(saved, listing.state === "listed" ? listing.rows : [], form.models);
   const q = filter.trim().toLowerCase();
   const shown = rows.filter((r) => !q || `${r.id} ${r.name}`.toLowerCase().includes(q));
-  const chat = shown.filter((r) => r.kind === "chat");
-  const other = shown.filter((r) => r.kind !== "chat");
 
   return (
     <section className="flex flex-col gap-3">
@@ -76,78 +73,86 @@ export function ModelsSection({
           disabled={listing.state === "loading"}
           onClick={() => void list()}
         >
-          {listing.state === "loading" ? "Listing models..." : "List the provider's models"}
+          {listing.state === "loading" ? "Listing..." : listing.state === "listed" ? "Refresh" : "List models"}
         </button>
       </div>
       <p className="text-[13px] text-[var(--muted)]">
-        The models you turn on are the ones the model picker offers. What each can do comes from a catalog bundled with Coscribe.
+        {rows.length > 0
+          ? "Switch on the models you want in the model picker. Hover one to see what it can do."
+          : "Enter the API key, then list the models it can use."}
       </p>
-      {listing.state === "failed" && <span className="text-[13px] text-[var(--danger)]">{listing.error} Add the model ID below instead.</span>}
 
       {rows.length > FILTER_FROM && (
         <input aria-label="Filter models" className={fieldClass} placeholder="Filter models" value={filter} onChange={(e) => setFilter(e.target.value)} />
       )}
-      {chat.length > 0 && (
-        <ul className="flex max-h-80 flex-col overflow-y-auto rounded-lg border border-[var(--border)]">
-          {chat.map((row) => (
-            <ModelCheckRow key={row.id} row={row} on={form.models.includes(row.id)} onToggle={() => toggle(row.id)} />
+      {shown.length > 0 && (
+        <ul className="flex max-h-96 flex-col overflow-y-auto rounded-xl border border-[var(--border)]" onScroll={() => setTip(null)}>
+          {shown.map((row) => (
+            <ModelSwitchRow
+              key={row.id}
+              row={row}
+              on={form.models.includes(row.id)}
+              isDefault={row.id === form.defaultModel}
+              onToggle={() => toggle(row.id)}
+              onMakeDefault={() => onChange({ ...form, defaultModel: row.id })}
+              onHover={(e) => setTip({ rect: e.currentTarget.getBoundingClientRect(), lines: modelMarks(row) })}
+              onLeave={() => setTip(null)}
+            />
           ))}
         </ul>
       )}
-      <NotForChat rows={other} />
-      <TypedModel onAdd={(id) => !form.models.includes(id) && setModels([...form.models, id])} />
-
-      {form.models.length > 0 && (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] text-[var(--muted)]">Default model</span>
-          <SelectMenu
-            ariaLabel="Default model"
-            value={form.defaultModel}
-            options={form.models.map((m) => ({ value: m, label: m }))}
-            onChange={(v) => onChange({ ...form, defaultModel: v })}
-          />
-        </div>
+      {listing.state === "failed" && (
+        <>
+          <span className="text-[13px] text-[var(--danger)]">{listing.error}</span>
+          <ModelIdField onAdd={(id) => !form.models.includes(id) && setModels([...form.models, id])} />
+        </>
       )}
+      <ModelTip tip={tip} />
     </section>
   );
 }
 
-function ModelCheckRow({ row, on, onToggle }: { row: ModelRow; on: boolean; onToggle: () => void }) {
+function ModelSwitchRow({
+  row,
+  on,
+  isDefault,
+  onToggle,
+  onMakeDefault,
+  onHover,
+  onLeave,
+}: {
+  row: ModelRow;
+  on: boolean;
+  isDefault: boolean;
+  onToggle: () => void;
+  onMakeDefault: () => void;
+  onHover: (e: MouseEvent<HTMLSpanElement>) => void;
+  onLeave: () => void;
+}) {
   return (
-    <li className="border-b border-[var(--border)] last:border-b-0">
-      <label className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-[var(--card-bg)]">
-        <input type="checkbox" className="mt-1" checked={on} onChange={onToggle} />
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-sm">
-            {row.name}
-            {row.name !== row.id && <span className="ml-2 text-[12px] text-[var(--muted)]">{row.id}</span>}
-          </span>
-          <ModelMarks row={row} />
-        </span>
-      </label>
+    <li className="group flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 last:border-b-0">
+      <span className="min-w-0 truncate text-sm" onMouseEnter={onHover} onMouseLeave={onLeave}>
+        {row.name}
+      </span>
+      {isDefault && on && <span className="shrink-0 rounded-md bg-[var(--card-bg)] px-1.5 py-0.5 text-xs text-[var(--muted)]">Default</span>}
+      {!isDefault && on && (
+        <button
+          type="button"
+          className="shrink-0 text-xs text-[var(--accent)] opacity-0 hover:underline focus-visible:opacity-100 group-hover:opacity-100"
+          onClick={onMakeDefault}
+        >
+          Make default
+        </button>
+      )}
+      <span className="ml-auto shrink-0">
+        <ToggleSwitch on={on} onClick={onToggle} label={`Use ${row.name}`} />
+      </span>
     </li>
   );
 }
 
-/** Embedding, image and other models the provider lists: shown so nothing seems missing, not offered. */
-function NotForChat({ rows }: { rows: ModelRow[] }) {
-  if (rows.length === 0) return null;
-  return (
-    <details className="text-sm">
-      <summary className="cursor-pointer text-[13px] text-[var(--muted)]">Not for chat ({rows.length})</summary>
-      <ul className="mt-2 flex flex-col">
-        {rows.map((row) => (
-          <li key={row.id} className="px-3 py-1 text-[13px] text-[var(--muted)]">
-            {row.id} · {row.kind}
-          </li>
-        ))}
-      </ul>
-    </details>
-  );
-}
-
-/** A model ID typed in, for a provider that doesn't list it. */
-function TypedModel({ onAdd }: { onAdd: (id: string) => void }) {
+/** For a provider that can't list its models: its model ID, typed in. */
+function ModelIdField({ onAdd }: { onAdd: (id: string) => void }) {
   const [typed, setTyped] = useState("");
   const add = () => {
     if (typed.trim()) onAdd(typed.trim());
@@ -158,7 +163,7 @@ function TypedModel({ onAdd }: { onAdd: (id: string) => void }) {
       <input
         aria-label="Model ID"
         className={`${fieldClass} min-w-0 flex-1`}
-        placeholder="Add a model ID the provider accepts"
+        placeholder="Or type a model ID the provider accepts"
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         onKeyDown={(e) => {

@@ -24,15 +24,14 @@ describe("modelMarks", () => {
 
   it("lists images, effort levels and context for a known model", () => {
     expect(modelMarks(row({ vision: true, effort_levels: ["low", "high"], context: 200_000 }))).toEqual([
-      "Images",
+      "Reads images",
       "Effort: low, high",
       "200K context",
     ]);
-    expect(modelMarks(row({ tools: false }))).toEqual(["No tools"]);
-    expect(modelMarks(row({ effort_levels: ["low", "high"] }), true)).toEqual(["2 effort levels"]);
+    expect(modelMarks(row({ tools: false }))).toEqual(["No tool calls"]);
   });
 
   it("claims nothing about a model the catalog doesn't list", () => {
-    expect(modelMarks(typedModelRow("my-tuned"))).toEqual(["Not in catalog"]);
+    expect(modelMarks(typedModelRow("my-tuned"))).toEqual(["Not in the bundled catalog: what it can do is unknown"]);
   });
 });

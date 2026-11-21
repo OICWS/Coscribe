@@ -1,12 +1,6 @@
 import type { ProviderCatalogEntry } from "../../../types/settings";
 import type { ProviderForm } from "./ProviderPage";
 
-/** Whether the provider's models list with no key: a built-in one other than OpenAI lists the
- * bundled catalog's, not the service's own /models. */
-export function listsWithoutKey(name: string, builtin: boolean): boolean {
-  return builtin && name.toLowerCase() !== "openai";
-}
-
 // The server routes a name that matches a built-in provider case-insensitively
 // to the built-in branch, so the catalog is matched the same way.
 export function findEntry(catalog: ProviderCatalogEntry[], name: string) {

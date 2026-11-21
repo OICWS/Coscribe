@@ -9,20 +9,24 @@ model could do; now the person turns on the models they want and sees each one's
   One saved with only a default still has that one. Saving with no model is refused.
 - `GET /api/providers` gives each provider's models as rows (`web/provider_catalog.py`
   `model_row`): images, effort levels, context window, tool calls, kind, and whether the bundled
-  catalog lists it. `POST /api/providers/models` answers with the same rows; for Anthropic and
-  Gemini it lists the catalog's models (`runtime.models.provider_models`), since neither serves
-  an OpenAI-compatible `/models`.
-- Settings > Providers: a provider's page has a Models section (a checkbox and marks per model, a
-  filter past 12, the non-chat models folded away, a typed model ID, the default). The list
-  column shows the default and how many more are on.
-- The composer's model pill groups the turned-on models by provider with the same marks; the
-  General tab's default model, a scheduled task's model and a run's investigation model offer the
-  same list.
+  catalog lists it. `POST /api/providers/models` lists what the provider offers this key, as the
+  same rows: `/models` for an OpenAI-compatible one, Anthropic's `GET /v1/models`, Gemini's
+  OpenAI compatibility layer.
+- Settings > Providers: a provider's page has a Models section, a switch per model, a filter
+  past 12, Make default, and a dark tip on hover with what the model can do. A typed model ID
+  only when the provider can't list its models. The list column shows the default and how many
+  more are on.
+- The composer's model pill shows four models (the current one and the most recently picked,
+  remembered in the browser) and the rest under More models, each with the same tip; the General
+  tab's default model, a scheduled task's model and a run's investigation model offer the same
+  list.
 - `.github/workflows/model-catalog.yml`: a manual run now opens or updates the pull request too.
 
 ## Not verified
-- The page and the pill in the desktop app on Windows; checked by type check, unit tests and the
-  route tests only.
+- The page and the pill in the desktop app on Windows: checked in Chromium against a local server,
+  with the vendor's model list stood in for (no real keys here).
+- Anthropic's and Gemini's model lists with a real key: the requests follow their API references
+  (2026-11-21) and are pinned by route tests with a fake transport.
 - A manual run of the catalog job: it runs on `main` once this is merged.
 
 ## Follow-ups

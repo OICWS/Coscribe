@@ -10,7 +10,7 @@ provider settings (`runtime/provider_config.py`, `web/`) or how a chat model is 
 (`runtime_lg/`).
 
 ## Public interface
-`ModelInfo`, `model_info`, `provider_models`, `catalog_provider`. Import them from `coscribe.runtime.models`.
+`ModelInfo`, `model_info`, `catalog_provider`. Import them from `coscribe.runtime.models`.
 
 ## Depends on
 No other coscribe package.
@@ -27,7 +27,7 @@ No other coscribe package.
 `tests/test_model_catalog.py`.
 
 ## Verify by hand
-Settings > Providers: a provider's Models section shows each model's marks.
+Settings > Providers: hovering a model in a provider's Models section, or in the model picker, shows what it can do.
 
 ## Reviewed
 2026-11-21 (first card).

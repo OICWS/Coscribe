@@ -455,17 +455,6 @@ def test_a_provider_saves_its_models_and_keeps_them_when_none_are_sent(
     assert dotenv_values(tmp_path / ".env")["COSCRIBE_OPENAI_MODELS"] == "gpt-5.5,o-x"
 
 
-def test_anthropic_lists_the_catalogs_models(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / ".env").write_text("", encoding="utf-8")
-    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
-        listed = client.post("/api/providers/models", json={"name": "anthropic"}).json()
-    assert listed["error"] is None
-    assert listed["models"] and all(row["known"] for row in listed["models"])
-
-
 def _models_transport(seen: list[httpx.Request], response: httpx.Response) -> Any:
     real_client = httpx.AsyncClient
 
@@ -518,8 +507,41 @@ async def test_provider_models_says_why_nothing_was_listed(
     monkeypatch.setattr(
         settings_provider_routes.httpx, "AsyncClient", _models_transport([], response)
     )
-    result = await settings_provider_routes.list_provider_models("https://x.test/v1", "k")
+    result = await settings_provider_routes.list_provider_models("https://x.test/v1/models", {})
     assert result == {"models": [], "error": error}
+
+
+@pytest.mark.parametrize(
+    ("name", "url", "header", "value"),
+    [
+        ("anthropic", "https://api.anthropic.com/v1/models?limit=1000", "x-api-key", "k-1"),
+        (
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta/openai/models",
+            "authorization",
+            "Bearer k-1",
+        ),
+    ],
+)
+def test_a_builtin_lists_the_models_its_own_api_offers_the_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, url: str, header: str, value: str
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(f"{name.upper()}_API_KEY", raising=False)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    seen: list[httpx.Request] = []
+    listed = httpx.Response(200, json={"data": [{"id": "models/x-1"}, {"id": "claude-opus-5-5"}]})
+    monkeypatch.setattr(
+        settings_provider_routes.httpx, "AsyncClient", _models_transport(seen, listed)
+    )
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        keyless = client.post("/api/providers/models", json={"name": name}).json()
+        result = client.post("/api/providers/models", json={"name": name, "api_key": "k-1"}).json()
+
+    assert keyless == {"models": [], "error": "Enter the API key first."}
+    assert [row["id"] for row in result["models"]] == ["claude-opus-5-5", "x-1"]
+    assert str(seen[0].url) == url
+    assert seen[0].headers[header] == value
 
 
 def test_get_providers_falls_back_to_the_global_default_model(

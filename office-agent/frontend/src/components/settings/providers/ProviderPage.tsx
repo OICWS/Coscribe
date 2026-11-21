@@ -3,7 +3,6 @@ import type { ProviderCatalogEntry, ProviderInfo } from "../../../types/settings
 import { ArrowLeftIcon, CheckIcon, ExternalLinkIcon } from "../../icons";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "../SettingRow";
 import { ProviderIcon } from "./ProviderIcon";
-import { listsWithoutKey } from "./catalog";
 import { providerKind } from "./kind";
 import { ModelsSection } from "./ModelsSection";
 
@@ -108,7 +107,7 @@ export function ProviderPage({
         <ProviderFields form={form} onChange={setForm} showName={isNewCustom} builtin={builtin} info={info} />
       </section>
 
-      <ModelsSection form={form} saved={info?.models ?? []} listOnOpen={Boolean(info?.masked_key) || listsWithoutKey(form.name, builtin)} onChange={setForm} />
+      <ModelsSection form={form} saved={info?.models ?? []} listOnOpen={Boolean(info?.masked_key)} onChange={setForm} />
 
       <div className="flex items-center justify-end gap-3">
         {status && (

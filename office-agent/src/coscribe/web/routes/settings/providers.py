@@ -21,7 +21,6 @@ from ....runtime import (
     resolve_secret,
     store_secret,
 )
-from ....runtime.models import provider_models
 from ...provider_catalog import (
     BUILTIN_CATALOG,
     BUILTIN_PROVIDERS,
@@ -80,7 +79,19 @@ def _custom_key(
         return "the saved key can't be read here; enter it again"
 
 
-_OPENAI_BASE_URL = "https://api.openai.com/v1"
+# Each built-in's own model list. Anthropic's is not OpenAI-compatible; Gemini serves one through
+# its OpenAI compatibility layer.
+_BUILTIN_MODEL_LISTS = {
+    "openai": "https://api.openai.com/v1/models",
+    "anthropic": "https://api.anthropic.com/v1/models?limit=1000",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/models",
+}
+
+
+def _list_headers(provider: str, api_key: str) -> dict[str, str]:
+    if provider == "anthropic":
+        return {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+    return {"Authorization": f"Bearer {api_key}"}
 
 
 def _models_to_save(
@@ -107,38 +118,37 @@ def _models_to_save(
 
 def _models_target(
     payload: ProviderModelsRequest, providers_config_path: Path | None
-) -> tuple[str, str] | str:
-    """(base URL, API key) to list a provider's models with, a blank key falling back to
-    the saved one; "catalog" for a built-in that lists nothing OpenAI-compatible; or why it
-    can't be listed."""
+) -> tuple[str, dict[str, str]] | str:
+    """(the URL listing a provider's models, the headers it needs), a blank key falling back to
+    the saved one; or why it can't be listed."""
     name = payload.name.strip()
     api_key = payload.api_key.strip()
-    if name.lower() == "openai":
-        base_url, api_key = _OPENAI_BASE_URL, api_key or os.environ.get("OPENAI_API_KEY", "")
-    elif any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS):
-        return "catalog"
+    builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+    if builtin is not None:
+        url = _BUILTIN_MODEL_LISTS[builtin["key"]]
+        api_key = api_key or os.environ.get(builtin["api_key_env"], "")
     else:
         base_url = payload.base_url.strip()
+        if not base_url:
+            return "Enter the base URL first."
+        url = base_url.rstrip("/") + "/models"
         if not api_key and providers_config_path is not None:
             stored = _read_providers_raw(providers_config_path)["providers"].get(name, {})
             try:
                 api_key = resolve_secret(stored.get("api_key")) or ""
             except RuntimeError:
                 api_key = ""
-    if not base_url:
-        return "Enter the base URL first."
     if not api_key:
         return "Enter the API key first."
-    return base_url, api_key
+    return url, _list_headers(name.lower(), api_key)
 
 
-async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
-    """The model IDs an OpenAI-compatible service lists at `GET {base_url}/models`, or why
-    they couldn't be listed."""
-    url = base_url.rstrip("/") + "/models"
+async def list_provider_models(url: str, headers: dict[str, str]) -> dict[str, Any]:
+    """The model IDs a provider lists at `url` (`{"data": [{"id": ...}]}`, as OpenAI-compatible
+    services and Anthropic answer), or why they couldn't be listed."""
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url, headers={"Authorization": f"Bearer {api_key}"})
+            response = await client.get(url, headers=headers)
     except httpx.TimeoutException:
         return {"models": [], "error": "The provider didn't answer within 15 s."}
     except httpx.HTTPError as exc:
@@ -153,7 +163,10 @@ async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
         data = None
     if not isinstance(data, list):
         return {"models": [], "error": "The provider doesn't list its models at /models."}
-    ids = sorted({str(m["id"]) for m in data if isinstance(m, dict) and m.get("id")})
+    # Gemini's compatibility layer may name a model "models/<id>"; chat requests take the bare ID.
+    ids = sorted(
+        {str(m["id"]).removeprefix("models/") for m in data if isinstance(m, dict) and m.get("id")}
+    )
     if not ids:
         return {"models": [], "error": "The provider listed no models."}
     return {"models": ids, "error": None}
@@ -162,16 +175,14 @@ async def list_provider_models(base_url: str, api_key: str) -> dict[str, Any]:
 async def _provider_models(
     payload: ProviderModelsRequest, providers_config_path: Path | None
 ) -> dict[str, Any]:
-    """Each model the provider lists, as `model_row` describes it."""
+    """Each model the provider lists for this key, as `model_row` describes it."""
     name = payload.name.strip()
     target = _models_target(payload, providers_config_path)
-    if target == "catalog":
-        rows = [model_row(m.model, name, info=m) for m in provider_models(name)]
-        return {"models": rows, "error": None if rows else "The catalog lists no models for it."}
     if isinstance(target, str):
         return {"models": [], "error": target}
     listed = await list_provider_models(*target)
-    lookup_url = "" if name.lower() == "openai" else target[0]
+    builtin = any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS)
+    lookup_url = "" if builtin else payload.base_url.strip()
     listed["models"] = [model_row(m, name, lookup_url) for m in listed["models"]]
     return listed
 
