@@ -22,6 +22,9 @@ ALLOWED = {
     "office-agent/src/coscribe/conversation/_vendor/d3.min.js": "vendored d3, unchanged",
     "office-agent/frontend/package-lock.json": "npm's generated lockfile",
     "office-agent/uv.lock": "uv's generated lockfile",
+    "office-agent/src/coscribe/runtime/models/catalog.json": (
+        "generated trim of models.dev, one line per model (decision 0055)"
+    ),
     "office-agent/tests/test_presentations_tool.py": "tests of presentations.py, split with it",
     "office-agent/src/coscribe/tools/_ooxml_schemas/transitional/sml.xsd": (
         "vendored ECMA-376 schema"

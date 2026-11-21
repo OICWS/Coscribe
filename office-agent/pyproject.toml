@@ -443,9 +443,16 @@ broken_contract_guidance = "Import from coscribe.tools.bookkeeping (the names in
 [[tool.importlinter.contracts]]
 name = "coscribe.runtime is entered through its package"
 type = "protected"
-protected_modules = ["coscribe.runtime.*"]
+protected_modules = ["coscribe.runtime.compaction", "coscribe.runtime.dotenv_file", "coscribe.runtime.environments", "coscribe.runtime.hooks", "coscribe.runtime.llm_client", "coscribe.runtime.network_access", "coscribe.runtime.provider_config", "coscribe.runtime.proxy", "coscribe.runtime.secret_store", "coscribe.runtime.secrets", "coscribe.runtime.types"]
 allowed_importers = ["coscribe.runtime"]
 broken_contract_guidance = "Import from coscribe.runtime (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.runtime/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.runtime.models is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.runtime.models.*"]
+allowed_importers = ["coscribe.runtime.models"]
+broken_contract_guidance = "Import from coscribe.runtime.models (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.runtime.models/__init__.py and put it on the card. Do not add an ignore line."
 
 [[tool.importlinter.contracts]]
 name = "coscribe.workflow_spec is entered through its package"
