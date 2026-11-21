@@ -199,6 +199,8 @@ Last reviewed: 2026-11-18.
 
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
+- Moving `script-env` and `node-env` off the system drive (a "Change location…" in Settings,
+  suggested on #1002) is not wanted (decided 2026-11-21); they stay under the state directory.
 - A workflow run's pages stay open when it ends, so the person can check them (decided
   2026-11-16); a workflow that should clean up closes them in a step. A per-workflow "close pages
   when the run ends" setting is offered, not started (`docs/log/2026-11-16-browser-self-close-crash.md`).
