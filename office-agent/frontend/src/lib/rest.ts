@@ -453,6 +453,16 @@ export const draftWorkflowFromThread = (threadId: string, name = "") =>
     name,
   });
 
+export interface SideChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+/** Side chat: the conversation's model answers from the conversation as it is now; the server
+ * keeps nothing, so the whole side chat goes each time. */
+export const askSideQuestion = (threadId: string, messages: SideChatMessage[]) =>
+  sendForResult<{ text: string }>(`/api/threads/${encodeURIComponent(threadId)}/side-chat`, "POST", { messages });
+
 /** Checks a workflow without saving it anywhere; resolves to the
  * normalized workflow or the reason it doesn't hold. */
 export const validateWorkflow = (workflow: Workflow) =>

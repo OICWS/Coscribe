@@ -39,7 +39,8 @@ export type PanelWindowState =
       comments: PlanComment[];
       review: { planId: string; steps: DraftStep[] } | null;
     }
-  | { panel: "files"; threadId: string; refreshKey: string };
+  | { panel: "files"; threadId: string; refreshKey: string }
+  | { panel: "side"; threadId: string };
 
 export type PanelWindowAction =
   | { type: "openTask"; task: ScheduledTask }

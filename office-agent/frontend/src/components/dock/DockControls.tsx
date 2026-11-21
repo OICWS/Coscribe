@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { createPortal } from "react-dom";
-import type { Direction, Edge, PanelId } from "../../lib/dockLayout";
+import { STAYS_IN_MAIN_WINDOW, type Direction, type Edge, type PanelId } from "../../lib/dockLayout";
 import {
   CloseIcon,
   ExpandIcon,
@@ -178,7 +178,7 @@ export function DockControls({ id, title, actions }: { id: PanelId; title: strin
                 <LayoutRowsIcon className="h-[18px] w-[18px]" />
               </button>
             </div>
-            {actions.popOut && <OpenInNewWindow onClick={() => run(() => actions.popOut?.(id))} />}
+            {actions.popOut && !STAYS_IN_MAIN_WINDOW.includes(id) && <OpenInNewWindow onClick={() => run(() => actions.popOut?.(id))} />}
           </div>,
           document.body,
         )}

@@ -248,6 +248,17 @@ class WorkflowDraftRequest(BaseModel):
     name: str = ""
 
 
+class SideChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=20_000)
+
+
+class SideChatRequest(BaseModel):
+    """The side chat so far, ending with the person's question; the server keeps none of it."""
+
+    messages: list[SideChatMessage] = Field(min_length=1, max_length=100)
+
+
 class FailedTurnExport(BaseModel):
     """The turn the person picked, by its start time, and what they chose to write about it."""
 

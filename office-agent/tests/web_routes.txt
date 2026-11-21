@@ -181,6 +181,7 @@ POST /api/threads/{thread_id}/folder-brief
 POST /api/threads/{thread_id}/fork
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
+POST /api/threads/{thread_id}/side-chat
 POST /api/threads/{thread_id}/slides/arrange
 POST /api/threads/{thread_id}/slides/assets
 POST /api/threads/{thread_id}/slides/comments

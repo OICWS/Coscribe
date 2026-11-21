@@ -7,7 +7,7 @@ index of the older history); why things are the way they are lives in
 PR that changes the picture, and take a line out when its work is done; keep it under about 150
 lines.
 
-Last reviewed: 2026-11-18.
+Last reviewed: 2026-11-21.
 
 ## Next, in order
 
@@ -197,8 +197,8 @@ Last reviewed: 2026-11-18.
   (the Outputs panel and the notices above the message box show what a conversation made); it
   would need deletes, renames and before/after content recorded first. `/fork` shipped
   (`docs/log/2026-11-21-fork.md`); `/export`, `/recap`, `/tasks` and `/template` are not planned
-  (decided 2026-11-21: the conversation menu exports, a skill can recap or template). A temporary
-  side chat is not scheduled.
+  (decided 2026-11-21: the conversation menu exports, a skill can recap or template). Side chat
+  shipped (`docs/log/2026-11-21-side-chat.md`).
 
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
