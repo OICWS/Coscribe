@@ -5,7 +5,7 @@ part not yet applied (#926).
 
 ## Shipped
 - Once the person said "Use them", the `env` of the main folder's `settings.json` is passed to
-  scripts and commands (`WorkspaceFolders.accepted_env`), read at each run. A change to the file
+  scripts, commands and the code module (`WorkspaceFolders.accepted_env`), read at each run. A change to the file
   waits for the person again.
 - Names and text only, at most 100, each value at most 4,096 characters. A `{{secret:NAME}}` in
   a value stays as written: secrets go only where the workspace gives them.
@@ -21,5 +21,4 @@ part not yet applied (#926).
 - The command sandbox builds its readable `programs` from the merged `PATH`, so the workspace's
   own `PATH` variable can still widen it into the private folders; build it from the server's
   `PATH` instead (`tools/exec/commands.py`).
-- Codex's code module does not get these variables.
 - The "Use them" card should list the variable names too, once #1017 is merged.

@@ -56,7 +56,7 @@ from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
 from .save_offer import SaveOffer
 from .turn_text import build_instructions
-from .workspace_folder import WorkspaceFolders
+from .workspace_folder import WorkspaceFolders, under_own_variables
 
 # The model calls a scheduled run may make when its task can't be read for its own number.
 UNATTENDED_MAX_TURNS = 150
@@ -145,10 +145,16 @@ class AgentAssembly:
     def folders(self) -> list[Path]:
         return [Path(self._host.workspace_root), *self._host.extra_folders]
 
-    def folder_env(self) -> dict[str, str]:
-        """The `env` of the main folder's accepted `settings.json`, read at each run so a change
-        to the file waits for the person again."""
-        return self.workspace_folders.accepted_env(Path(self._host.workspace_root))
+    def script_env(self) -> dict[str, str]:
+        """What scripts, commands and the code module get: the workspace's own variables over the
+        `env` of the main folder's accepted `settings.json`. Read at each run, so a change to the
+        file waits for the person again."""
+        own = SessionEnvironments(self._host.settings.state_dir).get(self._host.thread_id)[
+            "variables"
+        ]
+        return under_own_variables(
+            self.workspace_folders.accepted_env(Path(self._host.workspace_root)), own
+        )
 
     def shown_folders(self) -> list[dict[str, Any]]:
         """For the side panel: each folder's brief and what it keeps in `.coscribe/`."""
@@ -211,9 +217,7 @@ class AgentAssembly:
                         context_window=lambda: self._host._context_window_client.get_context_window(
                             self._host.settings.code_model or self._host._model_string
                         ),
-                        env=lambda: SessionEnvironments(self._host.settings.state_dir).get(
-                            self._host.thread_id
-                        )["variables"],
+                        env=self.script_env,
                     ),
                 )
             )

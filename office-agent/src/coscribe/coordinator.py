@@ -546,13 +546,6 @@ def _thread_folders(settings: Settings, thread_id: str) -> tuple[list[Path], ...
     )
 
 
-def _under(from_folder: Mapping[str, str], variables: dict[str, str]) -> dict[str, str]:
-    """The folder's accepted `settings.json` env under the workspace's own variables, compared
-    without case: Windows would keep both `Region` and `REGION` and either could win."""
-    own = {name.upper() for name in variables}
-    return {**{k: v for k, v in from_folder.items() if k.upper() not in own}, **variables}
-
-
 def build_coordinator_agent(
     settings: Settings,
     thread_id: str,
@@ -560,7 +553,7 @@ def build_coordinator_agent(
     workspace_root: Path | None = None,
     extra_folders: Sequence[Path] = (),
     conversation_source: ConversationSource | None = None,
-    folder_env: Callable[[], Mapping[str, str]] | None = None,
+    script_env: Callable[[], Mapping[str, str]] | None = None,
 ) -> Agent:
     """skill_names=None (the default) splices every skill found -- built-in
     plus the user-local settings.skills_dir -- exactly like before this
@@ -590,10 +583,12 @@ def build_coordinator_agent(
 
     def session_env() -> dict[str, str]:
         # Read at each run: the user can change them in Edit environment mid-conversation.
+        if script_env is not None:
+            return dict(script_env())
         variables: dict[str, str] = SessionEnvironments(settings.state_dir).get(thread_id)[
             "variables"
         ]
-        return _under(folder_env() if folder_env else {}, variables)
+        return variables
 
     network = NetworkGuard(settings.state_dir, thread_id)
 

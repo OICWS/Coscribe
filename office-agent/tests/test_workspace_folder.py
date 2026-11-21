@@ -180,12 +180,19 @@ def test_a_folders_env_reaches_scripts_only_once_accepted_and_as_plain_text(tmp_
     assert folders.accepted_env(folder) == {"REGION": "eu", "TOKEN": "{{secret:CRM}}"}
 
 
-def test_the_workspaces_own_variables_win_over_the_folders_env_whatever_the_case(
+def test_the_workspaces_own_variables_win_over_the_folders_env_whatever_the_case() -> None:
+    from coscribe.conversation.workspace_folder import under_own_variables
+
+    merged = under_own_variables({"Region": "eu", "MODE": "fast"}, {"REGION": "us"})
+
+    assert merged == {"REGION": "us", "MODE": "fast"}
+
+
+def test_scripts_and_commands_get_the_env_the_conversation_hands_the_coordinator(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import coscribe.coordinator as coordinator
     from coscribe.config import Settings
-    from coscribe.runtime import Environments
 
     seen: dict[str, Any] = {}
 
@@ -202,14 +209,9 @@ def test_the_workspaces_own_variables_win_over_the_folders_env_whatever_the_case
         skills_dir=tmp_path / "skills",
         memory_path=tmp_path / "MEMORY.md",
     )
-    environments = Environments(settings.state_dir)
-    reports = environments.create({"name": "Reports", "variables": {"REGION": "us"}}, set())
-    environments.assign("t1", reports["id"])
-    coordinator.build_coordinator_agent(
-        settings, "t1", folder_env=lambda: {"Region": "eu", "MODE": "fast"}
-    )
+    coordinator.build_coordinator_agent(settings, "t1", script_env=lambda: {"MODE": "fast"})
 
-    assert seen["env"]() == {"REGION": "us", "MODE": "fast"}
+    assert seen["env"]() == {"MODE": "fast"}
 
 
 def test_a_folder_can_never_set_a_name_scripts_take_from_the_system() -> None:

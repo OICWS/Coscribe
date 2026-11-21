@@ -103,6 +103,13 @@ def settings_env(settings: dict[str, Any]) -> dict[str, str]:
     return dict(list(kept.items())[:_MAX_ENV])
 
 
+def under_own_variables(folder_env: dict[str, str], own: dict[str, str]) -> dict[str, str]:
+    """`own` (the workspace's variables) over `folder_env`, compared without case: Windows would
+    keep both `Region` and `REGION`, and either could win."""
+    upper = {name.upper() for name in own}
+    return {**{k: v for k, v in folder_env.items() if k.upper() not in upper}, **own}
+
+
 def read_connectors(folder: Path) -> dict[str, Any]:
     """The servers `.coscribe/mcp.json` holds, as Claude Code's `.mcp.json` holds them."""
     try:
