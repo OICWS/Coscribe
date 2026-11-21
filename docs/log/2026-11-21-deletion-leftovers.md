@@ -6,7 +6,8 @@ a deleted conversation stayed in the sidebar until the server finished deleting 
 ## Shipped
 - Opening an artifact opens the viewer for the conversation it goes to, not the one the page was
   on (`setPanelOpen` takes the conversation), and a new conversation with a file open leaves the
-  start page, which shows no panels (`App.tsx`).
+  start page, which shows no panels (`App.tsx`). An empty conversation's chat shows nothing there:
+  the blue gradient greeting (`EmptyState`, `.gradient-text`) is gone.
 - A card whose file is gone, or whose folder is no longer allowed, says so on the Artifacts page
   instead of doing nothing (`ArtifactsPage.tsx`, `lib/artifacts.ts`).
 - A sidebar row shows "Deleting…" from the confirmation, leaves when the server is done, and says

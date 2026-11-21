@@ -7,7 +7,7 @@ describe("workflow investigation handoff", () => {
     const html = renderToStaticMarkup(<InvestigationHandoff error={null} />);
     expect(html).toContain("Handing off to AI");
     expect(html).toContain("Preparing to investigate the failed run");
-    expect(html).not.toContain("gradient-text");
+    expect(html).not.toContain("<h1");
     expect(html).toContain('role="status"');
   });
 
