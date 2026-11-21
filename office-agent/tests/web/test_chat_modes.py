@@ -65,9 +65,11 @@ def test_switch_model_with_an_effort_rebuilds_the_model_at_that_level_and_refuse
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
     levels_asked: list[str] = []
 
-    def for_conversation(model: object, thread_id: str, effort: str) -> tuple[object, str | None]:
+    def for_conversation(
+        model: object, thread_id: str, effort: str, *_: object
+    ) -> tuple[object, str | None, tuple[str, ...]]:
         levels_asked.append(effort)
-        return model, runs_as(effort, ("low", "high"))
+        return model, runs_as(effort, ("low", "high")), ("low", "high")
 
     monkeypatch.setattr(conversation_session, "for_conversation", for_conversation)
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -75,6 +77,7 @@ def test_switch_model_with_an_effort_rebuilds_the_model_at_that_level_and_refuse
             state = ws.receive_json()
             ws.receive_json()  # history
             assert (state["effort"], state["effort_runs_as"]) == ("medium", "low")
+            assert state["effort_levels"] == ["low", "high"]
 
             ws.send_json({"type": "switch_model", "model": "fake:model", "effort": "ultra"})
             changed = ws.receive_json()
@@ -105,6 +108,7 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                 "model": "fake:model",
                 "effort": "medium",
                 "effort_runs_as": None,
+                "effort_levels": None,
                 "context_window": 128_000,
                 "enabled_skills": [
                     "Dashboard",

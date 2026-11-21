@@ -176,8 +176,9 @@ Last reviewed: 2026-11-18.
   its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
   The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`), then the
   provider page's Models section and the grouped model picker
-  (`docs/log/2026-11-21-provider-models.md`). Open: the protocols; the effort levels read from
-  the catalog; pasting a vendor's Codex or Claude Code setup.
+  (`docs/log/2026-11-21-provider-models.md`), then each model's own effort levels from the
+  catalog (`docs/log/2026-11-21-model-effort-levels.md`). Open: the protocols; pasting a vendor's
+  Codex or Claude Code setup.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
   a first-run page that takes a compatible provider and checks the key; steps and time per task in the agentic evaluation.

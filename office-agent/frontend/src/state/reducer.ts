@@ -105,9 +105,10 @@ export interface ChatState {
   acceptEdits: boolean;
   autoMode: boolean;
   model: string;
-  /** See StateEvent.effort / effort_runs_as. */
+  /** See StateEvent.effort / effort_runs_as / effort_levels. */
   effort: StateEvent["effort"];
   effortRunsAs: string | null;
+  effortLevels: string[] | null;
   contextWindow: number;
   /** Skills offered in this thread's instructions (see StateEvent.enabled_skills). */
   enabledSkills: string[];
@@ -187,6 +188,7 @@ export const initialChatState: ChatState = {
   model: "",
   effort: "medium",
   effortRunsAs: null,
+  effortLevels: null,
   contextWindow: 0,
   enabledSkills: [],
   connectorTools: new Set(),
@@ -386,6 +388,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         model: state.model,
         effort: state.effort,
         effortRunsAs: state.effortRunsAs,
+        effortLevels: state.effortLevels,
         contextWindow: state.contextWindow,
         enabledSkills: state.enabledSkills,
         connectorTools: state.connectorTools,
@@ -510,6 +513,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         model: action.model,
         effort: action.effort,
         effortRunsAs: action.effort_runs_as,
+        effortLevels: action.effort_levels ?? null,
         contextWindow: action.context_window,
         enabledSkills: action.enabled_skills,
         connectorTools: new Set(action.connector_tools ?? []),

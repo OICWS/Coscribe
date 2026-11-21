@@ -8,8 +8,8 @@ from typing import Any, get_args
 import pytest
 
 from coscribe.conversation import wire
-from coscribe.runtime_lg.effort import LEVELS, effort_levels, runs_as, with_effort
-from coscribe.runtime_lg.providers import resolve_chat_model
+from coscribe.runtime_lg.effort import LEVELS, catalog_levels, effort_levels, runs_as, with_effort
+from coscribe.runtime_lg.providers import for_conversation, resolve_chat_model
 
 _PROVIDERS = {
     "deepseek": {"base_url": "https://api.deepseek.com/v1", "api_key": "k"},
@@ -77,35 +77,60 @@ def test_the_levels_each_model_takes(model: str, levels: tuple[str, ...] | None)
     assert effort_levels(_model(model)) == levels
 
 
+@pytest.mark.parametrize(
+    ("model", "levels"),
+    [
+        ("anthropic:claude-opus-5-5", ("low", "medium", "high", "xhigh", "max")),
+        # `none` and `minimal` are not on our scale.
+        ("openai:gpt-5.5", ("low", "medium", "high", "xhigh")),
+        # A custom provider is found by its base URL's host.
+        ("deepseek:deepseek-v4-flash", ("low", "high", "max")),
+        ("kimi:not-a-model", None),
+    ],
+)
+def test_the_catalog_gives_a_models_own_levels(model: str, levels: tuple[str, ...] | None) -> None:
+    assert catalog_levels(model, _PROVIDERS) == levels
+
+
+def test_a_conversation_runs_the_catalogs_levels_before_the_librarys() -> None:
+    model, runs, levels = for_conversation(
+        _model("deepseek:deepseek-v4-flash"), "t", "extra", "deepseek:deepseek-v4-flash", _PROVIDERS
+    )
+    assert levels == ("low", "high", "max")
+    assert runs == "high" and model.reasoning_effort == "high"
+    unknown = for_conversation(_model("kimi:kimi-k2"), "t", "high", "kimi:not-a-model", _PROVIDERS)
+    assert unknown[1:] == (None, None)
+
+
 def test_claude_sends_output_config_effort() -> None:
-    model, level = with_effort(_model("anthropic:claude-opus-5-5"), "extra")
+    model, level, _ = with_effort(_model("anthropic:claude-opus-5-5"), "extra")
 
     assert level == "xhigh"
     assert model._get_request_payload("hi")["output_config"] == {"effort": "xhigh"}
 
 
 def test_deepseek_sends_reasoning_effort() -> None:
-    model, level = with_effort(_model("deepseek:deepseek-flash"), "extra")
+    model, level, _ = with_effort(_model("deepseek:deepseek-flash"), "extra")
 
     assert level == "xhigh"
     assert model._get_request_payload("hi")["reasoning_effort"] == "xhigh"
 
 
 def test_openai_sends_reasoning_effort() -> None:
-    model, _ = with_effort(_model("openai:gpt-5.5"), "max")
+    model, _, _ = with_effort(_model("openai:gpt-5.5"), "max")
 
     assert model._get_request_payload("hi")["reasoning_effort"] == "high"
 
 
 def test_gemini_sends_the_level_as_thinking_level() -> None:
-    model, level = with_effort(_model("gemini:gemini-3.5-flash"), "extra")
+    model, level, _ = with_effort(_model("gemini:gemini-3.5-flash"), "extra")
 
     assert level == "high"
     assert model._prepare_params(None).thinking_config.thinking_level.value == "HIGH"
 
 
 def test_gemini_pro_runs_a_gap_as_the_level_below() -> None:
-    model, level = with_effort(_model("gemini:gemini-3-pro-preview"), "medium")
+    model, level, _ = with_effort(_model("gemini:gemini-3-pro-preview"), "medium")
 
     assert level == "low"
     assert model._prepare_params(None).thinking_config.thinking_level.value == "LOW"
@@ -114,7 +139,7 @@ def test_gemini_pro_runs_a_gap_as_the_level_below() -> None:
 def test_gemini_without_levels_is_left_alone() -> None:
     original = _model("gemini:gemini-2.5-flash")
 
-    model, level = with_effort(original, "medium")
+    model, level, _ = with_effort(original, "medium")
 
     assert model is original and level is None
     assert model._prepare_params(None).thinking_config is None
@@ -123,7 +148,7 @@ def test_gemini_without_levels_is_left_alone() -> None:
 def test_a_model_without_effort_is_returned_unchanged() -> None:
     original = _model("kimi:kimi-k2")
 
-    model, level = with_effort(original, "max")
+    model, level, _ = with_effort(original, "max")
 
     assert model is original and level is None
     assert "reasoning_effort" not in model._get_request_payload("hi")

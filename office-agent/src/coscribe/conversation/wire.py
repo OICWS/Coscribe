@@ -35,6 +35,9 @@ class StateEvent(TypedDict):
     # The model's own level that `effort` runs as (`xhigh` for extra, for example); None when the
     # model takes no effort setting.
     effort_runs_as: str | None
+    # The model's own levels, lowest first, which the effort picker offers (`xhigh` and `max` keep
+    # their names); None when the model takes no effort setting or its levels are not known.
+    effort_levels: list[str] | None
     context_window: int
     # Skills offered in this thread's instructions: the global on/off set, re-read at
     # the start of every turn.

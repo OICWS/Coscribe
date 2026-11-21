@@ -156,6 +156,8 @@ def _new_draft_id() -> str:
 # (providers.py), so this signature recreates the client, whose fresh channel starts the header
 # at zero, before retrying.
 _GRPC_METADATA_OVERFLOW_SIGNATURE = "metadata size exceeds soft limit"
+# (the provider level an effort runs as, the levels the model offers); None both when it takes none.
+_EffortFit = tuple[str | None, tuple[str, ...] | None]
 
 
 class ChatSessionLG:
@@ -304,9 +306,7 @@ class ChatSessionLG:
         self._instructions = agent.instructions or ""
         self._model_string = settings.default_model
         self._effort: str = settings.default_effort
-        self.model, self._effort_runs_as = self._conversation_model(
-            self._model_string, self._effort
-        )
+        self.model, self._effort_fit = self._conversation_model(self._model_string, self._effort)
         lg_tools = self._build_lg_tools(self.model)
         # The *original* requires_approval set, computed independently of
         # what actually ends up in HumanInTheLoopMiddleware's interrupt_on
@@ -346,10 +346,13 @@ class ChatSessionLG:
         self.preapproved_tools: frozenset[str] = frozenset()
         self._offer_task: asyncio.Task[None] | None = None
 
-    def _conversation_model(self, model_string: str, effort: str) -> tuple[Any, str | None]:
-        return for_conversation(
-            resolve_chat_model(model_string, self._custom_providers), self.thread_id, effort
+    def _conversation_model(self, model_string: str, effort: str) -> tuple[Any, _EffortFit]:
+        """The model at `effort`, and (the level it runs as, the levels it offers)."""
+        chat_model = resolve_chat_model(model_string, self._custom_providers)
+        model, runs_as, levels = for_conversation(
+            chat_model, self.thread_id, effort, model_string, self._custom_providers
         )
+        return model, (runs_as, levels)
 
     def _build_lg_tools(self, model: Any) -> list[Callable[..., Any] | BaseTool]:
         return self._assembly.build_lg_tools(model)
@@ -662,26 +665,20 @@ class ChatSessionLG:
                 }
             )
             return
-        previous = (
-            self.model,
-            self.lg_agent,
-            self._model_string,
-            self._effort,
-            self._effort_runs_as,
-        )
+        previous = (self.model, self.lg_agent, self._model_string, self._effort, self._effort_fit)
         self._context_window = None
         try:
             if self.settings.providers_config_path is not None:
                 self._custom_providers = load_custom_providers(self.settings.providers_config_path)
             effort = effort or self._effort
-            new_model, runs_as = self._conversation_model(model, effort)
+            new_model, fit = self._conversation_model(model, effort)
             lg_tools = self._build_lg_tools(new_model)
             new_lg_agent = self._build_lg_agent(new_model, model, lg_tools)
             self.model, self.lg_agent, self._model_string = new_model, new_lg_agent, model
-            self._effort, self._effort_runs_as = effort, runs_as
+            self._effort, self._effort_fit = effort, fit
             await self.send_state(websocket)
         except Exception as exc:  # noqa: BLE001 -- a bad/misconfigured provider must not corrupt session state
-            (self.model, self.lg_agent, self._model_string, self._effort, self._effort_runs_as) = (
+            (self.model, self.lg_agent, self._model_string, self._effort, self._effort_fit) = (
                 previous
             )
             self._context_window = None
@@ -773,7 +770,8 @@ class ChatSessionLG:
             "auto_mode": self.auto_mode,
             "model": self._model_string,
             "effort": self._effort,
-            "effort_runs_as": self._effort_runs_as,
+            "effort_runs_as": self._effort_fit[0],
+            "effort_levels": list(self._effort_fit[1]) if self._effort_fit[1] else None,
             "context_window": self._context_window,
             "enabled_skills": sorted(self.enabled_skill_names),
             "workspace_root": str(self.workspace_root),
@@ -1231,7 +1229,7 @@ class ChatSessionLG:
                 if not retried_after_grpc_metadata_overflow and is_grpc_metadata_overflow:
                     retried_after_grpc_metadata_overflow = True
                     try:
-                        self.model, self._effort_runs_as = self._conversation_model(
+                        self.model, self._effort_fit = self._conversation_model(
                             self._model_string, self._effort
                         )
                         lg_tools = self._build_lg_tools(self.model)
