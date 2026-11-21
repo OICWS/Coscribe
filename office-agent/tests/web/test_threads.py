@@ -219,7 +219,7 @@ def test_get_commands_leaves_out_what_a_control_does(
 
     assert response.status_code == 200
     names = {command["name"] for command in response.json()}
-    assert {"init", "compact", "clear", "create-skill"} <= names
+    assert {"init", "compact", "clear", "fork", "create-skill"} <= names
     assert not {"plan", "accept-edits", "auto", "stop", "saveworkflow"} & names
 
 

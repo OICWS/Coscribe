@@ -46,6 +46,14 @@ export function useClearToNewChat(
   };
 }
 
+/** A command the app runs itself instead of sending it: its handler, given what follows the name. */
+export function appCommand(text: string, handlers: Record<string, (rest: string) => void>): (() => void) | null {
+  const typed = /^\/([a-z-]+)(?:\s+([\s\S]*))?$/i.exec(text.trim());
+  const name = typed?.[1].toLowerCase() ?? "";
+  if (!typed || !Object.hasOwn(handlers, name)) return null;
+  return () => handlers[name]((typed[2] ?? "").trim());
+}
+
 /** The composer's "/" menu: which commands match what is typed, and which one is highlighted. */
 export function useCommandMenu(commands: CommandInfo[], text: string) {
   // One state, so a list fetched again and an arrow key pressed in the same moment both apply

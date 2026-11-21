@@ -195,8 +195,10 @@ Last reviewed: 2026-11-18.
 - Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`, `docs/log/2026-11-21-doctor-checks.md`):
   `/doctor` shipped in the web UI; the CLI has none. `/changes` is not needed for now
   (the Outputs panel and the notices above the message box show what a conversation made); it
-  would need deletes, renames and before/after content recorded first. `/fork`, a temporary side
-  chat, `/export` and `/recap` are not scheduled.
+  would need deletes, renames and before/after content recorded first. `/fork` shipped
+  (`docs/log/2026-11-21-fork.md`); `/export`, `/recap`, `/tasks` and `/template` are not planned
+  (decided 2026-11-21: the conversation menu exports, a skill can recap or template). A temporary
+  side chat is not scheduled.
 
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).

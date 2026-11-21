@@ -488,3 +488,67 @@ def test_export_returns_the_conversation_as_a_markdown_download(
     assert 'filename="conversation-t_export.md"' in response.headers["content-disposition"]
     assert "## You\n\nhello" in response.text
     assert "## Coscribe\n\nhi there!" in response.text
+
+
+def _two_turns(client: Any, thread_id: str, environment: str | None = None) -> None:
+    with client.websocket_connect(f"/ws/{thread_id}") as ws:
+        _receive_until(ws, "history")
+        if environment is not None:
+            ws.send_json({"type": "set_environment", "environment": environment})
+            _receive_until(ws, "state")
+        ws.send_json({"type": "user_message", "text": "hello"})
+        _receive_until(ws, "tasks_changed")
+        ws.send_json({"type": "user_message", "text": "how are you"})
+        _receive_until(ws, "tasks_changed")
+
+
+def _history_of(client: Any, thread_id: str) -> list[dict[str, Any]]:
+    with client.websocket_connect(f"/ws/{thread_id}") as ws:
+        return _unstamped(_receive_until(ws, "history")[-1]["entries"])
+
+
+def test_fork_copies_the_conversation_and_keeps_its_environment_and_group(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="hi there!"), AIMessage(content="fine")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        env = client.post("/api/environments", json={"name": "Reports"}).json()
+        _two_turns(client, "t_fork_all", env["id"])
+        client.post("/api/threads/t_fork_all/meta", json={"group": "Q4"})
+        response = client.post("/api/threads/t_fork_all/fork", json={"title": "Plan B"})
+        fork_id = response.json()["thread_id"]
+        original = _history_of(client, "t_fork_all")
+        copy = _history_of(client, fork_id)
+        listed = {t["thread_id"]: t for t in client.get("/api/threads").json()}
+
+    assert response.status_code == 200
+    assert fork_id != "t_fork_all"
+    assert copy == original == [
+        {"kind": "user", "text": "hello"},
+        {"kind": "agent", "text": "hi there!"},
+        {"kind": "user", "text": "how are you"},
+        {"kind": "agent", "text": "fine"},
+    ]
+    assert listed[fork_id]["preview"] == "Plan B"
+    assert listed[fork_id]["environment"] == env["id"]
+    assert listed[fork_id]["group"] == "Q4"
+
+
+def test_fork_refuses_a_blank_title_and_an_unknown_thread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="hi there!"), AIMessage(content="fine")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _two_turns(client, "t_fork_bad")
+        blank = client.post("/api/threads/t_fork_bad/fork", json={"title": "  "})
+        unknown = client.post("/api/threads/t_nobody/fork", json={"title": "X"})
+        threads = client.get("/api/threads").json()
+
+    assert blank.status_code == 400
+    assert unknown.status_code == 404
+    assert [t["thread_id"] for t in threads] == ["t_fork_bad"]
