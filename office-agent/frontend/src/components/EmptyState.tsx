@@ -2,15 +2,6 @@ import { useEffect, useState } from "react";
 import { pickGreeting } from "../lib/greetings";
 import { getConfig } from "../lib/rest";
 
-export function EmptyState() {
-  const greeting = pickGreeting(new Date(), "");
-  return (
-    <div className="flex h-full items-center justify-center px-4">
-      <h1 className="gradient-text text-xl font-semibold">{greeting}</h1>
-    </div>
-  );
-}
-
 /** An investigation starts in the background; it is a handoff, not a new chat greeting. */
 export function InvestigationHandoff({ error }: { error: string | null }) {
   return (

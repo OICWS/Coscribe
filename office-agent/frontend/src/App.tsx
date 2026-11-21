@@ -86,6 +86,7 @@ import type { WorkflowDraftEntry } from "./lib/transcriptGrouping";
 import { EMPTY_WORKFLOW } from "./lib/workflowEdit";
 import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowProgress";
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
+import { cardAnswers } from "./components/folderActions";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
 import { QuestionPanel } from "./components/QuestionCard";
 import type { ThreadSummary } from "./types/session";
@@ -118,11 +119,10 @@ function App() {
   // The file each conversation's viewer shows.
   const [viewerFiles, setViewerFiles] = useState<Record<string, string>>({});
   const viewerFile = openPanels.includes("viewer") ? viewerFiles[threadId] : undefined;
-  const setPanelOpen = (panel: ConversationPanel, open: boolean) =>
+  const setPanelOpen = (panel: ConversationPanel, open: boolean, thread = threadIdRef.current) =>
     setPanelsByThread((panels) => {
-      const current = threadIdRef.current;
-      const list = (panels[current] ?? []).filter((p) => p !== panel);
-      return { ...panels, [current]: open ? [...list, panel] : list };
+      const list = (panels[thread] ?? []).filter((p) => p !== panel);
+      return { ...panels, [thread]: open ? [...list, panel] : list };
     });
   const togglePanel = (panel: ConversationPanel) =>
     setPanelsByThread((panels) => {
@@ -405,7 +405,8 @@ function App() {
     !state.turnInFlight &&
     !handingOff &&
     !isScheduledTaskThread &&
-    threadWorkflow === null;
+    threadWorkflow === null &&
+    !viewerFile; // the start page has no panels, so a file opened into a new conversation would not show
   const taskPanelShown =
     navMode === "create" &&
     taskPanelWanted &&
@@ -692,10 +693,6 @@ function App() {
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
   };
-  const onAnswerFolderAccess = (id: string, answer: string) => {
-    dispatch({ type: "local_folder_access_answered", id, answer });
-    socketRef.current?.send({ type: "question_response", id, answer });
-  };
   const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
@@ -766,7 +763,7 @@ function App() {
   });
   const artifacts = artifactActions((id, path) => {
     setViewerFiles((files) => ({ ...files, [id]: path }));
-    setPanelOpen("viewer", true);
+    setPanelOpen("viewer", true, id);
   }, artifactStart.start, (id) => showSettings("design-systems", id ?? "new"));
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
@@ -893,6 +890,7 @@ function App() {
       open={(panel) => panelOpen(panel) || poppedOut.includes(panel)}
       onToggle={(panel) => (panel === "task" ? toggleTaskPanel() : togglePanelOrWindow(panel))}
       inConversation={inConversation}
+      onStartScreen={navMode === "create" && onHome && !artifactsOpen && pageView !== "sessions"}
       pinned={pinnedItems}
       onPinnedChange={setPinnedItems}
       sidebar={{ open: navPinned, toggle: () => setNavPinned(!navPinned) }}
@@ -973,7 +971,7 @@ function App() {
                       busy: state.turnInFlight,
                       onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
                       onTryAgain: () => sendRaw("I added the folder. Please try again."),
-                      onAnswerFolderAccess,
+                      ...cardAnswers(dispatch, (message) => socketRef.current?.send(message)),
                       onOpenFolderSettings: () => showSettings("workspace", null),
                     }}
                     onPptxShapePicked={onPptxShapePicked}

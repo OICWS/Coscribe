@@ -12,8 +12,9 @@ test("Settings > Capabilities lists the Pythons found, Automatic first", async (
 
   await page.getByRole("button", { name: "Choose", exact: true }).click();
 
-  await expect(page.getByRole("radio", { name: /^Automatic/ })).toBeChecked();
-  await expect(page.getByRole("radio", { name: /^Python 3\.\d+/ }).first()).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Python for scripts" });
+  await expect(dialog.getByRole("radio", { name: /^Automatic/ })).toBeChecked();
+  await expect(dialog.getByRole("radio", { name: /^Python 3\.\d+/ }).first()).toBeVisible();
   // coscribe's own Python is a Windows build: nothing to offer on the Linux runner.
-  await expect(page.getByRole("button", { name: /Download \(about 30 MB\)/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Download", exact: true })).toHaveCount(0);
 });

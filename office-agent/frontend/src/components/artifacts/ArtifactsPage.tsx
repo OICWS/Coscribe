@@ -35,8 +35,17 @@ const toolButton = "flex h-9 w-9 items-center justify-center rounded-lg text-[va
 
 /** Everything coscribe has made, as cards or as a list by day, with a way to make something new.
  * Opening one goes to the conversation that made it. */
-export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => void; onMake: (kind: PageKind, describe?: boolean) => void }) {
+export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => Promise<boolean>; onMake: (kind: PageKind, describe?: boolean) => void }) {
   const { items, error, reload, pins, togglePin } = useArtifacts();
+  const [unavailable, setUnavailable] = useState<string | null>(null);
+  const open = (item: PageItem) => {
+    setUnavailable(null);
+    void onOpen(item).then((opened) => {
+      if (opened) return;
+      setUnavailable(item.name);
+      reload();
+    });
+  };
   const [filters, setFilters] = useState<Filters>({ tab: "all", kind: null, query: "" });
   const [layout, setLayout] = useState<Layout>(readLayout);
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -64,6 +73,11 @@ export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => 
           <NewTiles onMake={onMake} />
         </div>
         <div className="mt-10">
+          {unavailable !== null && (
+            <p role="status" className="mb-4 text-sm text-[var(--danger)]">
+              "{unavailable}" is no longer available: it was moved or deleted, or its folder is no longer allowed.
+            </p>
+          )}
           <Results
             items={items}
             error={error}
@@ -71,7 +85,7 @@ export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => 
             layout={layout}
             pins={pins}
             onReload={reload}
-            onOpen={onOpen}
+            onOpen={open}
             onMenu={(item, anchor) => setMenu({ kind: "item", anchor, item })}
           />
         </div>

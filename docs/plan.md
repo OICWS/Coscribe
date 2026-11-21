@@ -174,8 +174,9 @@ Last reviewed: 2026-11-18.
 - **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
   (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
   its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
-  Parts: the catalog and its update job; the protocols; the provider page's Models section and
-  the model picker; pasting a vendor's Codex or Claude Code setup.
+  The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`). Open: the
+  protocols; the provider page's Models section and the model picker; the effort levels read from
+  the catalog; pasting a vendor's Codex or Claude Code setup.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
   a first-run page that takes a compatible provider and checks the key; steps and time per task in the agentic evaluation.
@@ -183,8 +184,8 @@ Last reviewed: 2026-11-18.
 - **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
   itself when 8790 is taken, and the listener's message stops naming a Settings row; a diagnostic
-  log to export in place of Log level; a package a script needs installed from the chat, with
-  approval; the models for code and for side jobs picked without a row; a proxy change that
+  log to export in place of Log level; Settings › Packages' Add field, once installing from the
+  chat (decision 0057) has been used for a while; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 

@@ -173,6 +173,26 @@ path = "office-agent/src/coscribe/runtime"
 layer = "runtime | config"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/runtime/AGENTS.md"
+protected_modules = [
+    "coscribe.runtime.compaction",
+    "coscribe.runtime.dotenv_file",
+    "coscribe.runtime.environments",
+    "coscribe.runtime.hooks",
+    "coscribe.runtime.llm_client",
+    "coscribe.runtime.network_access",
+    "coscribe.runtime.provider_config",
+    "coscribe.runtime.proxy",
+    "coscribe.runtime.secret_store",
+    "coscribe.runtime.secrets",
+    "coscribe.runtime.types",
+]
+
+[[component]]
+name = "runtime.models"
+path = "office-agent/src/coscribe/runtime/models"
+layer = "runtime | config"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/runtime/models/AGENTS.md"
 
 [[component]]
 name = "workflow_spec"

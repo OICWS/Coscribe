@@ -218,17 +218,18 @@ export function artifactActions(
   openSystem: (id: string | null) => void,
 ) {
   return {
-    /** Opens it in a conversation, with the file in its panel; a design system in Settings. */
-    open: (item: PageItem) => {
-      if (item.kind === "design-system") return openSystem(item.id);
-      // A file that has gone since the list was read has nothing to open; the next visit drops it.
-      placeOf(item).then(
-        (place) => {
-          showFile(place.thread_id, place.path);
-          goToThread(place.thread_id);
-        },
-        () => undefined,
-      );
+    /** Opens it in a conversation, with the file in its panel; a design system in Settings.
+     * False when the file can no longer be opened. */
+    open: async (item: PageItem): Promise<boolean> => {
+      if (item.kind === "design-system") {
+        openSystem(item.id);
+        return true;
+      }
+      const place = await placeOf(item).catch(() => null);
+      if (place === null) return false;
+      showFile(place.thread_id, place.path);
+      goToThread(place.thread_id);
+      return true;
     },
     /** A new conversation whose first message is to make the kind; a design system opens the blank
      * form unless the person asked to describe it. */

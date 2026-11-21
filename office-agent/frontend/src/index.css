@@ -38,8 +38,7 @@
    --accent-2, a lighter blue, exists only to pair with it in the gradient.
    --gradient-accent (blue -> light blue) is a reusable two-stop gradient, not a
    flat accent -- used sparingly (see --gradient-accent's own call sites:
-   the running-turn indicator's flowing wave, and gradient-text.tsx-style
-   decorative headings), never as a body-text or background-behind-text
+   the running-turn indicator's flowing wave), never as a body-text or background-behind-text
    color, where a gradient would fight legibility rather than add polish.
    --primary/--primary-fg is a separate near-black/white pair for a
    primary "create/add" action (NavRail's "New session"), deliberately
@@ -226,20 +225,6 @@
   --notice-hover-bg: #322f2e;
   --notice-pill-hover-bg: #47433f;
   --notice-ready-hover-bg: #372f4d;
-}
-
-/* Reusable blue gradient text -- see the palette comment above for
-   when to reach for this vs. a flat --accent. Falls back to a flat
-   --accent color when the browser can't clip a background to text
-   (background-clip: text has near-universal support in the Chromium/
-   WebKit engines this app actually ships to, but this keeps a readable
-   fallback rather than invisible text on an unsupported engine). */
-.gradient-text {
-  color: var(--accent);
-  background: var(--gradient-accent);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 /* The running-turn indicator (Composer.tsx's own input box while
@@ -1197,3 +1182,12 @@ body {
 @keyframes draft-step-sweep { from { background-position: 150% 0; } to { background-position: -150% 0; } }
 .draft-step-sheen { background: linear-gradient(110deg, var(--fg) 40%, #60a5fa 50%, var(--fg) 60%); background-size: 250% 100%; background-clip: text; -webkit-text-fill-color: transparent; animation: draft-step-sweep 4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .draft-step-sheen { animation: none; background: none; -webkit-text-fill-color: currentColor; } }
+
+/* The package install card's bar: pip and npm report no progress worth showing, so it only says "working". */
+.package-install-bar {
+  animation: package-install-slide 1.3s ease-in-out infinite;
+}
+@keyframes package-install-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

@@ -65,3 +65,42 @@ test("sessions can be grouped, filtered, archived and brought back", async ({ pa
     await request.delete("/api/thread-groups/E2E%20group");
   }
 });
+
+test("a deleted session shows it is being deleted, then leaves; a failed delete says so", async ({ page, request }) => {
+  const first = await startThread(page, "del-a");
+  const second = await startThread(page, "del-b");
+  try {
+    await page.getByTitle("Pin navigation open").click();
+    const rows = page.getByTestId("thread-row");
+    await expect(rows.first()).toBeVisible();
+    const before = await rows.count();
+
+    // Held until the row has shown that it is being deleted.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(`**/api/threads/${first}`, async (route) => {
+      if (route.request().method() === "DELETE") await held;
+      await route.continue();
+    });
+    await page.route(`**/api/threads/${second}`, (route) =>
+      route.request().method() === "DELETE" ? route.fulfill({ status: 500, json: { error: "x" } }) : route.continue(),
+    );
+    const deleteRow = async (index: number) => {
+      await rows.nth(index).click({ button: "right" });
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await page.getByRole("button", { name: "Delete", exact: true }).click();
+    };
+
+    // The newest row is `second`, the one after it `first`.
+    await deleteRow(1);
+    await expect(page.locator('[data-deleting="true"]')).toHaveText(/Deleting…/);
+    release();
+    await expect(rows).toHaveCount(before - 1);
+
+    await deleteRow(0);
+    await expect(rows.first()).toContainText("Not deleted");
+    await expect(rows).toHaveCount(before - 1);
+  } finally {
+    for (const id of [first, second]) await request.delete(`/api/threads/${id}`);
+  }
+});
