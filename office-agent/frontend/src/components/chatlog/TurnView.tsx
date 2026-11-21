@@ -2,6 +2,9 @@ import { lazy, Suspense, useState } from "react";
 import { foldTaskCard } from "../../lib/taskCard";
 import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
 import { takeReaction } from "../../lib/reactions";
+import { useAppearance } from "../../lib/appearance";
+import { groupHasPendingApproval } from "../../lib/transcriptGrouping";
+import { simpleEntries, waitsOnThePerson } from "../../lib/simpleView";
 import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
@@ -26,6 +29,7 @@ import { PackageInstallCard } from "./PackageInstallCard";
 import { asksThePerson } from "../../state/folderAccess";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
+import { BlockedWriteCards, SimpleStatus } from "./SimpleView";
 import { UserMessageView, SteerView } from "./UserMessageView";
 import { FileCards } from "./FileCards";
 import { SystemCards } from "./SystemCards";
@@ -71,11 +75,13 @@ export function TurnView({
   // A message drawn as a card (a run's prompt, a report) has no bubble to carry an emoji.
   const plain = turn.userItem !== null && !isCardMessage(turn.userItem.text);
   const { items, reaction } = plain ? takeReaction(turn.items) : { items: turn.items, reaction: null };
-  const entries = foldTaskCard(groupToolRuns(items), turn.taskPlaces);
-  const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
+  const allEntries = foldTaskCard(groupToolRuns(items), turn.taskPlaces);
+  const calls = allEntries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
   const waiting = turn.hasPendingApproval || turn.items.some(asksThePerson);
   // null when that reply was a lone emoji now shown as the reaction.
   const finalAgentItem = items.some((item) => item === turn.finalAgentItem) ? turn.finalAgentItem : null;
+  const simple = useAppearance().conversationView === "simple";
+  const entries = simple ? simpleEntries(allEntries, live, finalAgentItem) : allEntries;
   const canFooter =
     finalAgentItem !== null &&
     turn.userItem !== null &&
@@ -89,7 +95,9 @@ export function TurnView({
     <div className="group/turn relative flex flex-col gap-3" onMouseEnter={() => setNow(Date.now())}>
       {/* groupToolRuns wraps every tool or approval, even a run of one, so neither reaches here bare. */}
       {entries.map((entry) =>
-        entry.kind === "tool_run" ? (
+        entry.kind === "tool_run" && simple && !groupHasPendingApproval(entry) ? (
+          <BlockedWriteCards key={entry.id} group={entry} />
+        ) : entry.kind === "tool_run" ? (
           <ToolRunGroupView
             key={entry.id}
             group={entry}
@@ -118,7 +126,8 @@ export function TurnView({
       )}
       <FileCards items={calls} />
       <SystemCards items={calls} />
-      {canFooter && (
+      {simple && live && !waitsOnThePerson(turn) && <SimpleStatus turn={turn} />}
+      {canFooter && !(simple && live) && (
         <div className={`${compactAfter ? "absolute left-0 top-full mt-1" : "-mt-2"} flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100`}>
           <CopyButton
             getText={() => splitStopped(finalAgentItem.text).said}

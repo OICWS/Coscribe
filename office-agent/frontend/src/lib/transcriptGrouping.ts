@@ -672,6 +672,24 @@ const CATEGORY_WORDS: Record<Exclude<Category, "other">, [past: string, present:
 };
 const FILE_CATEGORIES = new Set<Category>(["write", "edit", "read"]);
 
+const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
+  command: "Running commands",
+  write: "Writing",
+  edit: "Editing",
+  read: "Reading",
+  search: "Searching",
+  fetch: "Browsing",
+};
+
+/** What a call is doing in one or two words, with no object: the simple view's status line. */
+export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): string {
+  // A deferred tool arrives as use_tool; its own name says what it does.
+  const inner = item.toolName === "use_tool" ? item.arguments.name : undefined;
+  const toolName = typeof inner === "string" ? inner : item.toolName;
+  if (toolName.startsWith("browser_")) return "Browsing";
+  return ACTIVITY_WORDS[categoryOf(toolName, connectorTools)] ?? "Working";
+}
+
 /** The files a call touched: its path, or the code module's list of them. */
 function filePathsArg(args: ArgRecord): string[] {
   const path = str(args, "path") ?? str(args, "file_path");

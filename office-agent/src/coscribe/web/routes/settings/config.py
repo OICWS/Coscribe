@@ -122,6 +122,7 @@ APPEARANCE_ENV_VARS: dict[str, tuple[str, ...]] = {
     "COSCRIBE_THEME": ("system", "light", "dark"),
     "COSCRIBE_INTERFACE_FONT": ("default", "system", "dyslexic"),
     "COSCRIBE_MOTION": ("system", "reduced"),
+    "COSCRIBE_CONVERSATION_VIEW": ("detailed", "simple"),
 }
 
 

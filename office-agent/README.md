@@ -1371,9 +1371,11 @@ The **+** button next to the message box opens three things:
 - **Appearance** (top of Settings → General) -- Theme (match the system,
   light or dark), Interface font for the whole interface (Figtree, the
   default; the system's own UI font; or OpenDyslexic -- Figtree and
-  OpenDyslexic bundled under the OFL) and Motion (follow
-  the system, or reduced). Applied the moment you pick it, and saved as
-  `COSCRIBE_THEME`, `COSCRIBE_INTERFACE_FONT`, `COSCRIBE_MOTION` in `.env` --
+  OpenDyslexic bundled under the OFL), Motion (follow
+  the system, or reduced) and Conversation view (Detailed, every step of a
+  turn; or Simple, the reply and, while it works, one status line). Applied
+  the moment you pick it, and saved as `COSCRIBE_THEME`,
+  `COSCRIBE_INTERFACE_FONT`, `COSCRIBE_MOTION`, `COSCRIBE_CONVERSATION_VIEW` in `.env` --
   the desktop app serves the page from a new port each launch, so browser
   storage wouldn't keep it. Claude's own Anthropic Serif isn't offered: it
   is Anthropic's proprietary typeface and can't be redistributed.
