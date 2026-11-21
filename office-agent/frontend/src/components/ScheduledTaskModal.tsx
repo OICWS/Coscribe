@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { createScheduledTask, patchScheduledTask } from "../lib/rest";
+import { createScheduledTask, getProviders, patchScheduledTask, providerModelIds } from "../lib/rest";
 import type { Workflow } from "../types/workflow";
 import type { ApprovalMode, ScheduledTask } from "../types/settings";
 import type { TaskDraft } from "../types/wire";
@@ -100,10 +100,6 @@ function RunLimits({
   );
 }
 
-interface ProviderInfo {
-  default_model: string;
-}
-
 function modalTitle(isEdit: boolean, fromDraft: boolean, newWorkflow: Workflow | undefined): string {
   if (isEdit && fromDraft) return "Review changes";
   if (isEdit) return "Edit scheduled task";
@@ -175,16 +171,13 @@ export function ScheduledTaskModal({
   const [schedule, setSchedule] = useState<ScheduleForm>(() => initialSchedule(task, draft));
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(initial.approvalMode);
   const [maxSteps, setMaxSteps] = useState(task?.max_steps ?? DEFAULT_MAX_STEPS);
-  const [providers, setProviders] = useState<[string, ProviderInfo][]>([]);
+  const [models, setModels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/providers")
-      .then((res) => res.json())
-      .then((data: Record<string, ProviderInfo>) => {
-        setProviders(Object.entries(data).filter(([, info]) => info.default_model));
-      })
+    getProviders()
+      .then((providers) => setModels(providerModelIds(providers)))
       .catch(() => {});
   }, []);
 
@@ -292,7 +285,10 @@ export function ScheduledTaskModal({
                   value={model}
                   options={[
                     { value: "", label: "Default model" },
-                    ...providers.map(([providerKey, info]) => ({ value: `${providerKey}:${info.default_model}`, label: info.default_model })),
+                    ...models.map((value) => {
+                      const [provider, ...rest] = value.split(":");
+                      return { value, label: rest.join(":"), group: provider };
+                    }),
                   ]}
                   onChange={setModel}
                 />

@@ -4,10 +4,11 @@ name: Model catalog
 # 0055) is a copy of models.dev that the app never fetches, so this job refreshes it: on the 1st
 # and the 15th it runs the update script and, when the data changed, pushes the bot branch
 # `runtime/model-catalog-update` and opens a pull request (or updates the open one) listing what
-# changed. A pull request opened with the workflow's own token starts no other workflow, so the
-# required checks run only when the repository has a `MODEL_CATALOG_TOKEN` secret (a token that
-# may push and open pull requests); without it the maintainer starts them, e.g. by pushing to the
-# branch. Run by hand, or by a pull request that changes this job, it only prints.
+# changed. Run by hand (Actions > Model catalog > Run workflow) it does the same at once. A pull
+# request opened with the workflow's own token starts no other workflow, so the required checks
+# run only when the repository has a `MODEL_CATALOG_TOKEN` secret (a token that may push and open
+# pull requests); without it the maintainer starts them, e.g. by pushing to the branch. Run by a
+# pull request that changes this job, it only prints.
 "on":
   schedule:
     - cron: "23 4 1,15 * *"
@@ -42,7 +43,7 @@ jobs:
       - name: Refresh the catalog
         run: python office-agent/scripts/update_model_catalog.py --summary "$RUNNER_TEMP/changes.md"
       - name: Open or update the pull request
-        if: github.event_name == 'schedule'
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.MODEL_CATALOG_TOKEN || github.token }}
         run: |

@@ -174,8 +174,9 @@ Last reviewed: 2026-11-21.
 - **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
   (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
   its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
-  The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`). Open: the
-  protocols; the provider page's Models section and the model picker; the effort levels read from
+  The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`), then the
+  provider page's Models section and the grouped model picker
+  (`docs/log/2026-11-21-provider-models.md`). Open: the protocols; the effort levels read from
   the catalog; pasting a vendor's Codex or Claude Code setup.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:

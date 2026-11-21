@@ -38,7 +38,8 @@ _NAME_ALIASES = {"gemini": "google"}
 
 @dataclass(frozen=True)
 class ModelInfo:
-    """One model as the catalog describes it; `inputs` holds "image" when it sees images. The
+    """One model as the catalog describes it; `inputs` and `outputs` are its native
+    modalities ("text", "image", "pdf", "audio", "video"): "image" in `inputs` is vision. The
     catalog also keeps a thinking toggle and a deprecated mark, read straight from it until a
     caller needs them here. `source` is "catalog" or "override": an override replaced a field."""
 
@@ -46,6 +47,7 @@ class ModelInfo:
     model: str
     name: str
     inputs: tuple[str, ...]
+    outputs: tuple[str, ...]
     reasoning: bool
     effort_levels: tuple[str, ...]
     tools: bool
@@ -76,6 +78,7 @@ def _trim_model(m: dict[str, Any]) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "name": m.get("name", ""),
         "input": list((m.get("modalities") or {}).get("input") or ["text"]),
+        **_outputs(m),
         "reasoning": bool(m.get("reasoning")),
         "tools": bool(m.get("tool_call")),
     }
@@ -93,6 +96,13 @@ def _trim_model(m: dict[str, Any]) -> dict[str, Any]:
     if m.get("status") == "deprecated":
         entry["deprecated"] = True
     return entry
+
+
+def _outputs(m: dict[str, Any]) -> dict[str, Any]:
+    """`outputs` for a model that makes more than text (images, audio, video); nothing for the
+    many that make only text, so their rows stay short."""
+    out = list((m.get("modalities") or {}).get("output") or ["text"])
+    return {} if out == ["text"] else {"outputs": out}
 
 
 def dumps(catalog: dict[str, Any]) -> str:
@@ -169,6 +179,7 @@ def model_info(model: str, *, provider: str = "", base_url: str = "") -> ModelIn
         model=model,
         name=merged.get("name", model),
         inputs=tuple(merged.get("input", ("text",))),
+        outputs=tuple(merged.get("outputs", ("text",))),
         reasoning=bool(merged.get("reasoning")),
         effort_levels=tuple(merged.get("effort", ())),
         tools=bool(merged.get("tools")),

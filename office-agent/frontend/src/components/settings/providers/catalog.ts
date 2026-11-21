@@ -1,11 +1,6 @@
 import type { ProviderCatalogEntry } from "../../../types/settings";
 import type { ProviderForm } from "./ProviderPage";
 
-/** Whether the server can list this provider's models: any OpenAI-compatible one. */
-export function canListModels(name: string, builtin: boolean): boolean {
-  return !builtin || name.toLowerCase() === "openai";
-}
-
 // The server routes a name that matches a built-in provider case-insensitively
 // to the built-in branch, so the catalog is matched the same way.
 export function findEntry(catalog: ProviderCatalogEntry[], name: string) {
@@ -19,7 +14,7 @@ export function formProblem(form: ProviderForm, catalog: ProviderCatalogEntry[],
   if (!name) return "Name cannot be blank.";
   if (!form.apiKey.trim() && !hasSavedKey) return "API key cannot be blank.";
   if (!findEntry(catalog, name)?.builtin && !form.baseUrl.trim()) return "Base URL cannot be blank.";
-  // The model picker offers a provider's default model and nothing else.
-  if (!form.defaultModel.trim()) return "Choose a default model.";
+  // The model picker offers only the models turned on.
+  if (form.models.length === 0) return "Turn on at least one model.";
   return null;
 }
