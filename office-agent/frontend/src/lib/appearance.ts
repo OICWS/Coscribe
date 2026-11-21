@@ -12,7 +12,7 @@ export type ThemeChoice = "system" | "light" | "dark";
 export type InterfaceFontChoice = "default" | "system" | "dyslexic";
 export type MotionChoice = "system" | "reduced";
 /** Simple draws a turn as its reply and, while it runs, one status line (simpleView.ts). */
-export type ConversationViewChoice = "detailed" | "simple";
+type ConversationViewChoice = "detailed" | "simple";
 
 export interface Appearance {
   theme: ThemeChoice;
