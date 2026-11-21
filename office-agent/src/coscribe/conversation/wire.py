@@ -438,7 +438,7 @@ class ErrorEvent(TypedDict):
 
 class AgentMessageEvent(TypedDict):
     """A chat bubble from the assistant: the final answer to a turn, and also the
-    /saveskill curator's questions and previews."""
+    /create-skill curator's questions and previews."""
 
     type: Literal["agent_message"]
     text: str
@@ -466,7 +466,7 @@ class RewoundEvent(TypedDict):
 
 
 class SkillSavedEvent(TypedDict):
-    """/saveskill's success confirmation. `slug` is the skill's directory name and
+    """/create-skill's success confirmation. `slug` is the skill's directory name and
     its /<slug> force-load token."""
 
     type: Literal["skill_saved"]

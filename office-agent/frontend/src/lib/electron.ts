@@ -27,6 +27,17 @@ export async function pickFolderNative(): Promise<string | null> {
   return window.coscribeDesktop.pickFolder();
 }
 
+export interface PickFileOptions {
+  title?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
+
+/** The native file picker, or null where the shell is older than it. */
+export function nativeFilePicker(): ((options?: PickFileOptions) => Promise<string | null>) | null {
+  const pick = isElectron() ? window.coscribeDesktop.pickFile : undefined;
+  return pick ? (options) => pick(options) : null;
+}
+
 /** Physical/CSS-pixel rect for the Browser panel's native
  * `WebContentsView` (Electron migration Phase 2). Unlike tauri.ts's own
  * `PanelRect` (a top-level OS window's screen position, always physical
@@ -255,6 +266,7 @@ declare global {
       setPanelWindowPinned?(pinned: boolean): Promise<boolean>;
       onShowShortcuts?(callback: () => void): void;
       pickFolder(): Promise<string | null>;
+      pickFile?(options?: PickFileOptions): Promise<string | null>;
       printToPdf?(): Promise<Uint8Array>;
       browserPanelOpen(rect: BrowserPanelRect): Promise<void>;
       browserPanelReposition(rect: BrowserPanelRect): Promise<void>;

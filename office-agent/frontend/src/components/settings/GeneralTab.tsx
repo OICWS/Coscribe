@@ -13,6 +13,8 @@ import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingR
 interface GeneralTabProps {
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  /** Shows a save's result where the rest of Settings shows its own. */
+  onStatus: (status: { text: string; error: boolean }) => void;
 }
 
 type PermissionMode = (typeof PERMISSION_MODES)[number]["value"];
@@ -79,7 +81,7 @@ function AppearanceSection() {
   );
 }
 
-function ProfileSection({ values, onChange }: GeneralTabProps) {
+function ProfileSection({ values, onChange }: Omit<GeneralTabProps, "onStatus">) {
   return (
     <SettingsSection title="Profile">
       <SettingRows>
@@ -101,7 +103,7 @@ function ProfileSection({ values, onChange }: GeneralTabProps) {
   );
 }
 
-export function GeneralTab({ values, onChange }: GeneralTabProps) {
+export function GeneralTab({ values, onChange, onStatus }: GeneralTabProps) {
   const field = (key: string) => GENERAL_FIELDS.find((f) => f.key === key)!;
   return (
     <div className="flex flex-col gap-10">
@@ -127,7 +129,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
       <SessionsTab values={values} onChange={onChange} />
 
       <SettingsSection title="Instructions">
-        <GlobalInstructionsSection active />
+        <GlobalInstructionsSection active onStatus={onStatus} />
       </SettingsSection>
 
       <SettingsSection title="Desktop app">

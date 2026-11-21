@@ -22,7 +22,7 @@ test("chat round trip: send a message, get a streamed then finalized reply", asy
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
 });
 
-test("/clear wipes the chat log", async ({ page }) => {
+test("/clear opens a blank conversation", async ({ page }) => {
   await page.goto(freshThreadPath("clear"));
   await waitForConnected(page);
   const textarea = page.locator("textarea");
@@ -31,22 +31,14 @@ test("/clear wipes the chat log", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("chat-log").getByText("hello", { exact: true })).toBeVisible();
 
-  // /clear respects the turn lock (only /stop bypasses it, per
-  // web/session.py's request_stop() docstring) -- if it's sent while
-  // "hello"'s turn is still in flight, it just queues behind it instead
-  // of running immediately. Wait for that turn to actually finish first,
-  // same as a real user would naturally do.
+  // During a reply a typed command waits in the box, so let the turn finish first.
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 20_000 });
 
   await textarea.click();
   await textarea.fill("/clear");
   await page.keyboard.press("Enter");
 
-  await expect(page.getByText("Cleared this thread's conversation history.")).toBeVisible();
-  // Scoped to the chat log, not the page: the header keeps showing the
-  // thread's own derived title ("hello", from its first message) after
-  // /clear -- that's correct, unrelated product behavior, not something
-  // /clear is supposed to wipe.
+  // The app archives the conversation and opens a blank one; the CLI's /clear erases in place.
   await expect(page.getByTestId("chat-log").getByText("hello", { exact: true })).not.toBeVisible();
 });
 

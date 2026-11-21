@@ -118,7 +118,11 @@ For multi-step requests, the Coordinator can plan and track progress with
 `task_create`/`task_update`/`task_list`, persisted per-thread alongside the
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
-Several commands are typed as a message mid-session (not startup flags):
+Several commands are typed as a message mid-session (not startup flags). In
+the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/create-skill` and
+the skills; the others below have a control of their own (the mode button,
+Stop) but still work typed. During a reply a typed command waits in the box,
+except `/stop`.
 
 The permission modes follow Claude Code's
 (code.claude.com/docs/en/permission-modes). One is on at a time; typing a
@@ -163,10 +167,11 @@ task's run follows the task's own approval setting instead.
   tool results (not the plan, skills or answers) are left out of what the
   model is sent, and the model calls the tool again if it needs one -- see
   [Scheduled / unattended runs](#scheduled--unattended-runs) below for why.
-- `/clear` -- wipe the current thread's conversation history outright and
-  start fresh (unlike `/compact`, which summarizes rather than discards).
-  Doesn't touch Plan Mode/Accept Edits Mode (those are session-level
-  toggles, not conversation content) or memory/tasks/scheduled tasks.
+- `/clear` -- start fresh. In the web UI the conversation is archived (it
+  stays under Sessions > Archived and can be restored) and a blank one opens
+  in the same workspace. In the CLI it erases the thread's history in place
+  (unlike `/compact`, which summarizes rather than discards), without
+  touching the permission mode or memory/tasks/scheduled tasks.
 - `/saveworkflow [name]` -- turn what this conversation just did into a
   reusable workflow. In the web UI this drafts a
   [workflow](#workflows----fixed-steps-instead-of-a-prompt) (fixed steps,
@@ -185,8 +190,8 @@ task's run follows the task's own approval setting instead.
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
-  write a project overview to `OVERVIEW.md` at its root, analogous to Claude
-  Code's own `/init`.
+  write a project overview to `OVERVIEW.md` at its root (refreshing one that
+  is already there), analogous to Claude Code's own `/init`.
 - `/<skill-name>` -- invoke a loaded skill directly by its name (e.g.
   `/pdf-extract summarize report.pdf`), splicing its full instructions
   straight into that turn instead of relying on the model to notice it's
@@ -611,9 +616,10 @@ chooses the Python); `run_background_command` runs a command line. All are `EXEC
 under the permission mode.
 
 - On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches
-  only the conversation's folders (read-write folders without delete) and the interpreter
-  (decision 0021). Where it failed, scripts are refused unless the person lets that conversation
-  run without isolation, which is recorded.
+  only the conversation's folders (read-write folders without delete), coscribe's own scratch
+  folder for its temporary files (with delete, decision 0056) and the interpreter (decision
+  0021). Where it failed, scripts are refused unless the person lets that conversation run
+  without isolation, which is recorded.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
   workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
@@ -857,7 +863,8 @@ force a review step.
 
 The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
-your global instructions: Settings › General › Global instructions edits it, and whatever
+your global instructions: Settings › General › Global instructions edits it (up to 2,000
+characters: longer text is kept but not saved from there until it is shortened), and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
 model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
 as a question card, and the line is added only if you press Save everywhere. The same card offers
