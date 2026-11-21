@@ -20,8 +20,10 @@ between steps, or token counts. They want to know that it is working, and then t
   back to Detailed shows every step of every turn.
 
 ## Not verified
-- On Windows in the desktop app: checked in a browser against a local server and a scripted stub
-  model, not with a real model's turns.
+- On Windows in the desktop app. Checked in a browser against a local server with a real model
+  (DeepSeek `deepseek-flash`): one office task of 19 steps showed Thinking, Running commands,
+  Editing, Writing and Reading in turn, three script approvals with the line hidden, and the reply
+  at the end.
 
 ## Follow-ups
 - None planned; whether office users want it on by default is for the maintainer to judge from use.

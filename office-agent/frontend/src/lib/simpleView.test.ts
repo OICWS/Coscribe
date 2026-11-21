@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LogItem } from "../state/reducer";
 import { foldTaskCard } from "./taskCard";
-import { currentActivity, simpleEntries, waitsOnThePerson } from "./simpleView";
+import { currentActivity, onlyPendingApprovals, simpleEntries, waitsOnThePerson } from "./simpleView";
 import { groupToolRuns, groupTurns } from "./transcriptGrouping";
 
 type Tool = Extract<LogItem, { kind: "tool" }>;
@@ -43,6 +43,12 @@ describe("simpleEntries", () => {
     const approval: LogItem = { id: "p1", kind: "approval", toolName: "delete_file", arguments: {}, status: "pending" };
     const kept = entriesOf([user, say("a1", "I'll delete the old copy."), approval], true);
     expect(kept.map((entry) => entry.kind)).toEqual(["user", "tool_run"]);
+  });
+
+  it("draws a waiting run as its approval alone, without the calls finished before it", () => {
+    const approval: LogItem = { id: "p1", kind: "approval", toolName: "run_python_script", arguments: {}, status: "pending" };
+    const [run] = entriesOf([user, call("t1", "read_file", { result: "ok" }), approval], true).filter((entry) => entry.kind === "tool_run");
+    expect(run.kind === "tool_run" && onlyPendingApprovals(run).items.map((item) => item.id)).toEqual(["p1"]);
   });
 
   it("keeps the cards the person answers", () => {

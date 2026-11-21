@@ -4,7 +4,7 @@ import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
 import { takeReaction } from "../../lib/reactions";
 import { useAppearance } from "../../lib/appearance";
 import { groupHasPendingApproval } from "../../lib/transcriptGrouping";
-import { simpleEntries, waitsOnThePerson } from "../../lib/simpleView";
+import { onlyPendingApprovals, simpleEntries, waitsOnThePerson } from "../../lib/simpleView";
 import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
@@ -100,7 +100,7 @@ export function TurnView({
         ) : entry.kind === "tool_run" ? (
           <ToolRunGroupView
             key={entry.id}
-            group={entry}
+            group={simple ? onlyPendingApprovals(entry) : entry}
             live={live}
             onApprove={onApprove}
             onPptxShapePicked={onPptxShapePicked}

@@ -1,7 +1,7 @@
 import { asksThePerson } from "../state/folderAccess";
 import type { LogItem } from "../state/reducer";
 import type { TurnEntry } from "./taskCard";
-import { activityOf, blockedWriteOf, groupHasPendingApproval, isRunning, type Turn } from "./transcriptGrouping";
+import { activityOf, blockedWriteOf, groupHasPendingApproval, isRunning, type ToolRunGroup, type Turn } from "./transcriptGrouping";
 
 /** The simple conversation view (Settings > General > Appearance) draws a turn without its tool
  * rows and in-between narration: the cards a person answers or reads stay, a running turn shows
@@ -26,6 +26,12 @@ export function simpleEntries(entries: TurnEntry[], live: boolean, finalAgentIte
     if (entry.kind === "agent") return !live && entry === finalAgentItem;
     return true;
   });
+}
+
+/** A run waiting on an approval, as the simple view draws it: the calls the person must answer,
+ * without the finished ones before them in the same run. */
+export function onlyPendingApprovals(group: ToolRunGroup): ToolRunGroup {
+  return { ...group, items: group.items.filter((item) => item.kind === "approval" && item.status === "pending") };
 }
 
 /** The status line's words: the latest running call's activity, or Thinking between calls. */
