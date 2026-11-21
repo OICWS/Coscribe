@@ -806,7 +806,7 @@ function App() {
         <EnvironmentPicker current={state.environment} disabled={state.turnInFlight} onPick={onSetEnvironment} />
       }
       modelPicker={<ModelPicker currentModel={state.model} onSwitch={onSwitchModel} />}
-      effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} onChange={onSetEffort} />}
+      effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} levels={state.effortLevels} onChange={onSetEffort} />}
       usageRing={
         onHome ? null : (
           <ContextRing

@@ -536,9 +536,10 @@ def test_a_run_reaches_the_session_at_its_effort_level_as_the_products_default(
         tmp_path, tmp_path / "ws", "deepseek:deepseek-flash", "t", effort="extra"
     )
 
+    # The bundled catalog lists low, high and max for it: extra runs as the level below.
     assert session._effort == "extra"
-    assert session._effort_runs_as == "xhigh"
-    assert session.model.reasoning_effort == "xhigh"
+    assert session._effort_fit[0] == "high"
+    assert session.model.reasoning_effort == "high"
 
 
 def test_the_summary_has_one_row_per_task_that_ran(tmp_path: Path) -> None:
