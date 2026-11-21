@@ -10,15 +10,28 @@ Markdown, which the scheduled job puts in its pull request. Exits 0 either way.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 import urllib.request
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
-from coscribe.runtime.models.catalog import CATALOG_PATH, SOURCE_URL, dumps, trim  # noqa: E402
+# Loaded by path, not through `coscribe.runtime`, so the scheduled job needs no dependencies.
+_spec = importlib.util.spec_from_file_location(
+    "catalog",
+    Path(__file__).resolve().parents[1] / "src" / "coscribe" / "runtime" / "models" / "catalog.py",
+)
+assert _spec is not None and _spec.loader is not None
+_catalog = importlib.util.module_from_spec(_spec)
+sys.modules["catalog"] = _catalog
+_spec.loader.exec_module(_catalog)
+CATALOG_PATH, SOURCE_URL, dumps, trim = (
+    _catalog.CATALOG_PATH,
+    _catalog.SOURCE_URL,
+    _catalog.dumps,
+    _catalog.trim,
+)
 
 _LISTED = 40
 
