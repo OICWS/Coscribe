@@ -98,6 +98,10 @@ class WorkspacePermissions:
         self._root = root
         self._lists = {verdict: _rules(raw.get(verdict), verdict) for verdict in _ORDER}
 
+    def listed(self) -> dict[str, list[str]]:
+        """The rules that apply, by list, as the "Use them" card shows them."""
+        return {verdict: [rule.shown() for rule in self._lists[verdict]] for verdict in _ORDER}
+
     def decide(
         self, name: str, args: dict[str, Any], risk: str | None = None
     ) -> tuple[FolderVerdict, str] | None:

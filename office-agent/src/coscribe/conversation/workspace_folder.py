@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from ..tools import SkillInfo, load_skills
+from .workspace_permissions import WorkspacePermissions
 
 COSCRIBE_DIR = ".coscribe"
 NOTES_FILE = "memory.md"
@@ -193,6 +194,7 @@ class WorkspaceFolders:
             "notes": bool(read_notes(folder)),
             "skills": [skill.name for skill in read_skills(folder)],
             "settings": (folder / COSCRIBE_DIR / "settings.json").is_file(),
+            "rules": WorkspacePermissions(read_settings(folder), folder).listed(),
             "connectors": read_connector_names(folder),
             "trusted": self.trust.trusted(folder, current),
         }
