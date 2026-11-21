@@ -10,6 +10,7 @@ import {
 import { formatRunTime, runSourceLabel } from "../lib/runLabels";
 import { toolLabel } from "../lib/toolLabels";
 import { primaryButton } from "../lib/formStyles";
+import { ruleSentence } from "../lib/folderRules";
 import { readStored, writeStored } from "../lib/storage";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
 import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity, WorkspaceNotes } from "../types/session";
@@ -523,17 +524,36 @@ function notesSummary(notes: WorkspaceNotes): string {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : (parts[0] ?? "settings");
 }
 
-/** What accepting would let the folder do, named before the person says yes. */
+interface DetailItem {
+  key: string;
+  text: string;
+  title?: string;
+  code: boolean;
+}
+
+function ruleItems(rules: string[]): DetailItem[] {
+  return rules.map((rule) => {
+    const sentence = ruleSentence(rule);
+    return { key: rule, text: sentence ?? rule, title: sentence ? rule : undefined, code: sentence === null };
+  });
+}
+
+/** What accepting would let the folder do, in words, named before the person says yes; the rule
+ * as written is on hover for whoever checks it. */
 function NotesDetail({ notes }: { notes: WorkspaceNotes }) {
-  const lines: [string, string[]][] = [
-    ["Skills", notes.skills],
-    ["Connectors", notes.connectors],
-    ["Runs without asking", notes.rules.allow],
-    ["Always asks", notes.rules.ask],
-    ["Never runs", notes.rules.deny],
-    ["Variables for scripts", notes.variables],
+  const plain = (names: string[]) => names.map((name) => ({ key: name, text: name, code: false }));
+  const groups: [string, DetailItem[]][] = [
+    ["Skills", plain(notes.skills)],
+    ["Connectors", plain(notes.connectors)],
+    ["Runs without asking", ruleItems(notes.rules.allow)],
+    ["Always asks first", ruleItems(notes.rules.ask)],
+    ["Never runs", ruleItems(notes.rules.deny)],
+    [
+      "Variables for scripts",
+      Object.entries(notes.variables).map(([name, value]) => ({ key: name, text: name, title: value, code: true })),
+    ],
   ];
-  const shown = lines.filter(([, items]) => items.length > 0);
+  const shown = groups.filter(([, items]) => items.length > 0);
   if (shown.length === 0) return null;
   return (
     <dl className="mt-3 flex flex-col gap-2.5">
@@ -542,9 +562,13 @@ function NotesDetail({ notes }: { notes: WorkspaceNotes }) {
           <dt className="mb-1 text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">{label}</dt>
           <dd className="flex flex-wrap gap-1">
             {items.map((item) => (
-              <code key={item} className="break-all rounded bg-[var(--card-bg)] px-1.5 py-0.5 font-mono text-[11.5px]">
-                {item}
-              </code>
+              <span
+                key={item.key}
+                title={item.title}
+                className={`break-all rounded bg-[var(--card-bg)] px-1.5 py-0.5 ${item.code ? "font-mono text-[11.5px]" : "text-xs"}`}
+              >
+                {item.text}
+              </span>
             ))}
           </dd>
         </div>

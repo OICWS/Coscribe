@@ -41,7 +41,7 @@ def test_notes_and_skills_reach_the_context_only_once_accepted(tmp_path: Path) -
         "skills": ["Weekly report"],
         "settings": False,
         "rules": {"deny": [], "ask": [], "allow": []},
-        "variables": [],
+        "variables": {},
         "connectors": [],
         "trusted": False,
     }
@@ -243,4 +243,4 @@ def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> N
     rules = {"deny": ["github_delete_*"], "ask": [], "allow": ["write_file(docs/*)"]}
     assert shown["rules"] == rules
     assert shown["connectors"] == ["crm"]
-    assert shown["variables"] == ["REGION"]
+    assert shown["variables"] == {"REGION": "eu"}
