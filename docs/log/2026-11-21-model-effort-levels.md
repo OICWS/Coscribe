@@ -19,8 +19,11 @@ model's own levels and names were hidden, and Ultra matched no provider's level.
   with levels now gets an effort setting where it had none.
 
 ## Not verified
-- Each provider accepting the catalog's levels with a real key: models.dev lists them, nothing here
-  sent them. A wrong row is corrected in `runtime/models/overrides.json`.
+- Checked with a real DeepSeek key: its `/models` lists low, high, max for `deepseek-v4-pro` and
+  `deepseek-flash` (V4.1 Flash), as the catalog does, and requests through `for_conversation` sent
+  low, high and max for Low/Medium, Extra and Max/Ultra, with more reasoning tokens at each step up.
+  The other providers' levels were not sent with a real key (none in the environment); a wrong row
+  is corrected in `runtime/models/overrides.json`.
 - The picker in the desktop app on Windows: checked in Chromium against a local server.
 
 ## Follow-ups
