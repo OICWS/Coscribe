@@ -36,6 +36,6 @@ export function reduceFolderAccess(state: ChatState, action: FolderAccessEvent):
   return { ...state, items: state.items.map(answered) };
 }
 
-/** A question or folder card waits for the person: the turn is stuck on it. */
+/** A question, folder or package card waits for the person: the turn is stuck on it. */
 export const asksThePerson = (item: LogItem): boolean =>
-  (item.kind === "question" || item.kind === "folder_access") && item.status === "pending";
+  (item.kind === "question" || item.kind === "folder_access" || item.kind === "package_install") && item.status === "pending";

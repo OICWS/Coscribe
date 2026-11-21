@@ -1197,3 +1197,12 @@ body {
 @keyframes draft-step-sweep { from { background-position: 150% 0; } to { background-position: -150% 0; } }
 .draft-step-sheen { background: linear-gradient(110deg, var(--fg) 40%, #60a5fa 50%, var(--fg) 60%); background-size: 250% 100%; background-clip: text; -webkit-text-fill-color: transparent; animation: draft-step-sweep 4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .draft-step-sheen { animation: none; background: none; -webkit-text-fill-color: currentColor; } }
+
+/* The package install card's bar: pip and npm report no progress worth showing, so it only says "working". */
+.package-install-bar {
+  animation: package-install-slide 1.3s ease-in-out infinite;
+}
+@keyframes package-install-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

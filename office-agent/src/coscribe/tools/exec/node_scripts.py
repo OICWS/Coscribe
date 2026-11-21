@@ -184,11 +184,10 @@ def build_node_script_tools(
         script the way Anthropic's own pptx Skill does, then call
         `pres.writeFile({ fileName: "..." })` to save the deck under the
         workspace. Any other npm package the script needs (e.g. for
-        rendering icons) must already be installed in that environment
-        (the user manages this from the Capabilities settings tab) --
-        `require()` a package that isn't there and the script will fail
-        with the normal Node.js "Cannot find module" error; this tool
-        cannot install packages on its own.
+        rendering icons) must be installed in that environment first --
+        `require()` a package that isn't there and the script fails with the
+        normal Node.js "Cannot find module" error; then ask the user to
+        install it with install_package and run the script again.
 
         `description` is a short, plain-language summary of what the
         script does (e.g. "Build a 3-slide deck comparing Q1-Q3 revenue
