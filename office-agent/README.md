@@ -612,7 +612,8 @@ where to read more.
 
 `run_python_script`, `run_node_script` and `run_background_script` run code the model writes, in a
 Python venv and an npm directory of their own (Settings › Capabilities installs packages and
-chooses the Python); `run_background_command` runs a command line. All are `EXEC` and approved
+chooses the Python; a missing package can also be installed from a card in the chat, decision
+0057); `run_background_command` runs a command line. All are `EXEC` and approved
 under the permission mode.
 
 - On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches

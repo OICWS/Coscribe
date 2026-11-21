@@ -8,8 +8,8 @@ guard that catches a script's mistaken writes outside the conversation's folders
 (`isolation.py`, `_appcontainer.py`; decision 0021), and the command line for Codex's Windows
 sandbox that holds a background command to its folders (`command_sandbox.py`, started by
 `commands.py`, with the person's private folders hidden by `_private_folders.py`; decision 0022). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
-which uses the same environments), the approval policy for scripts (`runtime_lg/exec_policy.py`)
-or the Settings routes that install packages (`web/routes/settings/environments.py`).
+which uses the same environments), the approval policy for scripts (`runtime_lg/exec_policy.py`),
+the Settings routes that install packages (`web/routes/settings/environments.py`) or the chat card that installs one (`conversation/package_install.py`, decision 0057).
 
 ## Public interface
 `build_script_tools`, `build_node_script_tools`, `ensure_script_env`, `ensure_node_env`,
