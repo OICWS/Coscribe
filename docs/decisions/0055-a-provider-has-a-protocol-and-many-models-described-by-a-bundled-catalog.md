@@ -1,6 +1,6 @@
 # 0055: A provider has a protocol and many models, described by a bundled catalog
 
-Status: proposed (2026-11-19, OICWS).
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-19, OICWS).
 
 ## Context
 A provider has one default model, and the model picker offers that and nothing else (#994). A

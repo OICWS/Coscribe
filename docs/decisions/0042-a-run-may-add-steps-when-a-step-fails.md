@@ -1,6 +1,6 @@
 # 0042: A run may add steps when a step fails, at proactive or above
 
-Status: proposed (2026-11-09, OICWS; the maintainer chose "only when a failure isn't recovered").
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-09, OICWS; the maintainer chose "only when a failure isn't recovered").
 Narrows 0028 (the steps a run follows may grow) and 0032 (a failure may run added steps).
 Part of #843.
 

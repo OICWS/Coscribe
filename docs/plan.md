@@ -23,8 +23,8 @@ Last reviewed: 2026-11-18.
    the last of the plan's six steps. Next: the plan's measurements again on a model that does not
    pass every task already.
 2. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
-   (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
-   proposed), and so are the simple view in words (#839, decision 0037) and the run page that
+   (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036),
+   and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
    new in a connector is merged (#851, decision 0039), and so are the steps a run adds when a step
    fails at proactive or above (#861, decision 0042). Merged too: a task that starts on an event a
@@ -43,7 +43,7 @@ Last reviewed: 2026-11-18.
    A failed turn saved by the person as a file, which `evals/agentic/candidate.py` turns into a
    task to finish by hand (decision 0052, `docs/log/2026-11-18-failed-turn-export.md`).
    Next: a nightly replay of the three that write Office files.
-4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
+4. **A workspace is a folder the person picks** (#926, decision 0048). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
    moved over; D `.coscribe/settings.json` and `mcp.json`. A part 1 (the card in chats) is in
@@ -171,7 +171,7 @@ Last reviewed: 2026-11-18.
   canvas, and pages, need canvas elements beyond boards and notes in `.design.json`; an issue
   first, since the format changes.
 
-- **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
+- **Providers: protocols and models** (decision 0055): a provider names its protocol
   (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
   its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
   The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`), then the
@@ -198,13 +198,10 @@ Last reviewed: 2026-11-18.
   would need deletes, renames and before/after content recorded first. `/fork`, a temporary side
   chat, `/export` and `/recap` are not scheduled.
 
-- Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
-  its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
-  count, `docs/log/2026-11-15-windows-night-1110.md`), and it now runs on every pull request
-  (`docs/log/2026-11-15-windows-required.md`).
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
-- Decision 0036 (parallel workflow steps) is proposed with #789.
+- Moving `script-env` and `node-env` off the system drive (a "Change location…" in Settings,
+  suggested on #1002) is not wanted (decided 2026-11-21); they stay under the state directory.
 - A workflow run's pages stay open when it ends, so the person can check them (decided
   2026-11-16); a workflow that should clean up closes them in a step. A per-workflow "close pages
   when the run ends" setting is offered, not started (`docs/log/2026-11-16-browser-self-close-crash.md`).

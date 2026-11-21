@@ -1,6 +1,6 @@
 # 0046: A conversation offers a connector, and the person connects it
 
-Status: proposed (2026-11-11, OICWS; the maintainer approved the plan in the project thread and
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-11, OICWS; the maintainer approved the plan in the project thread and
 chose that the card opens the connector's page in Settings rather than connecting by itself). Adds to 0001 and 0004, which it does not change.
 Part of #819 (step 6).
 

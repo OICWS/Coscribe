@@ -1,6 +1,6 @@
 # 0044: A workspace keeps its own `.coscribe/` folder: notes, skills and uploads
 
-Status: proposed (2026-11-09, OICWS: "a workspace is managed like a repository, aligned with
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-09, OICWS: "a workspace is managed like a repository, aligned with
 Claude Code"). Adds a second place instructions come from beside the global `MEMORY.md`.
 
 ## Context
