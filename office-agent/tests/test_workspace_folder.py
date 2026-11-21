@@ -41,6 +41,7 @@ def test_notes_and_skills_reach_the_context_only_once_accepted(tmp_path: Path) -
         "skills": ["Weekly report"],
         "settings": False,
         "rules": {"deny": [], "ask": [], "allow": []},
+        "variables": [],
         "connectors": [],
         "trusted": False,
     }
@@ -228,7 +229,10 @@ def test_a_folder_can_never_set_a_name_scripts_take_from_the_system() -> None:
 def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> None:
     folder = tmp_path / "Sales"
     (folder / ".coscribe").mkdir(parents=True)
-    settings = {"permissions": {"allow": ["write_file(docs/*)", "*"], "deny": ["github_delete_*"]}}
+    settings = {
+        "permissions": {"allow": ["write_file(docs/*)", "*"], "deny": ["github_delete_*"]},
+        "env": {"REGION": "eu", "PYTHONPATH": "lib"},
+    }
     (folder / ".coscribe" / "settings.json").write_text(json.dumps(settings))
     (folder / ".coscribe" / "mcp.json").write_text('{"mcpServers": {"crm": {"command": "x"}}}')
 
@@ -239,3 +243,4 @@ def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> N
     rules = {"deny": ["github_delete_*"], "ask": [], "allow": ["write_file(docs/*)"]}
     assert shown["rules"] == rules
     assert shown["connectors"] == ["crm"]
+    assert shown["variables"] == ["REGION"]

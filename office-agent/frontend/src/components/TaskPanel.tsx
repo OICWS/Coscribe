@@ -531,6 +531,7 @@ function NotesDetail({ notes }: { notes: WorkspaceNotes }) {
     ["Runs without asking", notes.rules.allow],
     ["Always asks", notes.rules.ask],
     ["Never runs", notes.rules.deny],
+    ["Variables for scripts", notes.variables],
   ];
   const shown = lines.filter(([, items]) => items.length > 0);
   if (shown.length === 0) return null;

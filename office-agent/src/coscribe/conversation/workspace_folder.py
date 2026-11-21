@@ -195,6 +195,7 @@ class WorkspaceFolders:
             "skills": [skill.name for skill in read_skills(folder)],
             "settings": (folder / COSCRIBE_DIR / "settings.json").is_file(),
             "rules": WorkspacePermissions(read_settings(folder), folder).listed(),
+            "variables": list(settings_env(read_settings(folder))),
             "connectors": read_connector_names(folder),
             "trusted": self.trust.trusted(folder, current),
         }

@@ -13,6 +13,7 @@ part not yet applied (#926).
   (`PATH`, the proxies and certificates, `PYTHON*`, `NODE_*`, `LD_*`, `GIT_*`
   and every name a script takes from the system). Found in the independent review.
 - The workspace's own environment variables win on a name clash, compared without case.
+- The "Use them" card lists the names it would pass, under "Variables for scripts".
 
 ## Not verified
 - On Windows with a real script; checked by the tests.
@@ -21,4 +22,3 @@ part not yet applied (#926).
 - The command sandbox builds its readable `programs` from the merged `PATH`, so the workspace's
   own `PATH` variable can still widen it into the private folders; build it from the server's
   `PATH` instead (`tools/exec/commands.py`).
-- The "Use them" card should list the variable names too, once #1017 is merged.

@@ -510,6 +510,7 @@ def test_a_folders_own_notes_wait_in_activity_until_the_person_uses_them_lg(
         "skills": [],
         "settings": False,
         "rules": {"deny": [], "ask": [], "allow": []},
+        "variables": [],
         "connectors": [],
         "trusted": False,
     }
