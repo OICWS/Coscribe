@@ -29,7 +29,8 @@ export function UltraField() {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
-    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    // Canvas frames escape the CSS rule that stills everything else under Settings > Motion.
+    const still = document.documentElement.dataset.motion === "reduced";
     const { width, height } = canvas.getBoundingClientRect();
     const ratio = window.devicePixelRatio || 1;
     canvas.width = Math.round(width * ratio);
