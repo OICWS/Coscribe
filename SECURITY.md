@@ -14,7 +14,8 @@ coscribe runs on your own computer.
 
 - **Scripts run in a Windows sandbox, where it works** (decisions 0021, 0022). Python and
   Node scripts the assistant writes run in an AppContainer that reaches only the conversation's
-  own folders (read-write folders without delete) and the interpreter. A self-test on each machine
+  own folders (read-write folders without delete), a scratch folder of coscribe's own for its
+  temporary files (with delete, decision 0056) and the interpreter. A self-test on each machine
   decides whether it is used; where it fails, scripts are off unless you let a conversation run
   them without isolation, a choice that is recorded. Command lines run in Codex's Windows sandbox
   where Settings set it up: they write only the conversation's read-write folders, have network

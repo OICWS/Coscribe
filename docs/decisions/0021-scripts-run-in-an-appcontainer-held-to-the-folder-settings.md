@@ -2,7 +2,8 @@
 
 Status: accepted (2026-10-23, by the maintainer and Allen on issue #560). Supersedes the "no OS
 sandbox" part of 0002; approvals, risk tiers and the audit from 0002 stay. Changed by 0022 for
-command lines, which run in Codex's sandbox where it is set up.
+command lines, which run in Codex's sandbox where it is set up. Narrowed by 0056: coscribe's own
+script scratch folder allows DELETE; the person's folders still don't.
 
 ## Context
 0002 left approvals as the only barrier: a script could read any file, use the network and get

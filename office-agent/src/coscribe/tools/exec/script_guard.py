@@ -26,11 +26,21 @@ from pathlib import Path
 from ...runtime import Environments
 
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
+# Windows replaces TEMP and TMP in an AppContainer; the wrapper restores them from this one.
+SCRATCH_TEMP_VAR = "COSCRIBE_SCRATCH_TEMP"
+
 
 PYTHON_WRAPPER = r"""
-import atexit, json, os, runpy, sys
+import atexit, json, os, runpy, sys, tempfile
 
 config = json.load(open(sys.argv[1], encoding="utf-8"))
+# Windows points an AppContainer process's TEMP and TMP at the container's own folder, which
+# this guard refuses; tempfile's probe then falls through to the working directory, the
+# workspace, and its probe files stay there because a container can't delete them. Pinned,
+# tempfile never probes.
+scratch = os.environ.get("@@SCRATCH_VAR@@")
+if scratch:
+    tempfile.tempdir = os.environ["TEMP"] = os.environ["TMP"] = scratch
 script = sys.argv[2]
 roots = [os.path.normcase(os.path.realpath(p)) for p in config["write"]]
 blocked = []
@@ -99,7 +109,7 @@ atexit.register(report)
 sys.addaudithook(hook)
 sys.argv = [script]
 runpy.run_path(script, run_name="__main__")
-""".replace("@@MARK@@", _BLOCKED_MARK)
+""".replace("@@MARK@@", _BLOCKED_MARK).replace("@@SCRATCH_VAR@@", SCRATCH_TEMP_VAR)
 
 
 def writable_roots(workspace_root: Path, extra_writable: list[Path]) -> list[str]:
