@@ -22,6 +22,7 @@ its card, then the interface the card lists, then only that component's implemen
 | `tools.web` | `office-agent/src/coscribe/tools/web` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/web/AGENTS.md) |
 | `tools.bookkeeping` | `office-agent/src/coscribe/tools/bookkeeping` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/bookkeeping/AGENTS.md) |
 | `runtime` | `office-agent/src/coscribe/runtime` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/runtime/AGENTS.md) |
+| `runtime.models` | `office-agent/src/coscribe/runtime/models` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/runtime/models/AGENTS.md) |
 | `workflow_spec` | `office-agent/src/coscribe/workflow_spec` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/workflow_spec/AGENTS.md) |
 | `config` | `office-agent/src/coscribe/config.py` | runtime \| config | @OICWS | none |
 | `needs_permission` | `office-agent/src/coscribe/needs_permission.py` | runtime \| config | @OICWS | none |

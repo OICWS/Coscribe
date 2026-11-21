@@ -1,0 +1,75 @@
+name: Model catalog
+
+# The bundled model catalog (`office-agent/src/coscribe/runtime/models/catalog.json`, decision
+# 0055) is a copy of models.dev that the app never fetches, so this job refreshes it: on the 1st
+# and the 15th it runs the update script and, when the data changed, pushes the bot branch
+# `runtime/model-catalog-update` and opens a pull request (or updates the open one) listing what
+# changed. A pull request opened with the workflow's own token starts no other workflow, so the
+# required checks run only when the repository has a `MODEL_CATALOG_TOKEN` secret (a token that
+# may push and open pull requests); without it the maintainer starts them, e.g. by pushing to the
+# branch. Run by hand, or by a pull request that changes this job, it only prints.
+"on":
+  schedule:
+    - cron: "23 4 1,15 * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/model-catalog.yml"
+      - "office-agent/scripts/update_model_catalog.py"
+      - "office-agent/src/coscribe/runtime/models/catalog.py"
+
+concurrency:
+  group: model-catalog-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRANCH: runtime/model-catalog-update
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MODEL_CATALOG_TOKEN || github.token }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Refresh the catalog
+        run: python office-agent/scripts/update_model_catalog.py --summary "$RUNNER_TEMP/changes.md"
+      - name: Open or update the pull request
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.MODEL_CATALOG_TOKEN || github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "No change."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -qam "[runtime] Refresh the model catalog from models.dev"
+          git push --force origin "$BRANCH"
+          {
+            echo "Touches: \`office-agent/src/coscribe/runtime/models/catalog.json\` only (generated)."
+            echo
+            echo "Issue: none: the scheduled refresh of decision 0055's catalog."
+            echo
+            echo "## What changed in models.dev"
+            cat "$RUNNER_TEMP/changes.md"
+            echo
+            echo "Check the removed models and the changed capabilities before merging; a wrong row is corrected in \`office-agent/src/coscribe/runtime/models/overrides.json\`."
+          } > "$RUNNER_TEMP/body.md"
+          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --head "$BRANCH" --base main \
+              --title "[runtime] Refresh the model catalog from models.dev" \
+              --body-file "$RUNNER_TEMP/body.md"
+          fi
