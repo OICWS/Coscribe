@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -40,6 +41,7 @@ def test_notes_and_skills_reach_the_context_only_once_accepted(tmp_path: Path) -
         "skills": ["Weekly report"],
         "settings": False,
         "rules": {"deny": [], "ask": [], "allow": []},
+        "variables": {},
         "connectors": [],
         "trusted": False,
     }
@@ -162,10 +164,75 @@ def test_a_folder_rule_matches_a_tool_and_its_main_argument_only(tmp_path: Path)
     assert many.decide("tool_299", {}) == ("deny", "tool_299")
 
 
+def test_a_folders_env_reaches_scripts_only_once_accepted_and_as_plain_text(tmp_path: Path) -> None:
+    folder = tmp_path / "Sales"
+    (folder / ".coscribe").mkdir(parents=True)
+    env = {
+        "REGION": "eu", "TOKEN": "{{secret:CRM}}", "bad name": "x", "COUNT": 3, "LONG": "x" * 5000,
+        # Each would run the folder's code, pick the program or reroute traffic.
+        "PATH": "x", "path": "x", "PYTHONPATH": "x", "NODE_OPTIONS": "x", "HTTPS_PROXY": "x",
+        "SSL_CERT_FILE": "x", "LD_PRELOAD": "x", "GIT_SSH_COMMAND": "x", "ComSpec": "x",
+    }  # fmt: skip
+    (folder / ".coscribe" / "settings.json").write_text(json.dumps({"env": env}))
+    folders = WorkspaceFolders(tmp_path / "state")
+    before = folders.accepted_env(folder)
+    folders.accept(folder)
+
+    assert before == {}
+    assert folders.accepted_env(folder) == {"REGION": "eu", "TOKEN": "{{secret:CRM}}"}
+
+
+def test_the_workspaces_own_variables_win_over_the_folders_env_whatever_the_case() -> None:
+    from coscribe.conversation.workspace_folder import under_own_variables
+
+    merged = under_own_variables({"Region": "eu", "MODE": "fast"}, {"REGION": "us"})
+
+    assert merged == {"REGION": "us", "MODE": "fast"}
+
+
+def test_scripts_and_commands_get_the_env_the_conversation_hands_the_coordinator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coscribe.coordinator as coordinator
+    from coscribe.config import Settings
+
+    seen: dict[str, Any] = {}
+
+    def record(*args: Any, session_env: Any, **kwargs: Any) -> list[Any]:
+        seen["env"] = session_env
+        return []
+
+    monkeypatch.setattr(coordinator, "build_script_tools", record)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        default_model="fake:model",
+        workspace_root=tmp_path / "ws",
+        state_dir=tmp_path / "state",
+        skills_dir=tmp_path / "skills",
+        memory_path=tmp_path / "MEMORY.md",
+    )
+    coordinator.build_coordinator_agent(settings, "t1", script_env=lambda: {"MODE": "fast"})
+
+    assert seen["env"]() == {"MODE": "fast"}
+
+
+def test_a_folder_can_never_set_a_name_scripts_take_from_the_system() -> None:
+    from coscribe.conversation.workspace_folder import settings_env
+    from coscribe.tools.exec.env_allowlist import _PASSED, _PROXIES
+
+    names = [name for name in (*_PASSED, *_PROXIES) if "(" not in name]
+    env = {name: "x" for name in names} | {name.lower(): "x" for name in names}
+
+    assert settings_env({"env": env}) == {}
+
+
 def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> None:
     folder = tmp_path / "Sales"
     (folder / ".coscribe").mkdir(parents=True)
-    settings = {"permissions": {"allow": ["write_file(docs/*)", "*"], "deny": ["github_delete_*"]}}
+    settings = {
+        "permissions": {"allow": ["write_file(docs/*)", "*"], "deny": ["github_delete_*"]},
+        "env": {"REGION": "eu", "PYTHONPATH": "lib"},
+    }
     (folder / ".coscribe" / "settings.json").write_text(json.dumps(settings))
     (folder / ".coscribe" / "mcp.json").write_text('{"mcpServers": {"crm": {"command": "x"}}}')
 
@@ -176,3 +243,4 @@ def test_the_use_them_card_is_told_the_rules_and_connectors(tmp_path: Path) -> N
     rules = {"deny": ["github_delete_*"], "ask": [], "allow": ["write_file(docs/*)"]}
     assert shown["rules"] == rules
     assert shown["connectors"] == ["crm"]
+    assert shown["variables"] == {"REGION": "eu"}

@@ -722,6 +722,7 @@ class ChatSessionLG:
             workspace_root=self.workspace_root,
             extra_folders=self.extra_folders,
             conversation_source=CheckpointConversations(self._checkpointer),
+            script_env=self._assembly.script_env,
         )
         return self._assembly.held_to_capabilities(agent)
 
