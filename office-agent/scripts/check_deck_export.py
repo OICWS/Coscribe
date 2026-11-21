@@ -35,9 +35,8 @@ TEXT = (
 )
 PICTURE = (
     '<img id="pic" src="a.png" style="left:100px;top:200px;width:400px;height:300px;'
-    'border-radius:40px;border:6px solid #112233;opacity:0.5"/>'
+    'border-radius:40px;border:6px solid #112233;opacity:0.5;box-shadow:0px 8px 24px #112233"/>'
 )
-# The engine refuses a shadow on a picture that is also rounded, so the shadow has its own.
 SHADOWED = (
     '<img id="lit" src="a.png" style="left:1100px;top:200px;width:400px;height:300px;'
     'box-shadow:0px 8px 24px #112233 0.4"/>'
@@ -133,6 +132,7 @@ def check_picture(slides: list[str], _charts: list[str]) -> None:
         rounded, 'prst="roundRect"', 'fmla="val 13333"', '<a:ln w="38100">', 'srgbClr val="112233"'
     )
     _has(rounded, '<a:alphaModFix amt="50000"/>')
+    _has(_find(rounded, r"<a:outerShdw.*?</a:outerShdw>"), 'blurRad="152400"', 'dist="50800"')
     _has(_find(lit, r"<a:outerShdw.*?</a:outerShdw>"), 'blurRad="152400"', 'dist="50800"')
 
 

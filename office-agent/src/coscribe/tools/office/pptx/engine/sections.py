@@ -364,8 +364,15 @@ def _picture(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     border = _border(elem, style)
     if border is not None:
         attrs |= _stroke(border)
-    _shadow(elem, style, drawing, attrs)
-    return _svg("image", attrs, x=x, y=y, width=w, height=h)
+    effect: dict[str, str] = {}
+    _shadow(elem, style, drawing, effect)
+    if effect and "clip-path" in attrs:
+        # The converter takes a filter and a clip on one image as ambiguous; a group around the
+        # one clipped image is its picture-effect carrier, read as that picture's own shadow.
+        group = ET.Element(f"{{{SVG_NS}}}g", effect)
+        group.append(_svg("image", attrs, x=x, y=y, width=w, height=h))
+        return group
+    return _svg("image", attrs | effect, x=x, y=y, width=w, height=h)
 
 
 def _drawing(elem: ET.Element, style: Style, drawing: ET.Element) -> tuple[ET.Element, float]:

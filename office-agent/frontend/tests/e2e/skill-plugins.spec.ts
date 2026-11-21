@@ -1,4 +1,25 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+type PluginSummary = { title: string; skills: string[] };
+
+// Add leaves the plugin's skills in the workspace's skills folder, where the next run would find
+// the plugin already added and no Add button to press.
+async function removeLegalSkills(page: Page): Promise<void> {
+  const plugins = (await (await page.request.get("/api/skills/plugins")).json()) as PluginSummary[];
+  const legal = plugins.find((plugin) => plugin.title.startsWith("Legal"));
+  if (!legal) return;
+  const installed = new Set(
+    ((await (await page.request.get("/api/skills")).json()) as { name: string; source: string }[])
+      .filter((skill) => skill.source === "anthropic")
+      .map((skill) => skill.name),
+  );
+  for (const name of legal.skills) {
+    if (installed.has(name)) await page.request.delete(`/api/skills/${encodeURIComponent(name)}`);
+  }
+}
+
+test.beforeEach(async ({ page }) => removeLegalSkills(page));
+test.afterEach(async ({ page }) => removeLegalSkills(page));
 
 test("Discover lists plugins; a plugin can be previewed file by file before Add installs all its skills", async ({ page }) => {
   await page.goto("/");
