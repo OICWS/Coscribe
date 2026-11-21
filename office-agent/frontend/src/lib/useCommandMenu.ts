@@ -48,31 +48,31 @@ export function useClearToNewChat(
 
 /** The composer's "/" menu: which commands match what is typed, and which one is highlighted. */
 export function useCommandMenu(commands: CommandInfo[], text: string) {
-  const [matches, setMatches] = useState<CommandInfo[]>([]);
-  const [index, setIndex] = useState(-1);
+  // One state, so a list fetched again and an arrow key pressed in the same moment both apply
+  // to the latest highlight instead of one overwriting the other.
+  const [menu, setMenu] = useState<{ matches: CommandInfo[]; index: number }>({ matches: [], index: -1 });
+  const { matches, index } = menu;
   const listRef = useRef<HTMLDivElement | null>(null);
   const tipRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const [tipTop, setTipTop] = useState(0);
 
-  const hide = () => {
-    setMatches([]);
-    setIndex(-1);
-  };
+  const closed = { matches: [], index: -1 };
+  const hide = () => setMenu(closed);
 
-  const update = (next: string, keep?: string) => {
-    if (!next.startsWith("/") || next.includes(" ")) return hide();
+  const listFor = (next: string, keep?: string) => {
+    if (!next.startsWith("/") || next.includes(" ")) return closed;
     const prefix = next.slice(1).toLowerCase();
     const found = commands.filter((cmd) => cmd.name.toLowerCase().startsWith(prefix));
     // Nothing left to complete once the typed prefix is the only candidate's full name.
-    if (found.length === 1 && found[0].name.toLowerCase() === prefix) return hide();
-    setMatches(found);
-    setIndex(Math.max(keep ? found.findIndex((cmd) => cmd.name === keep) : -1, found.length > 0 ? 0 : -1));
+    if (found.length === 1 && found[0].name.toLowerCase() === prefix) return closed;
+    return { matches: found, index: Math.max(keep ? found.findIndex((cmd) => cmd.name === keep) : -1, found.length > 0 ? 0 : -1) };
   };
+  const update = (next: string) => setMenu(listFor(next));
 
   // A refetch can change the list under an open menu; the highlight stays on its command.
   useEffect(() => {
-    update(text, matches[index]?.name);
+    setMenu((m) => listFor(text, m.matches[m.index]?.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commands]);
 
@@ -92,7 +92,8 @@ export function useCommandMenu(commands: CommandInfo[], text: string) {
     placeTip();
   }, [index, placeTip]);
 
-  const move = (step: 1 | -1) => setIndex((i) => (i + step + matches.length) % matches.length);
+  const move = (step: 1 | -1) => setMenu((m) => ({ ...m, index: (m.index + step + m.matches.length) % m.matches.length }));
+  const setIndex = (i: number) => setMenu((m) => ({ ...m, index: i }));
   const itemRef = (i: number) => (el: HTMLElement | null) => void (itemRefs.current[i] = el);
 
   return { matches, index, setIndex, open: matches.length > 0, update, hide, move, itemRef, listRef, tipRef, tipTop, placeTip };

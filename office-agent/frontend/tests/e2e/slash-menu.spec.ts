@@ -83,6 +83,7 @@ test("the highlighted command's description shows beside the list", async ({ pag
   await page.goto(freshThreadPath("slash"));
   await waitForConnected(page);
   await page.locator("textarea").fill("/");
+  await expect(page.getByRole("tooltip")).toHaveText("Skill number 0");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("tooltip")).toHaveText("Skill number 1");
   const [list, tip] = [await page.getByRole("listbox").boundingBox(), await page.getByRole("tooltip").boundingBox()];
