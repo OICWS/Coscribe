@@ -119,7 +119,7 @@ For multi-step requests, the Coordinator can plan and track progress with
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
 Several commands are typed as a message mid-session (not startup flags). In
-the web UI the "/" menu lists `/compact`, `/clear`, `/doctor`, `/init`, `/create-skill` and
+the web UI the "/" menu lists `/compact`, `/clear`, `/doctor`, `/fork`, `/init`, `/create-skill` and
 the skills; the others below have a control of their own (the mode button,
 Stop) but still work typed. During a reply a typed command waits in the box,
 except `/stop`.
@@ -195,6 +195,11 @@ task's run follows the task's own approval setting instead.
   container's last self-test and the command sandbox. Web UI only; the results show as a card above the message box, problems first, each
   with its next step and, where the fix is in Settings, a link there. Nothing
   goes to the conversation.
+- `/fork [name]` -- copy this conversation into a new one and open it; the original stays as
+  it is. The copy keeps the task list, the environment (so the same folders) and the sidebar
+  group, and is called "<title> (fork)" without a name. A finished reply's Fork button copies up
+  to that reply. Both conversations work on the same files. Not during a reply or while an
+  approval waits; what a `/compact` folded away stays with the original. Web UI only.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
   write a project overview to `OVERVIEW.md` at its root (refreshing one that
   is already there), analogous to Claude Code's own `/init`.
