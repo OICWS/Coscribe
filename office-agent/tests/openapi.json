@@ -1158,6 +1158,48 @@
         "title": "ScriptEnvPackageInstall",
         "type": "object"
       },
+      "SideChatMessage": {
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 20000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "SideChatMessage",
+        "type": "object"
+      },
+      "SideChatRequest": {
+        "description": "The side chat so far, ending with the person's question; the server keeps none of it.",
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/SideChatMessage"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "SideChatRequest",
+        "type": "object"
+      },
       "SkillEnabledUpdate": {
         "properties": {
           "enabled": {
@@ -8501,6 +8543,53 @@
           }
         },
         "summary": "Rename Thread"
+      }
+    },
+    "/api/threads/{thread_id}/side-chat": {
+      "post": {
+        "operationId": "side_chat_api_threads__thread_id__side_chat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SideChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Side Chat"
       }
     },
     "/api/threads/{thread_id}/slides": {
