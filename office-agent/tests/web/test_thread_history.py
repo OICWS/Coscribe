@@ -537,25 +537,7 @@ def test_fork_copies_the_conversation_and_keeps_its_environment_and_group(
     assert listed[fork_id]["group"] == "Q4"
 
 
-def test_fork_from_a_message_ends_with_that_messages_reply(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="hi there!"), AIMessage(content="fine")]
-    )
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        _two_turns(client, "t_fork_part")
-        response = client.post(
-            "/api/threads/t_fork_part/fork", json={"title": "From hello", "upto": 0}
-        )
-        copy = _history_of(client, response.json()["thread_id"])
-        original = _history_of(client, "t_fork_part")
-
-    assert copy == [{"kind": "user", "text": "hello"}, {"kind": "agent", "text": "hi there!"}]
-    assert len(original) == 4
-
-
-def test_fork_refuses_a_missing_message_a_blank_title_and_an_unknown_thread(
+def test_fork_refuses_a_blank_title_and_an_unknown_thread(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_model = FakeToolCallingChatModel(
@@ -563,13 +545,10 @@ def test_fork_refuses_a_missing_message_a_blank_title_and_an_unknown_thread(
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _two_turns(client, "t_fork_bad")
-        missing = client.post("/api/threads/t_fork_bad/fork", json={"title": "X", "upto": 5})
         blank = client.post("/api/threads/t_fork_bad/fork", json={"title": "  "})
         unknown = client.post("/api/threads/t_nobody/fork", json={"title": "X"})
         threads = client.get("/api/threads").json()
 
-    assert missing.status_code == 409
-    assert "No such message" in missing.json()["error"]
     assert blank.status_code == 400
     assert unknown.status_code == 404
     assert [t["thread_id"] for t in threads] == ["t_fork_bad"]

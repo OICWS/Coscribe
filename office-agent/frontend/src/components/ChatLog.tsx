@@ -27,8 +27,6 @@ interface ChatLogProps {
   onEditMessage?: (turnIndex: number, text: string) => void;
   /** Take a sent message and what follows out of the conversation. Undefined while a turn is in flight. */
   onRewindMessage?: (turnIndex: number, text: string) => void;
-  /** Copies the conversation up to this message's reply into a new one. */
-  onForkMessage?: (turnIndex: number) => void;
   /** True until this thread's history has arrived -- an existing
    * thread shows a spinner then, not the brand-new-thread greeting. */
   loading: boolean;
@@ -70,7 +68,6 @@ export function ChatLog({
   onAnswerPlan, onOpenPlan,
   onEditMessage,
   onRewindMessage,
-  onForkMessage,
   loading,
   onReviewTaskDraft,
   onDismissTaskDraft,
@@ -99,7 +96,7 @@ export function ChatLog({
     onReview: onReviewWorkflowDraft,
   };
 
-  const messageActions = useMessageActions(items, turnInFlight, onEditMessage, onRewindMessage, onForkMessage);
+  const messageActions = useMessageActions(items, turnInFlight, onEditMessage, onRewindMessage);
   const onScroll = useFollowEnd(scrollRef, endRef, items, items[items.length - 1]?.kind === "user");
   // Revealing older history above never moves the viewport (see the scroll-anchoring effect
   // below, which handles that case on its own terms).

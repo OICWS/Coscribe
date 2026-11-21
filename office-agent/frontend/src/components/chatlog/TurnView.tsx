@@ -1,4 +1,4 @@
-import { lazy, Suspense, useContext, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { foldTaskCard } from "../../lib/taskCard";
 import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
 import { takeReaction } from "../../lib/reactions";
@@ -32,8 +32,6 @@ import { SystemCards } from "./SystemCards";
 import { splitStopped } from "./helpers";
 import { StoppedNote } from "./StoppedNote";
 import { HoverTip } from "./HoverTip";
-import { MessageActionsContext } from "./contexts";
-import { BranchIcon } from "../icons";
 import { fullTime } from "../../lib/messageActions";
 import { timeAgo } from "../../lib/sessionList";
 
@@ -46,7 +44,7 @@ import { timeAgo } from "../../lib/sessionList";
  * spinner or blank bubble. */
 const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Markdown })));
 
-/** One turn's items and, once its reply is done, a hover footer with Copy, Fork and when the reply
+/** One turn's items and, once its reply is done, a hover footer with Copy and when the reply
  * finished. Rewind and Edit sit on the user's message instead (UserMessageView). */
 export function TurnView({
   turn,
@@ -121,32 +119,18 @@ export function TurnView({
       <FileCards items={calls} />
       <SystemCards items={calls} />
       {canFooter && (
-        <ReplyFooter said={splitStopped(finalAgentItem.text).said} turnIndex={turn.userItem!.turnIndex} doneAt={finalAgentItem.doneAt} now={now} compactAfter={compactAfter} />
-      )}
-    </div>
-  );
-}
-
-const FOOTER_BUTTON = "flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]";
-
-/** A finished reply's hover row: Copy, Fork and when it finished. */
-function ReplyFooter({ said, turnIndex, doneAt, now, compactAfter }: { said: string; turnIndex: number; doneAt?: string; now: number; compactAfter: boolean }) {
-  const actions = useContext(MessageActionsContext);
-  const fork = actions?.fork && !actions.blocked ? actions.fork : null;
-  return (
-    <div className={`${compactAfter ? "absolute left-0 top-full mt-1" : "-mt-2"} flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100`}>
-      <CopyButton getText={() => said} title="Copy reply" className={FOOTER_BUTTON} />
-      {fork && (
-        <HoverTip label="Fork from here: a new conversation with everything up to this reply">
-          <button type="button" aria-label="Fork from here" onClick={() => fork(turnIndex)} className={FOOTER_BUTTON}>
-            <BranchIcon className="h-3.5 w-3.5" />
-          </button>
-        </HoverTip>
-      )}
-      {doneAt && (
-        <HoverTip label={fullTime(doneAt)}>
-          <span className="ml-1 cursor-default text-xs text-[var(--muted)]">{timeAgo(doneAt, now)}</span>
-        </HoverTip>
+        <div className={`${compactAfter ? "absolute left-0 top-full mt-1" : "-mt-2"} flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100`}>
+          <CopyButton
+            getText={() => splitStopped(finalAgentItem.text).said}
+            title="Copy reply"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+          />
+          {finalAgentItem.doneAt && (
+            <HoverTip label={fullTime(finalAgentItem.doneAt)}>
+              <span className="ml-1 cursor-default text-xs text-[var(--muted)]">{timeAgo(finalAgentItem.doneAt, now)}</span>
+            </HoverTip>
+          )}
+        </div>
       )}
     </div>
   );

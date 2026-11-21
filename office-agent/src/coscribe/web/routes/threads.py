@@ -309,7 +309,7 @@ def _fork_route(router: APIRouter, state: AppState) -> None:
         fork_id = uuid.uuid4().hex[:8]
         while await taken(fork_id):
             fork_id = uuid.uuid4().hex[:8]
-        refused = await (await state.get_session_async(thread_id)).fork_into(fork_id, payload.upto)
+        refused = await (await state.get_session_async(thread_id)).fork_into(fork_id)
         if refused is not None:
             return JSONResponse({"error": refused}, status_code=409)
         state.thread_files.copy_for_fork(thread_id, fork_id, title)

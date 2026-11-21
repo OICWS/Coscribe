@@ -1380,17 +1380,6 @@
           "title": {
             "title": "Title",
             "type": "string"
-          },
-          "upto": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Upto"
           }
         },
         "required": [

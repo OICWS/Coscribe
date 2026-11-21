@@ -675,7 +675,7 @@ function App() {
   };
 
   const onLocalError = (message: string) => dispatch({ type: "error", message });
-  const onFork = (name: string, upto?: number) => forkAndOpen(threadId, current?.preview || sessionLabel, name, upto, refreshThreads, onLocalError);
+  const onFork = (name: string) => forkAndOpen(threadId, current?.preview || sessionLabel, name, refreshThreads, onLocalError);
 
   const onApprove = (id: string, approved: boolean, scope?: "task") => {
     dispatch({ type: "local_approval_resolved", id, approved });
@@ -958,7 +958,6 @@ function App() {
                     onOpenPlan={() => setPanelOpen("plan", true)}
                     onEditMessage={state.turnInFlight ? undefined : onEditMessage}
                     onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}
-                    onForkMessage={state.turnInFlight ? undefined : (turnIndex) => onFork("", turnIndex)}
                     loading={!state.historyReceived}
                     onReviewTaskDraft={onReviewTaskDraft}
                     onDismissTaskDraft={onDismissTaskDraft}

@@ -52,24 +52,3 @@ test("editing an earlier message runs from it and drops the turns after it", asy
   await expect(bubble(page, "Reply with the single word: alpha")).toHaveCount(0);
   await expect(bubble(page, "Reply with the single word: beta")).toHaveCount(0);
 });
-
-test("Fork from here on an earlier reply opens a copy that ends with that reply", async ({ page }) => {
-  const path = freshThreadPath("forkhere");
-  await page.goto(path);
-  await waitForConnected(page);
-  await send(page, "Reply with the single word: one");
-  await send(page, "Reply with the single word: two");
-  const before = new URL(page.url()).searchParams.get("thread");
-
-  await bubble(page, "Reply with the single word: one").hover();
-  await page.getByRole("button", { name: "Fork from here" }).first().click();
-
-  await expect.poll(() => new URL(page.url()).searchParams.get("thread")).not.toBe(before);
-  await expect(bubble(page, "Reply with the single word: one")).toBeVisible();
-  await expect(bubble(page, "Reply with the single word: two")).toHaveCount(0);
-
-  // The original keeps both turns.
-  await page.goto(path);
-  await waitForConnected(page);
-  await expect(bubble(page, "Reply with the single word: two")).toBeVisible();
-});

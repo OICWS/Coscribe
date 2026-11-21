@@ -197,8 +197,7 @@ task's run follows the task's own approval setting instead.
   goes to the conversation.
 - `/fork [name]` -- copy this conversation into a new one and open it; the original stays as
   it is. The copy keeps the task list, the environment (so the same folders) and the sidebar
-  group, and is called "<title> (fork)" without a name. A finished reply's Fork button copies up
-  to that reply. Both conversations work on the same files. Not during a reply or while an
+  group, and is called "<title> (fork)" without a name. Both conversations work on the same files. Not during a reply or while an
   approval waits; what a `/compact` folded away stays with the original. Web UI only.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
   write a project overview to `OVERVIEW.md` at its root (refreshing one that

@@ -40,18 +40,6 @@ if TYPE_CHECKING:
 _COMPACT_NOTE_PREFIX = "[Earlier conversation compacted to save context.]"
 
 
-def _sent_positions(messages: list[Any]) -> list[int]:
-    """Where the person's own messages sit: the indices the app's message actions count by."""
-    return [
-        i
-        for i, m in enumerate(messages)
-        if isinstance(m, HumanMessage)
-        and not is_steer(m)
-        and m.additional_kwargs.get("lc_source") != "summarization"
-        and not str(m.content).startswith(_COMPACT_NOTE_PREFIX)
-    ]
-
-
 def _is_compaction_summary(message: Any) -> bool:
     return isinstance(message, HumanMessage) and (
         str(message.content).startswith(_COMPACT_NOTE_PREFIX)
@@ -429,7 +417,14 @@ class ConversationHistory:
             )
             return
 
-        human_positions = _sent_positions(messages)
+        human_positions = [
+            i
+            for i, m in enumerate(messages)
+            if isinstance(m, HumanMessage)
+            and not is_steer(m)
+            and m.additional_kwargs.get("lc_source") != "summarization"
+            and not str(m.content).startswith(_COMPACT_NOTE_PREFIX)
+        ]
         if index < 0 or index >= len(human_positions):
             await websocket.send_json(
                 {"type": "error", "message": f"No such message to edit (index {index})."}
@@ -471,7 +466,14 @@ class ConversationHistory:
             )
             return
 
-        human_positions = _sent_positions(messages)
+        human_positions = [
+            i
+            for i, m in enumerate(messages)
+            if isinstance(m, HumanMessage)
+            and not is_steer(m)
+            and m.additional_kwargs.get("lc_source") != "summarization"
+            and not str(m.content).startswith(_COMPACT_NOTE_PREFIX)
+        ]
         if index < 0 or index >= len(human_positions):
             await websocket.send_json(
                 {"type": "error", "message": f"No such message to rewind (index {index})."}
@@ -485,11 +487,10 @@ class ConversationHistory:
             )
         await websocket.send_json({"type": "rewound", "index": index})
 
-    async def fork_into(self, thread_id: str, upto: int | None = None) -> str | None:
-        """Copies this conversation into the empty thread `thread_id`: everything, or up to the
-        reply to the person's message `upto`, counted as edit and rewind count. Only the current
-        context goes: what a /compact folded away stays with the original. Returns why it can't,
-        in words for the person, or None once copied."""
+    async def fork_into(self, thread_id: str) -> str | None:
+        """Copies this conversation into the empty thread `thread_id`. Only the current context
+        goes: what a /compact folded away stays with the original. Returns why it can't, in words
+        for the person, or None once copied."""
         if self._host._turn_lock.locked():
             return "Wait for this reply to finish before forking."
         state = await self._host.lg_agent.aget_state(self._host.config)
@@ -498,12 +499,6 @@ class ConversationHistory:
         messages = list(state.values.get("messages", [])) if state.values else []
         if not messages:
             return "There is nothing to fork yet."
-        if upto is not None:
-            positions = _sent_positions(messages)
-            if upto < 0 or upto >= len(positions):
-                return f"No such message to fork from (index {upto})."
-            if upto + 1 < len(positions):
-                messages = messages[: positions[upto + 1]]
         # A call stopped mid-run has no answer; the copy must not start with a broken history.
         copied, _ = answer_every_tool_call(messages)
         config = {"configurable": {"thread_id": thread_id}}

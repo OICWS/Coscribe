@@ -168,13 +168,9 @@ async function sendForResult<T>(url: string, method: string, body: unknown): Pro
   return { error: parsed?.error ?? (typeof parsed?.detail === "string" ? parsed.detail : `Request failed (${res.status})`) };
 }
 
-/** A copy of the conversation as a new one: all of it, or up to the reply to the person's message
- * `upto` (counted as edit and rewind count). */
-export const forkThread = (threadId: string, title: string, upto?: number) =>
-  sendForResult<{ thread_id: string; title: string }>(`/api/threads/${encodeURIComponent(threadId)}/fork`, "POST", {
-    title,
-    ...(upto === undefined ? {} : { upto }),
-  });
+/** A copy of the whole conversation as a new one. */
+export const forkThread = (threadId: string, title: string) =>
+  sendForResult<{ thread_id: string; title: string }>(`/api/threads/${encodeURIComponent(threadId)}/fork`, "POST", { title });
 
 async function del<T>(url: string): Promise<T> {
   const res = await fetch(url, { method: "DELETE" });

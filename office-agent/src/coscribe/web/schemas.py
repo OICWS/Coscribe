@@ -199,8 +199,6 @@ class ThreadRename(BaseModel):
 
 class ThreadFork(BaseModel):
     title: str
-    # The person's message whose reply the copy ends with; none copies everything.
-    upto: int | None = None
 
 
 class ThreadMetaPatch(BaseModel):
