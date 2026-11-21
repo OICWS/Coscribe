@@ -197,6 +197,12 @@ class ThreadRename(BaseModel):
     title: str
 
 
+class ThreadFork(BaseModel):
+    title: str
+    # The person's message whose reply the copy ends with; none copies everything.
+    upto: int | None = None
+
+
 class ThreadMetaPatch(BaseModel):
     # None leaves it; "" takes the conversation out of its group.
     group: str | None = None

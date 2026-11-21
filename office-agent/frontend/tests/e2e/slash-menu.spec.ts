@@ -203,3 +203,30 @@ test("a /doctor card taller than the room above the box scrolls with the wheel",
   await page.mouse.wheel(0, 400);
   await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
+
+test("/fork opens a named copy and leaves the original as it was", async ({ page, request }) => {
+  const path = freshThreadPath("fork");
+  await page.goto(path);
+  await waitForConnected(page);
+  const box = page.locator("textarea");
+  for (const text of ["first question", "second question"]) {
+    await box.fill(text);
+    await box.press("Enter");
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 60_000 });
+  }
+  const before = new URL(page.url()).searchParams.get("thread")!;
+  const name = `Plan B ${Date.now()}`;
+
+  await box.fill(`/fork ${name}`);
+  await box.press("Enter");
+  await expect.poll(() => new URL(page.url()).searchParams.get("thread")).not.toBe(before);
+  const log = page.getByTestId("chat-log");
+  await expect(log.getByText("first question", { exact: true })).toBeVisible();
+  await expect(log.getByText("second question", { exact: true })).toBeVisible();
+  await expect(box).toHaveValue("");
+
+  const threads = (await (await request.get("/api/threads")).json()) as { thread_id: string; preview: string; archived: boolean }[];
+  const fork = new URL(page.url()).searchParams.get("thread")!;
+  expect(threads.find((t) => t.thread_id === fork)?.preview).toBe(name);
+  expect(threads.find((t) => t.thread_id === before)?.archived).toBe(false);
+});

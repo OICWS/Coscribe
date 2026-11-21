@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import type { LogItem } from "../state/reducer";
 import { WAITING_ON_PERSON } from "./sessionSignals";
 
-/** What a sent message's own Rewind and Edit do, and whether they can run now. */
+/** What a sent message's own Rewind and Edit, and its reply's Fork, do, and whether they can run now. */
 export interface MessageActions {
   rewind: (turnIndex: number, text: string) => void;
   edit: (turnIndex: number, text: string) => void;
+  /** Copies the conversation up to that message's reply into a new one; absent where it can't. */
+  fork?: (turnIndex: number) => void;
   /** Why neither can run now, or null when both can. The server refuses both mid-turn and while
    * an approval or a question waits, since either would race the history it truncates. */
   blocked: string | null;
@@ -58,10 +60,11 @@ export function useMessageActions(
   turnInFlight: boolean,
   edit: MessageActions["edit"] | undefined,
   rewind: MessageActions["rewind"] | undefined,
+  fork?: MessageActions["fork"],
 ): MessageActions | null {
   const leavesChanges = useMemo(() => messagesLeavingChanges(items), [items]);
   if (edit && rewind) {
-    return { edit, rewind, blocked: items.some(WAITING_ON_PERSON) ? "Answer the open request first" : null, leavesChanges };
+    return { edit, rewind, fork, blocked: items.some(WAITING_ON_PERSON) ? "Answer the open request first" : null, leavesChanges };
   }
   return turnInFlight ? { edit: () => {}, rewind: () => {}, blocked: "Unavailable while working", leavesChanges } : null;
 }

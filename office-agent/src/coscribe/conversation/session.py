@@ -869,6 +869,10 @@ class ChatSessionLG:
     async def load_older_messages(self, websocket: EventSink) -> None:
         await self._history.load_older_messages(websocket)
 
+    async def fork_into(self, thread_id: str, upto: int | None = None) -> str | None:
+        """Why it can't copy (a reply runs, an approval waits), or None once copied."""
+        return await self._history.fork_into(thread_id, upto)
+
     @cached_property
     def _turn_streamer(self) -> TurnStreamer:
         return TurnStreamer(self)

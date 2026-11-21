@@ -5,6 +5,7 @@ from FastAPI, so it runs without building the app."""
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from ..config import Settings
@@ -98,6 +99,18 @@ class ThreadFiles:
         Environments(self._settings.state_dir).forget_thread(thread_id)
         MessagingStore(self._settings.state_dir).delete(thread_id)
         OfferLog(self._settings.state_dir).forget(thread_id)
+
+    def copy_for_fork(self, source: str, target: str, title: str) -> None:
+        """What a fork keeps besides the messages: the task list, the environment (and with it
+        the folders) and the title."""
+        state_dir = self._settings.state_dir
+        state_dir.mkdir(parents=True, exist_ok=True)
+        tasks = state_dir / f"{source}.tasks.json"
+        if tasks.is_file():
+            shutil.copyfile(tasks, state_dir / f"{target}.tasks.json")
+        environments = Environments(state_dir)
+        environments.assign(target, environments.for_thread(source)["id"])
+        self.title_sidecar_path(target).write_text(title[:200], encoding="utf-8")
 
     def run_folders(self, thread_id: str) -> list[str]:
         """A scheduled run's folders: its task's environment's, then the existing ones its

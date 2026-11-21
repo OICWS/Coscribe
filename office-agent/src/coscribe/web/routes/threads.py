@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,7 @@ from ..schemas import (
     FolderBriefRequest,
     GroupRename,
     OpenFileRequest,
+    ThreadFork,
     ThreadMetaPatch,
     ThreadRename,
     WorkflowDraftRequest,
@@ -283,6 +285,42 @@ def _delete_and_rename_routes(router: APIRouter, state: AppState) -> None:
         return JSONResponse({"thread_id": thread_id, "title": title[:200]})
 
 
+def _fork_route(router: APIRouter, state: AppState) -> None:
+    checkpointer_holder = state.checkpointer_holder
+
+    async def taken(thread_id: str) -> bool:
+        checkpointer = checkpointer_holder["checkpointer"]
+        await checkpointer.setup()  # see list_threads' identical comment
+        cursor = await checkpointer.conn.execute(
+            "SELECT 1 FROM checkpoints WHERE thread_id = ? LIMIT 1", (thread_id,)
+        )
+        return await cursor.fetchone() is not None
+
+    async def fork_thread(thread_id: str, payload: ThreadFork) -> JSONResponse:
+        title = payload.title.strip()
+        if not title:
+            return JSONResponse({"error": "title cannot be blank"}, status_code=400)
+        # A task run's folders come from its task, which a copy would not have.
+        if thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return JSONResponse({"error": "A task's run can't be forked."}, status_code=400)
+        if not await taken(thread_id):
+            return JSONResponse({"error": f"No thread {thread_id!r}"}, status_code=404)
+        # The app's own ids are 8 hex characters too (nav.ts' startNewThread).
+        fork_id = uuid.uuid4().hex[:8]
+        while await taken(fork_id):
+            fork_id = uuid.uuid4().hex[:8]
+        refused = await (await state.get_session_async(thread_id)).fork_into(fork_id, payload.upto)
+        if refused is not None:
+            return JSONResponse({"error": refused}, status_code=409)
+        state.thread_files.copy_for_fork(thread_id, fork_id, title)
+        group = state.meta_store.get(thread_id)["group"]
+        if group:
+            state.meta_store.update(fork_id, group=group)
+        return JSONResponse({"thread_id": fork_id, "title": title[:200]})
+
+    router.add_api_route("/api/threads/{thread_id}/fork", fork_thread, methods=["POST"])
+
+
 def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
     _get_session = state.get_session
@@ -512,6 +550,7 @@ def router(state: AppState) -> APIRouter:
     _listing_routes(router, state)
     _group_and_lifecycle_routes(router, state)
     _delete_and_rename_routes(router, state)
+    _fork_route(router, state)
     _task_and_draft_routes(router, state)
     _failed_turn_routes(router, state)
     _file_and_context_routes(router, state)
