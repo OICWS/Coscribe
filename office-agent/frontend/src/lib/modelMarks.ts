@@ -7,13 +7,14 @@ export function contextLabel(tokens: number): string {
   return String(tokens);
 }
 
-/** The short marks a model row shows: what it reads, its effort levels, its context. A model
+/** The short marks a model row shows (`compact`: the effort levels counted, for a menu): what it reads, its effort levels, its context. A model
  * the catalog doesn't list shows only that, since everything else would be a guess. */
-export function modelMarks(row: ModelRow): string[] {
+export function modelMarks(row: ModelRow, compact = false): string[] {
   if (!row.known) return ["Not in catalog"];
   const marks: string[] = [];
   if (row.vision) marks.push("Images");
-  if (row.effort_levels.length > 0) marks.push(`Effort: ${row.effort_levels.join(", ")}`);
+  const levels = row.effort_levels;
+  if (levels.length > 0) marks.push(compact ? `${levels.length} effort levels` : `Effort: ${levels.join(", ")}`);
   if (row.context) marks.push(`${contextLabel(row.context)} context`);
   if (!row.tools) marks.push("No tools");
   return marks;

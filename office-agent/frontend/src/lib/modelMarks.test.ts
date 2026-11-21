@@ -29,6 +29,7 @@ describe("modelMarks", () => {
       "200K context",
     ]);
     expect(modelMarks(row({ tools: false }))).toEqual(["No tools"]);
+    expect(modelMarks(row({ effort_levels: ["low", "high"] }), true)).toEqual(["2 effort levels"]);
   });
 
   it("claims nothing about a model the catalog doesn't list", () => {

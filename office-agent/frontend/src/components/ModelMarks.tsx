@@ -1,8 +1,15 @@
 import { modelMarks } from "../lib/modelMarks";
 import type { ModelRow } from "../types/settings";
 
-/** A model's capabilities as small muted chips. */
-export function ModelMarks({ row }: { row: ModelRow }) {
+/** A model's capabilities as small muted chips, or as one muted line in a menu (`compact`). */
+export function ModelMarks({ row, compact = false }: { row: ModelRow; compact?: boolean }) {
+  if (compact) {
+    return (
+      <span className="truncate text-xs text-[var(--muted)]" title={row.effort_levels.length ? `Effort: ${row.effort_levels.join(", ")}` : undefined}>
+        {modelMarks(row, true).join(" · ")}
+      </span>
+    );
+  }
   return (
     <span className="flex flex-wrap gap-1">
       {modelMarks(row).map((mark) => (

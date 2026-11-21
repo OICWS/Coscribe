@@ -89,12 +89,12 @@ export function ModelPicker({ currentModel, onSwitch }: ModelPickerProps) {
                     if (value !== currentModel) onSwitch(value);
                   }}
                 >
-                  <span className="flex min-w-0 flex-col gap-1">
+                  <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate">
                       {isActive ? "✓ " : ""}
                       {row.id}
                     </span>
-                    <ModelMarks row={row} />
+                    <ModelMarks row={row} compact />
                   </span>
                   {index < 9 && <span className="text-xs text-[var(--muted)]">{index + 1}</span>}
                 </div>
