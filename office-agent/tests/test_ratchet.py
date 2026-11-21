@@ -103,6 +103,23 @@ def test_deep_and_private_cross_package_imports_are_found_and_own_package_ones_a
     }
 
 
+def test_a_component_nested_in_another_package_is_entered_through_its_own_package(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    package = tmp_path / "src" / "coscribe"
+    (package / "web").mkdir(parents=True)
+    (package / "web" / "app.py").write_text(
+        "from coscribe.runtime.models import model_info\n"
+        "from coscribe.runtime.models.catalog import trim\n",
+        encoding="utf-8",
+    )
+
+    found = ratchet.deep_imports(package)
+
+    # runtime.models is its own component in components.toml; its submodules are still deep.
+    assert found == {"coscribe.web.app -> coscribe.runtime.models.catalog": 1}
+
+
 def test_a_heavy_library_imported_at_the_top_of_a_startup_module_is_listed(
     ratchet: ModuleType, tmp_path: Path
 ) -> None:

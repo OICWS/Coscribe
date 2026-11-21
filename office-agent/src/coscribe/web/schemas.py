@@ -300,6 +300,8 @@ class ProviderUpdate(BaseModel):
     base_url: str = ""
     api_key: str
     default_model: str = ""
+    # The models turned on; blank with a blank default_model keeps the saved ones.
+    models: list[str] = []
 
 
 class ProviderModelsRequest(BaseModel):

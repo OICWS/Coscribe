@@ -19,7 +19,7 @@ const loadProviders = () =>
 type Opened = { name: string } | "custom" | null;
 
 /** Settings > Providers: the providers added (Yours), the ones Coscribe knows
- * (Discover), and a provider's own page with its key and default model. */
+ * (Discover), and a provider's own page with its key and models. */
 export function ProvidersTab({ active }: { active: boolean }) {
   const { data, status: loadStatus, error: loadError, retry: refresh } = useFetchOnActive(active, loadProviders, EMPTY);
   const { catalog, configured } = data;
@@ -45,7 +45,7 @@ export function ProvidersTab({ active }: { active: boolean }) {
     }
     const name = form.name.trim();
     try {
-      const result = await addProvider(name, form.baseUrl.trim(), form.apiKey.trim(), form.defaultModel.trim());
+      const result = await addProvider(name, form.baseUrl.trim(), form.apiKey.trim(), form.models, form.defaultModel);
       const rejected = Object.values(result.rejected);
       if (rejected.length > 0) {
         setStatus({ text: `Not saved -- ${rejected[0]}`, error: true });
@@ -116,7 +116,7 @@ export function ProvidersTab({ active }: { active: boolean }) {
       <FetchRetry status={loadStatus} error={loadError} onRetry={refresh} />
       {loadStatus === "success" && view === "yours" && (
         <YoursList
-          rows={rows.filter((r) => matches(`${r.title} ${r.name} ${r.info.default_model}`))}
+          rows={rows.filter((r) => matches(`${r.title} ${r.name} ${r.info.models.map((m) => m.id).join(" ")}`))}
           searching={q !== ""}
           onOpen={(n) => open({ name: n })}
           onDiscover={() => setView("discover")}

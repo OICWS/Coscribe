@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -246,6 +247,16 @@ def _component(module: str) -> str:
     return parts[1] if len(parts) > 1 else parts[0]
 
 
+@functools.cache
+def _nested_components() -> frozenset[str]:
+    """The components inside another package (`runtime.models`), as `coscribe.<name>`: the
+    package is their entry point, so importing it is not a reach into a submodule."""
+    data = tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "components.toml").read_text("utf-8")
+    )
+    return frozenset(f"coscribe.{c['name']}" for c in data.get("component", []) if "." in c["name"])
+
+
 def deep_imports(src: Path = SRC) -> dict[str, int]:
     """Imports that reach into another package's submodule instead of the package
     itself (`coscribe.tools.documents` from `coscribe.web`, not `coscribe.tools`),
@@ -276,7 +287,7 @@ def deep_imports(src: Path = SRC) -> dict[str, int]:
                     continue
                 if _component(module) == here:
                     continue
-                if module.count(".") >= 2:
+                if module.count(".") >= 2 and module not in _nested_components():
                     key = f"{importer} -> {module}"
                     found[key] = found.get(key, 0) + 1
                 for name in names:

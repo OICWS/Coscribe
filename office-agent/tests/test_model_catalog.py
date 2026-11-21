@@ -32,6 +32,10 @@ API = {
                 "cost": {"input": 1},
             },
             "deepseek-embed": {"name": "Embed", "type": "embedding", "status": "deprecated"},
+            "deepseek-voice": {
+                "name": "Voice",
+                "modalities": {"input": ["audio"], "output": ["text", "audio"]},
+            },
         },
     },
     "moonshotai": {"name": "Moonshot", "api": "https://api.moonshot.ai/v1", "models": {}},
@@ -75,6 +79,8 @@ def test_trim_keeps_only_what_coscribe_reads_one_line_per_model() -> None:
         "output": 393216,
     }
     assert json.loads(text)["models"]["deepseek/deepseek-embed"]["kind"] == "embedding"
+    voice = json.loads(text)["models"]["deepseek/deepseek-voice"]
+    assert voice["input"] == ["audio"] and voice["outputs"] == ["text", "audio"]
     assert any(line.startswith('  "deepseek/deepseek-flash": {') for line in text.splitlines())
     assert "cost" not in text and "DEEPSEEK_API_KEY" not in text
 
@@ -96,7 +102,9 @@ def test_model_info_reads_the_catalog_and_the_overrides(catalog: Path) -> None:
         ("low", "high", "max"),
         1048576,
     )
-    assert info.source == "catalog"
+    assert info.source == "catalog" and info.outputs == ("text",)
+    voice = model_info("deepseek-voice", provider="ds", base_url="https://api.deepseek.com")
+    assert voice is not None and voice.outputs == ("text", "audio")
     assert model_info("unknown", provider="ds", base_url="https://api.deepseek.com") is None
 
     catalog.write_text(
