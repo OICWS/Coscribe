@@ -35,6 +35,7 @@ def test_a_computer_without_libreoffice_is_not_an_error(tmp_path: Path) -> None:
         "source": None,
         "path": None,
         "version": None,
+        "office": None,
     }
 
 
@@ -46,6 +47,7 @@ def test_coscribes_own_copy_is_found_and_reports_its_version(tmp_path: Path) -> 
         "source": "own",
         "path": str(launcher),
         "version": "26.8.1.1",
+        "office": None,
     }
 
 

@@ -83,6 +83,7 @@ test("the highlighted command's description shows beside the list", async ({ pag
   await page.goto(freshThreadPath("slash"));
   await waitForConnected(page);
   await page.locator("textarea").fill("/");
+  await expect(page.getByRole("tooltip")).toHaveText("Skill number 0");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("tooltip")).toHaveText("Skill number 1");
   const [list, tip] = [await page.getByRole("listbox").boundingBox(), await page.getByRole("tooltip").boundingBox()];
@@ -147,4 +148,58 @@ test("the mode button says Switching until the server applies the change", async
   hold = false;
   release!();
   await expect(page.getByRole("button", { name: "Plan", exact: true })).toBeVisible();
+});
+
+const report = {
+  checks: [
+    { id: "model", name: "Model", state: "ok", detail: "stub:fake answered.", fix: "", page: null },
+    { id: "sandbox", name: "Command sandbox", state: "off", detail: "Not set up.", fix: "Set it up.", page: "capabilities" },
+    { id: "libreoffice", name: "Office conversion (LibreOffice)", state: "problem", detail: "Not found.", fix: "Download LibreOffice.", page: "capabilities" },
+  ],
+};
+
+test("/doctor lists problems first and Open Settings goes to the page that fixes one", async ({ page }) => {
+  await page.route("**/api/doctor", (route) => route.fulfill({ json: report }));
+  await page.goto(freshThreadPath("doctor"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill("/doctor");
+  await page.locator("textarea").press("Enter");
+
+  const card = page.getByRole("region", { name: "Coscribe check" });
+  await expect(card.getByText("1 problem", { exact: true })).toBeVisible();
+  await expect(card.getByRole("listitem").first()).toContainText("Office conversion");
+  await expect(card.getByRole("listitem").last()).toContainText("Model");
+  // Nothing reached the model: no bubble for the command.
+  await expect(page.getByText("/doctor", { exact: true })).toHaveCount(0);
+
+  await card.getByRole("listitem").first().getByRole("button", { name: "Open Settings" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Close settings" })).toBeVisible();
+});
+
+test("/doctor runs the real checks and Escape closes the card", async ({ page }) => {
+  await page.goto(freshThreadPath("doctor"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill("/doctor");
+  await page.locator("textarea").press("Enter");
+  const card = page.getByRole("region", { name: "Coscribe check" });
+  await expect(card.getByRole("listitem")).toHaveCount(7, { timeout: 40_000 });
+  await expect(card.getByRole("listitem").filter({ hasText: "Model" })).toContainText("answered");
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+});
+
+test("a /doctor card taller than the room above the box scrolls with the wheel", async ({ page }) => {
+  const checks = Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, name: `Check ${i}`, state: "problem", detail: "Detail.", fix: "Fix it.", page: null }));
+  await page.setViewportSize({ width: 1000, height: 600 });
+  await page.route("**/api/doctor", (route) => route.fulfill({ json: { checks } }));
+  await page.goto(freshThreadPath("doctor"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill("/doctor");
+  await page.locator("textarea").press("Enter");
+  const list = page.getByRole("region", { name: "Coscribe check" }).getByRole("list");
+  await expect(list.getByRole("listitem")).toHaveCount(9);
+  await list.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });

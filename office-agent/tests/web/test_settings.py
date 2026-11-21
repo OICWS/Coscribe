@@ -1188,3 +1188,94 @@ def test_the_browser_prompts_always_allow_and_the_old_list_reach_the_workspaces(
     assert bad.status_code == not_a_list.status_code == 422
     assert imported.json() == {"added": 1}
     assert default["network"]["browser"] == {"example.com": "allow", "news.org": "allow"}
+
+
+def test_every_doctor_check_answers_on_this_machine(tmp_path: Path) -> None:
+    """Each local check runs here (Linux in CI, Windows in its job) and says something usable,
+    whatever this machine has installed."""
+    from coscribe.config import Settings
+    from coscribe.web.routes.settings import doctor
+
+    settings = Settings(
+        state_dir=tmp_path / "state", workspace_root=tmp_path, default_model="stub:fake"
+    )
+    for check in doctor.LOCAL_CHECKS:
+        result = check(settings)
+        assert result["state"] in ("ok", "problem", "off"), check.__name__
+        assert result["name"] and result["detail"], check.__name__
+        assert result["state"] == "ok" or result["fix"] or result["state"] == "off", check.__name__
+
+
+def test_doctor_reports_a_failing_model_with_the_page_that_fixes_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.web.routes.settings import doctor
+
+    class _Refused:
+        async def ainvoke(self, messages: Any) -> Any:
+            raise RuntimeError("401 invalid api key")
+
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="OK")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        monkeypatch.setattr(doctor, "resolve_chat_model", lambda *a, **k: fake_model)
+        checks = client.post("/api/doctor").json()["checks"]
+        assert [c["id"] for c in checks][0] == "model"
+        assert checks[0]["state"] == "ok"
+        assert {c["id"] for c in checks} >= {"python", "node", "conversion", "browser"}
+
+        monkeypatch.setattr(doctor, "resolve_chat_model", lambda *a, **k: _Refused())
+        model = client.post("/api/doctor").json()["checks"][0]
+    assert model["state"] == "problem"
+    assert "401 invalid api key" in model["detail"]
+    assert model["page"] == "providers"
+
+
+def test_a_broken_doctor_check_does_not_hide_the_others(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    from coscribe.config import Settings
+    from coscribe.web.routes.settings import doctor
+
+    def check_broken(settings: Settings) -> doctor.Check:
+        raise OSError("disk unreadable")
+
+    monkeypatch.setattr(doctor, "LOCAL_CHECKS", (check_broken, doctor.check_node))
+    monkeypatch.setattr(doctor, "check_model", _model_ok)
+    settings = Settings(
+        state_dir=tmp_path / "state", workspace_root=tmp_path, default_model="stub:fake"
+    )
+    checks = asyncio.run(doctor.run_checks(settings))
+    assert checks[1]["state"] == "problem"
+    assert "disk unreadable" in checks[1]["detail"]
+    assert checks[2]["id"] == "node"
+
+
+def test_office_conversion_prefers_microsoft_office_and_falls_back_to_libreoffice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.config import Settings
+    from coscribe.web.routes.settings import doctor
+
+    settings = Settings(
+        state_dir=tmp_path / "state", workspace_root=tmp_path, default_model="stub:fake"
+    )
+    none = {"found": False, "source": None, "path": None, "version": None, "office": None}
+    libre = {**none, "found": True, "source": "system", "path": "/lo", "version": "26.8.1"}
+
+    def answer(status: dict[str, Any]) -> doctor.Check:
+        monkeypatch.setattr(doctor, "libreoffice_status", lambda state_dir: status)
+        return doctor.check_office_conversion(settings)
+
+    office = answer({**none, "office": "Microsoft Office"})
+    assert office["state"] == "ok" and "Microsoft Office" in office["detail"]
+    assert answer(libre)["state"] == "ok"
+    missing = answer(none)
+    assert missing["state"] == "problem" and missing["page"] == "capabilities"
+    assert "Microsoft Office" in missing["fix"]
+    assert answer({**libre, "version": None})["state"] == "problem"
+
+
+async def _model_ok(settings: Any) -> Any:
+    return {"id": "model", "name": "Model", "state": "ok", "detail": "", "fix": "", "page": None}

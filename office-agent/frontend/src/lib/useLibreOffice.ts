@@ -7,6 +7,7 @@ const NOT_FOUND: LibreOfficeStatus = {
   source: null,
   path: null,
   version: null,
+  office: null,
   offer: null,
   working: false,
   step: "",

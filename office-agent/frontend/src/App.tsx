@@ -46,6 +46,7 @@ import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { useClearToNewChat, useSlashCommands } from "./lib/useCommandMenu";
+import { useDoctor } from "./components/DoctorCard";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
@@ -480,6 +481,7 @@ function App() {
   // A task made from this conversation works in the conversation's folder.
   const threadEnvironment = state.environment;
   const clearToNewChat = useClearToNewChat(threadId, threadEnvironment, socketRef);
+  const doctor = useDoctor((page) => showSettings(page, null));
 
   const startWorkflowDraft = (nameHint: string) => {
     setWorkflowDraft({ threadId, threadTitle: sessionLabel, nameHint, environment: threadEnvironment });
@@ -636,6 +638,7 @@ function App() {
       return;
     }
     if (payload.displayText.trim().toLowerCase() === "/clear") return clearToNewChat();
+    if (payload.displayText.trim().toLowerCase() === "/doctor") return doctor.run();
     if (payload.displayText.trim().toLowerCase() === "/stop") {
       // Reaches the running turn directly instead of queuing behind it (session.py's request_stop()).
       dispatch({ type: "local_user_message", text: payload.displayText, instant: true });
@@ -814,7 +817,7 @@ function App() {
           />
         )
       }
-      onSend={onSend}
+      onSend={onSend} card={doctor.card}
       onSteer={onSteer}
       onStop={onStop} stopping={stopping}
       onLocalError={onLocalError}

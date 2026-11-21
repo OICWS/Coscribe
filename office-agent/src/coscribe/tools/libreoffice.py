@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Literal, TypedDict
 
 from ._office_bins import run_killable
+from ._office_com import installed_office
 
 _VERSION = re.compile(r"LibreOffice (\d+(?:\.\d+)+)")
 # A first start builds a user profile, which takes a while on a slow disk.
@@ -35,6 +36,8 @@ class LibreOfficeStatus(TypedDict):
     source: Source | None
     path: str | None
     version: str | None
+    # The Windows office program that converts first; LibreOffice is the fallback.
+    office: str | None
 
 
 def own_root(state_dir: Path) -> Path:
@@ -119,13 +122,20 @@ def _version_of(path: str, modified_ns: int) -> str | None:
 
 def libreoffice_status(state_dir: Path) -> LibreOfficeStatus:
     """What Settings shows: whether one is found, which, and the version it reports (None when it
-    was found but does not start)."""
+    was found but does not start); and the office program that converts before it, if any."""
+    office = installed_office()
     found = find_libreoffice(state_dir)
     if found is None:
-        return {"found": False, "source": None, "path": None, "version": None}
+        return {"found": False, "source": None, "path": None, "version": None, "office": office}
     path, source = found
     version = _version_of(str(path), path.stat().st_mtime_ns)
-    return {"found": True, "source": source, "path": str(path), "version": version}
+    return {
+        "found": True,
+        "source": source,
+        "path": str(path),
+        "version": version,
+        "office": office,
+    }
 
 
 _LOCK_NAMES = (".lock", "user/.lock")

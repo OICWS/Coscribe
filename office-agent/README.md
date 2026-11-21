@@ -119,7 +119,7 @@ For multi-step requests, the Coordinator can plan and track progress with
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
 Several commands are typed as a message mid-session (not startup flags). In
-the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/create-skill` and
+the web UI the "/" menu lists `/compact`, `/clear`, `/doctor`, `/init`, `/create-skill` and
 the skills; the others below have a control of their own (the mode button,
 Stop) but still work typed. During a reply a typed command waits in the box,
 except `/stop`.
@@ -189,6 +189,12 @@ task's run follows the task's own approval setting instead.
   progress it had already made; nothing already-executed is undone. Web UI
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
+- `/doctor` -- check what coscribe needs on this computer: one short request
+  to the default model, Python and Node.js for scripts, Office conversion (Microsoft Office
+  first, LibreOffice when there is none), Edge or Chrome, the script
+  container's last self-test and the command sandbox. Web UI only; the results show as a card above the message box, problems first, each
+  with its next step and, where the fix is in Settings, a link there. Nothing
+  goes to the conversation.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
   write a project overview to `OVERVIEW.md` at its root (refreshing one that
   is already there), analogous to Claude Code's own `/init`.

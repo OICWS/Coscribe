@@ -40,6 +40,9 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
   secret (`docs/decisions/0004-connectors-sign-in-once-in-the-browser.md`).
 - A new route test goes into the file of its domain under `tests/web/`, shared fakes into
   `tests/web/helpers.py`.
+- Something new coscribe needs on the computer (a program, a runtime, a setup step) gets a check
+  in `routes/settings/doctor.py` (`/doctor`), calling the feature's own lookup, and its module a
+  line under that file in `docs/doc-map.toml`.
 
 ## Tests
 `tests/web/test_*.py` by domain (chat, threads, connectors, settings, skills, scheduled,
