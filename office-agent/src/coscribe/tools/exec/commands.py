@@ -52,7 +52,9 @@ async def start_command(
     require_capability(state, "commands", thread_id)
     online = NetworkGuard(state, thread_id).scripts_online()
     hide = Capabilities(state).get()["commands_hide_private_folders"]
-    programs = [Path(p) for p in env.get("PATH", "").split(os.pathsep) if p]
+    # The server's own PATH, never the command's: a workspace variable (or a folder's
+    # settings.json) could name a private folder, and these get read access in the sandbox.
+    programs = [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p]
     try:
         sandboxed = await asyncio.to_thread(
             sandboxed_command,

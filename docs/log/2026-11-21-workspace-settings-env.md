@@ -19,6 +19,5 @@ part not yet applied (#926).
 - On Windows with a real script; checked by the tests.
 
 ## Follow-ups
-- The command sandbox builds its readable `programs` from the merged `PATH`, so the workspace's
-  own `PATH` variable can still widen it into the private folders; build it from the server's
-  `PATH` instead (`tools/exec/commands.py`).
+- Done in `docs/log/2026-11-21-sandbox-programs-path.md`: the command sandbox reads programs
+  from the server's `PATH`.

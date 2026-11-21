@@ -30,6 +30,7 @@ from coscribe.tools.exec import (
     write_codex_config,
 )
 from coscribe.tools.exec import _private_folders as private_folders_module
+from coscribe.tools.exec import commands as commands_module
 
 
 @pytest.fixture
@@ -500,3 +501,27 @@ def test_the_users_folder_of_another_drive_is_hidden_but_not_the_drive(tmp_path:
     # Windows' own drive and a drive with no Users folder add nothing; the drive holding the
     # person's own profile is left to the folders listed one by one.
     assert found == [data / "Users"]
+
+
+async def test_the_sandbox_reads_programs_from_the_servers_path_not_the_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A PATH in a workspace's variables must not open a private folder to the sandbox."""
+    Capabilities(tmp_path).set("commands", True)
+    Capabilities(tmp_path).set("commands_without_sandbox", True)
+    seen: dict[str, list[Path]] = {}
+
+    def record(*args: object, programs: list[Path], **kwargs: object) -> None:
+        seen["programs"] = programs
+        return None
+
+    monkeypatch.setattr(commands_module, "sandboxed_command", record)
+    monkeypatch.setenv("PATH", str(tmp_path / "bin"))
+    folders: dict[str, list[Path]] = {"writable": [tmp_path], "readable": []}
+
+    proc = await start_command(
+        tmp_path, "t1", tmp_path, folders, "exit 0", {"PATH": str(tmp_path / "Documents")}
+    )
+    await proc.wait()
+
+    assert seen["programs"] == [tmp_path / "bin"]
