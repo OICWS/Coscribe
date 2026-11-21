@@ -15,7 +15,9 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,7 @@ from coscribe.code_runtime.launch import CodexHost, launch_spec
 from coscribe.code_runtime.thread import reads_only
 from coscribe.runtime.hooks import run_hook
 from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
+from coscribe.tools import _office_com
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
 from coscribe.tools.exec import (
     Capabilities,
@@ -244,6 +247,28 @@ async def test_stopping_a_background_command_ends_its_whole_process_tree(
 
     assert tools["check_background_task"](started["task_id"])["status"] == "killed"
     assert not _alive(grandchild), "taskkill /T left the child running"
+
+
+@real
+def test_a_timed_out_office_job_ends_only_the_program_com_started_for_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Python stands in for the office program: COM gives the program it starts `-Embedding`.
+    monkeypatch.setitem(_office_com._IMAGES, "Stand.In", Path(sys.executable).name)
+    sleep = [sys.executable, "-c", "import time; time.sleep(120)"]
+    older = subprocess.Popen([*sleep, "-Embedding"])
+    time.sleep(1.5)
+    since = datetime.now(UTC)
+    for_the_job = subprocess.Popen([*sleep, "-Embedding"])
+    the_users = subprocess.Popen(sleep)
+    try:
+        _office_com._end_started_since("Stand.In", since)
+        for_the_job.wait(timeout=30)
+        assert _alive(older.pid), "a program that was running before the job was ended"
+        assert _alive(the_users.pid), "a program not started by COM was ended"
+    finally:
+        for process in (older, for_the_job, the_users):
+            process.kill()
 
 
 @real

@@ -67,8 +67,13 @@ def section_drawing(text: str, parts: list[Part] | None = None) -> ET.Element:
         elif kind == "drawing" and item[1] != 1.0:
             svg, scale = item
             svg.set("transform", f"scale({scale:g}) {svg.get('transform', '')}".strip())
-        if kind == "drawing" and item[0].get("stroke") and item[0].tag == f"{_S}image":
-            root.append(_outline(item[0], root))
+        if kind == "drawing":
+            # A rounded picture with a shadow is an image inside the group that carries it.
+            svg = item[0]
+            carried = svg.tag == f"{_S}g" and svg.get("filter") and len(svg) == 1
+            image = svg[0] if carried else svg
+            if image.tag == f"{_S}image" and image.get("stroke"):
+                root.append(_outline(image, root))
         if parts is not None:
             parts.append(Part(kind, list(root)[before:]))
     return root
