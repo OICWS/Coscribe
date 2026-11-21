@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAppearance } from "../lib/appearance";
 import { formatElapsed, formatTokenCount } from "../lib/format";
 import type { CompactionState } from "../state/reducer";
 
@@ -35,6 +36,8 @@ export function RunStatus({ threadId, turnInFlight, compaction, serverStartedAt,
   const [start, setStart] = useState<{ at: number; tokens: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const wasRunning = useRef(false);
+  // The simple view's status line under the turn already shows the time; tokens mean little there.
+  const simple = useAppearance().conversationView === "simple";
 
   useEffect(() => {
     if (!turnInFlight) {
@@ -77,6 +80,7 @@ export function RunStatus({ threadId, turnInFlight, compaction, serverStartedAt,
   }
 
   if (!turnInFlight || start === null) return null;
+  if (simple && !stopping && !workflowTest) return null;
   const tokenDelta = Math.max(0, totalTokens - start.tokens);
 
   return (
@@ -85,12 +89,13 @@ export function RunStatus({ threadId, turnInFlight, compaction, serverStartedAt,
     <span className={`${stopping ? "inline" : "hidden @[600px]:inline"} shrink-0 text-xs tabular-nums text-[var(--muted)]`} data-testid="run-status">
       {workflowTest && (
         <span data-testid="workflow-test-progress">
-          Testing workflow {workflowTest.done}/{workflowTest.total} ·{" "}
+          Testing workflow {workflowTest.done}/{workflowTest.total}
+          {(!simple || stopping) && " · "}
         </span>
       )}
       {stopping ? (
         "Stopping…"
-      ) : (
+      ) : simple ? null : (
         <>
           {formatElapsed(now - start.at)}
           {tokenDelta > 0 && <> · {formatTokenCount(tokenDelta)} tokens</>}

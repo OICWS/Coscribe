@@ -1,4 +1,4 @@
-/** Settings > General > Appearance: theme, interface font and motion. Applied
+/** Settings > General > Appearance: theme, interface font, motion and conversation view. Applied
  * as attributes on <html> (index.css keys its tokens off them) and saved
  * to the server's .env, since the desktop app serves this page from a new
  * port each launch and browser storage doesn't survive that. A copy in
@@ -11,26 +11,31 @@ import { getConfig, updateConfig } from "./rest";
 export type ThemeChoice = "system" | "light" | "dark";
 export type InterfaceFontChoice = "default" | "system" | "dyslexic";
 export type MotionChoice = "system" | "reduced";
+/** Simple draws a turn as its reply and, while it runs, one status line (simpleView.ts). */
+type ConversationViewChoice = "detailed" | "simple";
 
 export interface Appearance {
   theme: ThemeChoice;
   interfaceFont: InterfaceFontChoice;
   motion: MotionChoice;
+  conversationView: ConversationViewChoice;
 }
 
 const OPTIONS: { [K in keyof Appearance]: readonly Appearance[K][] } = {
   theme: ["system", "light", "dark"],
   interfaceFont: ["default", "system", "dyslexic"],
   motion: ["system", "reduced"],
+  conversationView: ["detailed", "simple"],
 };
 
 const CONFIG_KEYS: { [K in keyof Appearance]: string } = {
   theme: "COSCRIBE_THEME",
   interfaceFont: "COSCRIBE_INTERFACE_FONT",
   motion: "COSCRIBE_MOTION",
+  conversationView: "COSCRIBE_CONVERSATION_VIEW",
 };
 
-const DEFAULTS: Appearance = { theme: "system", interfaceFont: "default", motion: "system" };
+const DEFAULTS: Appearance = { theme: "system", interfaceFont: "default", motion: "system", conversationView: "detailed" };
 const HINT_KEY = "coscribe-appearance";
 
 function valid(raw: Partial<Record<keyof Appearance, unknown>>): Partial<Appearance> {
@@ -88,6 +93,7 @@ export function startAppearance(): void {
           theme: saved[CONFIG_KEYS.theme],
           interfaceFont: saved[CONFIG_KEYS.interfaceFont],
           motion: saved[CONFIG_KEYS.motion],
+          conversationView: saved[CONFIG_KEYS.conversationView],
         }),
       };
       saveHint();
