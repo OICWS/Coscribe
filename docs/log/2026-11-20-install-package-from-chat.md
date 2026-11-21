@@ -2,7 +2,7 @@
 
 Why: a script that needed a package missing from script-env or node-env failed, and the person
 had to add it in Settings › Packages and ask again (#1002, #1007). Decision
-[0056](../decisions/0056-a-scripts-missing-package-is-installed-from-the-chat.md).
+[0057](../decisions/0057-a-scripts-missing-package-is-installed-from-the-chat.md).
 
 ## Shipped
 - `install_package(runtime, package, reason)`, a deferred question tool

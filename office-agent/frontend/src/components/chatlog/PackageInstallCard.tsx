@@ -120,7 +120,7 @@ function PackageTile({ item, runtime }: { item: PackageInstallItem; runtime: Run
   );
 }
 
-/** A script needs a package coscribe's environment lacks (decision 0056). Install runs the same
+/** A script needs a package coscribe's environment lacks (decision 0057). Install runs the same
  * installer as Settings › Packages; the card follows it to its end. */
 export function PackageInstallCard({ item }: { item: PackageInstallItem }) {
   const actions = useContext(FolderActionsContext);

@@ -2,7 +2,7 @@ import type { PackageInstallFinishedEvent, PackageInstallRequiredEvent } from ".
 import type { ChatAction, ChatState, LogItem } from "./reducer";
 import { closeStreamingBubble } from "./streamingBubble";
 
-/** A package a script needs, asked for from the chat (decision 0056), from the card to the install's end. */
+/** A package a script needs, asked for from the chat (decision 0057), from the card to the install's end. */
 export interface PackageInstallItem {
   id: string;
   kind: "package_install";

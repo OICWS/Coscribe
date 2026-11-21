@@ -608,13 +608,14 @@ where to read more.
 `run_python_script`, `run_node_script` and `run_background_script` run code the model writes, in a
 Python venv and an npm directory of their own (Settings › Capabilities installs packages and
 chooses the Python; a missing package can also be installed from a card in the chat, decision
-0056); `run_background_command` runs a command line. All are `EXEC` and approved
+0057); `run_background_command` runs a command line. All are `EXEC` and approved
 under the permission mode.
 
 - On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches
-  only the conversation's folders (read-write folders without delete) and the interpreter
-  (decision 0021). Where it failed, scripts are refused unless the person lets that conversation
-  run without isolation, which is recorded.
+  only the conversation's folders (read-write folders without delete), coscribe's own scratch
+  folder for its temporary files (with delete, decision 0056) and the interpreter (decision
+  0021). Where it failed, scripts are refused unless the person lets that conversation run
+  without isolation, which is recorded.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
   workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
@@ -858,7 +859,8 @@ force a review step.
 
 The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
-your global instructions: Settings › General › Global instructions edits it, and whatever
+your global instructions: Settings › General › Global instructions edits it (up to 2,000
+characters: longer text is kept but not saved from there until it is shortened), and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
 model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
 as a question card, and the line is added only if you press Save everywhere. The same card offers

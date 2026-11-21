@@ -1,4 +1,4 @@
-"""A package a script needs, installed from the chat once the person says yes (decision 0056).
+"""A package a script needs, installed from the chat once the person says yes (decision 0057).
 
 The model calls `install_package` after a script failed on a missing module; the person answers
 on a card, and Install runs the same installer as Settings › Packages, into the same

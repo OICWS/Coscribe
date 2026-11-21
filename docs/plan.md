@@ -67,6 +67,15 @@ Last reviewed: 2026-11-18.
 
 ## Open, smaller
 
+- **A run's code is in a folder every contained run can write** (decision 0056, review on #1009):
+  `script.py`, the Python wrapper and its guard config sit under `script-scratch`, which every
+  run holds with `RX,W,D`, so one conversation's script can read or swap another run's code just
+  before it starts and gain that run's folders and network. Write them to a folder only the
+  server writes, granted read-only, and keep only TEMP under `script-scratch`.
+- **Node's temp folder in the container** (`docs/log/2026-11-20-scratch-temp-delete.md`): Windows
+  gives a contained Node run the container's own `AC\Temp` as TEMP, which Node's permission flags
+  don't allow, so `os.tmpdir()` writes fail there. Python's `tempfile` is pinned to the scratch
+  folder; Node could be pointed there the same way.
 - **Leftover working files at the end of a turn** (`docs/log/2026-11-19-deck-record-paths.md`): the
   instructions ask the model to keep check files in a temporary folder, but nothing checks it, and
   files in `qa/`, `tmp/`, `scratch/` or a dot folder are hidden from the made-files list while they
@@ -170,7 +179,7 @@ Last reviewed: 2026-11-18.
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
   itself when 8790 is taken, and the listener's message stops naming a Settings row; a diagnostic
   log to export in place of Log level; Settings › Packages' Add field, once installing from the
-  chat (decision 0056) has been used for a while; the models for code and for side jobs picked without a row; a proxy change that
+  chat (decision 0057) has been used for a while; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 

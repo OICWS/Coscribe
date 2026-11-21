@@ -1,5 +1,6 @@
 import codecs
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -46,6 +47,48 @@ def test_python_guard_allows_writes_inside_the_allowed_folder(tmp_path: Path) ->
     )
     assert done.returncode == 0, done.stderr
     assert (allowed / "sub" / "a.txt").read_text() == "x"
+
+
+_UNDELETABLE_TEMP = (
+    "import os, tempfile\n"
+    "def refuse(*a, **k):\n"
+    "    raise PermissionError('no delete')\n"
+    "os.unlink = os.remove = refuse\n"
+    "print(tempfile.gettempdir())\n"
+)
+
+
+@pytest.mark.parametrize("pinned", [True, False])
+def test_the_wrapper_pins_temp_to_the_scratch_folder_when_asked(
+    tmp_path: Path, pinned: bool
+) -> None:
+    # Where a probe file can't be deleted, tempfile's check of a folder falls through to the
+    # working directory and leaves its probes there (issue #974). Windows sets a contained run's
+    # TEMP to a folder of its own, so the pin can't rely on TEMP.
+    scratch, work, other = tmp_path / "scratch", tmp_path / "work", tmp_path / "other"
+    for folder in (scratch, work, other):
+        folder.mkdir()
+    roots = [str(p.resolve()) for p in (work, scratch, other)]
+    wrapper, config = write_python_wrapper(scratch, roots)
+    script = scratch / "script.py"
+    script.write_text(_UNDELETABLE_TEMP, encoding="utf-8")
+    env = {**os.environ, "TEMP": str(other), "TMP": str(other), "TMPDIR": str(other)}
+    if pinned:
+        env[script_guard.SCRATCH_TEMP_VAR] = str(scratch)
+    done = subprocess.run(
+        [sys.executable, str(wrapper), str(config), str(script)],
+        capture_output=True,
+        text=True,
+        cwd=str(work),
+        env=env,
+    )
+    if pinned:
+        assert done.returncode == 0, done.stderr
+        assert Path(done.stdout.strip()).resolve() == scratch.resolve()
+        assert list(work.iterdir()) == []
+    else:
+        # Without the pin tempfile probes as before, and its undeletable probe stays behind.
+        assert list(other.iterdir())
 
 
 def test_makedirs_of_an_allowed_folder_does_not_climb_to_the_drive(tmp_path: Path) -> None:

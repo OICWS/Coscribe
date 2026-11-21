@@ -113,8 +113,8 @@ conversation's menu (decision 0052).
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in
 an AppContainer when the machine passed coscribe's self-test (decision 0021):
-they reach only the conversation's folders (read only, read and write, or read,
-write and delete) and what their interpreter needs, and their children inherit
+they reach only the conversation's folders (read only, or read and write without
+delete) and what their interpreter needs, and their children inherit
 that; to let a script read another place, the person adds it as a read-only folder. coscribe's own process and its
 trusted tools stay outside. Where the self-test failed, scripts are refused
 unless the person lets that one conversation run them without isolation

@@ -1,5 +1,5 @@
 # ruff: noqa: E402
-"""Web tests: a script's missing package installed from the chat (decision 0056)."""
+"""Web tests: a script's missing package installed from the chat (decision 0057)."""
 
 from pathlib import Path
 from typing import Any

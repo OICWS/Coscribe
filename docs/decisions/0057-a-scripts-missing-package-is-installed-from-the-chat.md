@@ -1,4 +1,4 @@
-# 0056: A script's missing package is installed from the chat, after the person says yes
+# 0057: A script's missing package is installed from the chat, after the person says yes
 
 ## Status
 Proposed (2026-11-20, OICWS approved the plan in the project thread and chose that an install
