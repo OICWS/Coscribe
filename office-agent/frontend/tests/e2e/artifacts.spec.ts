@@ -114,6 +114,8 @@ test("a card opens its conversation, and a kind starts a new one with a chip and
   await page.getByRole("button", { name: /^Open Q3 review/ }).click();
   await expect(page).toHaveURL(/thread=listed-a/);
   await expect(page).not.toHaveURL(/view=artifacts/);
+  // A conversation with no messages yet (its own was deleted) still shows the file beside it.
+  await expect(page.getByRole("button", { name: /q3\.pptx/ })).toBeVisible();
 
   await page.getByTitle(/navigation/).first().click();
   await page.getByRole("button", { name: "Artifacts" }).click();
@@ -297,4 +299,12 @@ test("Backspace in the empty message box takes the kind chip off, and only then"
   await box.press("Backspace");
   await expect(page.getByRole("button", { name: "Slides mode" })).toHaveCount(0);
   await expect(page.getByPlaceholder("Type / for commands")).toBeVisible();
+});
+
+test("a card whose file is gone says so and stays on the page", async ({ page }) => {
+  await openPage(page);
+  await page.route("**/api/artifacts/*/open", (route) => route.fulfill({ status: 404, json: { error: "No such artifact" } }));
+  await page.getByRole("button", { name: /^Open Q3 review/ }).click();
+  await expect(page.getByRole("status")).toHaveText(/"Q3 review" is no longer available/);
+  await expect(page).toHaveURL(/view=artifacts/);
 });

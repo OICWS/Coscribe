@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { groupToolRuns, groupTurns, currentWorkflowDrafts, draftsInTheWorks, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
 import { type LogItem } from "../state/reducer";
 import { useFollowEnd } from "../lib/useFollowEnd";
-import { EmptyState } from "./EmptyState";
 import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
@@ -149,7 +148,7 @@ export function ChatLog({
   if (items.length === 0) {
     return (
       <div data-testid="chat-log" className="flex-1 overflow-y-auto">
-        {loading ? (
+        {loading && (
           <div className="flex h-full items-center justify-center">
             <div
               className="h-6 w-6 animate-spin rounded-full border-[3px] border-[color-mix(in_srgb,var(--fg)_15%,transparent)] border-t-[var(--accent)] motion-reduce:animate-none"
@@ -157,8 +156,6 @@ export function ChatLog({
               aria-label="Loading conversation"
             />
           </div>
-        ) : (
-          <EmptyState />
         )}
       </div>
     );

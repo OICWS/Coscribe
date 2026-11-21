@@ -19,6 +19,7 @@ import {
   type ThreadFilter,
 } from "../lib/threadStatus";
 import { useClickOutside } from "../lib/useClickOutside";
+import type { ListedThread } from "../lib/useThreadDeletion";
 import type { ThreadStatus, ThreadSummary } from "../types/session";
 import {
   ArchiveIcon,
@@ -179,6 +180,47 @@ function ThreadMenu({
   );
 }
 
+function RenameInput({ initial, onDone }: { initial: string; onDone: (title: string | null) => void }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <input
+      autoFocus
+      aria-label="Session name"
+      className="w-full min-w-0 rounded-md border border-[var(--accent)] bg-[var(--card-bg)] px-2 py-1 text-sm outline-none"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => onDone(value)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onDone(value);
+        } else if (e.key === "Escape") {
+          onDone(null);
+        }
+      }}
+    />
+  );
+}
+
+function DeletingRow({ thread }: { thread: ListedThread }) {
+  return (
+    <div data-testid="thread-row" data-deleting="true" aria-busy="true" className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted)] opacity-60">
+      <ThreadStatusIcon status={thread.status} />
+      <span className="min-w-0 flex-1 truncate line-through">{threadLabel(thread)}</span>
+      <span className="shrink-0 text-xs">Deleting…</span>
+    </div>
+  );
+}
+
+function NotDeletedNote() {
+  return (
+    <span role="status" className="shrink-0 text-xs text-[var(--danger)]" title="The chat could not be deleted. Try again from its menu.">
+      Not deleted
+    </span>
+  );
+}
+
 function ThreadRow({
   thread,
   isCurrent,
@@ -192,7 +234,7 @@ function ThreadRow({
   onDragStart,
   onDragEnd,
 }: {
-  thread: ThreadSummary;
+  thread: ListedThread;
   isCurrent: boolean;
   renaming: boolean;
   draggable: boolean;
@@ -204,30 +246,9 @@ function ThreadRow({
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
-  const [value, setValue] = useState(threadLabel(thread));
   const title = threadLabel(thread);
-
-  if (renaming) {
-    return (
-      <input
-        autoFocus
-        aria-label="Session name"
-        className="w-full min-w-0 rounded-md border border-[var(--accent)] bg-[var(--card-bg)] px-2 py-1 text-sm outline-none"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => onRenameDone(value)}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onRenameDone(value);
-          } else if (e.key === "Escape") {
-            onRenameDone(null);
-          }
-        }}
-      />
-    );
-  }
+  if (thread.deleteState === "deleting") return <DeletingRow thread={thread} />;
+  if (renaming) return <RenameInput initial={title} onDone={onRenameDone} />;
 
   return (
     <div
@@ -264,6 +285,7 @@ function ThreadRow({
       )}
       <ThreadStatusIcon status={thread.status} />
       <span className={`min-w-0 flex-1 truncate ${thread.archived ? "text-[var(--muted)]" : ""}`}>{title}</span>
+      {thread.deleteState === "failed" && <NotDeletedNote />}
       {!selecting && <button
         type="button"
         aria-label={`Options for ${title}`}
@@ -490,7 +512,7 @@ function FilterMenu({ filter, onChange }: { filter: ThreadFilter; onChange: (val
 }
 
 export interface ThreadListProps {
-  threads: ThreadSummary[];
+  threads: ListedThread[];
   currentId: string;
   onChanged: () => void;
   onRenamed: (threadId: string, title: string) => void;
