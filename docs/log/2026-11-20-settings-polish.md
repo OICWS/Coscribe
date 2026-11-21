@@ -15,7 +15,7 @@ instructions with no limit and its own "Saved", and a menu arrow on the empty Ne
   (`DIALOG_BACKDROP_CLASS` in `lib/titleBar.ts`), as Settings itself is.
 - Global instructions: a live count against 2,000 characters; text over it is kept, not saved
   and not cut, until it is shortened; a save shows the Settings window's own "Saved".
-- The toolbar's menu arrow shows only in a conversation.
+- The toolbar's menu arrow is hidden on the empty New session page only.
 
 ## Not verified
 - On Windows: the native file picker, and the dialog position under the real title bar (checked

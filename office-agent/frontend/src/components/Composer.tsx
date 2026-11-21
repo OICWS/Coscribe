@@ -2,6 +2,8 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
+import { isCommand, useCommandMenu } from "../lib/useCommandMenu";
+import { CommandMenu, CommandsAfterReply } from "./CommandMenu";
 import { useWindowFileDrop } from "../lib/useWindowFileDrop";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
@@ -101,6 +103,8 @@ interface ComposerProps {
   totalTokens: number;
   workflowTest?: { done: number; total: number } | null;
   commands: CommandInfo[];
+  /** The menu is opening: skills may have changed since the list was fetched. */
+  onCommandsWanted?: () => void;
   modePill: ReactNode;
   environmentPicker: ReactNode;
   modelPicker: ReactNode;
@@ -162,6 +166,7 @@ export function Composer({
   turnStartedAt, totalTokens,
   workflowTest = null,
   commands,
+  onCommandsWanted,
   modePill,
   environmentPicker,
   modelPicker,
@@ -190,13 +195,15 @@ export function Composer({
   const [pendingPastes, setPendingPastes] = useState<PendingPaste[]>([]);
   const [openAttachment, setOpenAttachment] = useState<AttachmentView | null>(null);
   const [pastePreview, setPastePreview] = useState<string | null>(null);
-  const [autocompleteMatches, setAutocompleteMatches] = useState<CommandInfo[]>([]);
-  const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
+  const menu = useCommandMenu(commands, value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   useComposerAction("open-file", () => fileInputRef.current?.click());
 
-  const autocompleteOpen = autocompleteMatches.length > 0;
+  const autocompleteOpen = menu.open && !turnInFlight;
+  // During a reply a command would reach the model as a note; it waits in the box instead.
+  const heldDuringReply = (text: string) => turnInFlight && !/^\/stop\s*$/i.test(text.trim()) && isCommand(text, commands);
+  const showReplyNote = turnInFlight && !/^\/stop$/i.test(value) && /^\/\S*$/.test(value);
   useReportDraft(onHasDraftChange, value.trim() !== "" || [pendingImages, pendingFiles, pendingPastes].some((list) => list.length > 0));
 
   useEffect(() => {
@@ -237,33 +244,11 @@ export function Composer({
     el.style.height = `${el.scrollHeight}px`;
   };
 
-  const hideAutocomplete = () => {
-    setAutocompleteMatches([]);
-    setAutocompleteIndex(-1);
-  };
-
-  const updateAutocomplete = (text: string) => {
-    if (!text.startsWith("/") || text.includes(" ")) {
-      hideAutocomplete();
-      return;
-    }
-    const prefix = text.slice(1).toLowerCase();
-    const matches = commands.filter((cmd) => cmd.name.toLowerCase().startsWith(prefix));
-    // Nothing left to complete once the typed prefix is already an exact
-    // full match of the (only) remaining candidate.
-    if (matches.length === 1 && matches[0].name.toLowerCase() === prefix) {
-      hideAutocomplete();
-      return;
-    }
-    setAutocompleteMatches(matches);
-    setAutocompleteIndex(matches.length > 0 ? 0 : -1);
-  };
-
   const selectAutocomplete = (index: number) => {
-    const cmd = autocompleteMatches[index];
+    const cmd = menu.matches[index];
     if (!cmd) return;
     setValue(`/${cmd.name} `);
-    hideAutocomplete();
+    menu.hide();
     requestAnimationFrame(() => {
       resize();
       textareaRef.current?.focus();
@@ -340,6 +325,7 @@ export function Composer({
     };
     // While a reply is being worked on, a message goes to it as a note, attachments and all (or
     // answers the card it waits on), rather than queuing behind it; "/stop" still stops it.
+    if (heldDuringReply(text)) return;
     if (turnInFlight && text.trim().toLowerCase() !== "/stop") {
       onSteer({ ...message, displayText: message.displayText.trim(), outgoingText: message.outgoingText.trim() });
     } else {
@@ -353,12 +339,12 @@ export function Composer({
   };
 
   const performSend = () => {
-    if (autocompleteOpen && autocompleteIndex >= 0) {
-      selectAutocomplete(autocompleteIndex);
+    if (autocompleteOpen && menu.index >= 0) {
+      selectAutocomplete(menu.index);
       return;
     }
     submit();
-    hideAutocomplete();
+    menu.hide();
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -367,21 +353,21 @@ export function Composer({
     if (autocompleteOpen) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setAutocompleteIndex((i) => (i + 1) % autocompleteMatches.length);
+        menu.move(1);
         return;
       }
       if (event.key === "ArrowUp") {
         event.preventDefault();
-        setAutocompleteIndex((i) => (i - 1 + autocompleteMatches.length) % autocompleteMatches.length);
+        menu.move(-1);
         return;
       }
       if (event.key === "Tab" || event.key === "Enter") {
         event.preventDefault();
-        selectAutocomplete(autocompleteIndex);
+        selectAutocomplete(menu.index);
         return;
       }
       if (event.key === "Escape") {
-        hideAutocomplete();
+        menu.hide();
         return;
       }
     }
@@ -502,23 +488,8 @@ export function Composer({
             : "border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-hover)]"
         }`}
       >
-        {autocompleteOpen && (
-          <div className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
-            {autocompleteMatches.map((cmd, i) => (
-              <div
-                key={cmd.name}
-                className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${i === autocompleteIndex ? "bg-[var(--card-bg)]" : ""}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  selectAutocomplete(i);
-                }}
-              >
-                <span className="font-mono text-[var(--accent)]">/{cmd.name}</span>
-                <span className="truncate text-xs text-[var(--muted)]">{cmd.description}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {autocompleteOpen && <CommandMenu menu={menu} onPick={selectAutocomplete} />}
+        {showReplyNote && <CommandsAfterReply />}
 
         {/* Attachment tray -- inside the composer box now (used to sit
          * above it, outside the border, reading as a separate element),
@@ -584,7 +555,8 @@ export function Composer({
           onChange={(event) => {
             if (suggestion) onSuggestionDismiss();
             setValue(event.target.value);
-            updateAutocomplete(event.target.value);
+            if (event.target.value === "/") onCommandsWanted?.();
+            menu.update(event.target.value);
             resize();
           }}
           onKeyDown={onKeyDown}

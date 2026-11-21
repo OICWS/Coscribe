@@ -55,6 +55,7 @@ from ..tools import (
 from .capability_guard import capability_refusal
 from .events import EventSink
 from .folder_access import decide_folder_request
+from .package_install import decide_package_install
 from .workspace_folder import WorkspaceFolders
 from .workspace_permissions import FolderVerdict, WorkspacePermissions
 
@@ -244,6 +245,8 @@ class ApprovalDecider:
         # What the turn is waiting on, by request id: a tab opened meanwhile
         # is shown it again (see ConversationHistory.send_history).
         self.open_prompts: dict[str, dict[str, Any]] = {}
+        # (runtime, package) the person turned down on an install card in this conversation.
+        self.declined_packages: set[tuple[str, str]] = set()
 
     async def _ask(self, websocket: Any, event: dict[str, Any]) -> None:
         # A sub-agent's approval waits on its task, which the panel shows.
@@ -261,18 +264,10 @@ class ApprovalDecider:
         (__init__'s extra_interrupt_tool_names) and passed them, so it's approved, plan mode or
         not: it never needed approval.
 
-        A name in QUESTION_TOOL_NAMES (ask_user_question) is a different
-        shape of interrupt entirely -- see runtime_lg/agent.py's own
-        `question_tool_names` docstring: its graph-level interrupt_on
-        config only allows a "respond" decision, never "approve"/"reject",
-        so every early-exit below that would normally deny a call routes
-        through `_denied` instead of a bare `{"type": "reject", ...}` for
-        this one tool -- `_denied` returns a "respond" decision carrying
-        the same message as its content, which HumanInTheLoopMiddleware
-        substitutes directly as the tool's own result (the model sees the
-        denial reason as if it were the "answer"). Never audit-logged --
-        it's READ risk, not an action that needed anyone's sign-off, same
-        as any other ungated tool call.
+        A name in QUESTION_TOOL_NAMES is answered, never approved: its interrupt allows only a
+        "respond" decision (runtime_lg/agent.py's `question_tool_names`), so each early exit below
+        denies it through `_denied`, whose message the model reads as the tool's result. A card
+        that changes something (a folder, a package) audits the person's answer itself.
 
         A stop already requested (see request_stop) short-circuits straight
         to reject, before ever prompting -- request_stop already denies any
@@ -318,6 +313,8 @@ class ApprovalDecider:
                 return await decide_folder_request(
                     self._host, args, websocket, self._ask, self.open_prompts
                 )
+            if name == "install_package":
+                return await decide_package_install(self, args, websocket)
             if name == "remember":
                 line = str(args.get("line", "")).strip()
                 folder = Path(self._host.workspace_root)

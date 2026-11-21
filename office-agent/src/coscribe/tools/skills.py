@@ -39,14 +39,14 @@ def slugify_skill_name(name: str) -> str:
     "Weekly Report Format" -> "weekly-report-format". Same convention the
     Skill Creator meta-skill's own step 5 already documents by hand
     (`builtin_skills/skill-creator/SKILL.md`); this is the mechanical
-    version /saveskill (runtime_lg/skill_authoring.py) uses instead of
+    version /create-skill (runtime_lg/skill_authoring.py) uses instead of
     asking the curator model to invent one -- a slug has to be
     deterministic and filesystem-safe, not a judgment call."""
     slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
     return slug or "skill"
 
 
-# /saveskill's curator call (runtime_lg/skill_authoring.py's
+# /create-skill's curator call (runtime_lg/skill_authoring.py's
 # propose_skill_save_lg) -- decides what to write into a NEW skill's
 # description/body.
 SKILL_SAVE_CURATOR_INSTRUCTIONS = """\

@@ -118,7 +118,11 @@ For multi-step requests, the Coordinator can plan and track progress with
 `task_create`/`task_update`/`task_list`, persisted per-thread alongside the
 session state at `.coscribe/state/<thread-id>.tasks.json`.
 
-Several commands are typed as a message mid-session (not startup flags):
+Several commands are typed as a message mid-session (not startup flags). In
+the web UI the "/" menu lists `/compact`, `/clear`, `/init`, `/create-skill` and
+the skills; the others below have a control of their own (the mode button,
+Stop) but still work typed. During a reply a typed command waits in the box,
+except `/stop`.
 
 The permission modes follow Claude Code's
 (code.claude.com/docs/en/permission-modes). One is on at a time; typing a
@@ -163,10 +167,11 @@ task's run follows the task's own approval setting instead.
   tool results (not the plan, skills or answers) are left out of what the
   model is sent, and the model calls the tool again if it needs one -- see
   [Scheduled / unattended runs](#scheduled--unattended-runs) below for why.
-- `/clear` -- wipe the current thread's conversation history outright and
-  start fresh (unlike `/compact`, which summarizes rather than discards).
-  Doesn't touch Plan Mode/Accept Edits Mode (those are session-level
-  toggles, not conversation content) or memory/tasks/scheduled tasks.
+- `/clear` -- start fresh. In the web UI the conversation is archived (it
+  stays under Sessions > Archived and can be restored) and a blank one opens
+  in the same workspace. In the CLI it erases the thread's history in place
+  (unlike `/compact`, which summarizes rather than discards), without
+  touching the permission mode or memory/tasks/scheduled tasks.
 - `/saveworkflow [name]` -- turn what this conversation just did into a
   reusable workflow. In the web UI this drafts a
   [workflow](#workflows----fixed-steps-instead-of-a-prompt) (fixed steps,
@@ -185,8 +190,8 @@ task's run follows the task's own approval setting instead.
   only -- the CLI's REPL has no way to accept a `/stop` while it's blocked
   waiting on the current turn.
 - `/init` -- have the Coordinator explore `COSCRIBE_WORKSPACE_ROOT` and
-  write a project overview to `OVERVIEW.md` at its root, analogous to Claude
-  Code's own `/init`.
+  write a project overview to `OVERVIEW.md` at its root (refreshing one that
+  is already there), analogous to Claude Code's own `/init`.
 - `/<skill-name>` -- invoke a loaded skill directly by its name (e.g.
   `/pdf-extract summarize report.pdf`), splicing its full instructions
   straight into that turn instead of relying on the model to notice it's
@@ -607,13 +612,15 @@ where to read more.
 
 `run_python_script`, `run_node_script` and `run_background_script` run code the model writes, in a
 Python venv and an npm directory of their own (Settings › Capabilities installs packages and
-chooses the Python); `run_background_command` runs a command line. All are `EXEC` and approved
+chooses the Python; a missing package can also be installed from a card in the chat, decision
+0057); `run_background_command` runs a command line. All are `EXEC` and approved
 under the permission mode.
 
 - On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches
-  only the conversation's folders (read-write folders without delete) and the interpreter
-  (decision 0021). Where it failed, scripts are refused unless the person lets that conversation
-  run without isolation, which is recorded.
+  only the conversation's folders (read-write folders without delete), coscribe's own scratch
+  folder for its temporary files (with delete, decision 0056) and the interpreter (decision
+  0021). Where it failed, scripts are refused unless the person lets that conversation run
+  without isolation, which is recorded.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
   workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
@@ -1131,10 +1138,10 @@ already wrong by the time a user tried it -- see
 needed: `resolve_chat_model` (`runtime_lg/providers.py`) hands the
 `base_url`/`api_key` straight to `langchain_openai.ChatOpenAI`'s
 constructor -- that's all an OpenAI-compatible endpoint needs.
-`default_model` in the file is just a UI convenience for pre-filling the
-"add custom provider" form (left blank for third-party vendors in the
-catalog itself, for the same staleness reason -- fill in your own
-current model id there); it isn't read by anything else.
+`default_model` in the file is the model the composer's model pill offers for
+that provider, and the only one: a provider without it can't be picked there, so
+the Providers page requires it (the catalog leaves it blank for third-party
+vendors, for the same staleness reason).
 
 The web UI's **Settings → Providers** tab edits this same file for you. It is
 laid out like Connectors: **Yours** lists what is added (logo, default model,
@@ -1148,9 +1155,11 @@ Together AI, Fireworks AI, Cerebras, and local Ollama and LM Studio. They are
 conveniences, not a limit: **Add → Add custom provider** takes any other
 OpenAI-compatible API. None pre-fills a guessed default model (see above).
 Adding or removing a provider is saved immediately, no restart needed, and
-takes effect in already-open conversations too. A provider's optional default
-model is what lets the composer's model pill (below) offer a one-click switch
-to it without you typing its exact model id.
+takes effect in already-open conversations too. A provider's default model is
+required: it is what the composer's model pill (below) offers. For an
+OpenAI-compatible provider, **List the provider's models** asks its `/models`
+(`POST /api/providers/models`) and offers the IDs to pick from; the page lists
+at once for an added provider that has none yet.
 
 ## Secrets storage
 

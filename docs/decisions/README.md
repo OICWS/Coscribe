@@ -31,7 +31,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0018](0018-sections-may-hold-containers-that-lay-out-their-children.md) | Sections may hold containers that lay out their children |
 | [0019](0019-a-docs-artifact-is-the-docx-itself-edited-by-styles.md) | A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts (narrowed by 0025 and 0027) |
 | [0020](0020-design-systems-are-a-library-the-user-keeps.md) | Design systems are a library the user keeps; a deck gets a copy |
-| [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings (commands changed by 0022) |
+| [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings (commands changed by 0022; scratch folder narrowed by 0056) |
 | [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox (narrowed by 0049) |
 | [0023](0023-every-conversation-can-read-the-others-unless-archived.md) | Every conversation can list, read and message the others unless they are archived |
 | [0024](0024-word-documents-are-written-from-a-spec-compiled-onto-a-theme-and-checked.md) | Word documents are written from a spec, compiled onto a theme and checked (not adopted) |
@@ -64,3 +64,6 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0052](0052-a-failed-turn-leaves-the-machine-only-as-a-file-the-person-saves.md) | A failed turn leaves the machine only as a file the person saves (proposed) |
 | [0053](0053-a-workspace-uses-only-the-allowed-folders-it-picks.md) | A workspace uses only the Allowed folders it picks (proposed; narrows 0048) |
 | [0054](0054-a-workflow-task-page-is-one-row-of-tabs.md) | A workflow task's page is one row of tabs: Overview, Steps, Runs, Settings (proposed) |
+| [0055](0055-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (proposed) |
+| [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (proposed) |
+| [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (proposed) |

@@ -107,6 +107,40 @@ def test_a_crash_during_the_grant_leaves_an_entry_to_revoke(
     assert FolderGrants(tmp_path / "state").entries() == []
 
 
+def test_only_the_scratch_access_carries_delete(
+    tmp_path: Path, fake_icacls: list[tuple[str, ...]]
+) -> None:
+    grants = FolderGrants(tmp_path / "state")
+    scratch, _ = grants.ensure(tmp_path, "scratch")
+    write, _ = grants.ensure(tmp_path, "write")
+    assert scratch.endswith(".scratch") and scratch != write
+    assert [c[2].rsplit(":", 1)[1] for c in fake_icacls] == ["(OI)(CI)(RX,W,D)", "(OI)(CI)(RX,W)"]
+    grants.revoke(tmp_path)
+    assert FolderGrants(tmp_path / "state").entries() == []
+
+
+def test_a_run_holds_its_scratch_folder_with_delete_and_its_folders_without(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_icacls: list[tuple[str, ...]]
+) -> None:
+    state, work = tmp_path / "state", tmp_path / "work"
+    work.mkdir()
+    python = isolation.venv_python(state / "script-env")
+    python.parent.mkdir(parents=True)
+    python.write_text("", encoding="utf-8")
+    monkeypatch.setattr(isolation, "available", lambda: True)
+    monkeypatch.setattr(isolation, "self_test", lambda *a, **k: SelfTest(True, "", ""))
+    monkeypatch.setattr(isolation, "venv_runtime", lambda venv: ())
+    spec = isolation.for_scripts(state, writable=[work])
+    assert spec is not None
+    assert spec.writable == (work,)
+    assert spec.scratch == (isolation.scratch_root(state),)
+    names, _ = isolation.capabilities_for(spec)
+    assert names[:2] == [
+        isolation.capability_name(work, "write"),
+        isolation.capability_name(isolation.scratch_root(state), "scratch"),
+    ]
+
+
 def test_revoke_takes_both_accesses_off_one_folder_only(
     tmp_path: Path, fake_icacls: list[tuple[str, ...]]
 ) -> None:
@@ -330,6 +364,52 @@ def test_a_script_is_held_to_its_folders(folders: tuple[Path, ...], tmp_path: Pa
     assert sorted(p.name for p in outside.iterdir()) == ["secret.txt"]
 
 
+_TEMP_USER = r"""
+import os, sys, tempfile
+if len(sys.argv) > 1:
+    tempfile.tempdir = sys.argv[1]
+with tempfile.NamedTemporaryFile() as fh:
+    fh.write(b"x")
+with tempfile.TemporaryDirectory() as folder:
+    open(os.path.join(folder, "a.txt"), "w").write("x")
+print(tempfile.gettempdir())
+"""
+
+
+@windows
+def test_temp_files_work_in_the_scratch_folder_and_none_land_in_the_workspace(
+    folders: tuple[Path, ...], tmp_path: Path
+) -> None:
+    state, work, _ref, _outside = folders
+    scratch = isolation.scratch_root(state)
+    run_dir = scratch / "run"
+    run_dir.mkdir()
+    spec = Isolation(state, writable=(work,), scratch=(scratch,), runtime=_runtime())
+    env = dict(os.environ)
+    argv = [sys.executable, "-I", "-c", _TEMP_USER, str(run_dir)]
+    command = RunningCommand(argv, str(work), env, spec)
+    assert command.wait(120) == "exited"
+    assert command.returncode == 0, command.stderr_text()
+    assert Path(command.stdout_text().strip()).resolve() == run_dir.resolve()
+    assert sorted(p.name for p in work.iterdir()) == ["existing.txt"]
+    assert list(run_dir.iterdir()) == []
+
+
+@windows
+def test_a_script_using_temp_files_leaves_nothing_in_the_workspace(tmp_path: Path) -> None:
+    from coscribe.tools.exec import build_script_tools
+
+    workspace, state = tmp_path / "ws", tmp_path / "state"
+    workspace.mkdir()
+    try:
+        (run,) = build_script_tools(workspace, state)
+        result = run(script=_TEMP_USER, description="temp files")
+        assert result.get("exit_code") == 0, result
+        assert list(workspace.iterdir()) == []
+    finally:
+        _revoke_all(state)
+
+
 @windows
 def test_a_stop_ends_the_container_and_its_children(folders: tuple[Path, ...]) -> None:
     state, work, _ref, _outside = folders
@@ -506,3 +586,16 @@ def test_the_line_python_3_13_prints_in_the_container_is_dropped() -> None:
     )
     traceback = "Traceback (most recent call last):\n  ValueError: bad\n"
     assert isolation.quiet_stderr(stderr) == traceback
+
+
+def test_the_container_gets_its_temp_folder_under_a_name_windows_leaves_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    envs: list[dict[str, str]] = []
+    monkeypatch.setattr(isolation, "capabilities_for", lambda iso: ([], []))
+    monkeypatch.setattr(
+        isolation._appcontainer, "start", lambda argv, cwd, env, caps: envs.append(dict(env))
+    )
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {"TEMP": "S"}, Isolation(tmp_path))
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {}, Isolation(tmp_path))
+    assert envs == [{"TEMP": "S", "COSCRIBE_SCRATCH_TEMP": "S"}, {}]
