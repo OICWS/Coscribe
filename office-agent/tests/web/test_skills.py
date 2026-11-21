@@ -417,10 +417,10 @@ def test_adding_a_discover_skill_downloads_and_checks_it_lg(
     assert again.status_code == 400
 
 
-def test_saveskill_writes_skill_md_and_makes_it_usable_immediately_lg(
+def test_create_skill_writes_skill_md_and_makes_it_usable_immediately_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """/saveskill's happy path: one curator call proposes description+body
+    """/create-skill's happy path: one curator call proposes description+body
     (name always stays whatever the user typed), "yes" confirms, and the file
     actually lands at <skills_dir>/<slug>/SKILL.md with valid frontmatter.
     Also proves the real point of set_enabled_skills' own skills_by_slug
@@ -447,7 +447,7 @@ def test_saveskill_writes_skill_md_and_makes_it_usable_immediately_lg(
             ws.send_json({"type": "user_message", "text": "write the weekly status report"})
             _receive_until(ws, "tasks_changed")
 
-            ws.send_json({"type": "user_message", "text": "/saveskill Weekly Report Format"})
+            ws.send_json({"type": "user_message", "text": "/create-skill Weekly Report Format"})
             preview = ws.receive_json()
             assert preview["type"] == "agent_message"
             assert "weekly-report-format" in preview["text"]
@@ -481,7 +481,7 @@ def test_saveskill_writes_skill_md_and_makes_it_usable_immediately_lg(
     )
 
 
-def test_saveskill_asks_a_clarifying_question_when_curator_is_unsure_lg(
+def test_create_skill_asks_a_clarifying_question_when_curator_is_unsure_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     curator_decision = json.dumps(
@@ -497,14 +497,14 @@ def test_saveskill_asks_a_clarifying_question_when_curator_is_unsure_lg(
             ws.send_json({"type": "user_message", "text": "did a bunch of unrelated stuff"})
             _receive_until(ws, "tasks_changed")
 
-            ws.send_json({"type": "user_message", "text": "/saveskill mystery"})
+            ws.send_json({"type": "user_message", "text": "/create-skill mystery"})
             question = ws.receive_json()
 
     assert question == {"type": "agent_message", "text": "What should this skill teach?"}
     assert not (tmp_path / "skills" / "mystery").exists()
 
 
-def test_saveskill_refuses_to_shadow_a_builtin_skill_slug_lg(
+def test_create_skill_refuses_to_shadow_a_builtin_skill_slug_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A slug colliding with a built-in (e.g. "word", from load_builtin_
@@ -525,7 +525,7 @@ def test_saveskill_refuses_to_shadow_a_builtin_skill_slug_lg(
             ws.send_json({"type": "user_message", "text": "hi"})
             _receive_until(ws, "tasks_changed")
 
-            ws.send_json({"type": "user_message", "text": "/saveskill Word"})
+            ws.send_json({"type": "user_message", "text": "/create-skill Word"})
             preview = ws.receive_json()
             assert preview["type"] == "agent_message"
             ws.send_json({"type": "user_message", "text": "yes"})
@@ -536,7 +536,7 @@ def test_saveskill_refuses_to_shadow_a_builtin_skill_slug_lg(
     assert not (tmp_path / "skills" / "word").exists()
 
 
-def test_saveskill_discarded_on_a_non_yes_answer_lg(
+def test_create_skill_discarded_on_a_non_yes_answer_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     curator_decision = json.dumps(
@@ -552,7 +552,7 @@ def test_saveskill_discarded_on_a_non_yes_answer_lg(
             ws.send_json({"type": "user_message", "text": "hi"})
             _receive_until(ws, "tasks_changed")
 
-            ws.send_json({"type": "user_message", "text": "/saveskill throwaway"})
+            ws.send_json({"type": "user_message", "text": "/create-skill throwaway"})
             ws.receive_json()  # preview
             ws.send_json({"type": "user_message", "text": "no thanks"})
             discarded = ws.receive_json()

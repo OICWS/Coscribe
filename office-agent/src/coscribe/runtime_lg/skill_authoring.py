@@ -1,4 +1,4 @@
-"""/saveskill's curator + writer -- turns a live conversation into a new
+"""/create-skill's curator + writer -- turns a live conversation into a new
 SKILL.md. A Skill captures generalized, reusable KNOWLEDGE -- how to do a
 kind of task, written as instructions a future agent follows with
 judgment -- as opposed to a scheduled task (tools/bookkeeping/scheduled_tasks.py),
@@ -34,7 +34,7 @@ def _extract_json_object(text: str) -> str:
 @dataclass
 class SkillSaveProposal:
     """One curator round's outcome -- never persisted; the caller
-    (conversation/session.py's /saveskill handler) holds this in memory while
+    (conversation/session.py's /create-skill handler) holds this in memory while
     awaiting the user's answer/confirmation, and only calls
     write_skill_lg once they confirm. `decision` is "clarify" or
     "propose"; description/body are only meaningful when decision ==
@@ -117,7 +117,7 @@ def write_skill_lg(
     plain filesystem I/O, not the write_file *tool*: the user's explicit
     slash-command confirmation already *is* the approval, no separate
     WRITE_LOCAL gate on top of it needed. Overwrites in place if the
-    slug already names an existing *user* skill (re-running /saveskill
+    slug already names an existing *user* skill (re-running /create-skill
     with the same name is an update, same as Skill Creator's own "editing
     an existing skill" guidance) -- but conversation/session.py's caller is
     responsible for refusing a slug that collides with a *built-in*

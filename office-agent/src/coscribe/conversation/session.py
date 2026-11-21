@@ -260,7 +260,7 @@ class ChatSessionLG:
         # turn on this thread_id forever, including a genuine reconnect's
         # own attempt to redeliver that same pending approval.
         self._current_turn_task: asyncio.Task[None] | None = None
-        # None = no /saveskill curation in progress; otherwise awaiting the
+        # None = no /create-skill curation in progress; otherwise awaiting the
         # user's answer to a clarifying question or confirmation of a
         # proposed save -- see _handle_pending_skill_save_proposal.
         self.pending_save_skill_proposal: dict[str, Any] | None = None
@@ -1113,7 +1113,7 @@ class ChatSessionLG:
         command, _, rest = text.strip().partition(" ")
         command_lower = command.lower()
 
-        if command_lower == "/saveskill":
+        if command_lower == "/create-skill":
             await self._handle_save_skill(rest.strip(), websocket)
             return
 

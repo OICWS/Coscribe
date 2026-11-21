@@ -45,6 +45,7 @@ import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
+import { useClearToNewChat, useSlashCommands } from "./lib/useCommandMenu";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
@@ -56,7 +57,6 @@ import { PageHeader, TitleBar } from "./components/AppHeader";
 import { ThreadHeader } from "./components/ThreadHeader";
 import {
   answerWorkflowStep,
-  getCommands,
   getScheduledTasks,
   getThreads,
   investigateWorkflowRun,
@@ -85,9 +85,10 @@ import type { WorkflowDraftEntry } from "./lib/transcriptGrouping";
 import { EMPTY_WORKFLOW } from "./lib/workflowEdit";
 import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowProgress";
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
+import { cardAnswers } from "./components/folderActions";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
 import { QuestionPanel } from "./components/QuestionCard";
-import type { CommandInfo, ThreadSummary } from "./types/session";
+import type { ThreadSummary } from "./types/session";
 import type { ScheduledRun, ScheduledTask } from "./types/settings";
 import type { StepRecord, Workflow } from "./types/workflow";
 
@@ -197,7 +198,7 @@ function App() {
       .then(setScheduledTasks)
       .catch(() => {});
   }, []);
-  const [commands, setCommands] = useState<CommandInfo[]>([]);
+  const [commands, refreshCommands] = useSlashCommands(state.turnTick);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [threads, setThreads] = useState<ThreadSummary[] | null>(null);
   const refreshThreads = useCallback(() => {
@@ -376,10 +377,6 @@ function App() {
     else pendingLocalSendsRef.current.push(run);
   };
 
-  useEffect(() => {
-    getCommands().then(setCommands);
-  }, []);
-
   // Refetched whenever a turn finishes (turnTick, same signal
   // RunPanel's refreshKey uses), not just on mount -- a brand-new thread
   // has no ThreadSummary/preview yet until its first turn completes, so
@@ -482,6 +479,7 @@ function App() {
 
   // A task made from this conversation works in the conversation's folder.
   const threadEnvironment = state.environment;
+  const clearToNewChat = useClearToNewChat(threadId, threadEnvironment, socketRef);
 
   const startWorkflowDraft = (nameHint: string) => {
     setWorkflowDraft({ threadId, threadTitle: sessionLabel, nameHint, environment: threadEnvironment });
@@ -637,12 +635,9 @@ function App() {
       startWorkflowDraft((saveWorkflow[1] ?? "").trim());
       return;
     }
+    if (payload.displayText.trim().toLowerCase() === "/clear") return clearToNewChat();
     if (payload.displayText.trim().toLowerCase() === "/stop") {
-      // Reaches the currently-running turn directly, not queued behind it
-      // like a normal message would -- see conversation/session.py's request_stop().
-      // Not routed through runOrQueueSend: a turn has to already be
-      // running for /stop to mean anything, which itself requires
-      // history to have long since arrived.
+      // Reaches the running turn directly instead of queuing behind it (session.py's request_stop()).
       dispatch({ type: "local_user_message", text: payload.displayText, instant: true });
       onStop();
       return;
@@ -694,10 +689,6 @@ function App() {
     socketRef.current?.send(
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
-  };
-  const onAnswerFolderAccess = (id: string, answer: string) => {
-    dispatch({ type: "local_folder_access_answered", id, answer });
-    socketRef.current?.send({ type: "question_response", id, answer });
   };
   const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
@@ -782,7 +773,7 @@ function App() {
     saveDraft: (entry) => saveWorkflowDraft(entry),
     reviewDraft: reviewWorkflowDraft,
     saveAsWorkflow: startWorkflowDraft,
-    saveAsSkill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
+    saveAsSkill: (name) => onSend({ displayText: `/create-skill ${name}`, outgoingText: `/create-skill ${name}`, isInstant: false }),
     dismissOffer: () => dispatch({ type: "local_save_offer_dismissed" }),
     viewFile,
   });
@@ -797,9 +788,10 @@ function App() {
       totalTokens={state.totalTokens}
       workflowTest={state.workflowTest}
       commands={commands}
+      onCommandsWanted={refreshCommands}
       modePill={
         onHome ? null : (
-          <ModePill
+          <ModePill key={threadId}
             planMode={state.planMode}
             acceptEdits={state.acceptEdits}
             autoMode={state.autoMode}
@@ -975,7 +967,7 @@ function App() {
                       busy: state.turnInFlight,
                       onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
                       onTryAgain: () => sendRaw("I added the folder. Please try again."),
-                      onAnswerFolderAccess,
+                      ...cardAnswers(dispatch, (message) => socketRef.current?.send(message)),
                       onOpenFolderSettings: () => showSettings("workspace", null),
                     }}
                     onPptxShapePicked={onPptxShapePicked}

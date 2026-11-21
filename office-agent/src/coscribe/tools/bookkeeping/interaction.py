@@ -34,7 +34,7 @@ from typing_extensions import TypedDict
 from ...runtime import tool_metadata
 
 QUESTION_TOOL_NAMES: frozenset[str] = frozenset(
-    {"ask_user_question", "exit_plan_mode", "remember", "request_folder_access"}
+    {"ask_user_question", "exit_plan_mode", "install_package", "remember", "request_folder_access"}
 )
 
 # exit_plan_mode's answers, as the frontend sends them.
@@ -247,6 +247,29 @@ def request_folder_access(folder: str, access: Literal["read", "write"], reason:
     )
 
 
+def install_package(runtime: Literal["python", "node"], package: str, reason: str) -> str:
+    """Ask the user to install a package your script needs into the environment
+    run_python_script or run_node_script runs in. Call it when a script failed
+    because a module is missing (ModuleNotFoundError, "Cannot find module"), then
+    run the script again once the result says it is installed. The user installs
+    or declines on a card; a declined package stays declined in this conversation.
+    With nobody watching (a scheduled run) it is refused: name the missing package
+    in your result instead.
+
+    Args:
+        runtime: "python" for run_python_script, "node" for run_node_script.
+        package: the package's name as pip or npm knows it, optionally with one
+            version, e.g. "python-docx", "openpyxl==3.1.2", "sharp@0.33.5". No
+            URLs, paths, options or several packages.
+        reason: one short line on what the script needs it for, in the language
+            the user wrote in, e.g. "to read the .msg emails".
+    """
+    raise RuntimeError(
+        "install_package must be resolved via HumanInTheLoopMiddleware's 'respond' decision -- "
+        "reaching this body means the graph never registered it in question_tool_names."
+    )
+
+
 def react_to_message(emoji: str) -> str:
     """Answer the user's latest message with one emoji, shown on their message, instead of a
     written reply. Use it when words would only acknowledge: they turned down what you offered
@@ -286,6 +309,7 @@ def build_interaction_tools() -> list[Callable[..., Any]]:
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
         tool_metadata(remember, risk_category="READ", category="interaction"),
         tool_metadata(request_folder_access, risk_category="READ", category="interaction"),
+        tool_metadata(install_package, risk_category="READ", category="interaction"),
         tool_metadata(
             react_to_message, risk_category="READ", category="interaction", ends_turn=True
         ),

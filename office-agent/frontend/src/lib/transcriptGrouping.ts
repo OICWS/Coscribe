@@ -475,6 +475,7 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   task_list: () => ({ verb: "Listed tasks", object: null }),
   remember: () => ({ verb: "Saved a memory", object: null }),
   ask_user_question: (a) => ({ verb: "Asked", object: firstQuestion(a) ?? "a question", glue: ": " }),
+  install_package: (a) => ({ verb: "Asked to install", object: str(a, "package") ?? "a package" }),
   spawn_agent: (a) => ({ verb: "Delegated to a sub-agent", object: str(a, "description") ?? null, glue: ": " }),
   run_code_task: (a) => ({ verb: "Handed a coding task to the code module", object: str(a, "description") ?? null, glue: ": " }),
   // Named like the other commands; the script and its output are inside.

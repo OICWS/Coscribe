@@ -171,19 +171,28 @@ Last reviewed: 2026-11-18.
   canvas, and pages, need canvas elements beyond boards and notes in `.design.json`; an issue
   first, since the format changes.
 
+- **Providers: protocols and models** (decision 0055, proposed): a provider names its protocol
+  (chat completions, Responses, Anthropic Messages) and has the models the person turns on from
+  its `/models`; capabilities from a bundled models.dev copy, refreshed by a scheduled CI job.
+  Parts: the catalog and its update job; the protocols; the provider page's Models section and
+  the model picker; pasting a vendor's Codex or Claude Code setup.
+
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
-  a provider's models read from its own list, and a first-run page that takes a compatible
-  provider and checks the key; steps and time per task in the agentic evaluation.
+  a first-run page that takes a compatible provider and checks the key; steps and time per task in the agentic evaluation.
 
 - **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
   itself when 8790 is taken, and the listener's message stops naming a Settings row; a diagnostic
-  log to export in place of Log level; a package a script needs installed from the chat, with
-  approval; the models for code and for side jobs picked without a row; a proxy change that
+  log to export in place of Log level; Settings › Packages' Add field, once installing from the
+  chat (decision 0057) has been used for a while; the models for code and for side jobs picked without a row; a proxy change that
   applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
   design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 
 ## For the maintainer (settings and decisions)
+
+- Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`): `/doctor` is agreed (read-only
+  checks shown as a card); `/changes` waits on the maintainer; `/fork`, a temporary side chat,
+  `/export` and `/recap` are not scheduled.
 
 - Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
   its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
