@@ -1,6 +1,6 @@
 # 0032: A step says what happens when it fails
 
-Status: proposed (2026-11-02, kurtosisOC; needs the maintainer's acceptance). Narrows 0030 (a
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-02, kurtosisOC). Narrows 0030 (a
 failure no longer always stops the run). Builds on 0028, 0029 and 0030. Issue #776, batch 2.
 Narrowed by 0042: a failure nothing recovers may run steps the run adds.
 

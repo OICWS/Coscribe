@@ -1,6 +1,6 @@
 # 0038: A run page says how it went and what it got, before its steps
 
-Status: proposed (2026-11-08, kurtosisOC; agreed with the maintainer in the project thread).
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-08, kurtosisOC; agreed with the maintainer in the project thread).
 Issue #843. Follows 0037, which it does not change.
 
 ## Context

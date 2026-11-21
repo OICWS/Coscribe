@@ -1,6 +1,6 @@
 # 0036: A step runs several lanes of steps at the same time
 
-Status: proposed (2026-11-03, kurtosisOC; needs the maintainer's acceptance). Narrows 0035 (a
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-03, kurtosisOC). Narrows 0035 (a
 called task may now run in a lane, beside other work). Builds on 0032, 0033 and 0035. Issue #788,
 batch 1.
 

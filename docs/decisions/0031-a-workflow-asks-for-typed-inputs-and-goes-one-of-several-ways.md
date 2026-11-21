@@ -1,6 +1,6 @@
 # 0031: A workflow asks for typed inputs and goes one of several ways
 
-Status: proposed (2026-11-01, kurtosisOC; needs the maintainer's acceptance). Builds on 0028
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-01, kurtosisOC). Builds on 0028
 (the graph stays fixed). Issue #776, batch 1.
 
 ## Context

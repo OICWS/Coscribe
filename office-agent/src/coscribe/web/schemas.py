@@ -197,6 +197,10 @@ class ThreadRename(BaseModel):
     title: str
 
 
+class ThreadFork(BaseModel):
+    title: str
+
+
 class ThreadMetaPatch(BaseModel):
     # None leaves it; "" takes the conversation out of its group.
     group: str | None = None

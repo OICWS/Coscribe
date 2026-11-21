@@ -1,6 +1,6 @@
 # 0028: A workflow step chooses its autonomy; the graph stays fixed
 
-Status: proposed (2026-10-29, kurtosisOC; needs the maintainer's acceptance). Supersedes 0005 in
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-10-29, kurtosisOC). Supersedes 0005 in
 part: a run may contain an agent step; the code module stays out. Issue #719. Narrowed by 0042, 0051. Cost cap: 0043.
 
 ## Context

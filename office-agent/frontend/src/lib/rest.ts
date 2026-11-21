@@ -168,6 +168,10 @@ async function sendForResult<T>(url: string, method: string, body: unknown): Pro
   return { error: parsed?.error ?? (typeof parsed?.detail === "string" ? parsed.detail : `Request failed (${res.status})`) };
 }
 
+/** A copy of the whole conversation as a new one. */
+export const forkThread = (threadId: string, title: string) =>
+  sendForResult<{ thread_id: string; title: string }>(`/api/threads/${encodeURIComponent(threadId)}/fork`, "POST", { title });
+
 async function del<T>(url: string): Promise<T> {
   const res = await fetch(url, { method: "DELETE" });
   await checkOk(res);

@@ -46,7 +46,8 @@ import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
-import { useClearToNewChat, useSlashCommands } from "./lib/useCommandMenu";
+import { appCommand, useClearToNewChat, useSlashCommands } from "./lib/useCommandMenu";
+import { forkAndOpen } from "./lib/forkThread";
 import { useDoctor } from "./components/DoctorCard";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { SessionsPage } from "./components/sessions/SessionsPage";
@@ -633,13 +634,8 @@ function App() {
 
   const onSend = (payload: ComposerSendPayload) => {
     if (state.compaction?.status === "running") return;
-    const saveWorkflow = /^\/saveworkflow(?:\s+([\s\S]*))?$/i.exec(payload.displayText.trim());
-    if (saveWorkflow) {
-      startWorkflowDraft((saveWorkflow[1] ?? "").trim());
-      return;
-    }
-    if (payload.displayText.trim().toLowerCase() === "/clear") return clearToNewChat();
-    if (payload.displayText.trim().toLowerCase() === "/doctor") return doctor.run();
+    const local = appCommand(payload.displayText, { saveworkflow: startWorkflowDraft, fork: onFork, clear: clearToNewChat, doctor: doctor.run });
+    if (local) return local();
     if (payload.displayText.trim().toLowerCase() === "/stop") {
       // Reaches the running turn directly instead of queuing behind it (session.py's request_stop()).
       dispatch({ type: "local_user_message", text: payload.displayText, instant: true });
@@ -680,6 +676,7 @@ function App() {
   };
 
   const onLocalError = (message: string) => dispatch({ type: "error", message });
+  const onFork = (name: string) => forkAndOpen(threadId, current?.preview || sessionLabel, name, refreshThreads, onLocalError);
 
   const onApprove = (id: string, approved: boolean, scope?: "task") => {
     dispatch({ type: "local_approval_resolved", id, approved });

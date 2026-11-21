@@ -1,7 +1,7 @@
 # 0053: A workspace uses only the Allowed folders it picks
 
 ## Status
-Proposed (2026-11-19, OICWS: "settings保留可以添加，但工作区需要选择用哪些，或者直接添加新的，两种方案").
+Accepted (2026-11-21, by the maintainer; proposed 2026-11-19, OICWS: "settings保留可以添加，但工作区需要选择用哪些，或者直接添加新的，两种方案").
 Narrows [0048](0048-a-workspace-is-a-folder-the-person-picks.md), its reach only. Issue #926.
 
 ## Context

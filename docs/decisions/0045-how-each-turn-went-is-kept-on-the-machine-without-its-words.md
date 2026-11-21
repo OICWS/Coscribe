@@ -1,6 +1,6 @@
 # 0045: How each turn went is kept on the machine, without its words
 
-Status: proposed (2026-11-10, kurtosisOC).
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-10, kurtosisOC).
 Issue #867. Adds to 0002's audit log, which it does not change.
 
 ## Context

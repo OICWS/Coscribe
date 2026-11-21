@@ -28,6 +28,10 @@ FIXED_COMMANDS = [
         "description": "Archive this conversation and start a new one in the same workspace",
     },
     {"name": "doctor", "description": "Check what coscribe needs on this computer"},
+    {
+        "name": "fork",
+        "description": "Copy this conversation into a new one and open it (usage: /fork [name])",
+    },
     {"name": "init", "description": "Explore the workspace and write or refresh OVERVIEW.md"},
     {
         "name": "create-skill",

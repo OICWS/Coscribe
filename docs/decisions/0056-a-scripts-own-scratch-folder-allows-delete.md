@@ -1,6 +1,6 @@
 # 0056: A script's own scratch folder allows delete
 
-Status: proposed (2026-11-20, issue #974). Narrows 0021: the rule that a read-write grant has no
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-20, issue #974). Narrows 0021: the rule that a read-write grant has no
 DELETE now covers the person's folders only, not coscribe's own `script-scratch`.
 
 ## Context

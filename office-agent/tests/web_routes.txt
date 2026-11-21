@@ -178,6 +178,7 @@ POST /api/threads/{thread_id}/doc/restore
 POST /api/threads/{thread_id}/failed-turns/export
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/folder-brief
+POST /api/threads/{thread_id}/fork
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
 POST /api/threads/{thread_id}/slides/arrange

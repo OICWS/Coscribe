@@ -1,6 +1,6 @@
 # 0033: A run can pause for a person or a time
 
-Status: proposed (2026-11-02, kurtosisOC; needs the maintainer's acceptance). Builds on 0029,
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-02, kurtosisOC). Builds on 0029,
 0031 and 0032. Issue #776, batch 3.
 
 ## Context

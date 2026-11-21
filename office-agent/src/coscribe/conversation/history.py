@@ -492,3 +492,22 @@ class ConversationHistory:
                 self._host.config, {"messages": [RemoveMessage(id=m.id) for m in to_remove]}
             )
         await websocket.send_json({"type": "rewound", "index": index})
+
+    async def fork_into(self, thread_id: str) -> str | None:
+        """Copies this conversation into the empty thread `thread_id`. Only the current context
+        goes: what a /compact folded away stays with the original. Returns why it can't, in words
+        for the person, or None once copied."""
+        if self._host._turn_lock.locked():
+            return "Wait for this reply to finish before forking."
+        state = await self._host.lg_agent.aget_state(self._host.config)
+        if state.next:
+            return "Resolve the pending approval before forking."
+        messages = list(state.values.get("messages", [])) if state.values else []
+        if not messages:
+            return "There is nothing to fork yet."
+        # A call stopped mid-run has no answer; the copy must not start with a broken history.
+        copied, _ = answer_every_tool_call(messages)
+        config = {"configurable": {"thread_id": thread_id}}
+        await self._host.lg_agent.aupdate_state(config, {"messages": copied}, as_node="tools")
+        await self._host.lg_agent.aupdate_state(config, None, as_node=END)
+        return None

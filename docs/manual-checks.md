@@ -30,7 +30,7 @@ and YaHei tests were not broken.
 | 9 | Conversations messaging | nothing | all | 5 min |
 | 10 | Real providers | effort in each provider's request (`tests/test_effort.py`) | the provider you have a key for | 5 min |
 | 11 | MCP tool returning an artifact | nothing | all | 5 min |
-| 12 | Conversion through Office or WPS | nothing | all | 10 min |
+| 12 | Conversion through Office or WPS | a timeout ends only the program COM started for it (a stand-in process) | all | 10 min |
 | 13 | Word documents in Word | nothing | all | 15 min |
 | 14 | Word viewer panel | nothing | all | 5 min |
 | 15 | Workbooks in Excel | nothing | all | 15 min |

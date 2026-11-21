@@ -2,6 +2,7 @@ name: Windows more checks
 
 # The checks that used to wait for a person on a Windows machine and can be scripted on a runner:
 # the real Credential Manager, cmd and PowerShell hooks, Format-Hex, taskkill on a process tree,
+# ending the office program COM started for a timed-out conversion,
 # the Store python stub and a conda-only Python, Codex's download and idle exit, YaHei in resvg, Edge drawing a page for look_at_page, Codex's command sandbox, and the Slides editor's e2e specs. Kept in its own workflow so a failure here does not reset
 # windows.yml's run of green nights (decision 0009) or block windows-checks.yml.
 "on":
@@ -25,6 +26,7 @@ name: Windows more checks
       - "office-agent/src/coscribe/runtime_lg/code_agent.py"
       - "office-agent/src/coscribe/tools/bookkeeping/background_tasks.py"
       - "office-agent/src/coscribe/tools/libreoffice*.py"
+      - "office-agent/src/coscribe/tools/_office_com.py"
       - ".github/CODEOWNERS"
 
 permissions:

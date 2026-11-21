@@ -1,6 +1,6 @@
 # 0040: A task starts on an event another program on the machine sends
 
-Status: proposed (2026-11-08, OICWS; agreed with the maintainer in the project thread). Narrows
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-08, OICWS; agreed with the maintainer in the project thread). Narrows
 0034 and follows 0039 (a task may start on an event sent to it). Part of #843.
 
 ## Context

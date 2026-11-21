@@ -1,6 +1,6 @@
 # 0043: A run asks before its models use more tokens, with no setting
 
-Status: proposed (2026-11-09, OICWS; the maintainer chose "no setting for the person" and a
+Status: accepted (2026-11-21, by the maintainer; proposed 2026-11-09, OICWS; the maintainer chose "no setting for the person" and a
 pause, not a failure). Fills in the cost cap 0028 gave agent steps. Part of #843.
 
 ## Context
