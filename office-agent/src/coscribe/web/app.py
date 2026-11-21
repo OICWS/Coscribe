@@ -103,6 +103,9 @@ from .folder_grants import sweep_unused_folder_grants
 from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard, launch_token, page_with_token
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
+    builtin_models,
+    custom_models,
+    model_row,
 )
 from .routes import include_routers
 from .routes.shared import _mask, _read_providers_raw
@@ -321,36 +324,24 @@ def _make_lifespan(
 
 def _configured_models(settings: Settings) -> list[str]:
     return [
-        f"{name}:{info['default_model']}"
+        f"{name}:{row['id']}"
         for name, info in _providers_info(settings).items()
-        if info["default_model"]
+        for row in info["models"]
     ]
 
 
 def _providers_info(settings: Settings) -> dict[str, Any]:
     env_values = dotenv_values(".env")
-    # Fallback for an existing .env from before /api/setup started also
-    # writing the per-provider default (see setup() above) -- without
-    # this, a provider whose own COSCRIBE_<X>_DEFAULT_MODEL was never
-    # set (true for whichever provider first-run setup picked, on any
-    # .env written before that fix) silently vanishes from this list,
-    # and therefore from the model switcher, the moment a *different*
-    # provider becomes the active model and this one is no longer
-    # rendered via the switcher's own currentModel-prop fallback.
-    default_provider_key, _, default_model_fallback = (
-        env_values.get("COSCRIBE_DEFAULT_MODEL") or ""
-    ).partition(":")
     result: dict[str, Any] = {}
     for provider in BUILTIN_PROVIDERS:
         api_key = env_resolve_secret_for_display(env_values.get(provider["api_key_env"])) or ""
         if not api_key:
             continue
-        default_model = env_values.get(provider["default_model_env"]) or ""
-        if not default_model and provider["key"] == default_provider_key:
-            default_model = default_model_fallback
+        models, default_model = builtin_models(provider, env_values)
         result[provider["key"]] = {
             "base_url": None,
             "default_model": default_model,
+            "models": [model_row(m, provider["key"]) for m in models],
             "masked_key": _mask(api_key),
             "builtin": True,
         }
@@ -358,9 +349,11 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
         raw = _read_providers_raw(settings.providers_config_path)
         for name, entry in raw["providers"].items():
             api_key = resolve_secret(entry.get("api_key")) or ""
+            base_url = entry.get("base_url", "")
             result[name] = {
-                "base_url": entry.get("base_url", ""),
+                "base_url": base_url,
                 "default_model": entry.get("default_model", ""),
+                "models": [model_row(m, name, base_url) for m in custom_models(entry)],
                 "masked_key": _mask(api_key) if api_key else None,
                 "builtin": False,
             }

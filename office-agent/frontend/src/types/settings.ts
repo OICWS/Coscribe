@@ -295,11 +295,27 @@ export interface ProviderCatalogEntry {
   builtin: boolean;
 }
 
+/** One model of a provider, with what the catalog says it can do (decision 0055). */
+export interface ModelRow {
+  id: string;
+  name: string;
+  vision: boolean;
+  effort_levels: string[];
+  context: number | null;
+  tools: boolean;
+  /** "chat", or what else it is ("embedding", "image"...): only chat models are offered. */
+  kind: string;
+  /** False when neither the catalog nor the overrides list it. */
+  known: boolean;
+}
+
 export interface ProviderInfo {
   base_url: string | null;
   default_model: string;
   masked_key: string | null;
   builtin: boolean;
+  /** The models turned on, the default one first. */
+  models: ModelRow[];
 }
 
 export type ProvidersResponse = Record<string, ProviderInfo>;
@@ -310,7 +326,7 @@ export interface ProviderUpdateResult {
 }
 
 export interface ProviderModelsResult {
-  models: string[];
+  models: ModelRow[];
   error: string | null;
 }
 

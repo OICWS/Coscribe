@@ -900,6 +900,14 @@
             "title": "Default Model",
             "type": "string"
           },
+          "models": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"

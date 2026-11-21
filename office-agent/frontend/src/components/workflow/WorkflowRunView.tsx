@@ -44,6 +44,7 @@ import { WorkflowCanvas } from "./WorkflowCanvas";
 import { RunInputs, Sites } from "./RunInputs";
 import { RunDetails, RunSummary } from "./RunSummary";
 import { loadTaskView, saveTaskView, type TaskView } from "../../lib/taskView";
+import { getProviders, providerModelIds } from "../../lib/rest";
 
 type RowStatus = StepRecord["status"] | "not_reached" | "stopped" | "recovered";
 
@@ -465,15 +466,8 @@ function useModels(enabled: boolean): string[] {
   const [models, setModels] = useState<string[]>([]);
   useEffect(() => {
     if (!enabled) return;
-    fetch("/api/providers")
-      .then((res) => res.json())
-      .then((providers: Record<string, { default_model?: string }>) =>
-        setModels(
-          Object.entries(providers)
-            .filter(([, info]) => info.default_model)
-            .map(([key, info]) => `${key}:${info.default_model}`),
-        ),
-      )
+    getProviders()
+      .then((providers) => setModels(providerModelIds(providers)))
       .catch(() => setModels([]));
   }, [enabled]);
   return models;

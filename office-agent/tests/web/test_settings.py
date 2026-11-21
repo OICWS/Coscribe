@@ -410,10 +410,10 @@ def test_post_provider_with_a_blank_key_is_rejected_for_a_new_provider(
     assert not (tmp_path / "providers.json").exists()
 
 
-def test_post_provider_without_a_default_model_is_rejected_unless_one_is_saved(
+def test_a_provider_saves_its_models_and_keeps_them_when_none_are_sent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The model picker offers only a provider's default model."""
+    """The model picker offers a provider's models and nothing else."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("", encoding="utf-8")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -421,14 +421,49 @@ def test_post_provider_without_a_default_model_is_rejected_unless_one_is_saved(
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         custom = client.post("/api/providers", json=deepseek)
         builtin = client.post("/api/providers", json={"name": "openai", "api_key": "sk-oa"})
-        assert custom.json()["rejected"] == {"deepseek": "default_model cannot be blank"}
-        assert builtin.json()["rejected"] == {"openai": "default_model cannot be blank"}
+        assert custom.json()["rejected"] == {"deepseek": "models cannot be empty"}
+        assert builtin.json()["rejected"] == {"openai": "models cannot be empty"}
         assert client.get("/api/providers").json() == {}
 
-        client.post("/api/providers", json={**deepseek, "default_model": "deepseek-chat"})
+        client.post(
+            "/api/providers",
+            json={**deepseek, "models": ["deepseek-flash", "my-tuned"], "default_model": ""},
+        )
+        client.post(
+            "/api/providers",
+            json={"name": "openai", "api_key": "sk-oa", "models": ["gpt-5.5", "o-x"]},
+        )
         kept = client.post("/api/providers", json={**deepseek, "api_key": ""})
         assert kept.json()["rejected"] == {}
-        assert client.get("/api/providers").json()["deepseek"]["default_model"] == "deepseek-chat"
+        providers = client.get("/api/providers").json()
+
+    assert providers["deepseek"]["default_model"] == "deepseek-flash"
+    flash, tuned = providers["deepseek"]["models"]
+    assert flash["id"] == "deepseek-flash" and flash["known"] and flash["kind"] == "chat"
+    assert tuned == {
+        "id": "my-tuned",
+        "name": "my-tuned",
+        "vision": False,
+        "effort_levels": [],
+        "context": None,
+        "tools": False,
+        "kind": "chat",
+        "known": False,
+    }
+    assert [m["id"] for m in providers["openai"]["models"]] == ["gpt-5.5", "o-x"]
+    assert providers["openai"]["default_model"] == "gpt-5.5"
+    assert dotenv_values(tmp_path / ".env")["COSCRIBE_OPENAI_MODELS"] == "gpt-5.5,o-x"
+
+
+def test_anthropic_lists_the_catalogs_models(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        listed = client.post("/api/providers/models", json={"name": "anthropic"}).json()
+    assert listed["error"] is None
+    assert listed["models"] and all(row["known"] for row in listed["models"])
 
 
 def _models_transport(seen: list[httpx.Request], response: httpx.Response) -> Any:
@@ -462,7 +497,8 @@ def test_provider_models_lists_ids_with_the_saved_key(
         saved = client.post("/api/providers/models", json=deepseek).json()
 
     assert unsaved == {"models": [], "error": "Enter the API key first."}
-    assert saved == {"models": ["a-model", "b-model"], "error": None}
+    assert [row["id"] for row in saved["models"]] == ["a-model", "b-model"]
+    assert saved["error"] is None and not saved["models"][0]["known"]
     assert str(seen[0].url) == "https://api.deepseek.com/v1/models"
     assert seen[0].headers["authorization"] == "Bearer sk-ds"
 

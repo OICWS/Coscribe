@@ -15,7 +15,7 @@ const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,12rem)_9rem] items-cent
 // The server masks all but the last four characters; the row only needs those.
 const shortKey = (masked: string | null) => (masked ? `•••• ${masked.slice(-4)}` : "Not set");
 
-/** The providers added, as a table: logo and name, default model, key. */
+/** The providers added, as a table: logo and name, default model (and how many more are on), key. */
 export function YoursList({
   rows,
   searching,
@@ -75,6 +75,7 @@ export function YoursList({
             </div>
             <span className={`truncate text-[15px] ${row.info.default_model ? "" : "text-[var(--muted)]"}`}>
               {row.info.default_model || "Not set"}
+              {row.info.models.length > 1 && <span className="ml-1.5 text-[13px] text-[var(--muted)]">+{row.info.models.length - 1}</span>}
             </span>
             <span className="truncate text-[13px] text-[var(--muted)]">{shortKey(row.info.masked_key)}</span>
           </div>

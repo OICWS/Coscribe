@@ -158,6 +158,21 @@ def model_info(model: str, *, provider: str = "", base_url: str = "") -> ModelIn
     pid = catalog_provider(provider, base_url)
     if pid is None:
         return None
+    return _info(pid, model)
+
+
+def provider_models(provider: str = "", base_url: str = "") -> list[ModelInfo]:
+    """Every model the catalog lists for that coscribe provider, by ID; empty when it doesn't
+    know the provider."""
+    pid = catalog_provider(provider, base_url)
+    if pid is None:
+        return []
+    prefix = f"{pid}/"
+    ids = [key[len(prefix) :] for key in _catalog()["models"] if key.startswith(prefix)]
+    return [info for mid in sorted(ids) if (info := _info(pid, mid)) is not None]
+
+
+def _info(pid: str, model: str) -> ModelInfo | None:
     key = f"{pid}/{model}"
     entry = _catalog()["models"].get(key)
     if entry is None:

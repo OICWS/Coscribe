@@ -3,6 +3,10 @@ ones offered as a convenience, with the .env variables each uses."""
 
 from __future__ import annotations
 
+from typing import Any
+
+from ..runtime.models import ModelInfo, model_info
+
 # Well-known OpenAI-compatible services, offered so nobody types a base_url;
 # any other endpoint is added by hand. No entry guesses a default model: a
 # vendor's lineup turns over on its own schedule, and a stale name pre-filled
@@ -198,18 +202,62 @@ BUILTIN_PROVIDERS: list[dict[str, str]] = [
         "key": "anthropic",
         "api_key_env": "ANTHROPIC_API_KEY",
         "default_model_env": "COSCRIBE_ANTHROPIC_DEFAULT_MODEL",
+        "models_env": "COSCRIBE_ANTHROPIC_MODELS",
     },
     {
         "key": "openai",
         "api_key_env": "OPENAI_API_KEY",
         "default_model_env": "COSCRIBE_OPENAI_DEFAULT_MODEL",
+        "models_env": "COSCRIBE_OPENAI_MODELS",
     },
     {
         "key": "gemini",
         "api_key_env": "GEMINI_API_KEY",
         "default_model_env": "COSCRIBE_GEMINI_DEFAULT_MODEL",
+        "models_env": "COSCRIBE_GEMINI_MODELS",
     },
 ]
 
 PROVIDER_KEY_ENV_VARS = [p["api_key_env"] for p in BUILTIN_PROVIDERS]
 PROVIDER_DEFAULT_MODEL_ENV_VARS = [p["default_model_env"] for p in BUILTIN_PROVIDERS]
+
+
+def builtin_models(provider: dict[str, str], env: dict[str, str | None]) -> tuple[list[str], str]:
+    """(the models turned on, the default one) a built-in provider has in `.env`. A default set
+    before models were listed, or only through COSCRIBE_DEFAULT_MODEL, still counts."""
+    models = [m for m in (env.get(provider["models_env"]) or "").split(",") if m.strip()]
+    default = env.get(provider["default_model_env"]) or ""
+    key, _, global_model = (env.get("COSCRIBE_DEFAULT_MODEL") or "").partition(":")
+    if not default and key == provider["key"]:
+        default = global_model
+    if default and default not in models:
+        models.insert(0, default)
+    return models, default or (models[0] if models else "")
+
+
+def custom_models(entry: dict[str, Any]) -> list[str]:
+    """The models a custom provider in `providers.json` has turned on; one saved with only a
+    default model has that one."""
+    models: list[str] = list(entry.get("models") or [])
+    default = entry.get("default_model") or ""
+    if default and default not in models:
+        models.insert(0, default)
+    return models
+
+
+def model_row(
+    model: str, provider: str, base_url: str = "", info: ModelInfo | None = None
+) -> dict[str, Any]:
+    """One model as the Providers page and the model picker show it: its ID and what the
+    bundled catalog says it can do; `known` is False when the catalog doesn't list it."""
+    info = info or model_info(model, provider=provider, base_url=base_url)
+    return {
+        "id": model,
+        "name": info.name if info else model,
+        "vision": bool(info and "image" in info.inputs),
+        "effort_levels": list(info.effort_levels) if info else [],
+        "context": info.context if info else None,
+        "tools": bool(info and info.tools),
+        "kind": info.kind if info else "chat",
+        "known": info is not None,
+    }

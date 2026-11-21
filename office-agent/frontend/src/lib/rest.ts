@@ -343,13 +343,17 @@ export const bumpMcpVersion = (name: string, pkg: string, version: string) =>
 
 export const getProvidersCatalog = () => getJson<ProviderCatalogEntry[]>("/api/providers/catalog");
 export const getProviders = () => getJson<ProvidersResponse>("/api/providers");
-export const addProvider = (name: string, baseUrl: string, apiKey: string, defaultModel: string) =>
+export const addProvider = (name: string, baseUrl: string, apiKey: string, models: string[], defaultModel: string) =>
   postJson<ProviderUpdateResult>("/api/providers", {
     name,
     base_url: baseUrl,
     api_key: apiKey,
+    models,
     default_model: defaultModel,
   });
+/** "provider:model" for every model turned on, each provider's default first. */
+export const providerModelIds = (providers: ProvidersResponse) =>
+  Object.entries(providers).flatMap(([key, info]) => info.models.map((m) => `${key}:${m.id}`));
 /** A blank key lists with the key already saved for `name`. */
 export const listProviderModels = (name: string, baseUrl: string, apiKey: string) =>
   postJson<ProviderModelsResult>("/api/providers/models", { name, base_url: baseUrl, api_key: apiKey });
