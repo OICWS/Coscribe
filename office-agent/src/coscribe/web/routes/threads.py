@@ -53,6 +53,8 @@ from ..state import AppState
 
 logger = logging.getLogger(__name__)
 
+SIDE_CHAT_FAILED = "The model could not answer. Try again, or check the model in Settings."
+
 
 async def _threads_waiting_for_input(state: AppState) -> set[str]:
     """Threads whose latest checkpoint holds an unanswered interrupt: an
@@ -361,9 +363,9 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         messages = [m.model_dump() for m in body.messages]
         try:
             answer = await session._history.answer_side_question(messages)
-        except Exception as exc:  # the provider's own error, shown under the question
-            logger.warning("side chat for %s failed: %s", thread_id, exc)
-            return JSONResponse({"error": f"The model could not answer: {exc}"}, 502)
+        except Exception:
+            logger.warning("side chat for %s failed", thread_id, exc_info=True)
+            return JSONResponse({"error": SIDE_CHAT_FAILED}, 502)
         return JSONResponse({"text": answer})
 
     router.add_api_route("/api/threads/{thread_id}/side-chat", side_chat, methods=["POST"])

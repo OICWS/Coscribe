@@ -527,3 +527,20 @@ def test_side_chat_needs_a_question_last(tmp_path: Path, monkeypatch: pytest.Mon
             json={"messages": [{"role": "assistant", "text": "An answer"}]},
         )
     assert response.status_code == 400
+
+
+def test_a_side_chat_the_model_fails_says_so_without_its_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi there!")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        client.get("/api/threads/t_side_fail/export")
+        fake_model.responses = []
+        fake_model.i = 0
+        response = client.post(
+            "/api/threads/t_side_fail/side-chat",
+            json={"messages": [{"role": "user", "text": "What did I say?"}]},
+        )
+    assert response.status_code == 502
+    assert "IndexError" not in response.text
+    assert response.json()["error"].startswith("The model could not answer.")
