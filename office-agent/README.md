@@ -857,7 +857,8 @@ force a review step.
 
 The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
-your global instructions: Settings › General › Global instructions edits it, and whatever
+your global instructions: Settings › General › Global instructions edits it (up to 2,000
+characters: longer text is kept but not saved from there until it is shortened), and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
 model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
 as a question card, and the line is added only if you press Save everywhere. The same card offers
