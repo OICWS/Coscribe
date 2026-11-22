@@ -32,8 +32,16 @@ _PROXY_ENV_VARS = (
 
 
 def _clear_proxy_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No proxy variable, and no Windows proxy of the machine the tests run on."""
+    from urllib.request import getproxies_environment
+
+    from coscribe.runtime import proxy
+
     for var in _PROXY_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(proxy, "getproxies", getproxies_environment)
+    monkeypatch.setattr(proxy, "_system_proxies", dict)
+    monkeypatch.setattr(proxy, "_system_bypass", lambda host: False)
 
 
 def test_configured_proxy_is_none_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -90,6 +98,39 @@ def test_configured_proxy_leaves_out_a_host_on_the_bypass_list(
     assert configured_proxy("https://wiki.corp.local/page") is None
     assert configured_proxy("http://localhost:8000/") is None
     assert configured_proxy("https://example.com/") == "http://proxy.example.com:8080"
+
+
+def _windows_proxy(monkeypatch: pytest.MonkeyPatch, bypassed: tuple[str, ...] = ()) -> None:
+    from coscribe.runtime import proxy
+
+    monkeypatch.setattr(
+        proxy,
+        "_system_proxies",
+        lambda: {"http": "http://127.0.0.1:10808", "https": "http://127.0.0.1:10808"},
+    )
+    monkeypatch.setattr(proxy, "_system_bypass", lambda host: host in bypassed)
+
+
+def test_a_no_proxy_list_on_its_own_does_not_hide_the_windows_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear_proxy_env(monkeypatch)
+    monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1")
+    _windows_proxy(monkeypatch, bypassed=("intranet",))
+
+    assert configured_proxy() == "http://127.0.0.1:10808"
+    assert configured_proxy("https://api.deepseek.com/") == "http://127.0.0.1:10808"
+    assert configured_proxy("http://localhost:8000/") is None
+    assert configured_proxy("http://intranet/") is None
+
+
+def test_no_proxy_star_also_beats_the_windows_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_proxy_env(monkeypatch)
+    monkeypatch.setenv("NO_PROXY", "*")
+    _windows_proxy(monkeypatch)
+
+    assert configured_proxy() is None
+    assert configured_proxy("https://example.com/") is None
 
 
 @pytest.mark.parametrize(
