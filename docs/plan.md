@@ -233,6 +233,9 @@ Last reviewed: 2026-11-21.
 - The attachment cards and the new question-card colours in the desktop app; the
   thin scrollbar on pages in the built-in browser.
 - The code module on real Windows.
+- On the maintainer's Windows machine (`docs/log/2026-11-22-windows-real-machine-check.md`): the
+  native folder picker, tray notifications, and the command sandbox setup that asks an
+  administrator.
 
 ## Open problems, not reproduced or not solved
 
@@ -248,6 +251,12 @@ Last reviewed: 2026-11-21.
   apps (third-party source, not checked against Slack's docs).
 - A sent message does not keep its attached files as cards; the file picker takes
   one file at a time.
+- `slash-menu.spec.ts` "/clear archives the conversation" failed twice on the maintainer's
+  Windows machine: after Enter the page stayed on the old conversation
+  (`docs/log/2026-11-22-windows-real-machine-check.md`).
+- Tests that load `.env` through `prepare_env` read the computer's real
+  `%APPDATA%\Coscribe\.env` when the working folder has none, so they fail on a computer with
+  Coscribe installed (`tests/test_cli.py`, `tests/test_connector_secrets.py`).
 
 ## Later (wanted, not scheduled)
 
