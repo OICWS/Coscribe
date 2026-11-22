@@ -67,3 +67,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0055](0055-a-provider-has-a-protocol-and-many-models-described-by-a-bundled-catalog.md) | A provider has a protocol and many models, described by a bundled catalog (accepted) |
 | [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (accepted) |
 | [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (accepted) |
+| [0058](0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md) | A plugin is a folder in the Claude and Codex format; the core is not a plugin (proposed) |

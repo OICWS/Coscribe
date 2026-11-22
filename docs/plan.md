@@ -7,7 +7,7 @@ index of the older history); why things are the way they are lives in
 PR that changes the picture, and take a line out when its work is done; keep it under about 150
 lines.
 
-Last reviewed: 2026-11-21.
+Last reviewed: 2026-11-22.
 
 ## Next, in order
 
@@ -64,6 +64,11 @@ Last reviewed: 2026-11-21.
    A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
    `docs/log/2026-11-19-allowed-folders-per-workspace.md`, the dialog's picker in
    `docs/log/2026-11-19-workspace-folder-picker.md`. `settings.json`'s env reaches scripts and commands in `docs/log/2026-11-21-workspace-settings-env.md`.
+5. **Plugins in the Claude and Codex format** (#1036, decision 0058, proposed). A plugin is a
+   folder (`plugin.json`, `skills/`, `.mcp.json`); a lone `SKILL.md` is a one-skill plugin.
+   Steps, one PR each: read the format and uploads; Settings › Plugins; sources from a
+   repository's `marketplace.json`; built-in plugins installed by default, PPTX Pages first;
+   `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record.
 
 ## Open, smaller
 
