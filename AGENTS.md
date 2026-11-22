@@ -19,7 +19,7 @@ cloud sessions run; macOS is not developed, so don't build for it or list it as 
 | `office-agent/src/coscribe/conversation/` | One conversation: `session.py` (turns, approvals, history), shared by the server and the CLI |
 | `office-agent/src/coscribe/code_runtime/` | The code module: Codex, driven as a second agent runtime |
 | `office-agent/src/coscribe/workflows/` | Scheduled workflows |
-| `office-agent/src/coscribe/runtime/` | Shared pieces: secrets, types, hooks, provider config |
+| `office-agent/src/coscribe/runtime/` | Shared pieces: secrets, types, hooks, provider config, the bundled model catalog (`runtime/models/`) |
 | `office-agent/frontend/` | React + TypeScript UI, built into `web/static/` |
 | `office-agent-desktop/` | Electron shell: starts the server as a sidecar, the built-in browser panel |
 | `office-agent/tests/` | pytest; `frontend/tests/e2e/` holds Playwright specs run against a live backend |
