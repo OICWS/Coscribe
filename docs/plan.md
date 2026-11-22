@@ -67,6 +67,10 @@ Last reviewed: 2026-11-21.
 
 ## Open, smaller
 
+- **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
+  workflow pins 3.11, so a change in how newer Pythons behave on Windows (3.13's owner-only ACL
+  from `tempfile.mkdtemp` broke every contained script) is found only on a person's machine. A
+  Windows job on the newest Python, at least for `tests/test_isolation.py`, would catch it.
 - **A run's code is in a folder every contained run can write** (decision 0056, review on #1009):
   `script.py`, the Python wrapper and its guard config sit under `script-scratch`, which every
   run holds with `RX,W,D`, so one conversation's script can read or swap another run's code just

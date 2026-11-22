@@ -260,6 +260,18 @@ def test_the_status_runs_the_check_only_when_asked(failed_machine: Path) -> None
     }
 
 
+def test_a_run_folder_is_new_each_time_and_a_taken_name_is_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    names = iter(["aa", "aa", "bb"])
+    monkeypatch.setattr(isolation.secrets, "token_hex", lambda n: next(names))
+    first = isolation.new_scratch_dir(tmp_path, "run_")
+    second = isolation.new_scratch_dir(tmp_path, "run_")
+    assert first.parent == isolation.scratch_root(tmp_path)
+    assert (first.name, second.name) == ("run_aa", "run_bb")
+    assert first.is_dir() and second.is_dir()
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="the fallback off Windows")
 def test_off_windows_isolation_is_unavailable(tmp_path: Path) -> None:
     assert not isolation.available()
@@ -461,6 +473,18 @@ def test_revoking_takes_the_ace_off(folders: tuple[Path, ...]) -> None:
     grants.revoke(work)
     acl = subprocess.run(["icacls", str(work)], capture_output=True, text=True, check=False)
     assert sid not in acl.stdout
+
+
+@windows
+def test_a_run_folder_carries_the_scratch_grant(folders: tuple[Path, ...]) -> None:
+    # tempfile.mkdtemp on Python 3.13+ gives its folder an owner-only ACL that drops this ACE.
+    state = folders[0]
+    scratch = isolation.scratch_root(state)
+    name, ok = FolderGrants(state).ensure(scratch, "scratch")
+    assert ok
+    run_dir = isolation.new_scratch_dir(state, "coscribe_script_")
+    acl = subprocess.run(["icacls", str(run_dir)], capture_output=True, text=True, check=False)
+    assert isolation._appcontainer.capability_sid(name) in acl.stdout
 
 
 # ---- The tools ---------------------------------------------------------------------------

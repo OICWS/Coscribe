@@ -34,7 +34,7 @@ from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
 from .capabilities import require_capability
 from .env_allowlist import child_env
-from .isolation import denied_note, for_scripts, new_scratch_dir, quiet_stderr, scratch_root
+from .isolation import denied_note, for_scripts, new_scratch_dir, quiet_stderr
 from .running import Detachable, run_to_end, timed_out_result
 from .script_env import ensure_script_env, venv_python
 from .script_guard import (
@@ -76,7 +76,7 @@ def _run_python_script(
         thread_id=detachable.thread_id if detachable else None,
     )
 
-    scratch_dir = new_scratch_dir(scratch_root(state_dir), "coscribe_script_")
+    scratch_dir = new_scratch_dir(state_dir, "coscribe_script_")
     script_path = scratch_dir / "script.py"
     script_path.write_text(script, encoding="utf-8")
     # Windows has no UTF-8-by-default here: neither Path.write_text nor a

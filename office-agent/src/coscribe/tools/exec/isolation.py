@@ -381,10 +381,11 @@ def scratch_root(state_dir: Path) -> Path:
     return root
 
 
-def new_scratch_dir(root: Path, prefix: str) -> Path:
-    """A new folder under `root` for one run. Not `tempfile.mkdtemp`: from Python 3.13 on Windows
-    its mode 0o700 gives the folder an owner-only ACL that drops the inherited container grant,
-    so a contained run cannot open its own script."""
+def new_scratch_dir(state_dir: Path, prefix: str) -> Path:
+    """A new folder for one run under `scratch_root`. Not `tempfile.mkdtemp`: from Python 3.13 on
+    Windows its mode 0o700 gives the folder an owner-only ACL that drops the inherited container
+    grant, so a contained run cannot open its own script."""
+    root = scratch_root(state_dir)
     while True:
         folder = root / f"{prefix}{secrets.token_hex(6)}"
         try:

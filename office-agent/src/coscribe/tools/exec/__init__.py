@@ -41,7 +41,6 @@ from .isolation import (
 )
 from .isolation import available as isolation_available
 from .isolation import for_scripts as isolation_for_scripts
-from .isolation import scratch_root as script_scratch_root
 from .node_env import ensure_node_env
 from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
@@ -127,7 +126,6 @@ __all__ = [
     "request_detach",
     "resolve_python_command",
     "run_python_script",
-    "script_scratch_root",
     "new_scratch_dir",
     "self_test",
     "set_interpreter_override",
