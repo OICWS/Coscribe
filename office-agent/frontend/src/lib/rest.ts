@@ -233,8 +233,13 @@ export const setSkillEnabled = (name: string, enabled: boolean) =>
     { enabled },
   );
 
-export const removeSkill = (name: string) =>
-  sendForResult<{ removed: string }>(`/api/skills/${encodeURIComponent(name)}`, "DELETE", undefined);
+/** With `plugin`, `name` is a plugin's and its whole folder goes. */
+export const removeSkill = (name: string, plugin = false) =>
+  sendForResult<{ removed: string; skills: string[] }>(
+    `/api/skills/${encodeURIComponent(name)}${plugin ? "?plugin=true" : ""}`,
+    "DELETE",
+    undefined,
+  );
 
 export const getSkillPlugins = () => getJson<SkillPlugin[]>("/api/skills/plugins");
 
