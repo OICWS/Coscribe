@@ -19,10 +19,9 @@ test("approval-gated tool call: approve card appears, approving runs the tool an
   );
   await page.keyboard.press("Enter");
 
-  await expect(page.getByText("Approve: Wrote", { exact: false })).toBeVisible({ timeout: 30_000 });
-  // exact: true -- the collapsed summary toggle's own accessible name is
-  // "Approve: Wrote e2e-approval-test.txt", a substring match away from
-  // colliding with the real action button below it.
+  await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible({ timeout: 30_000 });
+  // The card's title is the action alone; its buttons say it waits for approval.
+  await expect(page.locator("[data-waiting]").getByText("Write e2e-approval-test.txt")).toBeVisible();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
 
   // Once approved and run, the card folds into the tool row it became.
@@ -49,7 +48,11 @@ test("a script's approval card says whether the script will run isolated", async
     await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible({ timeout: 30_000 });
     // The runner is Linux, where there is no container: the card must not promise one.
     await expect(page.getByText("Not isolated", { exact: true })).toBeVisible();
-    await expect(page.getByText("Isolation needs Windows")).toBeVisible();
+    // The why waits for the pointer, so the card stays short.
+    const why = page.getByRole("tooltip").filter({ hasText: "Isolation needs Windows" });
+    await expect(why).toHaveCSS("opacity", "0");
+    await page.getByText("Not isolated", { exact: true }).hover();
+    await expect(why).toHaveCSS("opacity", "1");
     await page.getByRole("button", { name: "Deny", exact: true }).click();
   } finally {
     await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "auto" } } });

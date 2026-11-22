@@ -7,6 +7,7 @@ import { ContextRing } from "./components/ContextRing";
 import { EnvironmentPicker } from "./components/EnvironmentPicker";
 import { ModePill } from "./components/ModePill";
 import { isElectron, onBrowserAgent, onShowShortcuts } from "./lib/electron";
+import { useAppearance } from "./lib/appearance";
 import {
   type ComposerAction,
   type MenuCommand,
@@ -400,6 +401,7 @@ function App() {
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
   const plans = usePlanState(state.items, (m) => socketRef.current?.send(m), dispatch, () => setPanelOpen("plan", true));
   const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || plans.hasPlan));
+  const { conversationView } = useAppearance();
   const onHome =
     (useFreshThread(threadId, state.historyReceived) || state.historyReceived) &&
     state.items.length === 0 &&
@@ -807,7 +809,7 @@ function App() {
       modelPicker={<ModelPicker currentModel={state.model} onSwitch={onSwitchModel} />}
       effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} levels={state.effortLevels} onChange={onSetEffort} />}
       usageRing={
-        onHome ? null : (
+        onHome || conversationView === "simple" ? null : (
           <ContextRing
             threadId={threadId}
             totalTokens={state.totalTokens}

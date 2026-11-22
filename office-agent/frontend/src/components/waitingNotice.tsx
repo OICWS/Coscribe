@@ -45,7 +45,7 @@ export function useWaitingNotice(items: LogItem[]): Notice | null {
     icon: approval ? <HandIcon className="h-4 w-4" /> : <MessageCircleIcon className="h-4 w-4" />,
     title: approval ? "Waiting for your approval" : "A plan waits for your answer",
     plainTitle: true,
-    detail: approval ? summarizeItem(item).replace(/^Approve:\s*/, "") : undefined,
+    detail: approval ? summarizeItem(item) : undefined,
     onOpen: show,
     openTitle: "Show it in the conversation",
     actions: [{ label: "Show", onClick: show }],

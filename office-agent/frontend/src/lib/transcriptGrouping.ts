@@ -584,6 +584,25 @@ export function presentTense(verb: string): string {
   return present ? present + verb.slice(first.length) : verb;
 }
 
+const BASE_FORM: Record<string, string> = {
+  Wrote: "Write", Read: "Read", Edited: "Edit", Listed: "List", Searched: "Search", Downloaded: "Download",
+  Added: "Add", Updated: "Update", Deleted: "Delete", Removed: "Remove", Installed: "Install",
+  Uninstalled: "Uninstall", Created: "Create", Ran: "Run", Started: "Start", Checked: "Check", Killed: "Stop",
+  Formatted: "Format", Recalculated: "Recalculate", Saved: "Save", Asked: "Ask", Delegated: "Delegate",
+  Loaded: "Load", Set: "Set", Tested: "Test", Opened: "Open", Fetched: "Fetch", Drafted: "Draft",
+  Revised: "Revise", Proposed: "Propose", Used: "Use", Handed: "Hand", Moved: "Move", Copied: "Copy",
+  Renamed: "Rename", Sent: "Send", Applied: "Apply", Converted: "Convert", Replaced: "Replace",
+};
+
+/** "Ran a command" -> "Run a command", for a call still waiting to be approved; a verb with no
+ * known base form stays as is. */
+function baseForm(verb: string): string {
+  const space = verb.indexOf(" ");
+  const first = space === -1 ? verb : verb.slice(0, space);
+  const base = BASE_FORM[first];
+  return base ? base + verb.slice(first.length) : verb;
+}
+
 /** A call counts as running while a live turn hasn't returned its result;
  * a denied or still-pending approval never ran. */
 export function isRunning(item: ToolOrApprovalItem, live: boolean): boolean {
@@ -597,7 +616,8 @@ function partsFor(item: ToolOrApprovalItem, running = false): SummaryParts {
   const base = running
     ? { ...summarized, verb: presentTense(summarized.verb), running: true, shimmer: true }
     : summarized;
-  let parts: SummaryParts = base;
+  let parts: SummaryParts =
+    item.kind === "approval" && item.status === "pending" ? { ...base, verb: baseForm(base.verb) } : base;
   if (isFailure(item)) {
     // "Failed to run" specifically for the command tools, matching the
     // reference UI's own wording exactly -- every other tool keeps its
@@ -610,9 +630,6 @@ function partsFor(item: ToolOrApprovalItem, running = false): SummaryParts {
       verb: COMMAND_TOOL_NAMES.has(item.toolName) ? "Failed to run" : parts.verb,
       failed: true,
     };
-  }
-  if (item.kind === "approval" && item.status === "pending") {
-    return { ...parts, verb: `Approve: ${parts.verb}` };
   }
   return parts;
 }
@@ -671,6 +688,24 @@ const CATEGORY_WORDS: Record<Exclude<Category, "other">, [past: string, present:
   connector: ["Used", "Using", "tool"],
 };
 const FILE_CATEGORIES = new Set<Category>(["write", "edit", "read"]);
+
+const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
+  command: "Running commands",
+  write: "Writing",
+  edit: "Editing",
+  read: "Reading",
+  search: "Searching",
+  fetch: "Browsing",
+};
+
+/** What a call is doing in one or two words, with no object: the simple view's status line. */
+export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): string {
+  // A deferred tool arrives as use_tool; its own name says what it does.
+  const inner = item.toolName === "use_tool" ? item.arguments.name : undefined;
+  const toolName = typeof inner === "string" ? inner : item.toolName;
+  if (toolName.startsWith("browser_")) return "Browsing";
+  return ACTIVITY_WORDS[categoryOf(toolName, connectorTools)] ?? "Working";
+}
 
 /** The files a call touched: its path, or the code module's list of them. */
 function filePathsArg(args: ArgRecord): string[] {
