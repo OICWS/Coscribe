@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { SideChatPanel } from "../SideChatPanel";
 import { isViewable } from "../../lib/viewers";
 import { PANEL_TITLES, type PanelId } from "../../lib/dockLayout";
 import {
@@ -154,6 +155,7 @@ function PanelContent({ state }: { state: PanelWindowState }) {
     const onView = (path: string) => isViewable(path) && (sendPanelWindowAction({ type: "view", path }), true);
     return <FilesPanel threadId={state.threadId} refreshKey={state.refreshKey} onView={onView} />;
   }
+  if (state.panel === "side") return <SideChatPanel key={state.threadId} threadId={state.threadId} />;
   if (state.path) {
     return (
       <ViewerPanel
