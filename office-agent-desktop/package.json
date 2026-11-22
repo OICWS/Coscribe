@@ -23,6 +23,9 @@
   "dependencies": {
     "dotenv": "^16.4.7"
   },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.9"
+  },
   "build": {
     "appId": "com.coscribe.desktop",
     "productName": "Coscribe",

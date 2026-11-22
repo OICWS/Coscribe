@@ -161,8 +161,9 @@ Last reviewed: 2026-11-21.
   `uv` pull request also moves indirect dependencies in `uv.lock`; `lockfile-only` was reported to
   move only direct ones (dependabot-core#14073). If it does not, a scheduled `uv lock --upgrade`
   job takes over that part.
-- **minimatch alert #77** (`docs/log/2026-11-16-soupsieve-python-floor.md`): build-time only,
-  through electron-builder, which still requires minimatch 10; move when it takes 11.
+- **minimatch override** (`docs/log/2026-11-22-minimatch-override.md`): the desktop
+  `package.json` forces minimatch 11 under electron-builder; drop the override once
+  electron-builder requires 11.0.1 or later itself.
 - **Scheduled runs:** a run whose turn is cancelled from outside (seen only through a test's time
   limit) is recorded as `completed`, because the turn swallows the cancellation
   (`docs/log/2026-11-15-windows-night-1110.md`). Whether a server shutdown does the same is not
