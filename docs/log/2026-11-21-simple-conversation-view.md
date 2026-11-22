@@ -18,7 +18,8 @@ between steps, or token counts. They want to know that it is working, and then t
   composer's time and tokens and the usage ring are hidden.
 - A script's approval card, in both views: the description shows once, in the card's title,
   which now wraps instead of cutting it off; the "Not isolated" note's explanation shows on
-  hover over the badge instead of under it.
+  hover over the badge instead of under it; the title drops its "Approve:" prefix, since the
+  Approve and Deny buttons already say so.
 - Only the drawing changes: the transcript, the server and the prompt are untouched, so switching
   back to Detailed shows every step of every turn.
 

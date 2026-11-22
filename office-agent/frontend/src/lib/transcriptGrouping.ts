@@ -611,9 +611,6 @@ function partsFor(item: ToolOrApprovalItem, running = false): SummaryParts {
       failed: true,
     };
   }
-  if (item.kind === "approval" && item.status === "pending") {
-    return { ...parts, verb: `Approve: ${parts.verb}` };
-  }
   return parts;
 }
 

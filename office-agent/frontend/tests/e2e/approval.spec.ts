@@ -19,10 +19,9 @@ test("approval-gated tool call: approve card appears, approving runs the tool an
   );
   await page.keyboard.press("Enter");
 
-  await expect(page.getByText("Approve: Wrote", { exact: false })).toBeVisible({ timeout: 30_000 });
-  // exact: true -- the collapsed summary toggle's own accessible name is
-  // "Approve: Wrote e2e-approval-test.txt", a substring match away from
-  // colliding with the real action button below it.
+  await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible({ timeout: 30_000 });
+  // The card's title is the action alone; its buttons say it waits for approval.
+  await expect(page.locator("[data-waiting]").getByText("Wrote e2e-approval-test.txt")).toBeVisible();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
 
   // Once approved and run, the card folds into the tool row it became.
