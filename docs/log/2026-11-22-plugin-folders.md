@@ -18,10 +18,13 @@ so their plugins, a company's own and GitHub's open ones install as they are.
 - Tried on real plugins: Anthropic's marketing and finance (`.claude-plugin`), OpenAI's figma and
   build-web-apps (`.codex-plugin`, `"skills": "./skills/"`): 34 skills, each under its plugin;
   figma uploaded as a `.plugin` archive loads its 12 skills.
+- With DeepSeek (`deepseek-flash`, the CLI): a `.claude-plugin` plugin whose skill names its
+  script by `${CLAUDE_PLUGIN_ROOT}`; the model loaded the skill, ran the script by the filled-in
+  absolute path with run_python_script and reported its numbers (11 words, 9 distinct). On Linux,
+  so the script ran as the user, not in the AppContainer.
 
 ## Not verified
 - On Windows; in the app's Settings by hand (the list shows plugin skills as skills until step 3).
-- Running a plugin's own script through `${CLAUDE_PLUGIN_ROOT}` with a real model.
 
 ## Follow-ups
 - Steps 3 to 7 of #1036. A plugin's `.mcp.json`, commands, agents and hooks are kept but unused.
