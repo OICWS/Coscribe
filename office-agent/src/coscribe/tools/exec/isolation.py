@@ -26,6 +26,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -378,6 +379,19 @@ def scratch_root(state_dir: Path) -> Path:
     root = state_dir / "script-scratch"
     root.mkdir(parents=True, exist_ok=True)
     return root
+
+
+def new_scratch_dir(root: Path, prefix: str) -> Path:
+    """A new folder under `root` for one run. Not `tempfile.mkdtemp`: from Python 3.13 on Windows
+    its mode 0o700 gives the folder an owner-only ACL that drops the inherited container grant,
+    so a contained run cannot open its own script."""
+    while True:
+        folder = root / f"{prefix}{secrets.token_hex(6)}"
+        try:
+            folder.mkdir()
+        except FileExistsError:
+            continue
+        return folder
 
 
 class IsolationRefused(ValueError):

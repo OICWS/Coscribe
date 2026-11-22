@@ -23,7 +23,6 @@ this was verified before being relied on here.
 from __future__ import annotations
 
 import shutil
-import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -33,7 +32,7 @@ from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
 from .capabilities import require_capability
 from .env_allowlist import child_env
-from .isolation import denied_note, for_scripts, scratch_root
+from .isolation import denied_note, for_scripts, new_scratch_dir, scratch_root
 from .node_env import ensure_node_env
 from .running import Detachable, run_to_end, timed_out_result
 from .script_guard import (
@@ -75,7 +74,7 @@ def _run_node_script(
         runtime=(node_env_dir, Path(node).resolve().parent),
         thread_id=detachable.thread_id if detachable else None,
     )
-    scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_node_", dir=scratch_root(state_dir)))
+    scratch_dir = new_scratch_dir(scratch_root(state_dir), "coscribe_node_")
     script_path = scratch_dir / "script.js"
     script_path.write_text(script, encoding="utf-8")
     # Same Windows charmap bug as tools/exec/scripts.py's _run_python_script --

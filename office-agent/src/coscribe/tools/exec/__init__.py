@@ -35,6 +35,7 @@ from .isolation import (
     SelfTest,
     UnisolatedConversations,
     isolation_status,
+    new_scratch_dir,
     self_test,
     sweep_folder_grants,
 )
@@ -127,6 +128,7 @@ __all__ = [
     "resolve_python_command",
     "run_python_script",
     "script_scratch_root",
+    "new_scratch_dir",
     "self_test",
     "set_interpreter_override",
     "stop_commands",

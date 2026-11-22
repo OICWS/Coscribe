@@ -20,7 +20,7 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 `blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
 `without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`, `stop_commands`, and for the container `Isolation`,
 `FolderGrants`, `sweep_folder_grants`, `self_test`, `SelfTest`, `isolation_available`, `isolation_for_scripts`,
-`script_scratch_root`, and for the command sandbox `start_command`, `sandboxed_command`, `sandbox_status`,
+`script_scratch_root`, `new_scratch_dir`, and for the command sandbox `start_command`, `sandboxed_command`, `sandbox_status`,
 `bundled_sandbox`, `sandbox_codex`, `sandbox_mode`, `sandbox_home`, `record_sandbox_setup`, `sandbox_setup_argv`,
 `sandbox_uninstall_argv`, `run_as_administrator`, `warm_up_sandbox`, `expect_sandbox`, `code_command_profile`, `code_commands_allowed`, `write_codex_config`, `private_folders`,
 `release_private_folders`. Import them from

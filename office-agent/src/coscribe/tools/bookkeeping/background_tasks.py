@@ -44,7 +44,6 @@ import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import threading
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -62,6 +61,7 @@ from ..exec import (
     ensure_node_env,
     ensure_script_env,
     isolation_for_scripts,
+    new_scratch_dir,
     node_guard_args,
     refusal_note,
     require_capability,
@@ -429,7 +429,7 @@ def _prepare_script(
     require_capability(state, "scripts")
     if language == "python":
         interpreter = str(venv_python(ensure_script_env(state)))
-        scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_script_", dir=scratch_root))
+        scratch_dir = new_scratch_dir(scratch_root, "coscribe_bg_script_")
         script_path = scratch_dir / "script.py"
         # PYTHONIOENCODING/PYTHONUTF8 forced for the same reason
         # tools/exec/scripts.py's _run_python_script does -- without them, a
@@ -451,7 +451,7 @@ def _prepare_script(
     else:
         node_env_dir = ensure_node_env(state)
         interpreter = shutil.which("node") or "node"
-        scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_node_", dir=scratch_root))
+        scratch_dir = new_scratch_dir(scratch_root, "coscribe_bg_node_")
         script_path = scratch_dir / "script.js"
         env = {**base_env, "NODE_PATH": str(node_env_dir / "node_modules")}
         guard_args = node_guard_args(interpreter, [*write_roots, str(scratch_dir)]) or []
