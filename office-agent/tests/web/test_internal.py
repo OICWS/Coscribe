@@ -141,6 +141,7 @@ def test_appearance_settings_save_to_env_and_come_back_without_a_restart(
         "COSCRIBE_THEME": "dark",
         "COSCRIBE_INTERFACE_FONT": "dyslexic",
         "COSCRIBE_MOTION": "reduced",
+        "COSCRIBE_CONVERSATION_VIEW": "simple",
     }
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         body = client.post("/api/config", json={"updates": updates}).json()

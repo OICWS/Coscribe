@@ -17,6 +17,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "general", label: "Theme", keywords: "dark light mode appearance" },
   { category: "general", label: "Interface font", keywords: "typeface appearance" },
   { category: "general", label: "Motion", keywords: "animation reduce appearance" },
+  { category: "general", label: "Conversation view", keywords: "simple detailed steps tool calls tokens appearance" },
   { category: "general", label: "What should Coscribe call you?", keywords: "name profile" },
   { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_DEFAULT_MODEL") },
   { category: "general", label: "Default mode", keywords: "permission manual auto plan accept edits" },

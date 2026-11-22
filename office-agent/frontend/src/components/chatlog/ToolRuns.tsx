@@ -237,7 +237,8 @@ function ToolCallRow({
         className="flex w-full items-center gap-1.5 text-left text-[var(--fg)]"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="truncate">
+        {/* The label carries a script's description, the only place a waiting card says what it is for. */}
+        <span className={isPendingApproval ? "min-w-0 [overflow-wrap:anywhere]" : "truncate"}>
           <SummaryLabel parts={summarizeItemParts(item)} />
         </span>
         <span className="text-[var(--muted)]">
@@ -304,9 +305,6 @@ function ApprovalDetail({
       )}
       {isScript ? (
         <div className="flex flex-col gap-1.5">
-          {typeof scriptArgs.description === "string" && scriptArgs.description && (
-            <div className="text-xs text-[var(--muted)]">{scriptArgs.description}</div>
-          )}
           <CommandBox command={typeof scriptText === "string" ? scriptText : JSON.stringify(scriptText)} />
           <div className="text-xs text-[var(--muted)]">
             {item.toolName === "run_code_command"

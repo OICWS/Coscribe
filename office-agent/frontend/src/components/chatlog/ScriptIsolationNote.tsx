@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getScriptIsolation } from "../../lib/rest";
 import type { ScriptIsolation } from "../../types/settings";
+import { HoverTip } from "./HoverTip";
 
 const NOT_ISOLATED: Record<string, string> = {
   failed:
@@ -25,12 +26,11 @@ export function ScriptIsolationNote() {
   const warning = status ? NOT_ISOLATED[status.state] : undefined;
   if (warning) {
     return (
-      <span className="flex flex-col items-start gap-1">
-        <span className="rounded-full border border-[var(--warning)] px-2 py-0.5 font-medium text-[var(--fg)]">
+      <HoverTip label={warning} align="start">
+        <span className="cursor-default rounded-full border border-[var(--warning)] px-2 py-0.5 font-medium text-[var(--fg)]">
           Not isolated
         </span>
-        {warning}
-      </span>
+      </HoverTip>
     );
   }
   return (

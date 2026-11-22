@@ -430,3 +430,13 @@ describe("summarizeItem for the file tools", () => {
     expect(summarizeItem(tool("list_files"))).toBe("Listed files");
   });
 });
+
+describe("an approval's summary", () => {
+  const script = { script: "print(1)", description: "Print one" };
+  it("names the action to come while it waits, and what was done once decided", () => {
+    const waiting: LogItem = { id: "p", kind: "approval", toolName: "run_python_script", arguments: script, status: "pending" };
+    const approved: LogItem = { ...waiting, status: "approved", result: "1" };
+    expect(summarizeItem(waiting as Extract<LogItem, { kind: "approval" }>)).toBe("Run a command: Print one");
+    expect(summarizeItem(approved as Extract<LogItem, { kind: "approval" }>)).toBe("Ran a command: Print one");
+  });
+});

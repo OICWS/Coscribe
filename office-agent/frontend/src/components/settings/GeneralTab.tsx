@@ -59,6 +59,11 @@ const MOTION = [
   { value: "reduced", label: "Reduced" },
 ] as const;
 
+const CONVERSATION_VIEWS = [
+  { value: "detailed", label: "Detailed" },
+  { value: "simple", label: "Simple" },
+] as const;
+
 /** Applied the moment it's picked, not with Save. */
 function AppearanceSection() {
   const appearance = useAppearance();
@@ -75,6 +80,11 @@ function AppearanceSection() {
           label="Motion"
           description="Reduce animation in streaming responses and other parts of the interface."
           control={<SelectMenu ariaLabel="Motion" value={appearance.motion} options={MOTION} onChange={(v) => void setAppearance("motion", v)} />}
+        />
+        <SettingRow
+          label="Conversation view"
+          description="Simple shows each reply without the steps behind it, and one line saying what Coscribe is doing while it works. Detailed shows every step."
+          control={<SegmentedControl value={appearance.conversationView} options={CONVERSATION_VIEWS} onChange={(v) => void setAppearance("conversationView", v)} />}
         />
       </SettingRows>
     </SettingsSection>
