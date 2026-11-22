@@ -138,13 +138,21 @@ def with_prompt_cache_key(model: Any, key: str) -> Any:
     )
 
 
-def for_conversation(model: Any, thread_id: str, effort: str) -> tuple[Any, str | None]:
-    """`model` as one conversation runs it: at its effort level (and the level it runs as, None
-    when the model takes none), with that conversation's prompt-cache key."""
-    from .effort import with_effort
+def for_conversation(
+    model: Any,
+    thread_id: str,
+    effort: str,
+    model_string: str = "",
+    custom_providers: dict[str, Any] | None = None,
+) -> tuple[Any, str | None, tuple[str, ...] | None]:
+    """`model` as one conversation runs it: at its effort level, with that conversation's
+    prompt-cache key; also the level it runs as and the levels it offers (None both when it
+    takes none). `model_string` and `custom_providers` find it in the bundled catalog."""
+    from .effort import catalog_levels, with_effort
 
-    model, runs_as = with_effort(model, effort)
-    return with_prompt_cache_key(model, thread_id), runs_as
+    catalog = catalog_levels(model_string, custom_providers or {}) if model_string else None
+    model, runs_as, levels = with_effort(model, effort, catalog)
+    return with_prompt_cache_key(model, thread_id), runs_as, levels
 
 
 def keeps_tool_list_fixed(model: str, custom_providers: dict[str, dict[str, str]]) -> bool:

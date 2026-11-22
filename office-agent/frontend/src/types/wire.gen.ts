@@ -15,6 +15,12 @@ export interface StateEvent {
    * None when the model takes no effort setting.
    */
   effort_runs_as: string | null;
+  /**
+   * The model's own levels, lowest first, which the effort picker offers (`xhigh`
+   * and `max` keep their names); None when the model takes no effort setting or its
+   * levels are not known.
+   */
+  effort_levels: string[] | null;
   context_window: number;
   /**
    * Skills offered in this thread's instructions: the global on/off set, re-read at
