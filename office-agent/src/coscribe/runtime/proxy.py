@@ -18,12 +18,26 @@ a proxy of its own.
 from __future__ import annotations
 
 import re
+import urllib.request
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote, urlsplit
 from urllib.request import getproxies, proxy_bypass
 
 import httpx
+
+
+def _system_proxies() -> dict[str, str]:
+    """Windows' own proxy setting (Internet Options); empty elsewhere."""
+    read = getattr(urllib.request, "getproxies_registry", None)
+    return dict(read()) if read else {}
+
+
+def _system_bypass(host: str) -> bool:
+    """Whether Windows' own exceptions list leaves `host` out of the proxy."""
+    check = getattr(urllib.request, "proxy_bypass_registry", None)
+    return bool(check(host)) if check else False
+
 
 PROXY_MODES = ("system", "manual", "none")
 DEFAULT_BYPASS = "localhost, 127.0.0.1"
@@ -71,7 +85,15 @@ def configured_proxy(url: str | None = None) -> str | None:
     if host and proxy_bypass(host):
         return None
     proxies = getproxies()
-    return proxies.get("https") or proxies.get("http") or None
+    found = proxies.get("https") or proxies.get("http")
+    if found or proxies.get("no", "").strip() == "*":
+        return found or None
+    # urllib reads Windows' own setting only when no *_PROXY variable is set at all, so a
+    # NO_PROXY on its own would hide the system proxy.
+    if host and _system_bypass(host):
+        return None
+    system = _system_proxies()
+    return system.get("https") or system.get("http") or None
 
 
 def without_credentials(url: str) -> str:
