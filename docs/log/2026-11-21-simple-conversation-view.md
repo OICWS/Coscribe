@@ -16,6 +16,9 @@ between steps, or token counts. They want to know that it is working, and then t
 - Every card stays: approvals, questions, plans, the task list, folder access, a refused write's
   folder card, package installs, connector offers, file cards, the stopped note, reactions. The
   composer's time and tokens and the usage ring are hidden.
+- A script's approval card, in both views: the description shows once, in the card's title,
+  which now wraps instead of cutting it off; the "Not isolated" note's explanation shows on
+  hover over the badge instead of under it.
 - Only the drawing changes: the transcript, the server and the prompt are untouched, so switching
   back to Detailed shows every step of every turn.
 
