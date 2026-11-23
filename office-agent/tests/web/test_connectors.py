@@ -689,7 +689,7 @@ def test_mcp_json_file_gets_owner_only_permissions(
     assert stat.S_IMODE((tmp_path / "mcp.json").stat().st_mode) == 0o600
 
 
-def test_skill_plugins_can_be_previewed_then_added_with_connectors_matched_to_ours(
+def test_skill_plugins_can_be_previewed_then_added_and_list_no_connectors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from coscribe.tools import skill_catalog
@@ -724,7 +724,7 @@ def test_skill_plugins_can_be_previewed_then_added_with_connectors_matched_to_ou
         after = client.get("/api/skills/plugins").json()
 
     assert [(p["id"], p["added"]) for p in listed] == [("pl", 0)]
-    assert [c["connector"] for c in detail["connectors"]] == ["notion", None]
+    assert "connectors" not in detail
     assert detail["files"] == ["skills/one/SKILL.md", "skills/two/SKILL.md"]
     assert preview.json()["content"].endswith("one")
     assert outside.status_code == 404 and unknown.status_code == 404
