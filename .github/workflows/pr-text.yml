@@ -9,6 +9,7 @@ name: PR text
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   signature-lines:
@@ -57,3 +58,25 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python office-agent/scripts/doc_impact.py --base "$BASE_SHA" --head "$HEAD_SHA"
+
+  # A change to an invariant path links the independent GitHub review posted on this pull
+  # request (office-agent/CLAUDE.md, "Code review"; scripts/pr_gates.py).
+  independent-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: The review is linked and on this pull request
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python office-agent/scripts/pr_gates.py review --pr ${{ github.event.pull_request.number }} \
+            --base "$(git merge-base "$BASE_SHA" "$HEAD_SHA")" --head "$HEAD_SHA"

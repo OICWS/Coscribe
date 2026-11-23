@@ -186,6 +186,14 @@ pass: the run lists it at the end and in the job summary. Open an issue for it a
 may fail meanwhile; after the date it fails with the issue's number (`tests/flaky_policy.py`).
 Do not assert on elapsed wall-clock time.
 
+Three checks read what the tests prove (`scripts/pr_gates.py`): a pull request that changes
+code under `src/` changes a test, and one of its changed test files fails on the base's code
+(`PR tests`); the lines it changed are at least 80% covered once 5 or more are measurable (the
+`test` job); a change to an invariant path links the GitHub review posted on it (`PR text`). A
+line in the description says why a rule does not apply: `Fails before: <why>` (a pure move, a
+Windows-only branch) or `Changed-line coverage: <why>` (the `test` job reads it when it starts,
+so run the job again after editing); the review has no such line.
+
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before
 marking a PR ready, wait for a green CI run (or run the full
