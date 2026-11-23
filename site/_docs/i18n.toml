@@ -414,7 +414,70 @@ description = "Конфиденциальность и безопасность,
 [fr]
 name = "Français"
 html_lang = "fr"
-published = false
+published = true
+docs = "Documentation"
+docs_title = "Documentation de coscribe"
+home = "Accueil coscribe"
+skip = "Aller au contenu"
+search = "Rechercher dans la documentation"
+search_empty = "Aucun résultat pour « {q} ». Essayez d’autres mots, comme le nom affiché dans l’application."
+theme = "Activer ou désactiver le mode sombre"
+language = "Langue"
+coming_soon = "Bientôt disponible"
+toggle_sidebar = "Afficher ou masquer la table des matières"
+crumbs = "Vous êtes ici"
+sidebar = "Table des matières de la documentation"
+toc = "Dans cet article"
+prev = "Précédent"
+next = "Suivant"
+pager = "Pages"
+copy_md = "Copier le Markdown"
+copy_md_hint = "À coller dans une IA ou à envoyer à un collègue"
+copy_failed = "Copie impossible ; utilisez « Afficher en Markdown »"
+md_more = "Autres options Markdown"
+view_md = "Afficher en Markdown"
+view_md_hint = "S’ouvre dans un nouvel onglet"
+anchor = "Lien vers cette section"
+edit = "Modifier cette page sur GitHub"
+report = "Une erreur ? Signalez-la"
+untranslated = "Cette page n’est pas encore traduite en {lang}, elle s’affiche donc en anglais."
+llms_summary = "coscribe est un assistant de bureautique open source qui fonctionne sur votre PC Windows."
+note = "Remarque"
+tip = "Astuce"
+important = "Important"
+warning = "Attention"
+
+[fr.groups.get-started]
+title = "Prise en main"
+description = "Téléchargez coscribe, connectez un modèle et lancez votre première conversation."
+
+[fr.groups.use]
+title = "Utiliser coscribe"
+description = "Travailler dans une conversation : approbations, plans, fichiers, navigateur et modèles."
+
+[fr.groups.workspaces]
+title = "Espaces de travail"
+description = "Choisissez les dossiers où coscribe travaille et ce qu’un dossier peut lui indiquer."
+
+[fr.groups.office]
+title = "Fichiers Office"
+description = "Word, Excel, PowerPoint, PDF, et les docs, designs et tableaux de bord qui s’ouvrent à côté de la conversation."
+
+[fr.groups.workflows]
+title = "Tâches planifiées et workflows"
+description = "Laissez coscribe faire le travail seul, à une heure donnée ou quand quelque chose se produit."
+
+[fr.groups.customize]
+title = "Personnaliser"
+description = "Instructions, compétences, connecteurs et systèmes de design."
+
+[fr.groups.reference]
+title = "Référence"
+description = "Tous les paramètres, commandes et raccourcis clavier."
+
+[fr.groups.help]
+title = "Aide"
+description = "Confidentialité et sécurité, et que faire en cas de problème."
 
 [ko]
 name = "한국어"
