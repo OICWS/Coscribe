@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import (
@@ -14,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from ...tools import (
     SKILL_SOURCE_MARKER,
+    PluginSources,
     SkillCatalogError,
     SkillInfo,
     SkillUploadError,
@@ -21,7 +23,6 @@ from ...tools import (
     all_skills,
     disabled_skill_names,
     get_plugin,
-    install_catalog_skill,
     install_plugin,
     load_builtin_skills,
     load_catalog,
@@ -32,6 +33,7 @@ from ...tools import (
     skill_source,
 )
 from ..schemas import (
+    PluginSourceAdd,
     SkillEnabledUpdate,
 )
 from ..state import AppState
@@ -51,9 +53,81 @@ def _skill_row(skill: SkillInfo, source: str, enabled: bool) -> dict[str, Any]:
     }
 
 
+def _source_plugin(source: dict[str, Any], plugin: dict[str, Any]) -> dict[str, Any]:
+    """A plugin of a source the person added, shaped as Discover's catalog shapes its own."""
+    owner, name = source["repo"].split("/", 1)
+    return {
+        **{key: plugin[key] for key in ("title", "author", "version", "description", "skills")},
+        "id": f"gh:{owner}:{name}:{plugin['name']}",
+        "repo": source["repo"],
+        "license": "",
+        "updated": source["updated"][:10],
+        "files": plugin["files"],
+        "source": source["repo"],
+    }
+
+
+def _find_plugin(state_dir: Path, plugin_id: str) -> dict[str, Any]:
+    if not plugin_id.startswith("gh:"):
+        return get_plugin(plugin_id)
+    return _source_plugin(*PluginSources(state_dir).plugin(plugin_id))
+
+
+def _plugin_file(state_dir: Path, plugin: dict[str, Any], path: str) -> bytes:
+    if plugin.get("source"):
+        return PluginSources(state_dir).file(plugin["id"], path)
+    return plugin_file(plugin["id"], path)
+
+
+def _install_plugin(state_dir: Path, skills_dir: Path, plugin_id: str) -> list[str]:
+    if plugin_id.startswith("gh:"):
+        return PluginSources(state_dir).install(skills_dir, plugin_id)
+    return install_plugin(skills_dir, plugin_id)
+
+
+def _source_routes(router: APIRouter, state: AppState) -> None:
+    """A source the person adds to Discover: a GitHub repository with a marketplace.json."""
+
+    def sources() -> PluginSources:
+        return PluginSources(state.settings.state_dir)
+
+    async def list_sources() -> list[dict[str, Any]]:
+        return [_source_row(s) for s in sources().sources()]
+
+    async def add_source(payload: PluginSourceAdd) -> JSONResponse:
+        try:
+            source = await asyncio.to_thread(sources().add, payload.address)
+        except (SkillCatalogError, ValueError, KeyError) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(_source_row(source))
+
+    async def remove_source(repo: str) -> JSONResponse:
+        try:
+            sources().remove(repo)
+        except SkillCatalogError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=404)
+        return JSONResponse({"removed": repo})
+
+    router.add_api_route("/api/skills/sources", list_sources, methods=["GET"])
+    router.add_api_route("/api/skills/sources", add_source, methods=["POST"])
+    router.add_api_route("/api/skills/sources/{repo:path}", remove_source, methods=["DELETE"])
+
+
+def _source_row(source: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "repo": source["repo"],
+        "name": source["name"],
+        "commit": source["commit"],
+        "updated": source["updated"],
+        "plugins": len(source["plugins"]),
+        "elsewhere": source["elsewhere"],
+    }
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
+    _source_routes(router, state)
     _skills_by_name = state.skills_by_name
 
     @router.get("/api/skills")
@@ -82,30 +156,6 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse({"removed": name, "skills": removed})
 
-    @router.get("/api/skills/catalog")
-    async def get_skill_catalog() -> list[dict[str, Any]]:
-        installed = set(_skills_by_name())
-        return [
-            {
-                "name": entry["name"],
-                "description": entry["description"],
-                "license": entry["license"],
-                "category": entry.get("category", "Other"),
-                "size": sum(file["size"] for file in entry["files"]),
-                "added": entry["name"] in installed,
-            }
-            for entry in load_catalog()["skills"]
-        ]
-
-    @router.post("/api/skills/catalog/{name}")
-    async def add_catalog_skill(name: str) -> JSONResponse:
-        try:
-            await asyncio.to_thread(install_catalog_skill, settings.skills_dir, name)
-        except SkillCatalogError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
-        set_skill_enabled(settings.state_dir, name, True)
-        return JSONResponse({"added": name})
-
     _SKILL_FILE_PREVIEW_MAX_BYTES = 500_000
 
     def _plugin_summary(plugin: dict[str, Any]) -> dict[str, Any]:
@@ -121,16 +171,19 @@ def router(state: AppState) -> APIRouter:
             "updated": plugin["updated"],
             "skills": plugin["skills"],
             "added": sum(1 for n in plugin["skills"] if n in installed),
+            "source": plugin.get("source"),
         }
 
     @router.get("/api/skills/plugins")
     async def get_skill_plugins() -> list[dict[str, Any]]:
-        return [_plugin_summary(p) for p in load_catalog()["plugins"]]
+        sources = PluginSources(settings.state_dir).sources()
+        added = [_source_plugin(s, p) for s in sources for p in s["plugins"]]
+        return [_plugin_summary(p) for p in [*load_catalog()["plugins"], *added]]
 
     @router.get("/api/skills/plugins/{plugin_id}")
     async def get_skill_plugin(plugin_id: str) -> JSONResponse:
         try:
-            plugin = get_plugin(plugin_id)
+            plugin = _find_plugin(settings.state_dir, plugin_id)
         except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=404)
         descriptions = {s["name"]: s["description"] for s in load_catalog()["skills"]}
@@ -147,7 +200,7 @@ def router(state: AppState) -> APIRouter:
     @router.get("/api/skills/plugins/{plugin_id}/files/{path:path}")
     async def get_skill_plugin_file(plugin_id: str, path: str) -> JSONResponse:
         try:
-            plugin = get_plugin(plugin_id)
+            plugin = _find_plugin(settings.state_dir, plugin_id)
         except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=404)
         entry = next((f for f in plugin["files"] if f["path"] == path), None)
@@ -159,7 +212,7 @@ def router(state: AppState) -> APIRouter:
                 status_code=413,
             )
         try:
-            data = await asyncio.to_thread(plugin_file, plugin_id, path)
+            data = await asyncio.to_thread(_plugin_file, settings.state_dir, plugin, path)
             return JSONResponse({"path": path, "content": data.decode("utf-8")})
         except UnicodeDecodeError:
             return JSONResponse(
@@ -171,7 +224,9 @@ def router(state: AppState) -> APIRouter:
     @router.post("/api/skills/plugins/{plugin_id}")
     async def add_skill_plugin(plugin_id: str) -> JSONResponse:
         try:
-            added = await asyncio.to_thread(install_plugin, settings.skills_dir, plugin_id)
+            added = await asyncio.to_thread(
+                _install_plugin, settings.state_dir, settings.skills_dir, plugin_id
+            )
         except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
         for name in added:

@@ -22,6 +22,10 @@ class SkillEnabledUpdate(BaseModel):
     enabled: bool
 
 
+class PluginSourceAdd(BaseModel):
+    address: str
+
+
 class OpenFileRequest(BaseModel):
     path: str
     reveal: bool = False

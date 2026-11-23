@@ -15,7 +15,7 @@ export function PluginCard({ plugin, onOpen }: { plugin: SkillPlugin; onOpen: ()
         <div className="min-w-0 flex-1">
           <div className="truncate text-[15px] font-medium">{plugin.title}</div>
           <div className="truncate text-xs text-[var(--muted)]">
-            by {plugin.author} &middot; {plugin.skills.length} skills
+            by {plugin.author} &middot; {plugin.skills.length} {plugin.skills.length === 1 ? "skill" : "skills"}
           </div>
         </div>
         {complete && <CheckIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-label="Added" />}

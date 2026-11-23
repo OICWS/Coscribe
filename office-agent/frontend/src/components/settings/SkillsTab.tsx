@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
-import { getSkillPlugins, getSkills, removeSkill, setSkillEnabled } from "../../lib/rest";
+import { useState } from "react";
+import { getSkills, removeSkill, setSkillEnabled } from "../../lib/rest";
 import { useFetchOnActive } from "../../lib/useFetchOnActive";
-import type { SkillInfo, SkillPlugin } from "../../types/settings";
+import type { SkillInfo } from "../../types/settings";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { SearchIcon } from "../icons";
 import { FetchRetry } from "./FetchRetry";
-import { entryMatches, listEntries, matches, type ListEntry } from "./skills/helpers";
+import { entryMatches, listEntries, type ListEntry } from "./skills/helpers";
 import { YoursSections } from "./skills/YoursSections";
 import { AddMenu } from "./skills/AddMenu";
 import { InstalledPluginView } from "./skills/InstalledPluginView";
 import { SkillDetailView } from "./skills/SkillDetailView";
-import { PluginCard } from "./skills/PluginCard";
+import { DiscoverPane } from "./skills/DiscoverPane";
 import { PluginDetailView } from "./skills/PluginDetailView";
 import { UploadSkillView } from "./skills/UploadSkillView";
 import type { View, Tab } from "./skills/types";
@@ -32,21 +32,8 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
   const [view, setView] = useState<View>({ kind: "list" });
   const [tab, setTab] = useState<Tab>("yours");
   const [search, setSearch] = useState("");
-  const [catalog, setCatalog] = useState<SkillPlugin[] | null>(null);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<SkillInfo | PluginEntry | null>(null);
-
-  const loadCatalog = () => {
-    setCatalogError(null);
-    getSkillPlugins()
-      .then(setCatalog)
-      .catch((err: unknown) => setCatalogError(err instanceof Error ? err.message : "Couldn't load Discover."));
-  };
-
-  useEffect(() => {
-    if (active && tab === "discover" && catalog === null) loadCatalog();
-  }, [active, tab, catalog]);
 
   const toggle = async (target: SkillInfo | PluginEntry) => {
     setActionError(null);
@@ -67,7 +54,6 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     const result = "info" in target ? await removeSkill(target.info.name, true) : await removeSkill(target.name);
     if ("error" in result) setActionError(result.error);
     setView({ kind: "list" });
-    setCatalog(null);
     retry();
   };
 
@@ -99,10 +85,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
       <PluginDetailView
         id={view.id}
         onBack={() => setView({ kind: "list" })}
-        onAdded={() => {
-          setCatalog(null);
-          retry();
-        }}
+        onAdded={retry}
       />
     );
   }
@@ -147,7 +130,6 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
       active ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm ring-1 ring-[var(--border)]" : "text-[var(--muted)] hover:text-[var(--fg)]"
     }`;
   const visible = entries.filter((e) => entryMatches(search, e));
-  const discover = (catalog ?? []).filter((e) => matches(search, e.title, e.description, ...e.skills));
 
   return (
     <div className="flex flex-col gap-5">
@@ -201,30 +183,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
           )}
         </>
       ) : (
-        <div>
-          {catalogError && (
-            <p className="text-sm text-[var(--danger)]">
-              Couldn't load Discover: {catalogError} --{" "}
-              <button type="button" className="underline" onClick={loadCatalog}>
-                Retry
-              </button>
-            </p>
-          )}
-          {catalog === null && !catalogError && <p className="text-sm text-[var(--muted)]">Loading...</p>}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {discover.map((plugin) => (
-              <PluginCard key={plugin.id} plugin={plugin} onOpen={() => setView({ kind: "plugin", id: plugin.id })} />
-            ))}
-          </div>
-          {catalog !== null && discover.length === 0 && (
-            <p className="py-6 text-center text-sm text-[var(--muted)]">No plugins match "{search.trim()}".</p>
-          )}
-          {catalog !== null && (
-            <p className="mt-4 text-xs text-[var(--muted)]">
-              Open-source skills from github.com/anthropics/skills and github.com/anthropics/knowledge-work-plugins (Apache License 2.0). A plugin is a bundle of skills; Add downloads all of them.
-            </p>
-          )}
-        </div>
+        <DiscoverPane search={search} onOpen={(id) => setView({ kind: "plugin", id })} />
       )}
       {removeDialog}
     </div>
