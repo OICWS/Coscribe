@@ -14,8 +14,17 @@ export function useFollowEnd(scroller: RefObject<HTMLElement | null>, end: RefOb
     following.current = true;
     end.current?.scrollIntoView({ block: "end" });
   }, [changed, mine, end]);
+  const lastTop = useRef(0);
   return () => {
     const el = scroller.current;
-    if (el) following.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_WITHIN_PX;
+    if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_WITHIN_PX;
+    // A log that shrinks (a status line or tool rows replaced by shorter content) makes the browser
+    // clamp scrollTop to the new end and fire a scroll event the reader did not cause: scrollTop
+    // moved up yet landed at the end. Counting that as "back at the end" would pull the view down
+    // on every later update.
+    const clamped = near && el.scrollTop < lastTop.current;
+    lastTop.current = el.scrollTop;
+    if (!clamped) following.current = near;
   };
 }
