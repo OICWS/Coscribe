@@ -1,22 +1,22 @@
 ---
 title: Design systems
-description: Keep your colors, fonts, spacing and logos in one place, so decks coscribe makes look like yours.
+description: Keep your colors, fonts, spacing and logos in one place, so decks Coscribe makes look like yours.
 ---
 
-A design system is your colors, fonts and spacing, kept once. When coscribe makes a deck with one, the deck follows it. The deck gets its own copy, so changing the design system later doesn't change a finished deck.
+A design system is your colors, fonts and spacing, kept once. When Coscribe makes a deck with one, the deck follows it. The deck gets its own copy, so changing the design system later doesn't change a finished deck.
 
 ## Make a design system
 
 Open **Settings** › **Design systems**:
 
-- **Describe it** opens a conversation where you describe the look, or give coscribe a deck or a brand guide to take it from.
+- **Describe it** opens a conversation where you describe the look, or give Coscribe a deck or a brand guide to take it from.
 - **New design system** starts an empty one that you fill in yourself.
 
 ## What it holds
 
 | Section | What goes in it |
 |---|---|
-| **Overview** | In your own words: who this is for and how it should feel. coscribe reads it when it makes something with this system. |
+| **Overview** | In your own words: who this is for and how it should feel. Coscribe reads it when it makes something with this system. |
 | **Colors** | Each color with a name for the job it does, and when to use it. |
 | **Typography** | The fonts, one per line, as installed on this computer, and named text styles. The first font is the main one. |
 | **Spacing** | Named gaps, in pixels on a slide 1920 pixels wide. |

@@ -1,6 +1,6 @@
 ---
 title: コマンドとショートカット
-description: メッセージ欄に入力できるコマンドと、coscribe のキーボードショートカット。
+description: メッセージ欄に入力できるコマンドと、Coscribe のキーボードショートカット。
 ---
 
 ## コマンド {#commands}
@@ -14,7 +14,7 @@ description: メッセージ欄に入力できるコマンドと、coscribe の�
 | `/fork [name]` | 会話を新しい会話にコピーして開きます。[会話をコピーする](../use/conversations.md#copy-a-conversation) を参照してください。 |
 | `/init` | ワークスペースを調べ、そのルートの `OVERVIEW.md` を書くか更新します。 |
 | `/create-skill <name>` | 会話を再利用できるスキルにします。[スキルとプラグイン](../customize/skills.md) を参照してください。 |
-| `/doctor` | このコンピューターで coscribe に必要なものを確認します。[トラブルシューティング](../help/troubleshooting.md) を参照してください。 |
+| `/doctor` | このコンピューターで Coscribe に必要なものを確認します。[トラブルシューティング](../help/troubleshooting.md) を参照してください。 |
 | `/<skill>` | そのスキルを依頼に使います。あなたのスキルはそれぞれの名前で一覧にあります。 |
 
 いくつかのコマンドは、同じことをするボタンがあるため一覧にありませんが、入力すれば動きます。

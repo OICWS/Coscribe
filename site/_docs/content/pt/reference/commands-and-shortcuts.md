@@ -1,6 +1,6 @@
 ---
 title: Comandos e atalhos
-description: Os comandos que você pode digitar na caixa de mensagem e os atalhos de teclado do coscribe.
+description: Os comandos que você pode digitar na caixa de mensagem e os atalhos de teclado do Coscribe.
 ---
 
 ## Comandos {#commands}
@@ -14,7 +14,7 @@ Digite <kbd>/</kbd> na caixa de mensagem para ver a lista de comandos; continue 
 | `/fork [name]` | Copia a conversa para uma nova e a abre. Veja [Copiar uma conversa](../use/conversations.md#copy-a-conversation). |
 | `/init` | Explora o espaço de trabalho e escreve ou atualiza `OVERVIEW.md` na raiz dele. |
 | `/create-skill <name>` | Transforma a conversa em uma habilidade reutilizável. Veja [Habilidades e plugins](../customize/skills.md). |
-| `/doctor` | Verifica o que o coscribe precisa neste computador. Veja [Solução de problemas](../help/troubleshooting.md). |
+| `/doctor` | Verifica o que o Coscribe precisa neste computador. Veja [Solução de problemas](../help/troubleshooting.md). |
 | `/<skill>` | Usa essa habilidade no seu pedido. Cada uma das suas habilidades está na lista com o próprio nome. |
 
 Alguns comandos não estão na lista porque um botão faz o mesmo, mas funcionam quando digitados:

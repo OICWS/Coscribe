@@ -1,20 +1,20 @@
 ---
 title: Habilidades y plugins
-description: Enseña a coscribe una forma de trabajar una sola vez, añade habilidades que hicieron otros y actívalas o desactívalas.
+description: Enseña a Coscribe una forma de trabajar una sola vez, añade habilidades que hicieron otros y actívalas o desactívalas.
 ---
 
-Una habilidad es un conjunto de instrucciones para un tipo de trabajo, como la forma en que tu equipo escribe un informe semanal. Cuando un trabajo encaja con la descripción de una habilidad, coscribe la sigue. coscribe trae algunas habilidades integradas, y puedes añadir las tuyas.
+Una habilidad es un conjunto de instrucciones para un tipo de trabajo, como la forma en que tu equipo escribe un informe semanal. Cuando un trabajo encaja con la descripción de una habilidad, Coscribe la sigue. Coscribe trae algunas habilidades integradas, y puedes añadir las tuyas.
 
 ## Usar una habilidad {#use-a-skill}
 
-No tienes que hacer nada: coscribe elige una habilidad cuando encaja. Para usar una a propósito, escribe <kbd>/</kbd> en el cuadro de mensaje y elígela de la lista, o escribe su nombre tras la barra, seguido de tu petición.
+No tienes que hacer nada: Coscribe elige una habilidad cuando encaja. Para usar una a propósito, escribe <kbd>/</kbd> en el cuadro de mensaje y elígela de la lista, o escribe su nombre tras la barra, seguido de tu petición.
 
 ## Guardar un trabajo como habilidad {#save-a-job-as-a-skill}
 
 Después de hacer un trabajo en una conversación, puedes guardar cómo se hizo:
 
 - Escribe `/create-skill` seguido de un nombre.
-- O elige **Save as skill** cuando coscribe ofrezca **Save this job?** tras un trabajo de varios pasos.
+- O elige **Save as skill** cuando Coscribe ofrezca **Save this job?** tras un trabajo de varios pasos.
 
 También puedes empezar desde **Settings** › **Skills** › **Add** › **Create with Coscribe**, que abre una conversación para que describas la habilidad.
 
@@ -26,7 +26,7 @@ En **Settings** › **Skills**:
 - **Add** › **Upload a skill** acepta un archivo de habilidad que te dieron: un `SKILL.md`, o un archivo `.zip`, `.skill` o `.plugin`.
 
 > [!WARNING]
-> Una habilidad son instrucciones que coscribe sigue. Añade habilidades solo de personas en las que confíes, y lee una antes de usarla: ábrela en **Yours** para ver sus archivos.
+> Una habilidad son instrucciones que Coscribe sigue. Añade habilidades solo de personas en las que confíes, y lee una antes de usarla: ábrela en **Yours** para ver sus archivos.
 
 ## Activar o desactivar habilidades {#turn-skills-on-or-off}
 
@@ -50,4 +50,4 @@ description: Write the weekly sales report from the order export. Use when asked
 2. ...
 ```
 
-La descripción decide cuándo usa coscribe la habilidad, así que di para qué sirve y cuándo usarla. Es el mismo formato que las habilidades de Claude Code.
+La descripción decide cuándo usa Coscribe la habilidad, así que di para qué sirve y cuándo usarla. Es el mismo formato que las habilidades de Claude Code.

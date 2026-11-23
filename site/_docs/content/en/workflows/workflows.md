@@ -9,10 +9,10 @@ A workflow is a task made of fixed steps. Unlike a scheduled task that follows w
 
 The easiest way is to do the job once in a chat, then make a workflow from it:
 
-- Choose **Save as workflow** when coscribe offers **Save this job?**, or in the **Task details** panel.
+- Choose **Save as workflow** when Coscribe offers **Save this job?**, or in the **Task details** panel.
 - Or type `/saveworkflow` in the message box, followed by a name if you like.
 
-coscribe drafts the steps from the conversation. Look them over, then save.
+Coscribe drafts the steps from the conversation. Look them over, then save.
 
 You can also start from nothing: **Scheduled** › **New task** › **Build a workflow**. Give it a name and a schedule, save, then add the steps on its page.
 
@@ -33,7 +33,7 @@ The page has four tabs:
 
 | Step | What it does |
 |---|---|
-| **Tool** | Uses one of coscribe's tools, with no model involved. |
+| **Tool** | Uses one of Coscribe's tools, with no model involved. |
 | **Script** | Runs a fixed Python script you've reviewed. |
 | **Model** | One model call that must return set fields. |
 | **Agent** | Works toward a goal with tools, within the limits you set: the tools it may call, the folders it may change and the sites it may open. |
@@ -61,7 +61,7 @@ Websites change and files differ from run to run. The **If a step stops working*
 | **Proactive** | AI steps decide how to do their part. If a step fails, AI may add a few steps; any that change something wait for you. |
 | **Autonomous** | AI may do the whole task its own way. |
 
-When a run worked around a change, coscribe can suggest updated steps for you to review, so the next run doesn't have to.
+When a run worked around a change, Coscribe can suggest updated steps for you to review, so the next run doesn't have to.
 
 ## Start a workflow on an event {#start-on-an-event}
 
@@ -69,7 +69,7 @@ Besides the schedules every task has, a workflow's **Frequency** can be:
 
 - **Every few minutes**.
 - **When a file arrives in a folder**: pick the **Folder to watch** and, if you like, a **File name pattern**. Each new file starts a run, with the file as the workflow's file input. The option needs a workflow that takes a file.
-- **When something new shows up in a connector**: pick a connector and what to ask it. coscribe asks every few minutes, and each new item starts a run. The first check takes what is already there as seen.
-- **When a program sends it an event**: another program on the same computer sends a request to an address coscribe shows, with a key. **Wait for a sample** keeps the next event so you can pick which of its fields fill the inputs. The address only accepts requests from your own computer.
+- **When something new shows up in a connector**: pick a connector and what to ask it. Coscribe asks every few minutes, and each new item starts a run. The first check takes what is already there as seen.
+- **When a program sends it an event**: another program on the same computer sends a request to an address Coscribe shows, with a key. **Wait for a sample** keeps the next event so you can pick which of its fields fill the inputs. The address only accepts requests from your own computer.
 
-A file that arrived while coscribe was closed starts a run when coscribe starts again.
+A file that arrived while Coscribe was closed starts a run when Coscribe starts again.

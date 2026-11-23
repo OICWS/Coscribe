@@ -1,11 +1,11 @@
 ---
 title: Archivos, resultados y paneles
-description: Encuentra lo que hizo coscribe, previsualiza archivos y organiza los paneles junto a la conversación.
+description: Encuentra lo que hizo Coscribe, previsualiza archivos y organiza los paneles junto a la conversación.
 ---
 
 ## Lo que hizo una conversación {#what-a-conversation-made}
 
-Los archivos que coscribe creó o cambió aparecen como avisos sobre el cuadro de mensaje:
+Los archivos que Coscribe creó o cambió aparecen como avisos sobre el cuadro de mensaje:
 
 - Un documento, una presentación o un diseño se abre en su panel junto a la conversación.
 - Las imágenes se agrupan en un aviso; **View all** las abre en un visor.
@@ -33,8 +33,8 @@ La barra de herramientas sobre la conversación abre paneles a su lado:
 | **Task details** | La lista de tareas y lo que inició cada paso. |
 | **Plan** | Un plan que te espera y sus pasos. |
 | **Files** | Las carpetas de la conversación y las vistas previas de archivos. |
-| **Browser** | El navegador integrado de coscribe (solo en la aplicación de escritorio). Consulta [El navegador integrado](browser.md). |
+| **Browser** | El navegador integrado de Coscribe (solo en la aplicación de escritorio). Consulta [El navegador integrado](browser.md). |
 | **Background tasks** | Scripts y comandos que siguen en marcha, que puedes detener. |
 | **Side chat** | Preguntas sobre la conversación que no pasan a formar parte de ella. Consulta [Trabajar en una conversación](conversations.md#ask-a-side-question). |
 
-Los paneles se pueden poner uno al lado del otro, y la mayoría también se abre en una ventana propia. Cuando un script o comando en segundo plano termina, coscribe informa por sí solo en la conversación de cómo acabó.
+Los paneles se pueden poner uno al lado del otro, y la mayoría también se abre en una ventana propia. Cuando un script o comando en segundo plano termina, Coscribe informa por sí solo en la conversación de cómo acabó.

@@ -1,16 +1,16 @@
 ---
 title: Troubleshooting
-description: Check what coscribe needs on your PC with /doctor, fix common problems, and report one.
+description: Check what Coscribe needs on your PC with /doctor, fix common problems, and report one.
 ---
 
 ## Run a check
 
-Type `/doctor` in any conversation. coscribe checks what it needs on this computer and shows a card with each result, problems first, and how to fix each one. A fix that is a setting links to its page.
+Type `/doctor` in any conversation. Coscribe checks what it needs on this computer and shows a card with each result, problems first, and how to fix each one. A fix that is a setting links to its page.
 
 | Check | What it looks at |
 |---|---|
 | **Model** | Whether the default model answers. If not: check the provider's key, address and model name, or the network and [proxy](../reference/settings.md#general). |
-| **Python for scripts** | Whether a Python is there for scripts. If not, download coscribe's own under **Settings** › **Capabilities**. |
+| **Python for scripts** | Whether a Python is there for scripts. If not, download Coscribe's own under **Settings** › **Capabilities**. |
 | **Node.js for scripts** | Whether `node` and `npm` are installed, for scripts in Node.js. Install them from [nodejs.org](https://nodejs.org) if you need them. |
 | **Office conversion** | Whether Microsoft Office or LibreOffice is there to make page previews and convert documents. If neither is, install Office or download LibreOffice under **Settings** › **Capabilities**. |
 | **Browser** | Whether Microsoft Edge or Google Chrome is installed, for the browser panel and page pictures. |
@@ -23,11 +23,11 @@ Type `/doctor` in any conversation. coscribe checks what it needs on this comput
 
 Run `/doctor` and look at **Model**. A key that expired, a wrong model name, or a network that needs a proxy are the usual causes. Some company networks block AI services; ask your IT team, or set the proxy in **Settings** › **General** › **Proxy**.
 
-### coscribe can't open a file or folder
+### Coscribe can't open a file or folder
 
-coscribe only works in its workspace and the folders you allowed. When it asks for another folder, allow it, or add the folder to the workspace. See [Give access to another folder](../use/approvals.md#give-access-to-another-folder).
+Coscribe only works in its workspace and the folders you allowed. When it asks for another folder, allow it, or add the folder to the workspace. See [Give access to another folder](../use/approvals.md#give-access-to-another-folder).
 
-If you're editing the same Word, Excel or PowerPoint file, save your changes before you ask. coscribe notices when a file changed since it last read it, reads it again and makes its change on your version, but it can only see what you saved.
+If you're editing the same Word, Excel or PowerPoint file, save your changes before you ask. Coscribe notices when a file changed since it last read it, reads it again and makes its change on your version, but it can only see what you saved.
 
 ### Scripts don't run
 
@@ -39,7 +39,7 @@ Open it in **Settings** › **Connectors**. If it says it isn't connected, click
 
 ### A scheduled task didn't run
 
-Tasks run only while coscribe is running, in the window or the tray. Check that **Keep running in the background** is on in **Settings** › **General** and that the task isn't paused. A run that was due while coscribe was closed runs once when it starts again. See [Scheduled tasks](../workflows/scheduled-tasks.md).
+Tasks run only while Coscribe is running, in the window or the tray. Check that **Keep running in the background** is on in **Settings** › **General** and that the task isn't paused. A run that was due while Coscribe was closed runs once when it starts again. See [Scheduled tasks](../workflows/scheduled-tasks.md).
 
 ## Report a problem
 

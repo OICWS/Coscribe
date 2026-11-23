@@ -1,6 +1,6 @@
 ---
-title: coscribe ドキュメント
-description: coscribe で Word、Excel、PowerPoint、PDF の仕事を片付ける方法。最初のダウンロードから、毎週動くワークフローに変えた会話まで。
+title: Coscribe ドキュメント
+description: Coscribe で Word、Excel、PowerPoint、PDF の仕事を片付ける方法。最初のダウンロードから、毎週動くワークフローに変えた会話まで。
 ---
 
 はじめての方は [ダウンロードと初回起動](get-started/install.md) から。10 分で最初の会話を始められます。

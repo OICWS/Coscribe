@@ -1,9 +1,9 @@
 ---
 title: Tareas programadas
-description: Haz que coscribe haga un trabajo según un horario, como un resumen cada mañana, y lee el informe de cada ejecución.
+description: Haz que Coscribe haga un trabajo según un horario, como un resumen cada mañana, y lee el informe de cada ejecución.
 ---
 
-Una tarea programada es un trabajo que coscribe hace sin ti: a una hora fija, cada hora o cuando tú la inicias. Cada ejecución es su propia conversación y termina con un informe.
+Una tarea programada es un trabajo que Coscribe hace sin ti: a una hora fija, cada hora o cuando tú la inicias. Cada ejecución es su propia conversación y termina con un informe.
 
 Hay dos tipos. Una **tarea programada** sigue instrucciones escritas, así que el modelo decide cada paso cada vez. Un **flujo de trabajo** ejecuta pasos fijos que guardaste, comprobados mientras se ejecutan; consulta [Flujos de trabajo](workflows.md). Esta página cubre lo que comparten.
 
@@ -11,11 +11,11 @@ Hay dos tipos. Una **tarea programada** sigue instrucciones escritas, así que e
 
 Abre **Scheduled** en la navegación y luego **New task**:
 
-- **Create with Coscribe** abre un chat para que describas el trabajo o lo hagas una vez. coscribe redacta entonces la tarea en una tarjeta; **Review & save** la abre para que cambies lo que quieras antes de guardar.
+- **Create with Coscribe** abre un chat para que describas el trabajo o lo hagas una vez. Coscribe redacta entonces la tarea en una tarjeta; **Review & save** la abre para que cambies lo que quieras antes de guardar.
 - **Set up manually** abre el formulario, donde escribes tú el nombre, las instrucciones y el horario.
 - **Build a workflow** empieza un flujo de trabajo vacío. Consulta [Flujos de trabajo](workflows.md).
 
-Después de un trabajo hecho en un chat, coscribe también puede ofrecer **Save this job?**. **Save as workflow** lo convierte en pasos fijos que puedes volver a ejecutar o programar; **Save as skill** lo guarda como instrucciones para la próxima vez (consulta [Habilidades](../customize/skills.md)).
+Después de un trabajo hecho en un chat, Coscribe también puede ofrecer **Save this job?**. **Save as workflow** lo convierte en pasos fijos que puedes volver a ejecutar o programar; **Save as skill** lo guarda como instrucciones para la próxima vez (consulta [Habilidades](../customize/skills.md)).
 
 ## Elegir cuándo se ejecuta {#choose-when-it-runs}
 
@@ -40,9 +40,9 @@ Nadie vigila una ejecución, así que cada tarea fija sus propios **Permissions*
 
 ## Mantener la aplicación abierta {#keep-the-app-running}
 
-Cerrar la ventana de coscribe lo deja funcionando en la bandeja del sistema, así que las tareas siguen ejecutándose. Para salir, elige **Quit** en el icono de la bandeja. Si desactivas **Keep running in the background** en **Settings** › **General**, cerrar la ventana cierra coscribe, y las tareas se detienen con él.
+Cerrar la ventana de Coscribe lo deja funcionando en la bandeja del sistema, así que las tareas siguen ejecutándose. Para salir, elige **Quit** en el icono de la bandeja. Si desactivas **Keep running in the background** en **Settings** › **General**, cerrar la ventana cierra Coscribe, y las tareas se detienen con él.
 
-Si una ejecución tocaba mientras coscribe estaba cerrado, se ejecuta una vez cuando coscribe vuelve a iniciarse.
+Si una ejecución tocaba mientras Coscribe estaba cerrado, se ejecuta una vez cuando Coscribe vuelve a iniciarse.
 
 ## Seguir las ejecuciones {#follow-the-runs}
 
@@ -52,7 +52,7 @@ La página de una tarea muestra cuándo se ejecuta la próxima vez, sus ejecucio
 - El interruptor junto al estado pausa la tarea o la reanuda.
 - El lápiz cambia el nombre de la tarea o cuándo se ejecuta.
 
-**Notifications**, en **Settings** › **General**, elige si coscribe te avisa al terminar cada ejecución o solo de los problemas: una ejecución que falló o que te espera. Al hacer clic en una notificación se abre la ejecución.
+**Notifications**, en **Settings** › **General**, elige si Coscribe te avisa al terminar cada ejecución o solo de los problemas: una ejecución que falló o que te espera. Al hacer clic en una notificación se abre la ejecución.
 
 ## Que las ejecuciones recuerden {#remember-between-runs}
 

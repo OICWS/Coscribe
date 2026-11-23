@@ -1,11 +1,11 @@
 ---
 title: Dateien, Ergebnisse und Bereiche
-description: Finden Sie, was coscribe erstellt hat, sehen Sie sich Dateien in der Vorschau an und ordnen Sie die Bereiche neben der Unterhaltung an.
+description: Finden Sie, was Coscribe erstellt hat, sehen Sie sich Dateien in der Vorschau an und ordnen Sie die Bereiche neben der Unterhaltung an.
 ---
 
 ## Was eine Unterhaltung erstellt hat {#what-a-conversation-made}
 
-Dateien, die coscribe erstellt oder geändert hat, erscheinen als Hinweise über dem Nachrichtenfeld:
+Dateien, die Coscribe erstellt oder geändert hat, erscheinen als Hinweise über dem Nachrichtenfeld:
 
 - Ein Dokument, eine Präsentation oder ein Design öffnet sich in seinem Bereich neben der Unterhaltung.
 - Bilder werden in einem Hinweis zusammengefasst; **View all** öffnet sie in einem Betrachter.
@@ -33,8 +33,8 @@ Die Symbolleiste über der Unterhaltung öffnet Bereiche daneben:
 | **Task details** | Die Aufgabenliste und was jeder Schritt gestartet hat. |
 | **Plan** | Einen Plan, der auf Sie wartet, und seine Schritte. |
 | **Files** | Die Ordner der Unterhaltung und Dateivorschauen. |
-| **Browser** | coscribes integrierten Browser (nur in der Desktop-App). Siehe [Der integrierte Browser](browser.md). |
+| **Browser** | Coscribes integrierten Browser (nur in der Desktop-App). Siehe [Der integrierte Browser](browser.md). |
 | **Background tasks** | Noch laufende Skripte und Befehle, die Sie anhalten können. |
 | **Side chat** | Fragen zur Unterhaltung, die nicht Teil von ihr werden. Siehe [In einer Unterhaltung arbeiten](conversations.md#ask-a-side-question). |
 
-Bereiche lassen sich nebeneinander anordnen, und die meisten können sich auch in einem eigenen Fenster öffnen. Wenn ein Hintergrundskript oder -befehl endet, meldet coscribe von sich aus in der Unterhaltung, wie er ausgegangen ist.
+Bereiche lassen sich nebeneinander anordnen, und die meisten können sich auch in einem eigenen Fenster öffnen. Wenn ein Hintergrundskript oder -befehl endet, meldet Coscribe von sich aus in der Unterhaltung, wie er ausgegangen ist.

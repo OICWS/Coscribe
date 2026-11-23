@@ -1,20 +1,20 @@
 ---
 title: Compétences et plugins
-description: Apprenez une fois à coscribe une façon de travailler, ajoutez des compétences créées par d’autres, et activez-les ou désactivez-les.
+description: Apprenez une fois à Coscribe une façon de travailler, ajoutez des compétences créées par d’autres, et activez-les ou désactivez-les.
 ---
 
-Une compétence (skill) est un ensemble d’instructions pour un type de travail, par exemple la façon dont votre équipe rédige un rapport hebdomadaire. Quand un travail correspond à la description d’une compétence, coscribe la suit. coscribe est livré avec quelques compétences intégrées, et vous pouvez ajouter les vôtres.
+Une compétence (skill) est un ensemble d’instructions pour un type de travail, par exemple la façon dont votre équipe rédige un rapport hebdomadaire. Quand un travail correspond à la description d’une compétence, Coscribe la suit. Coscribe est livré avec quelques compétences intégrées, et vous pouvez ajouter les vôtres.
 
 ## Utiliser une compétence {#use-a-skill}
 
-Vous n’avez rien à faire : coscribe choisit une compétence quand elle convient. Pour en utiliser une délibérément, tapez <kbd>/</kbd> dans la zone de message et choisissez-la dans la liste, ou tapez son nom après la barre oblique, suivi de votre demande.
+Vous n’avez rien à faire : Coscribe choisit une compétence quand elle convient. Pour en utiliser une délibérément, tapez <kbd>/</kbd> dans la zone de message et choisissez-la dans la liste, ou tapez son nom après la barre oblique, suivi de votre demande.
 
 ## Enregistrer un travail comme compétence {#save-a-job-as-a-skill}
 
 Après avoir fait un travail dans une conversation, vous pouvez garder la façon dont il a été fait :
 
 - Tapez `/create-skill` suivi d’un nom.
-- Ou choisissez **Save as skill** quand coscribe propose **Save this job?** après un travail en plusieurs étapes.
+- Ou choisissez **Save as skill** quand Coscribe propose **Save this job?** après un travail en plusieurs étapes.
 
 Vous pouvez aussi partir de **Settings** › **Skills** › **Add** › **Create with Coscribe**, qui ouvre une conversation pour décrire la compétence.
 
@@ -26,7 +26,7 @@ Dans **Settings** › **Skills** :
 - **Add** › **Upload a skill** accepte un fichier de compétence que l’on vous a donné : un `SKILL.md`, ou un fichier `.zip`, `.skill` ou `.plugin`.
 
 > [!WARNING]
-> Une compétence est un ensemble d’instructions que coscribe suit. N’ajoutez que des compétences de personnes de confiance, et lisez-en une avant de l’utiliser : ouvrez-la dans **Yours** pour voir ses fichiers.
+> Une compétence est un ensemble d’instructions que Coscribe suit. N’ajoutez que des compétences de personnes de confiance, et lisez-en une avant de l’utiliser : ouvrez-la dans **Yours** pour voir ses fichiers.
 
 ## Activer ou désactiver des compétences {#turn-skills-on-or-off}
 
@@ -50,4 +50,4 @@ description: Write the weekly sales report from the order export. Use when asked
 2. ...
 ```
 
-La description détermine quand coscribe utilise la compétence : indiquez donc à quoi elle sert et quand l’utiliser. C’est le même format que les compétences de Claude Code.
+La description détermine quand Coscribe utilise la compétence : indiquez donc à quoi elle sert et quand l’utiliser. C’est le même format que les compétences de Claude Code.

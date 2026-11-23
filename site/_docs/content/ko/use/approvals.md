@@ -1,9 +1,9 @@
 ---
 title: 승인과 권한 모드
-description: coscribe가 스스로 할 수 있는 범위를 정하고, 사용자가 필요할 때 보여 주는 카드에 응답합니다.
+description: Coscribe가 스스로 할 수 있는 범위를 정하고, 사용자가 필요할 때 보여 주는 카드에 응답합니다.
 ---
 
-coscribe는 허락 없이 자기 범위 밖의 일을 하지 않습니다. 얼마나 자주 묻는지는 대화의 권한 모드에 따라, 무엇에 접근할 수 있는지는 [워크스페이스](../workspaces/workspaces.md)에 따라 정해집니다.
+Coscribe는 허락 없이 자기 범위 밖의 일을 하지 않습니다. 얼마나 자주 묻는지는 대화의 권한 모드에 따라, 무엇에 접근할 수 있는지는 [워크스페이스](../workspaces/workspaces.md)에 따라 정해집니다.
 
 ## 네 가지 모드 {#the-four-modes}
 
@@ -20,11 +20,11 @@ coscribe는 허락 없이 자기 범위 밖의 일을 하지 않습니다. 얼�
 
 ## 작업 승인하기 {#approve-an-action}
 
-coscribe에 승인이 필요하면 대화의 카드가 "Run a command" 같은 작업 이름과 그 작업이 할 일, 즉 쓸 파일, 스크립트, 명령을 보여 줍니다. 읽어 본 뒤 고르세요.
+Coscribe에 승인이 필요하면 대화의 카드가 "Run a command" 같은 작업 이름과 그 작업이 할 일, 즉 쓸 파일, 스크립트, 명령을 보여 줍니다. 읽어 본 뒤 고르세요.
 
 - **Approve**: 이 작업 하나를 진행합니다.
 - **Allow for this task**(코드 모듈의 명령과 변경에 표시): 작업이 끝날 때까지 같은 종류의 작업을 다시 묻지 않고 진행합니다.
-- **Deny**: 거부합니다. 이유를 알려 주려면 대신 메시지 상자에 이유를 입력하세요. coscribe가 읽고 조정합니다.
+- **Deny**: 거부합니다. 이유를 알려 주려면 대신 메시지 상자에 이유를 입력하세요. Coscribe가 읽고 조정합니다.
 
 카드가 화면 밖으로 스크롤되었다면 메시지 상자 위의 알림이 기다리는 항목이 있다고 알려 줍니다. **Show**를 누르면 그 카드로 돌아갑니다.
 
@@ -33,19 +33,19 @@ coscribe에 승인이 필요하면 대화의 카드가 "Run a command" 같은 �
 
 ## 다른 폴더에 접근 허용하기 {#give-access-to-another-folder}
 
-coscribe가 워크스페이스와 허용한 폴더 밖의 폴더를 필요로 하면 카드로 묻습니다. 접근 수준(**Read only**, **Read and write**, **Read, write and delete**)을 고른 뒤 선택하세요.
+Coscribe가 워크스페이스와 허용한 폴더 밖의 폴더를 필요로 하면 카드로 묻습니다. 접근 수준(**Read only**, **Read and write**, **Read, write and delete**)을 고른 뒤 선택하세요.
 
 - **Allow**: 폴더를 허용된 폴더에 영구히 추가합니다.
 - **Only this chat**: 이 대화에서만 허용합니다.
 - **Save in my workspace instead**(쓰려고 했을 때): 파일을 워크스페이스에 둡니다.
 - **Don't allow**: 거부합니다.
 
-coscribe는 드라이브 전체나 사용자 홈 폴더를 제안하지 않습니다.
+Coscribe는 드라이브 전체나 사용자 홈 폴더를 제안하지 않습니다.
 
 ## 스크립트용 패키지 설치 {#install-a-package-for-a-script}
 
-스크립트에 coscribe에 아직 없는 Python 또는 Node.js 라이브러리가 필요할 수 있습니다. **Install a Python package**(또는 Node.js) 카드가 그 이름과 이유를 알려 줍니다. **Install**은 컴퓨터의 다른 부분이 쓰지 않는 coscribe 전용 환경에 설치하고, **Not now**는 이 대화에서는 설치하지 않습니다. 설치에 실패하면 **Details**에서 설치 프로그램의 출력을 볼 수 있습니다.
+스크립트에 Coscribe에 아직 없는 Python 또는 Node.js 라이브러리가 필요할 수 있습니다. **Install a Python package**(또는 Node.js) 카드가 그 이름과 이유를 알려 줍니다. **Install**은 컴퓨터의 다른 부분이 쓰지 않는 Coscribe 전용 환경에 설치하고, **Not now**는 이 대화에서는 설치하지 않습니다. 설치에 실패하면 **Details**에서 설치 프로그램의 출력을 볼 수 있습니다.
 
 ## 질문에 답하기 {#answer-a-question}
 
-coscribe가 두 가지 레이아웃 중 하나를 고르라는 식으로 선택을 요청할 때가 있습니다. 카드에서 옵션을 고르거나 메시지 상자에 직접 답을 입력하세요.
+Coscribe가 두 가지 레이아웃 중 하나를 고르라는 식으로 선택을 요청할 때가 있습니다. 카드에서 옵션을 고르거나 메시지 상자에 직접 답을 입력하세요.

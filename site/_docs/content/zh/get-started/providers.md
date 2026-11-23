@@ -3,7 +3,7 @@ title: 添加模型服务商
 description: 填入一个模型服务的 API Key，选好要用的模型。
 ---
 
-coscribe 本身不带模型。它调用你选择的模型服务来思考和写作，所以开始之前需要添加至少一个 **服务商**（provider），并填入你在那家服务开的 API Key。
+Coscribe 本身不带模型。它调用你选择的模型服务来思考和写作，所以开始之前需要添加至少一个 **服务商**（provider），并填入你在那家服务开的 API Key。
 
 ## 添加一个服务商 {#add-a-provider}
 

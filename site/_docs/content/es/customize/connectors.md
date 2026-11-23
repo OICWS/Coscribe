@@ -1,18 +1,18 @@
 ---
 title: Conectores
-description: Conecta coscribe con los servicios que usas, como tu correo, tu calendario o tu gestor de proyectos, y elige qué puede hacer en ellos.
+description: Conecta Coscribe con los servicios que usas, como tu correo, tu calendario o tu gestor de proyectos, y elige qué puede hacer en ellos.
 ---
 
-Un conector deja que coscribe use otro servicio: leer tu correo, añadir un evento a un calendario, consultar una incidencia. Los conectores usan el Model Context Protocol (MCP), así que funciona cualquier servidor MCP, no solo los que muestra coscribe.
+Un conector deja que Coscribe use otro servicio: leer tu correo, añadir un evento a un calendario, consultar una incidencia. Los conectores usan el Model Context Protocol (MCP), así que funciona cualquier servidor MCP, no solo los que muestra Coscribe.
 
 ## Añadir un conector {#add-a-connector}
 
 Abre **Settings** › **Connectors** › **Discover**, elige el servicio y haz clic en **Connect**.
 
-- La mayoría de los servicios en línea te piden iniciar sesión. El inicio de sesión se abre en la propia página del servicio, en tu navegador, y solo inicias sesión una vez. coscribe nunca ve tu contraseña.
-- Un servicio marcado como **Needs setup** necesita antes una aplicación registrada en él. coscribe te guía, una sola vez. Si alguien ya lo configuró para tu equipo, **Copy a message for your admin** le pide el archivo de configuración.
+- La mayoría de los servicios en línea te piden iniciar sesión. El inicio de sesión se abre en la propia página del servicio, en tu navegador, y solo inicias sesión una vez. Coscribe nunca ve tu contraseña.
+- Un servicio marcado como **Needs setup** necesita antes una aplicación registrada en él. Coscribe te guía, una sola vez. Si alguien ya lo configuró para tu equipo, **Copy a message for your admin** le pide el archivo de configuración.
 
-coscribe también puede ofrecer un conector en una conversación, cuando tu petición necesita un servicio que no has conectado. Haz clic en **Connect** en la tarjeta, y coscribe sigue cuando está conectado. **Not now** lo deja; puedes conectarlo cuando quieras en **Settings** › **Connectors**.
+Coscribe también puede ofrecer un conector en una conversación, cuando tu petición necesita un servicio que no has conectado. Haz clic en **Connect** en la tarjeta, y Coscribe sigue cuando está conectado. **Not now** lo deja; puedes conectarlo cuando quieras en **Settings** › **Connectors**.
 
 ## Añadir un conector personalizado {#add-a-custom-connector}
 
@@ -30,9 +30,9 @@ Abre un conector en **Yours** para ver sus herramientas, divididas en **Read-onl
 
 | Opción | Qué pasa |
 |---|---|
-| **Always allow** | coscribe la usa sin preguntar. |
-| **Needs approval** | coscribe te pregunta cada vez. Consulta [Aprobaciones](../use/approvals.md). |
-| **Blocked** | coscribe no puede usarla. |
+| **Always allow** | Coscribe la usa sin preguntar. |
+| **Needs approval** | Coscribe te pregunta cada vez. Consulta [Aprobaciones](../use/approvals.md). |
+| **Blocked** | Coscribe no puede usarla. |
 
 La página del conector también dice si está conectado. Si no lo está, **Retry** vuelve a conectar y **Sign in** abre la página de inicio de sesión del servicio.
 

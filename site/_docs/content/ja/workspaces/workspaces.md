@@ -29,7 +29,7 @@ description: 各会話がどのフォルダー、サイト、シークレット�
 
 ## 許可済みフォルダー {#allowed-folders}
 
-ワークスペースのメインフォルダー以外で coscribe が使えるフォルダーは、すべて 1 つの一覧 **Allowed folders**（**Settings › Workspaces › Manage**）にまとめられています。各フォルダーにはアクセスレベル（**Read only**、**Read and write**、**Read, write and delete**）があります。ワークスペースが触れられるのは、その **Allowed folders** ページで選んだ許可済みフォルダーだけです。**Use an allowed folder** で一覧から選び、**Add new folder…** で新しいフォルダーを追加します。新しいフォルダーは読み書き可能として一覧に入ります。
+ワークスペースのメインフォルダー以外で Coscribe が使えるフォルダーは、すべて 1 つの一覧 **Allowed folders**（**Settings › Workspaces › Manage**）にまとめられています。各フォルダーにはアクセスレベル（**Read only**、**Read and write**、**Read, write and delete**）があります。ワークスペースが触れられるのは、その **Allowed folders** ページで選んだ許可済みフォルダーだけです。**Use an allowed folder** で一覧から選び、**Add new folder…** で新しいフォルダーを追加します。新しいフォルダーは読み書き可能として一覧に入ります。
 
 **Allowed folders** からフォルダーを外すと、すべてのワークスペースから外れます。抜いたドライブなど今見つからないフォルダーは印が付き、戻ってくればまた使われます。
 
@@ -37,4 +37,4 @@ description: 各会話がどのフォルダー、サイト、シークレット�
 
 ## スクリプトと分離 {#scripts-and-isolation}
 
-Windows では、スクリプトは分離された状態で動きます。会話のフォルダーしか使えず、そこでファイルを削除したり名前を変えたりできず、インターネットに出られるのはワークスペースの **Sites** が **Any site** のときだけです。coscribe は、分離がこの PC で機能するかを一度確認します。確認に失敗した場合はスクリプトがオフになります。**Scripts and commands** ページの **Run scripts without isolation** で、そのワークスペースについて再びオンにできますが、それに伴うリスクを負うことになります。
+Windows では、スクリプトは分離された状態で動きます。会話のフォルダーしか使えず、そこでファイルを削除したり名前を変えたりできず、インターネットに出られるのはワークスペースの **Sites** が **Any site** のときだけです。Coscribe は、分離がこの PC で機能するかを一度確認します。確認に失敗した場合はスクリプトがオフになります。**Scripts and commands** ページの **Run scripts without isolation** で、そのワークスペースについて再びオンにできますが、それに伴うリスクを負うことになります。

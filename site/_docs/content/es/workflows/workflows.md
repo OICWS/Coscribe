@@ -9,10 +9,10 @@ Un flujo de trabajo es una tarea hecha de pasos fijos. A diferencia de una tarea
 
 Lo más sencillo es hacer el trabajo una vez en un chat y luego crear un flujo de trabajo a partir de él:
 
-- Elige **Save as workflow** cuando coscribe ofrezca **Save this job?**, o en el panel **Task details**.
+- Elige **Save as workflow** cuando Coscribe ofrezca **Save this job?**, o en el panel **Task details**.
 - O escribe `/saveworkflow` en el cuadro de mensaje, seguido de un nombre si quieres.
 
-coscribe redacta los pasos a partir de la conversación. Revísalos y guarda.
+Coscribe redacta los pasos a partir de la conversación. Revísalos y guarda.
 
 También puedes empezar de cero: **Scheduled** › **New task** › **Build a workflow**. Dale un nombre y un horario, guarda y luego añade los pasos en su página.
 
@@ -33,7 +33,7 @@ La página tiene cuatro pestañas:
 
 | Paso | Qué hace |
 |---|---|
-| **Tool** | Usa una de las herramientas de coscribe, sin modelo. |
+| **Tool** | Usa una de las herramientas de Coscribe, sin modelo. |
 | **Script** | Ejecuta un script de Python fijo que has revisado. |
 | **Model** | Una llamada al modelo que debe devolver campos definidos. |
 | **Agent** | Trabaja hacia un objetivo con herramientas, dentro de los límites que fijas: las herramientas que puede llamar, las carpetas que puede cambiar y los sitios que puede abrir. |
@@ -61,7 +61,7 @@ Los sitios web cambian y los archivos varían de una ejecución a otra. El ajust
 | **Proactive** | Los pasos de IA deciden cómo hacer su parte. Si un paso falla, la IA puede añadir algunos pasos; los que cambian algo te esperan. |
 | **Autonomous** | La IA puede hacer toda la tarea a su manera. |
 
-Cuando una ejecución sorteó un cambio, coscribe puede proponer pasos actualizados para que los revises, así la siguiente ejecución no tiene que hacerlo.
+Cuando una ejecución sorteó un cambio, Coscribe puede proponer pasos actualizados para que los revises, así la siguiente ejecución no tiene que hacerlo.
 
 ## Iniciar un flujo de trabajo con un evento {#start-on-an-event}
 
@@ -69,7 +69,7 @@ Además de los horarios de cualquier tarea, la **Frequency** de un flujo de trab
 
 - **Every few minutes**: cada pocos minutos.
 - **When a file arrives in a folder**: elige la **Folder to watch** y, si quieres, un **File name pattern**. Cada archivo nuevo inicia una ejecución, con el archivo como entrada de archivo del flujo de trabajo. La opción necesita un flujo de trabajo que reciba un archivo.
-- **When something new shows up in a connector**: elige un conector y qué preguntarle. coscribe pregunta cada pocos minutos, y cada elemento nuevo inicia una ejecución. La primera comprobación da por visto lo que ya hay.
-- **When a program sends it an event**: otro programa del mismo ordenador envía una petición, con una clave, a una dirección que muestra coscribe. **Wait for a sample** guarda el siguiente evento para que elijas cuáles de sus campos rellenan las entradas. La dirección solo acepta peticiones de tu propio ordenador.
+- **When something new shows up in a connector**: elige un conector y qué preguntarle. Coscribe pregunta cada pocos minutos, y cada elemento nuevo inicia una ejecución. La primera comprobación da por visto lo que ya hay.
+- **When a program sends it an event**: otro programa del mismo ordenador envía una petición, con una clave, a una dirección que muestra Coscribe. **Wait for a sample** guarda el siguiente evento para que elijas cuáles de sus campos rellenan las entradas. La dirección solo acepta peticiones de tu propio ordenador.
 
-Un archivo que llegó mientras coscribe estaba cerrado inicia una ejecución cuando coscribe vuelve a iniciarse.
+Un archivo que llegó mientras Coscribe estaba cerrado inicia una ejecución cuando Coscribe vuelve a iniciarse.

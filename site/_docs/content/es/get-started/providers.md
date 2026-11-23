@@ -3,7 +3,7 @@ title: Añadir un proveedor de modelos
 description: Introduce una clave de API de un servicio de modelos y elige los modelos que vas a usar.
 ---
 
-coscribe no tiene un modelo propio. Llama al servicio de modelos que elijas para pensar y escribir, así que antes de empezar añade al menos un **proveedor** e introduce la clave de API que te dio ese servicio.
+Coscribe no tiene un modelo propio. Llama al servicio de modelos que elijas para pensar y escribir, así que antes de empezar añade al menos un **proveedor** e introduce la clave de API que te dio ese servicio.
 
 ## Añadir un proveedor {#add-a-provider}
 
