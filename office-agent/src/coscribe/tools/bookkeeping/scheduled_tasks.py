@@ -34,7 +34,8 @@ from .schedule_rule import (
 from .scheduled_run import (
     SCHEDULED_THREAD_PREFIX as SCHEDULED_THREAD_PREFIX,
 )
-from .scheduled_run import ScheduledRun, parse_run_thread_id, retain_runs, run_thread_id
+from .scheduled_run import ScheduledRun, retain_runs, run_thread_id
+from .scheduled_run import parse_run_thread_id as parse_run_thread_id
 from .task_calls import TaskCalls, check_calls
 from .task_memory import TaskMemory
 from .task_versions import TaskVersions
