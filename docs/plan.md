@@ -205,6 +205,9 @@ Last reviewed: 2026-11-22.
 
 ## For the maintainer (settings and decisions)
 
+- Required checks for #1051: `loosened` (PR text). Create the `loosening-approved` label; only
+  the maintainer adds it (`docs/log/2026-11-23-loosening-gate.md`).
+
 - Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`, `docs/log/2026-11-21-doctor-checks.md`):
   `/doctor` shipped in the web UI; the CLI has none. `/changes` is not needed for now
   (the Outputs panel and the notices above the message box show what a conversation made); it
