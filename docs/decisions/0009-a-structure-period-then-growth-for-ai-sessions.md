@@ -1,6 +1,6 @@
 # 0009: A structure period, so AI sessions can keep up with growth to 1M lines
 
-Status: accepted (2026-10-11).
+Status: accepted (2026-10-11); test selection on pull requests narrowed by 0059.
 
 ## Context
 The goal is a codebase of about 1,000,000 lines that AI sessions develop,

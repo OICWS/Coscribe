@@ -74,6 +74,10 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
+- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
+  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
+  on what tests prove, weekly numbers, frontend boundaries.
+
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
   workflow pins 3.11, so a change in how newer Pythons behave on Windows (3.13's owner-only ACL
   from `tempfile.mkdtemp` broke every contained script) is found only on a person's machine. A

@@ -50,11 +50,16 @@ python scripts/ratchet.py --enforce
 
 if [ "$fast" -eq 0 ]; then
   echo "== pytest =="
+  # COSCRIBE_TESTS: the test files a pull request selected (scripts/ci_scope.py, decision 0059).
+  # Empty means every test; the coverage floor is only measured then.
+  read -r -a tests <<< "${COSCRIBE_TESTS:-}"
+  floor=()
+  [ "${#tests[@]}" -gt 0 ] && floor=(--cov-fail-under=0)
   if [ -n "${COSCRIBE_COVERAGE:-}" ]; then
     # CI sets this; locally it costs a fifth more time for a number nobody reads.
-    pytest -q -n 4 --reruns 1 --cov --cov-report=term --cov-report=xml
+    pytest -q -n 4 --reruns 1 --cov --cov-report=term --cov-report=xml "${floor[@]}" "${tests[@]}"
   else
-    pytest -q -n 4 --reruns 1
+    pytest -q -n 4 --reruns 1 "${tests[@]}"
   fi
 fi
 echo "All checks passed."
