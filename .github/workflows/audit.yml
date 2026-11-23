@@ -122,12 +122,23 @@ jobs:
           tar xzf gitleaks.tar.gz gitleaks
 
       # The tree, not the history: a secret already committed is rotated, not hidden by a
-      # report. The values are redacted in the output.
+      # report. A finding is reported as file, line and rule only, so the issue says where to
+      # look without carrying any of the value; --redact also keeps it out of the JSON report.
+      # The line is where the match starts, which for a multi-line rule such as
+      # curl-auth-header can be a few lines above the value.
       - name: Secrets
         run: |
           mkdir -p audit-report
-          if ./gitleaks dir . --config .gitleaks.toml --redact --no-banner > audit-report/secrets.txt 2>&1; then
+          status=0
+          ./gitleaks dir . --config .gitleaks.toml --redact --no-banner \
+            --report-format json --report-path gitleaks.json > gitleaks.log 2>&1 || status=$?
+          if [ "$status" = 0 ]; then
             : > audit-report/secrets.txt
+          elif [ -s gitleaks.json ] && jq -e 'length > 0' gitleaks.json > /dev/null; then
+            jq -r '.[] | "\(.File):\(.StartLine)  \(.RuleID)"' gitleaks.json > audit-report/secrets.txt
+          else
+            # gitleaks failed before it scanned (bad config, crash): its log says why.
+            cp gitleaks.log audit-report/secrets.txt
           fi
           cat audit-report/secrets.txt
 

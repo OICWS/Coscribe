@@ -9,11 +9,16 @@ useDefault = true
 description = "Fake keys that tests feed to the redaction, audit and settings code"
 paths = [
   '''office-agent/tests/test_audit_log\.py''',
+  '''office-agent/tests/test_connector_secrets\.py''',
   '''office-agent/tests/test_conversations_tool\.py''',
   '''office-agent/tests/test_http_request\.py''',
   '''office-agent/tests/test_web\.py''',
   '''office-agent/tests/web/test_settings\.py''',
 ]
+
+[[allowlists]]
+description = "The fixed launch token CI's end-to-end jobs give a throwaway local server, not a credential"
+regexes = ['''^e2e-launch-token$''']
 
 [[allowlists]]
 description = "Opaque ids in the vendored PowerPoint animation preset catalog, not keys"
