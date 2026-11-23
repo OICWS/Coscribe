@@ -8,6 +8,7 @@ export a document, workbook or deck as a PDF.
 
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from collections.abc import Callable, Sequence
@@ -82,7 +83,8 @@ class ConvertToolkit:
                 f"{self._scope.relative(destination)} already exists -- pick another "
                 "output_path rather than replacing it."
             )
-        work = Path(tempfile.mkdtemp(prefix="coscribe_convert_"))
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        work = Path(tempfile.mkdtemp(prefix="coscribe_convert_", dir=destination.parent))
         try:
             produced = work / f"{source.stem}.{target_format}"
             program = _office_com.convert(source, produced, target_format, _CONVERT_TIMEOUT) or (
@@ -107,13 +109,18 @@ class ConvertToolkit:
                     f"{program} produced no file -- the source may be damaged or "
                     "password-protected."
                 )
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(produced), str(destination))
+            size = produced.stat().st_size
+            # A second conversion may finish first. Publish the complete file in one operation
+            # that fails on collision. Windows rename already has those semantics.
+            if os.name == "nt":
+                produced.rename(destination)
+            else:
+                destination.hardlink_to(produced)
         finally:
             shutil.rmtree(work, ignore_errors=True)
         return {
             "path": self._scope.relative(destination),
-            "bytes_written": destination.stat().st_size,
+            "bytes_written": size,
             "converted_from": self._scope.relative(source),
             "converted_by": program,
         }
