@@ -41,7 +41,10 @@ For a new person and their own Claude Code or Codex session. The rules live in
    delete it, or `PR text` stays red (the check re-runs when the description is edited).
    Name the documents you checked: `python office-agent/scripts/doc_impact.py` lists the ones
    your change can make untrue; change each or add `Docs checked: <path> (<why it still holds>)`
-   to the description, or the `docs-checked` job of `PR text` stays red.
+   to the description, or the `docs-checked` job of `PR text` stays red. A change that loosens
+   a limit (a worse ratchet number, a raised budget, an import exception) keeps its `loosened`
+   job red until the description has a `Loosened:` line and the maintainer adds the
+   `loosening-approved` label.
 9. **Keep it current** with `git merge origin/main`; never rebase or force-push an open PR.
    Fix a red `test` check before asking for review.
 

@@ -106,6 +106,11 @@ the session suggests another name such as `claude/...`.
 - Check `git log origin/main` and the open PRs before you start; open a draft
   PR early that says which area and which hot files you touch.
 - Never merge a PR or push to `main`: the maintainer merges.
+- Limits only the maintainer raises (decision 0009): the ratchet baseline, the size budgets in
+  `quality/budgets.json` (the core and each component), import exceptions, the coverage floor
+  and checks turned off in `pyproject.toml`. A PR that loosens one says why on a `Loosened:`
+  line and waits for the maintainer's `loosening-approved` label (`scripts/loosened.py`, the
+  `loosened` check). A session never adds that label.
 - Open an issue first (title, area, hot files) when the change is over about 200
   lines, touches a hot file or an invariant path, and link it in the PR
   (`Closes #N` or `Part of #N`); a smaller change writes `none: <why>`. The open

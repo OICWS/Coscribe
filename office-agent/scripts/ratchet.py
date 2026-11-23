@@ -44,6 +44,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "coscribe"
 TESTS = ROOT / "tests"
 BASELINE = ROOT / "quality" / "baseline.json"
+# Limits on size rather than numbers that may only shrink (decision 0009: the core about 100k
+# lines; a component small enough that its card and interface fit a session's slice).
+BUDGETS = ROOT / "quality" / "budgets.json"
+COMPONENTS = ROOT.parent / "components.toml"
 
 # Files above this are listed; one function above it is listed too.
 FILE_LINES_LISTED = 800
@@ -508,6 +512,46 @@ METRICS = {
 }
 
 
+def component_lines(components_toml: Path = COMPONENTS) -> dict[str, int]:
+    """Own source lines per Python component, without the components nested in it and without
+    vendored code."""
+    components = tomllib.loads(components_toml.read_text("utf-8")).get("component", [])
+    repo = components_toml.parent
+    roots = {c["name"]: repo / c["path"] for c in components if "/src/coscribe" in c["path"]}
+    sizes: dict[str, int] = {}
+    for name, root in roots.items():
+        nested = [r for n, r in roots.items() if n != name and root in r.parents]
+        files = [root] if root.suffix == ".py" else list(_python_files(root, skip_vendored=False))
+        sizes[name] = sum(
+            len(f.read_text(encoding="utf-8").splitlines())
+            for f in files
+            if not any(r == f or r in f.parents for r in nested)
+            and not any(v in f.as_posix() for v in VENDORED)
+        )
+    return sizes
+
+
+def budget_problems(
+    budgets: dict[str, int], sizes: dict[str, int], core: frozenset[str]
+) -> list[str]:
+    problems = []
+    total = sum(size for name, size in sizes.items() if name in core)
+    if total > budgets["core_lines"]:
+        problems.append(f"core_lines: {total} over the budget of {budgets['core_lines']}")
+    for name, size in sorted(sizes.items()):
+        if size > budgets["component_lines"]:
+            problems.append(
+                f"component_lines: {name} has {size}, over the budget of "
+                f"{budgets['component_lines']}"
+            )
+    return problems
+
+
+def core_components(components_toml: Path = COMPONENTS) -> frozenset[str]:
+    data = tomllib.loads(components_toml.read_text("utf-8"))
+    return frozenset(c["name"] for c in data.get("component", []) if c.get("core"))
+
+
 def measure() -> dict[str, dict[str, int]]:
     return {name: function() for name, function in METRICS.items()}
 
@@ -569,6 +613,20 @@ def main(argv: list[str] | None = None) -> int:
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     worse, better = compare(baseline, measured)
     print(f"Ratchet: {_summary(measured)}")
+    sizes = component_lines()
+    core = core_components()
+    budgets = json.loads(BUDGETS.read_text(encoding="utf-8"))
+    print(
+        f"Budgets: core {sum(v for k, v in sizes.items() if k in core)} of "
+        f"{budgets['core_lines']} lines; largest component {max(sizes.values())} of "
+        f"{budgets['component_lines']}"
+    )
+    over = budget_problems(budgets, sizes, core)
+    for line in over:
+        print(f"  OVER   {line}")
+    if over:
+        print("  Split the component or move code out of the core. Raising a budget is the")
+        print("  maintainer's decision (decision 0009).")
     for line in worse:
         print(f"  WORSE  {line}")
     for line in better:
@@ -578,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
     if worse:
         print("  Fix what got worse. Raising the baseline loosens the rule: a human approves that")
         print("  (`--update --accept-worse`).")
-    return 1 if (worse and args.enforce) else 0
+    return 1 if ((worse or over) and args.enforce) else 0
 
 
 if __name__ == "__main__":
