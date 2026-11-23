@@ -42,8 +42,6 @@ import subprocess
 import threading
 from pathlib import Path
 
-from .env_allowlist import child_env
-
 _NPM_TIMEOUT = 120.0
 _SETUP_TIMEOUT = 300.0
 
@@ -102,7 +100,6 @@ def _ensure_node_env(state_dir: Path) -> Path:
     result = subprocess.run(
         [_npm(), "install", *_BASELINE_PACKAGES],
         cwd=str(node_env_dir),
-        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -124,7 +121,6 @@ def list_packages(state_dir: Path) -> list[dict[str, str]]:
     result = subprocess.run(
         [_npm(), "list", "--json", "--depth=0"],
         cwd=str(node_env_dir),
-        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -152,10 +148,10 @@ def install_package(
     than an exception, same contract as the Python side's install_package."""
     node_env_dir = ensure_node_env(state_dir)
     try:
+        # No child_env: the person's mirror, registry and proxy variables must reach the installer.
         result = subprocess.run(
             [_npm(), "install", package],
             cwd=str(node_env_dir),
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -177,7 +173,6 @@ def uninstall_package(
         result = subprocess.run(
             [_npm(), "uninstall", package],
             cwd=str(node_env_dir),
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",

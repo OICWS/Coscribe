@@ -31,7 +31,7 @@ LibreOffice (decision 0026): `find_libreoffice`, `libreoffice_status`, `LibreOff
 `coscribe.tools`, not a submodule.
 
 ## Depends on
-`coscribe.needs_permission`, `coscribe.runtime`, `coscribe.workflow_spec`.
+`coscribe.needs_permission`, `coscribe.runtime`, `coscribe.thread_paths`, `coscribe.workflow_spec`.
 
 ## Invariants
 - `tools` never imports LangChain or LangGraph (import contract); only `runtime` and above know

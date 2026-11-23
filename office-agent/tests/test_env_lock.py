@@ -96,8 +96,9 @@ def test_two_first_runs_install_the_node_env_once(
 
 
 @pytest.mark.parametrize("module", [script_env, node_env])
-def test_package_installers_drop_server_credentials(tmp_path, monkeypatch, module):
-    monkeypatch.setenv("COSCRIBE_TEST_PROVIDER_KEY", "example")
+def test_package_installers_keep_the_persons_registry_settings(tmp_path, monkeypatch, module):
+    monkeypatch.setenv("PIP_INDEX_URL", "https://mirror.example/simple")
+    monkeypatch.setenv("npm_config_registry", "https://mirror.example/npm")
     monkeypatch.setattr(
         module,
         "ensure_script_env" if module is script_env else "ensure_node_env",
@@ -106,9 +107,8 @@ def test_package_installers_drop_server_credentials(tmp_path, monkeypatch, modul
     if module is node_env:
         monkeypatch.setattr(module, "_npm", lambda: "npm")
 
-    def install(command, *, env, **kwargs):
-        assert "PATH" in {name.upper() for name in env}
-        assert "COSCRIBE_TEST_PROVIDER_KEY" not in env
+    def install(command, **kwargs):
+        assert kwargs.get("env") is None
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr(module.subprocess, "run", install)

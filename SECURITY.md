@@ -29,7 +29,8 @@ coscribe runs on your own computer.
   the least access plus your approval.
 - **Packages for scripts** are installed only by you: from Settings, or from a card in the chat
   when a script needs one (decision 0057), which no permission mode answers for you. pip or npm
-  then runs as you, outside the sandbox, with the package's own install code.
+  then runs as you, outside the sandbox, with your own environment variables (a mirror or proxy
+  you set applies) and the package's own install code.
 - **Secrets** (provider keys, connector tokens, the global secrets): values go
   to the operating system's keychain where there is one. The promise is that
   the *model* cannot see a value in its tool output, the transcript, approval

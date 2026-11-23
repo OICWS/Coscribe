@@ -33,7 +33,6 @@ import sys
 import threading
 from pathlib import Path
 
-from .env_allowlist import child_env
 from .own_python import own_python_path
 
 _VENV_TIMEOUT = 120.0
@@ -99,7 +98,6 @@ def set_interpreter_override(state_dir: Path, python_path: str | None) -> dict[s
     try:
         result = subprocess.run(
             [python_path, "--version"],
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -200,7 +198,6 @@ def working_interpreters(candidates: list[str]) -> list[str]:
         try:
             result = subprocess.run(
                 [candidate, "--version"],
-                env=child_env(),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -267,7 +264,6 @@ def _ensure_script_env(state_dir: Path) -> Path:
     candidates = _own_python_first(state_dir, _venv_create_candidates(state_dir))
     result = subprocess.run(
         [candidates[0], "-m", "venv", str(venv_dir)],
-        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -279,7 +275,6 @@ def _ensure_script_env(state_dir: Path) -> Path:
             break
         result = subprocess.run(
             [interpreter, "-m", "venv", str(venv_dir)],
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -296,7 +291,6 @@ def _ensure_script_env(state_dir: Path) -> Path:
         )
     seed_result = subprocess.run(
         [str(venv_python(venv_dir)), "-m", "pip", "install", *_BASELINE_PACKAGES],
-        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -319,7 +313,6 @@ def list_packages(state_dir: Path) -> list[dict[str, str]]:
     venv_dir = ensure_script_env(state_dir)
     result = subprocess.run(
         [str(venv_python(venv_dir)), "-m", "pip", "list", "--format=json"],
-        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -346,9 +339,9 @@ def install_package(
     `{"success": False, "error": ...}` rather than an exception."""
     venv_dir = ensure_script_env(state_dir)
     try:
+        # No child_env: the person's mirror, registry and proxy variables must reach the installer.
         result = subprocess.run(
             [str(venv_python(venv_dir)), "-m", "pip", "install", package],
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -369,7 +362,6 @@ def uninstall_package(
     try:
         result = subprocess.run(
             [str(venv_python(venv_dir)), "-m", "pip", "uninstall", "--yes", package],
-            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",

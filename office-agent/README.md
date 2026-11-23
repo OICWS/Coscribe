@@ -639,7 +639,8 @@ under the permission mode.
   it, a command runs as the user only after the person allowed that, and each one is approved.
 - Off Windows, or let out of isolation, code runs as the user; a folder guard then catches
   mistaken writes and is not a security boundary.
-- Python and npm package installers start with the same allow-list and receive no conversation variables.
+- Python and npm package installs (pip, npm) are not scripts: they start from the server's full
+  environment, so the person's own mirror, registry and proxy settings apply as they set them.
 - A script starts from an allow-list of environment variables, never the server's own (which holds
   the provider keys). Card: `src/coscribe/tools/exec/AGENTS.md`.
 
