@@ -12,11 +12,10 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 from ...runtime import tool_metadata
+from ...thread_paths import thread_file
 from .._file_locks import file_lock, read_text_with_retry, replace_with_retry
-from ._trigger_files import file_in
 
 VALID_STATUSES = ("pending", "in_progress", "completed")
 
@@ -40,7 +39,7 @@ class TaskToolkit:
     """
 
     def __init__(self, thread_id: str, state_dir: str | Path) -> None:
-        self._path = file_in(state_dir, f"{quote(thread_id, safe='')}.tasks.json")
+        self._path = thread_file(state_dir, thread_id, ".tasks.json", quoted=True)
 
     def _load_state(self) -> tuple[list[dict[str, Any]], int]:
         """The list and the next free id. The id is kept in the file because the list alone

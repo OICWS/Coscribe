@@ -554,8 +554,11 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
     @router.delete("/api/scheduled-tasks/{trigger_id}")
     async def delete_scheduled_task_endpoint(trigger_id: str) -> JSONResponse:
         store = ScheduledTriggerStore(settings.state_dir)
-        trigger = store.load(trigger_id)
-        if trigger is None or not store.delete(trigger_id):
+        try:
+            trigger = store.delete_idle_task(trigger_id)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=409)
+        if trigger is None:
             return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
         await _delete_run_threads(trigger.runs)
         await state.webhooks.sync()

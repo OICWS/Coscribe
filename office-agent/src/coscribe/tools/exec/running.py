@@ -26,8 +26,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
-from urllib.parse import quote
 
+from ...thread_paths import thread_file
 from .._output_truncation import truncate_script_output
 from . import isolation as _isolation
 from ._appcontainer import ContainerProcess
@@ -214,7 +214,7 @@ class Detachable:
     def cut_output_dir(self, state_dir: Path) -> Path:
         """Where this conversation's cut script output is kept whole. Its file tools may read
         it (coordinator.py), so the model can search what a cut left out."""
-        return Path(state_dir) / "script-output" / quote(self.thread_id, safe="")
+        return thread_file(state_dir / "script-output", self.thread_id, "", quoted=True)
 
 
 @dataclass

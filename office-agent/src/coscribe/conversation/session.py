@@ -78,6 +78,7 @@ from ..runtime_lg import (
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
+from ..thread_paths import thread_file
 from ..tools import (
     BROWSER_HOST,
     QUESTION_TOOL_NAMES,
@@ -321,12 +322,7 @@ class ChatSessionLG:
         self._gated_tool_risks = risks_of_gated_tools(lg_tools)
         self.lg_agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
         self.config = {"configurable": {"thread_id": thread_id}}
-        # The currently-connected browser tab's websocket, if any -- set/
-        # cleared by app.py's ws_endpoint around its own connection
-        # lifetime, *not* threaded through every method call the way
-        # every other websocket use in this class already is (see
-        # notify_resync's own docstring for why this one specifically
-        # needs a place to live outside any single call's stack).
+        # Background turns and resyncs deliver to the tab most recently attached by watch().
         self._live_websocket: EventSink | None = None
         self._subagents.listen()
         # A reply is being worked on -- unlike the turn lock, not held for the
@@ -389,7 +385,7 @@ class ChatSessionLG:
     def _title_path(self) -> Path:
         # The same sidecar app.py's rename endpoint writes and list_threads
         # reads.
-        return Path(self.settings.state_dir) / f"{self.thread_id}.title"
+        return thread_file(self.settings.state_dir, self.thread_id, ".title")
 
     def _wants_title(self) -> bool:
         return (
@@ -842,13 +838,8 @@ class ChatSessionLG:
         return await self._assembly.context_breakdown()
 
     async def notify_resync(self) -> None:
-        """Tell the tab watching this thread, if any, that something changed
-        outside its own turn (a wake, scheduled task or sub-agent resumed it).
-        It re-sends the "history" event a fresh connection gets, so the
-        frontend's existing reducer replaces its items with the replay.
-
-        Best-effort: a dead socket can raise, and a missed resync is fixed by
-        the next reconnect, not worth failing the background work over."""
+        """Replay a background turn's changes to the newest tab. A dropped tab gets its
+        replay on reconnect."""
         websocket = self._live_websocket
         if websocket is None:
             return
@@ -860,6 +851,13 @@ class ChatSessionLG:
     @cached_property
     def _history(self) -> ConversationHistory:
         return ConversationHistory(self)
+
+    def watch(self, websocket: EventSink) -> ConversationHistory:
+        """Give the connecting tab its own history cursor. Background resyncs replay to
+        the newest tab using that same cursor."""
+        self._live_websocket = websocket
+        self._history = ConversationHistory(self)
+        return self._history
 
     async def send_history(self, websocket: EventSink) -> None:
         await self._history.send_history(websocket)

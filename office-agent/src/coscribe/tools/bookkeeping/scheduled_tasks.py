@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
 from ...workflow_spec import current_shape, parse_workflow, workflow_error
+from .._file_locks import file_lock
 from ._trigger_files import is_trigger_id, trigger_file
 from .connector_items import ConnectorItems
 from .event_rules import event_rule
@@ -218,6 +219,7 @@ class ScheduledTriggerStore:
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
         self.root = self.state_dir / "scheduled_tasks"
+        self._run_lock = file_lock(self.root.resolve())
         # What each task keeps between runs and the files its folder watch has seen
         # (decision 0034), kept beside the tasks and deleted with them.
         self.memory = TaskMemory(self.state_dir)
@@ -271,18 +273,25 @@ class ScheduledTriggerStore:
         ]
 
     def delete(self, trigger_id: str) -> bool:
+        return self.delete_idle_task(trigger_id) is not None
+
+    def delete_idle_task(self, trigger_id: str) -> ScheduledTrigger | None:
+        """Return the removed snapshot so its run conversations can be deleted with it."""
         if not is_trigger_id(trigger_id):
-            return False
-        path = trigger_file(self.root, trigger_id, ".json")
-        existed = path.exists()
-        path.unlink(missing_ok=True)
-        trigger_file(self.root, trigger_id, ".notes.md").unlink(missing_ok=True)
-        self.memory.delete(trigger_id)
-        self.folders.forget(trigger_id)
-        self.connector_items.forget(trigger_id)
-        self.webhooks.forget(trigger_id)
-        self.versions.delete(trigger_id)
-        return existed
+            return None
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            if trigger and any(run.status == "running" for run in trigger.runs):
+                raise ValueError("Stop the running task or wait for it to finish before deleting it.")
+            path = trigger_file(self.root, trigger_id, ".json")
+            path.unlink(missing_ok=True)
+            trigger_file(self.root, trigger_id, ".notes.md").unlink(missing_ok=True)
+            self.memory.delete(trigger_id)
+            self.folders.forget(trigger_id)
+            self.connector_items.forget(trigger_id)
+            self.webhooks.forget(trigger_id)
+            self.versions.delete(trigger_id)
+            return trigger
 
     def start_run(
         self,
@@ -295,30 +304,34 @@ class ScheduledTriggerStore:
         trigger, the new run, and any runs dropped for exceeding
         MAX_RUNS_KEPT (oldest first) so the caller can delete their
         conversations too."""
-        trigger = self.load(trigger_id)
-        if trigger is None:
-            raise KeyError(f"No scheduled task with id {trigger_id!r}")
-        run_id = uuid.uuid4().hex[:8]
-        run = ScheduledRun(
-            run_id=run_id,
-            thread_id=run_thread_id(trigger_id, run_id),
-            started_at=_now_iso(),
-            source=source,
-            inputs=inputs,
-            event=event,
-        )
-        trigger.runs, pruned = fold_quiet(trigger.runs)
-        trigger.runs.append(run)
-        pruned += trigger.runs[:-MAX_RUNS_KEPT]
-        trigger.runs = trigger.runs[-MAX_RUNS_KEPT:]
-        trigger.last_run_at = run.started_at
-        trigger.last_run_status = run.status
-        self.save(trigger)
-        # The run's conversation reaches what its task's environment allows, like any other.
-        environments = Environments(self.state_dir)
-        if environments.get(trigger.environment) is not None:
-            environments.assign(run.thread_id, trigger.environment)
-        return trigger, run, pruned
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            if trigger is None:
+                raise KeyError(f"No scheduled task with id {trigger_id!r}")
+            run_id = uuid.uuid4().hex[:8]
+            run = ScheduledRun(
+                run_id=run_id,
+                thread_id=run_thread_id(trigger_id, run_id),
+                started_at=_now_iso(),
+                source=source,
+                inputs=inputs,
+                event=event,
+            )
+            trigger.runs, pruned = fold_quiet(trigger.runs)
+            trigger.runs.append(run)
+            excess = max(0, len(trigger.runs) - MAX_RUNS_KEPT)
+            finished = [r for r in trigger.runs if r.status in ("completed", "failed", "stopped")]
+            pruned += finished[:excess]
+            dropped = {r.run_id for r in pruned}
+            trigger.runs = [r for r in trigger.runs if r.run_id not in dropped]
+            trigger.last_run_at = run.started_at
+            trigger.last_run_status = run.status
+            self.save(trigger)
+            # The run's conversation reaches what its task's environment allows, like any other.
+            environments = Environments(self.state_dir)
+            if environments.get(trigger.environment) is not None:
+                environments.assign(run.thread_id, trigger.environment)
+            return trigger, run, pruned
 
     def finish_run(
         self, trigger_id: str, run_id: str, status: str, error: str | None = None
@@ -326,69 +339,73 @@ class ScheduledTriggerStore:
         """Re-reads the trigger before writing: a run can take minutes, and
         the user may have edited the task meanwhile -- saving the copy
         loaded at start would silently undo that edit."""
-        trigger = self.load(trigger_id)
-        if trigger is None:
-            return None
-        run = trigger.find_run(run_id)
-        if run is None:
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            if trigger is None:
+                return None
+            run = trigger.find_run(run_id)
+            if run is None:
+                return trigger
+            run.status = status
+            run.error = error
+            run.finished_at = _now_iso()
+            if trigger.runs and trigger.runs[-1] is run:
+                trigger.last_run_status = status
+            self.save(trigger)
             return trigger
-        run.status = status
-        run.error = error
-        run.finished_at = _now_iso()
-        if trigger.runs and trigger.runs[-1] is run:
-            trigger.last_run_status = status
-        self.save(trigger)
-        return trigger
 
     def record_evidence(self, trigger_id: str, run_id: str, **fields: Any) -> None:
         """Set a run's screenshot, page, files, sites, investigation, queued or quiet flag."""
-        trigger = self.load(trigger_id)
-        run = trigger.find_run(run_id) if trigger is not None else None
-        if trigger is None or run is None:
-            return
-        for name, value in fields.items():
-            if name not in _EVIDENCE:
-                raise ValueError(f"{name!r} isn't run evidence")
-            setattr(run, name, value)
-        self.save(trigger)
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            run = trigger.find_run(run_id) if trigger is not None else None
+            if trigger is None or run is None:
+                return
+            for name, value in fields.items():
+                if name not in _EVIDENCE:
+                    raise ValueError(f"{name!r} isn't run evidence")
+                setattr(run, name, value)
+            self.save(trigger)
 
     def record_step(self, trigger_id: str, run_id: str, record: dict[str, Any]) -> None:
         """Replace this step's record on the run -- this pass of it, inside
         a loop -- or append it."""
-        trigger = self.load(trigger_id)
-        run = trigger.find_run(run_id) if trigger is not None else None
-        if trigger is None or run is None:
-            return
-        for index, existing in enumerate(run.steps):
-            if existing.get("step_id") == record.get("step_id") and (
-                existing.get("iteration") or []
-            ) == (record.get("iteration") or []):
-                run.steps[index] = record
-                break
-        else:
-            run.steps.append(record)
-        self.save(trigger)
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            run = trigger.find_run(run_id) if trigger is not None else None
+            if trigger is None or run is None:
+                return
+            for index, existing in enumerate(run.steps):
+                if existing.get("step_id") == record.get("step_id") and (
+                    existing.get("iteration") or []
+                ) == (record.get("iteration") or []):
+                    run.steps[index] = record
+                    break
+            else:
+                run.steps.append(record)
+            self.save(trigger)
 
     def reopen_run(self, trigger_id: str, run_id: str) -> ScheduledRun:
         """Mark a finished run as running again -- it's being resumed, a
         step retried, or an approval answered."""
-        trigger = self.load(trigger_id)
-        run = trigger.find_run(run_id) if trigger is not None else None
-        if trigger is None or run is None:
-            raise KeyError(f"No run {run_id!r} of scheduled task {trigger_id!r}")
-        if run.status == "running":
-            raise ValueError("This run is still going")
-        run.status = "running"
-        run.error = None
-        run.finished_at = None
-        run.queued = False
-        run.screenshot = None
-        run.page = None
-        run.files = []
-        if trigger.runs[-1] is run:
-            trigger.last_run_status = "running"
-        self.save(trigger)
-        return run
+        with self._run_lock:
+            trigger = self.load(trigger_id)
+            run = trigger.find_run(run_id) if trigger is not None else None
+            if trigger is None or run is None:
+                raise KeyError(f"No run {run_id!r} of scheduled task {trigger_id!r}")
+            if run.status == "running":
+                raise ValueError("This run is still going")
+            run.status = "running"
+            run.error = None
+            run.finished_at = None
+            run.queued = False
+            run.screenshot = None
+            run.page = None
+            run.files = []
+            if trigger.runs[-1] is run:
+                trigger.last_run_status = "running"
+            self.save(trigger)
+            return run
 
     def read_notes(self, trigger_id: str) -> str:
         path = trigger_file(self.root, trigger_id, ".notes.md")

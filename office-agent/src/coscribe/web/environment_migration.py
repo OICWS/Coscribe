@@ -11,6 +11,7 @@ from typing import Any
 from ..config import Settings
 from ..runtime import Environments
 from ..runtime_lg import extract_text, strip_mode_note
+from ..thread_paths import is_thread_id
 from ..tools import SCHEDULED_THREAD_PREFIX, ScheduledTriggerStore
 from .thread_files import ThreadFiles
 
@@ -33,6 +34,8 @@ def _legacy_settings(settings: Settings) -> dict[str, dict[str, Any]]:
         return configs.setdefault(thread_id, {})
 
     for path in state_dir.glob("*.workspace"):
+        if not is_thread_id(path.stem):
+            continue
         folders = files.legacy_folders(path.stem)
         if folders:
             of(path.stem)["folders"] = folders
@@ -55,7 +58,11 @@ def _legacy_settings(settings: Settings) -> dict[str, dict[str, Any]]:
     unisolated = _json(state_dir / "unisolated-conversations.json")
     for thread_id in unisolated if isinstance(unisolated, dict) else {}:
         of(str(thread_id))["unisolated"] = True
-    return {t: c for t, c in configs.items() if not t.startswith(SCHEDULED_THREAD_PREFIX)}
+    return {
+        t: c
+        for t, c in configs.items()
+        if is_thread_id(t) and not t.startswith(SCHEDULED_THREAD_PREFIX)
+    }
 
 
 async def _titles(settings: Settings, checkpointer: Any, thread_ids: list[str]) -> dict[str, str]:

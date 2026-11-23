@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Mapping, Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from langchain_core.messages import HumanMessage, RemoveMessage, SystemMessage
@@ -21,6 +20,7 @@ from ..runtime import COMPACT_INSTRUCTIONS
 from ..runtime_lg import answer_every_tool_call, is_steer, serialize_history_for_ws_lg
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import render_transcript_lg as _render_transcript_lg
+from ..thread_paths import thread_file
 from ..tools import TaskToolkit
 from .events import EventSink
 from .export_text import conversation_markdown
@@ -275,7 +275,7 @@ class ConversationHistory:
         tasks = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).open_tasks_note()
         if tasks:
             note = f"{note}\n\n{tasks}"
-        title_path = Path(self._host.settings.state_dir) / f"{self._host.thread_id}.title"
+        title_path = thread_file(self._host.settings.state_dir, self._host.thread_id, ".title")
         if not title_path.exists():
             first_user = next(
                 (e["text"] for e in serialize_history_for_ws_lg(messages) if e["kind"] == "user"),

@@ -106,11 +106,11 @@ def build_http_tools(state_dir: str | Path, thread_id: str) -> list[Callable[...
                 headers=sent_headers,
                 content=sent_body.encode("utf-8") if sent_body is not None else None,
             )
-        text = response.text if method != "HEAD" else ""
+        text = redact(response.text) if method != "HEAD" else ""
         result: dict[str, Any] = {
             "status": response.status_code,
-            "content_type": response.headers.get("content-type", ""),
-            "body": redact(text[:_MAX_BODY_CHARS]),
+            "content_type": redact(response.headers.get("content-type", "")),
+            "body": text[:_MAX_BODY_CHARS],
             "truncated": len(text) > _MAX_BODY_CHARS,
         }
         location = response.headers.get("location")

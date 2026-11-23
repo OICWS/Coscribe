@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 
 from ..tools import copy_deck, deck_files, doc_side_folder, move_deck
-from .dashboard import dashboard_folder
+from .dashboard import dashboard_folder, is_dashboard
 from .design_canvas import CANVAS_SUFFIX, canvas_folder, is_canvas
 
 
@@ -45,7 +45,13 @@ def _side_folder_of(path: Path) -> Path | None:
 
 def _side_folder(path: Path) -> Path | None:
     folder = _side_folder_of(path)
-    return folder if folder is not None and folder.is_dir() else None
+    if folder is None or not folder.is_dir():
+        return None
+    if path.suffix.lower() in (".html", ".htm"):
+        with path.open("rb") as page:
+            if not is_dashboard(page.read(8192)):
+                return None
+    return folder
 
 
 def renamed_path(path: Path, name: str) -> Path:
@@ -92,7 +98,11 @@ def free_copy_path(path: Path) -> Path:
 
     def taken(candidate: Path) -> bool:
         folder = _side_folder_of(candidate)
-        return candidate.exists() or (folder is not None and folder.exists())
+        return (
+            candidate.exists()
+            or candidate.is_symlink()
+            or (folder is not None and (folder.exists() or folder.is_symlink()))
+        )
 
     candidate = path.with_name(f"{stem} copy{ending}")
     n = 2
@@ -103,17 +113,42 @@ def free_copy_path(path: Path) -> Path:
 
 
 def copy_file(path: Path) -> Path:
-    target = free_copy_path(path)
-    if _is_deck(path):
-        copy_deck(path, target)
-    else:
-        shutil.copy2(path, target)
-    folder, copied = _side_folder(path), _side_folder_of(target)
-    if folder and copied is not None:
-        # A Doc's copy starts with the original's pictures but not its comments or kept versions.
-        doc = path.suffix == ".md"
-        ignore = shutil.ignore_patterns("comments.json", "versions") if doc else None
-        shutil.copytree(folder, copied, ignore=ignore)
+    folder = _side_folder(path)
+    while True:
+        target = free_copy_path(path)
+        try:
+            target.touch(exist_ok=False)
+        except FileExistsError:
+            continue
+        copied = _side_folder_of(target) if folder else None
+        if copied is not None:
+            try:
+                copied.mkdir()
+            except FileExistsError:
+                target.unlink()
+                continue
+            except OSError:
+                target.unlink()
+                raise
+        break
+    try:
+        if _is_deck(path):
+            copy_deck(path, target)
+        else:
+            shutil.copy2(path, target)
+        if folder and copied:
+            # A Doc's copy keeps its pictures and starts a fresh review history.
+            ignore = (
+                shutil.ignore_patterns("comments.json", "versions")
+                if path.suffix.lower() == ".md"
+                else None
+            )
+            shutil.copytree(folder, copied, ignore=ignore, dirs_exist_ok=True)
+    except Exception:
+        target.unlink(missing_ok=True)
+        if copied:
+            shutil.rmtree(copied)
+        raise
     return target
 
 

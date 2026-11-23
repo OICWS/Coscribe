@@ -36,6 +36,7 @@ dependencies = [
     "pydantic>=2.5.0,<2.15.0",
     "pydantic-settings>=2.5.0",
     "python-dotenv>=1.0.0",
+    "packaging>=24",
     # runtime/secrets.py: OS-keychain-backed secret storage, optional at
     # runtime (any keyring.errors.KeyringError falls back to plaintext) --
     # a thin, small, pure-Python meta-package; heavier OS-specific

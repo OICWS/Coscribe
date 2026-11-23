@@ -11,10 +11,12 @@ from pathlib import Path
 from ..config import Settings
 from ..conversation import OfferLog
 from ..runtime import Environments
+from ..thread_paths import thread_file
 from ..tools import (
     SCHEDULED_THREAD_PREFIX,
     MessagingStore,
     ScheduledTriggerStore,
+    WakeStore,
     WorkspaceScope,
     parse_run_thread_id,
 )
@@ -34,10 +36,10 @@ class ThreadFiles:
         # sidecar, this one is never read to configure a live session --
         # it only affects how a thread is displayed in the nav rail's
         # session list.
-        return self._settings.state_dir / f"{thread_id}.title"
+        return thread_file(self._settings.state_dir, thread_id, ".title")
 
     def workspace_sidecar_path(self, thread_id: str) -> Path:
-        return self._settings.state_dir / f"{thread_id}.workspace"
+        return thread_file(self._settings.state_dir, thread_id, ".workspace")
 
     def write_workspace_sidecar(self, thread_id: str, folders: list[str]) -> None:
         """Keeps a scheduled run's folders; any other conversation's are its environment's."""
@@ -93,10 +95,13 @@ class ThreadFiles:
         """Every file that belongs to a thread -- otherwise a new thread later
         reusing the same id would inherit an old task list or workspace/skills
         choice."""
-        (self._settings.state_dir / f"{thread_id}.tasks.json").unlink(missing_ok=True)
+        thread_file(self._settings.state_dir, thread_id, ".tasks.json", quoted=True).unlink(
+            missing_ok=True
+        )
         self.workspace_sidecar_path(thread_id).unlink(missing_ok=True)
         self.title_sidecar_path(thread_id).unlink(missing_ok=True)
         Environments(self._settings.state_dir).forget_thread(thread_id)
+        WakeStore(self._settings.state_dir).cancel_for_thread(thread_id)
         MessagingStore(self._settings.state_dir).delete(thread_id)
         OfferLog(self._settings.state_dir).forget(thread_id)
 
@@ -105,9 +110,9 @@ class ThreadFiles:
         the folders) and the title."""
         state_dir = self._settings.state_dir
         state_dir.mkdir(parents=True, exist_ok=True)
-        tasks = state_dir / f"{source}.tasks.json"
+        tasks = thread_file(state_dir, source, ".tasks.json", quoted=True)
         if tasks.is_file():
-            shutil.copyfile(tasks, state_dir / f"{target}.tasks.json")
+            shutil.copyfile(tasks, thread_file(state_dir, target, ".tasks.json", quoted=True))
         environments = Environments(state_dir)
         environments.assign(target, environments.for_thread(source)["id"])
         self.title_sidecar_path(target).write_text(title[:200], encoding="utf-8")

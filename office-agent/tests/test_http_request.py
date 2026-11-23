@@ -138,6 +138,21 @@ def test_the_value_is_blanked_out_of_a_response_in_its_common_encodings(
     assert "abcdef123456" not in result["body"] and "[REDACTED SECRET]" in result["body"]
 
 
+def test_response_limit_applies_after_masking(tmp_path: Path, server: _Server) -> None:
+    tools = _tools(tmp_path)
+    marker = "[REDACTED SECRET]"
+    prefix = "a" * (http_module._MAX_BODY_CHARS - len(marker))
+    server.reply = lambda r: httpx.Response(
+        200, text=prefix + KEY + "tail", headers={"content-type": f"text/plain; key={KEY}"}
+    )
+
+    result = tools["http_request"]("GET", "https://api.example.com/echo")
+
+    assert result["body"] == prefix + marker
+    assert result["truncated"] is True
+    assert result["content_type"] == f"text/plain; key={marker}"
+
+
 @pytest.mark.parametrize(
     ("url", "headers", "message"),
     [

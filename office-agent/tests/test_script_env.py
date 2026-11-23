@@ -261,15 +261,15 @@ def test_overlay_env_replaces_a_name_that_differs_only_in_case_on_windows(
 ) -> None:
     from types import SimpleNamespace  # noqa: PLC0415
 
-    from coscribe.tools.exec import script_env  # noqa: PLC0415
+    from coscribe.tools.exec import env_allowlist  # noqa: PLC0415
 
     base = {"PATH": "/bin", "HOME": "/h"}
 
-    monkeypatch.setattr(script_env, "os", SimpleNamespace(name="nt"))
-    on_windows = script_env.overlay_env(base, {"Path": "/mine", "NEW": "1"})
-    monkeypatch.setattr(script_env, "os", SimpleNamespace(name="posix"))
-    elsewhere = script_env.overlay_env(base, {"Path": "/mine"})
+    monkeypatch.setattr(env_allowlist, "os", SimpleNamespace(name="nt"))
+    on_windows = env_allowlist.overlay_env(base, {"Path": "/mine", "NEW": "1"})
+    monkeypatch.setattr(env_allowlist, "os", SimpleNamespace(name="posix"))
+    elsewhere = env_allowlist.overlay_env(base, {"Path": "/mine"})
 
     assert on_windows == {"PATH": "/mine", "HOME": "/h", "NEW": "1"}
     assert elsewhere == {"PATH": "/bin", "HOME": "/h", "Path": "/mine"}
-    assert script_env.overlay_env(base, None) == base and base["PATH"] == "/bin"
+    assert env_allowlist.overlay_env(base, None) == base and base["PATH"] == "/bin"

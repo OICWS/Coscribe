@@ -187,6 +187,12 @@ class WakeStore:
         this down to one thread."""
         return [w for w in self._list_all() if w.status == "pending"]
 
+    def cancel_for_thread(self, thread_id: str) -> None:
+        for wake in self.list_pending():
+            if wake.thread_id == thread_id:
+                wake.status = "cancelled"
+                self.save(wake)
+
     def _list_all(self) -> list[WakeRequest]:
         if not self.root.is_dir():
             return []

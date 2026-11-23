@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ..config import Settings
 from ..runtime import Environments
+from ..thread_paths import is_thread_id
 from ..tools import SCHEDULED_THREAD_PREFIX, sweep_folder_grants
 from .thread_files import ThreadFiles
 
@@ -27,7 +28,8 @@ def folders_in_use(settings: Settings) -> list[Path]:
         folders.extend(Path(f) for f in env["folders"])
     folders.extend(Path(f) for f in environments.all_thread_folders())
     for sidecar in settings.state_dir.glob(f"{SCHEDULED_THREAD_PREFIX}*.workspace"):
-        folders.extend(Path(f) for f in threads.folders_of(sidecar.stem))
+        if is_thread_id(sidecar.stem):
+            folders.extend(Path(f) for f in threads.folders_of(sidecar.stem))
     return folders
 
 

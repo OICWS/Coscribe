@@ -389,3 +389,20 @@ async def test_a_chain_of_sub_agent_reports_winds_down_then_waits_for_the_user(
     assert len(humans) == 2
     assert "Tell the user where things stand" in humans[0]
     assert SubAgentTaskStore(settings.state_dir).load("t2").reported is False
+
+
+async def test_wake_cancelled_during_session_setup_skips_delivery(tmp_path: Path) -> None:
+    from unittest.mock import AsyncMock
+
+    wakes = WakeStore(tmp_path)
+    wakes.save(
+        WakeRequest("wake", "thread", "timer", "remind me", "2025-01-01", wake_at="2025-01-01")
+    )
+    session = AsyncMock()
+
+    async def get_session(thread_id: str) -> Any:
+        wakes.cancel_for_thread(thread_id)
+        return session
+
+    assert await poll_due_wakes(tmp_path, get_session) == []
+    session.handle_user_message.assert_not_awaited()

@@ -119,3 +119,35 @@ def test_a_copied_doc_has_its_pictures_but_not_the_comments_or_versions(tmp_path
     assert copy.name == "plan copy.md" and (side / "assets" / "a.png").is_file()
     assert not (side / "comments.json").exists() and not (side / "versions").exists()
     assert (tmp_path / "plan.doc" / "comments.json").is_file()
+
+
+@pytest.mark.parametrize("marked", [False, True])
+def test_html_trashes_datasets_only_for_a_dashboard(tmp_path, monkeypatch, marked):
+    page = tmp_path / "sales.html"
+    page.write_text(
+        '<meta name="coscribe" content="dashboard">' if marked else "<html>", encoding="utf-8"
+    )
+    folder = tmp_path / "sales.dashboard"
+    folder.mkdir()
+    sent = []
+    monkeypatch.setattr("send2trash.send2trash", sent.append)
+    trash_file(page)
+    assert sent == ([str(page), str(folder)] if marked else [str(page)])
+
+
+def test_duplicate_retries_a_name_taken_after_selection(tmp_path, monkeypatch):
+    from coscribe.conversation import artifact_files
+
+    source = tmp_path / "report.docx"
+    source.write_bytes(b"source")
+    taken = tmp_path / "report copy.docx"
+
+    def choose(path):
+        selected = free_copy_path(path)
+        if selected == taken:
+            selected.write_bytes(b"other task")
+        return selected
+
+    monkeypatch.setattr(artifact_files, "free_copy_path", choose)
+    assert copy_file(source).read_bytes() == b"source"
+    assert taken.read_bytes() == b"other task"

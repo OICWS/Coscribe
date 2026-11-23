@@ -361,6 +361,11 @@ def test_delete_scheduled_task(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     created = tools["create_scheduled_task"](name="x", kind="daily", at="09:00", prompt="p")
 
+    store = ScheduledTriggerStore(tmp_path)
+    _, run, _ = store.start_run(created["trigger_id"], "manual")
+    with pytest.raises(ValueError, match="Stop the running task"):
+        tools["delete_scheduled_task"](trigger_id=created["trigger_id"])
+    store.finish_run(created["trigger_id"], run.run_id, "completed")
     tools["delete_scheduled_task"](trigger_id=created["trigger_id"])
 
     assert tools["list_scheduled_tasks"]() == []
@@ -449,8 +454,10 @@ def test_finish_run_keeps_edits_made_while_the_run_was_in_progress(tmp_path: Pat
 def test_start_run_prunes_the_oldest_runs_beyond_the_limit(tmp_path: Path) -> None:
     store = ScheduledTriggerStore(tmp_path)
     created = create_trigger(store, name="x", kind="manual", at="", prompt="p")
+    active = store.start_run(created.trigger_id, "manual")[1]
     first_run_id = store.start_run(created.trigger_id, "manual")[1].run_id
-    for _ in range(MAX_RUNS_KEPT - 1):
+    store.finish_run(created.trigger_id, first_run_id, "completed")
+    for _ in range(MAX_RUNS_KEPT - 2):
         store.start_run(created.trigger_id, "manual")
 
     _, _, pruned = store.start_run(created.trigger_id, "manual")
@@ -459,6 +466,9 @@ def test_start_run_prunes_the_oldest_runs_beyond_the_limit(tmp_path: Path) -> No
     resolved = store.load(created.trigger_id)
     assert resolved is not None
     assert len(resolved.runs) == MAX_RUNS_KEPT
+    assert resolved.find_run(active.run_id) == active
+    _, _, pruned = store.start_run(created.trigger_id, "manual")
+    assert pruned == []
 
 
 def test_a_pre_per_run_trigger_surfaces_its_shared_thread_as_one_run() -> None:

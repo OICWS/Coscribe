@@ -27,14 +27,13 @@ Code's own Bash tool on a sandboxless host).
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
 import sys
 import threading
-from collections.abc import Mapping
 from pathlib import Path
 
+from .env_allowlist import child_env
 from .own_python import own_python_path
 
 _VENV_TIMEOUT = 120.0
@@ -100,6 +99,7 @@ def set_interpreter_override(state_dir: Path, python_path: str | None) -> dict[s
     try:
         result = subprocess.run(
             [python_path, "--version"],
+            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -200,6 +200,7 @@ def working_interpreters(candidates: list[str]) -> list[str]:
         try:
             result = subprocess.run(
                 [candidate, "--version"],
+                env=child_env(),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -254,12 +255,19 @@ def _ensure_script_env(state_dir: Path) -> Path:
     without them would make that promise a lie the model has no way to
     detect until a script's `import pandas` fails confusingly later."""
     venv_dir = state_dir / "script-env"
-    if venv_python(venv_dir).is_file():
+    initializing = state_dir / "script-env.initializing"
+    if initializing.exists():
+        # An interrupted pip may leave an importable but incomplete package behind.
+        if venv_dir.exists():
+            shutil.rmtree(venv_dir)
+    elif venv_python(venv_dir).is_file():
         return venv_dir
     venv_dir.parent.mkdir(parents=True, exist_ok=True)
+    initializing.touch()
     candidates = _own_python_first(state_dir, _venv_create_candidates(state_dir))
     result = subprocess.run(
         [candidates[0], "-m", "venv", str(venv_dir)],
+        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -271,6 +279,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
             break
         result = subprocess.run(
             [interpreter, "-m", "venv", str(venv_dir)],
+            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -287,6 +296,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
         )
     seed_result = subprocess.run(
         [str(venv_python(venv_dir)), "-m", "pip", "install", *_BASELINE_PACKAGES],
+        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -294,11 +304,10 @@ def _ensure_script_env(state_dir: Path) -> Path:
         timeout=_SETUP_TIMEOUT,
     )
     if seed_result.returncode != 0:
-        # Otherwise the next run would find the venv and use it without these packages.
-        shutil.rmtree(venv_dir, ignore_errors=True)
         raise RuntimeError(
             f"Could not install the default script packages: {seed_result.stderr.strip()}"
         )
+    initializing.unlink()
     return venv_dir
 
 
@@ -310,6 +319,7 @@ def list_packages(state_dir: Path) -> list[dict[str, str]]:
     venv_dir = ensure_script_env(state_dir)
     result = subprocess.run(
         [str(venv_python(venv_dir)), "-m", "pip", "list", "--format=json"],
+        env=child_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -338,6 +348,7 @@ def install_package(
     try:
         result = subprocess.run(
             [str(venv_python(venv_dir)), "-m", "pip", "install", package],
+            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -358,6 +369,7 @@ def uninstall_package(
     try:
         result = subprocess.run(
             [str(venv_python(venv_dir)), "-m", "pip", "uninstall", "--yes", package],
+            env=child_env(),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -369,20 +381,6 @@ def uninstall_package(
     if result.returncode != 0:
         return {"success": False, "error": result.stderr.strip() or result.stdout.strip()}
     return {"success": True, "error": None}
-
-
-def overlay_env(base: Mapping[str, str], extra: Mapping[str, str] | None) -> dict[str, str]:
-    """`base` with `extra` laid over it. Windows environment names are
-    case-insensitive and its `os.environ` upper-cases them, so a variable
-    named `Path` replaces `PATH` there instead of sitting beside it with the
-    child free to see either."""
-    merged = dict(base)
-    if not extra:
-        return merged
-    existing = {k.upper(): k for k in merged} if os.name == "nt" else {}
-    for name, value in extra.items():
-        merged[existing.get(name.upper(), name)] = value
-    return merged
 
 
 _PYTHON_COMMANDS = frozenset({"python", "python3", "py"})

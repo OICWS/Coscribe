@@ -539,6 +539,35 @@ def test_delete_scheduled_task_endpoint_lg(tmp_path: Path, monkeypatch: pytest.M
     assert ScheduledTriggerStore(tmp_path / "state").load(created["trigger_id"]) is None
 
 
+def test_running_task_stays_addressable_until_stopped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    import threading
+
+    from coscribe.runtime_lg import scheduled_tasks
+
+    started = threading.Event()
+
+    async def wait_for_stop(*args: Any) -> None:
+        started.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(scheduled_tasks, "_run_in_session", wait_for_stop)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        created = client.post(
+            "/api/scheduled-tasks", json={"name": "Busy", "kind": "manual", "at": "", "prompt": "p"}
+        ).json()
+        task = created["trigger_id"]
+        url = f"/api/scheduled-tasks/{task}"
+        run = client.post(f"{url}/run").json()["run"]["run_id"]
+        assert started.wait(5)
+        assert client.delete(url).status_code == 409
+        assert client.post(f"{url}/runs/{run}/stop").status_code == 200
+        assert _wait_for_run_status(client, task, run)["status"] == "stopped"
+        assert client.delete(url).status_code == 200
+
+
 def test_delete_scheduled_task_endpoint_unknown_id_404s_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1305,13 +1334,16 @@ def test_scheduler_sweeps_run_conversations_that_no_task_lists(tmp_path: Path) -
     kept = run_thread_id(task.trigger_id, "r1")
     task.runs.append(ScheduledRun(run_id="r1", thread_id=kept, started_at="x", source="manual"))
     store.save(task)
-    orphan = run_thread_id("gone", "r9")
-    scheduler, _, deleted = _scheduler(
-        tmp_path, checkpointer=lambda: _FakeCheckpointer([kept, orphan])
-    )
+    called = f"{kept}~run-task~pass"
+    lane = f"{kept}~parallel~pass~0"
+    nested = f"{lane}~run-task~pass"
+    orphan = run_thread_id(task.trigger_id, "r10")
+    orphan_lane = f"{orphan}~parallel~pass~1"
+    threads = [kept, called, lane, nested, orphan, orphan_lane]
+    scheduler, _, deleted = _scheduler(tmp_path, checkpointer=lambda: _FakeCheckpointer(threads))
 
-    assert asyncio.run(scheduler.sweep_orphaned_run_threads()) == 1
-    assert deleted == [orphan]
+    assert asyncio.run(scheduler.sweep_orphaned_run_threads()) == 2
+    assert deleted == [orphan, orphan_lane]
 
 
 def test_scheduler_announces_how_a_finished_run_ended(tmp_path: Path) -> None:

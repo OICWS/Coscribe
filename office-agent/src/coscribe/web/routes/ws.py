@@ -109,14 +109,14 @@ def router(state: AppState) -> APIRouter:
         # The one place that knows a tab watches this thread (see notify_resync). A second tab
         # or a reload overwrites it with the newest connection: resync is a best-effort nudge,
         # and the newest tab is the one worth nudging.
-        session._live_websocket = websocket
+        history = session.watch(websocket)
         meta_store.mark_seen(thread_id)
         # Written while the person types their first message, so it can carry the brief.
         session._assembly.folder_briefs.refresh(session._assembly.folders())
         try:
             await _prepare_workspace(session)
             await session.send_state(websocket, with_turn=True)
-            await session.send_history(websocket)
+            await history.send_history(websocket)
             # A pending approval from before a restart or dropped connection
             # doesn't wait for a new user_message to surface -- redeliver it
             # now. Backgrounded (not awaited) for the same reason
@@ -183,7 +183,7 @@ def router(state: AppState) -> APIRouter:
                     # user_message -- same reasoning as switch_model above:
                     # this never blocks on a human, so there's nothing to
                     # keep this loop free to service concurrently.
-                    await session.load_older_messages(websocket)
+                    await history.load_older_messages(websocket)
         except WebSocketDisconnect:
             # A turn still blocked on an approval for *this* connection at
             # the moment it drops would otherwise dangle forever: nothing

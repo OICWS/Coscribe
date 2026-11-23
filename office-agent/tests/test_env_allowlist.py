@@ -1,7 +1,7 @@
 import pytest
 
 from coscribe.tools.exec import child_env
-from coscribe.tools.exec import script_env as script_env_module
+from coscribe.tools.exec import env_allowlist
 
 
 def test_only_listed_names_pass_and_keys_do_not() -> None:
@@ -57,7 +57,7 @@ def test_the_conversations_variables_come_last_and_may_name_anything() -> None:
 def test_a_variable_replaces_a_listed_name_differing_only_in_case_on_windows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(script_env_module.os, "name", "nt")
+    monkeypatch.setattr(env_allowlist.os, "name", "nt")
 
     assert child_env({"Path": "/mine"}, base={"PATH": "/bin"}) == {"PATH": "/mine"}
 
