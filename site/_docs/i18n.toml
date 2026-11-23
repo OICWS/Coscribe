@@ -550,4 +550,67 @@ description = "개인정보 보호와 안전, 그리고 문제가 생겼을 때 
 [de]
 name = "Deutsch"
 html_lang = "de"
-published = false
+published = true
+docs = "Dokumentation"
+docs_title = "coscribe-Dokumentation"
+home = "coscribe-Startseite"
+skip = "Zum Inhalt springen"
+search = "Dokumentation durchsuchen"
+search_empty = "Keine Treffer für „{q}“. Versuchen Sie andere Wörter, etwa den Namen, den die App anzeigt."
+theme = "Dunkelmodus umschalten"
+language = "Sprache"
+coming_soon = "Demnächst"
+toggle_sidebar = "Inhaltsverzeichnis ein- oder ausblenden"
+crumbs = "Sie sind hier"
+sidebar = "Inhaltsverzeichnis der Dokumentation"
+toc = "In diesem Artikel"
+prev = "Zurück"
+next = "Weiter"
+pager = "Seiten"
+copy_md = "Markdown kopieren"
+copy_md_hint = "Zum Einfügen in eine KI oder für Kollegen"
+copy_failed = "Kopieren fehlgeschlagen; verwenden Sie „Als Markdown anzeigen“"
+md_more = "Weitere Markdown-Optionen"
+view_md = "Als Markdown anzeigen"
+view_md_hint = "Öffnet in einem neuen Tab"
+anchor = "Link zu diesem Abschnitt"
+edit = "Diese Seite auf GitHub bearbeiten"
+report = "Fehler gefunden? Sagen Sie es uns"
+untranslated = "Diese Seite ist noch nicht auf {lang} übersetzt und wird daher auf Englisch angezeigt."
+llms_summary = "coscribe ist ein Open-Source-Büroassistent, der auf Ihrem Windows-PC läuft."
+note = "Hinweis"
+tip = "Tipp"
+important = "Wichtig"
+warning = "Warnung"
+
+[de.groups.get-started]
+title = "Erste Schritte"
+description = "coscribe herunterladen, ein Modell verbinden und die erste Unterhaltung beginnen."
+
+[de.groups.use]
+title = "coscribe verwenden"
+description = "In einer Unterhaltung arbeiten: Genehmigungen, Pläne, Dateien, Browser und Modelle."
+
+[de.groups.workspaces]
+title = "Arbeitsbereiche"
+description = "Wählen Sie die Ordner, in denen coscribe arbeitet, und was ein Ordner ihm mitteilen kann."
+
+[de.groups.office]
+title = "Office-Dateien"
+description = "Word, Excel, PowerPoint, PDF sowie Docs, Designs und Dashboards, die sich neben der Unterhaltung öffnen."
+
+[de.groups.workflows]
+title = "Geplante Aufgaben und Workflows"
+description = "Lassen Sie coscribe Arbeit selbstständig erledigen, zu einer festen Zeit oder wenn etwas passiert."
+
+[de.groups.customize]
+title = "Anpassen"
+description = "Anweisungen, Skills, Konnektoren und Designsysteme."
+
+[de.groups.reference]
+title = "Referenz"
+description = "Alle Einstellungen, Befehle und Tastenkombinationen."
+
+[de.groups.help]
+title = "Hilfe"
+description = "Datenschutz und Sicherheit, und was zu tun ist, wenn etwas nicht klappt."
