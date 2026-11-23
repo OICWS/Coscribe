@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>coscribe Docs</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="en/">
+<script>
+  /* Opens the docs in the reader's language: the one picked here before, then the main site's
+     language, then the browser's; English when none of them is published. */
+  (function () {
+    var choices = {{choices}};
+    var codes = Object.keys(choices);
+    /* The target is always one of the published codes, never the stored or typed text itself. */
+    function known(code) { var i = codes.indexOf(code); return i < 0 ? null : codes[i]; }
+    var pick = null;
+    try {
+      pick = known(localStorage.getItem("coscribe-docs-lang"));
+      if (!pick) { var site = localStorage.getItem("coscribe-lang"); if (site) pick = site === "zh-CN" ? "zh" : "en"; }
+    } catch (e) {}
+    if (!pick) {
+      (navigator.languages || [navigator.language || ""]).some(function (l) {
+        l = String(l).toLowerCase();
+        return codes.some(function (code) {
+          var tag = choices[code].toLowerCase();
+          if (l === tag || l.split("-")[0] === tag.split("-")[0]) { pick = code; return true; }
+          return false;
+        });
+      });
+    }
+    var target = new URL((pick || "en") + "/", location.href);
+    target.hash = location.hash;
+    location.replace(target.href);
+  })();
+</script>
+</head>
+<body>
+<ul>{{links}}</ul>
+</body>
+</html>
