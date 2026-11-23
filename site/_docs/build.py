@@ -37,6 +37,27 @@ CALLOUTS = {
 }
 
 
+# Drawn for these docs, in the spirit of the GitHub alert icons: info, bulb, flag, triangle.
+_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
+)
+CALLOUT_ICONS = {
+    "note": _ICON.format(
+        '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/>'
+    ),
+    "tip": _ICON.format(
+        '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>'
+    ),
+    "important": _ICON.format(
+        '<path d="M4 4.5h16v11H9.5L5 19.5v-4H4z"/><path d="M12 7.5v4M12 13.6v.1"/>'
+    ),
+    "warning": _ICON.format(
+        '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 16.9v.1"/>'
+    ),
+}
+
+
 @dataclass
 class Page:
     slug: str  # "get-started/install", or "" for the docs home
@@ -46,6 +67,7 @@ class Page:
     group: str = ""
     group_title: str = ""
     body: str = ""
+    body_md: str = ""
     toc: list[tuple[int, str, str]] = field(default_factory=list)
     text: str = ""
 
@@ -86,7 +108,14 @@ def load_pages() -> tuple[list[dict], dict[str, Page]]:
                 f"nav.toml names {slug!r}, but {path.relative_to(SITE)} does not exist"
             )
         meta, body = front_matter(path.read_text(encoding="utf-8"), path)
-        return Page(slug, meta["title"], meta.get("description", ""), path, body=body)
+        return Page(
+            slug,
+            meta["title"],
+            meta.get("description", ""),
+            path,
+            body=body,
+            body_md=body,
+        )
 
     pages[""] = read("")
     for group in nav["group"]:
@@ -146,7 +175,18 @@ def render(page: Page, pages: dict[str, Page], md: MarkdownIt) -> None:
                 value = t.attrGet(attr)
                 if value:
                     t.attrSet(attr, link_target(value, page, pages))
-    page.body = md.renderer.render(tokens, md.options, {})
+    page.body = re.sub(
+        r'<blockquote class="callout callout-(\w+)" data-label="([^"]+)">\n?',
+        lambda m: (
+            f'<blockquote class="callout callout-{m.group(1)}">'
+            f'<p class="callout-title">{CALLOUT_ICONS[m.group(1)]}{m.group(2)}</p>'
+        ),
+        md.renderer.render(tokens, md.options, {}),
+    )
+    # A wide table scrolls inside its own box instead of the page.
+    page.body = page.body.replace("<table>", '<div class="table-wrap"><table>').replace(
+        "</table>", "</table></div>"
+    )
     page.text = re.sub(
         r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", page.body))
     ).strip()
@@ -210,7 +250,7 @@ def sidebar(groups: list[dict], pages: dict[str, Page], current: Page) -> str:
             )
         out.append(
             f'<details class="nav-group"{" open" if is_open else ""}>'
-            f"<summary>{esc(group['title'])}</summary><ul>{''.join(items)}</ul></details>"
+            f'<summary>{esc(group["title"])}<i class="tri" aria-hidden="true"></i></summary><ul>{"".join(items)}</ul></details>'
         )
     return "".join(out)
 
@@ -314,7 +354,11 @@ def build(out: Path) -> int:
         target.write_text(rendered, encoding="utf-8")
         md_copy = out / source
         md_copy.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(page.source, md_copy)
+        # The published Markdown carries its title, so a copy pasted into a chat stands alone.
+        md_copy.write_text(
+            f"# {page.title}\n\n{page.description}\n\n{page.body_md.lstrip()}",
+            encoding="utf-8",
+        )
 
     index = [
         {

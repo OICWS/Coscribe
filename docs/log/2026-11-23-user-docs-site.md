@@ -5,9 +5,11 @@ site next to the existing promo page, laid out like GitHub Docs.
 
 ## Shipped
 - `site/_docs/`: Markdown pages, `nav.toml` for the sidebar and `build.py`, which writes
-  `site/docs/` with a sidebar, breadcrumbs, "本页内容" with the current section highlighted, a
-  search over every page (press `/`), "复制 Markdown" on each page, a light and dark theme shared
-  with the promo page, a drawer on narrow screens, and `llms.txt` plus each page's Markdown for
+  `site/docs/`, sized and spaced like GitHub Docs (measured on its article pages: a 740px text
+  column at 16px/1.6, 325px side columns, rules between sections), with a sidebar, breadcrumbs, "本页内容" with the current section highlighted, a
+  search over every page (press `/`), a "复制 Markdown" button with a menu (copy, or open the
+  Markdown in a new tab), a language picker (English marked as coming), a sidebar that hides, a
+  light and dark theme shared with the promo page, a drawer on narrow screens, and `llms.txt` plus each page's Markdown for
   models. The build fails on a link to a missing page or a page not in the sidebar.
 - `.github/workflows/pages.yml` builds the docs, and now also runs on pull requests that touch
   `site/` (build only, no deploy).

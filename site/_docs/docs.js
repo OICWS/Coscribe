@@ -13,15 +13,44 @@
     try { localStorage.setItem("coscribe-theme", next); } catch (e) {}
   });
 
-  /* Narrow screens: the sidebar is a drawer. */
+  /* The sidebar: a drawer on narrow screens, and hidden on wide ones when its toggle is pressed. */
   var menu = document.getElementById("menu");
   var scrim = document.getElementById("scrim");
+  var narrow = matchMedia("(max-width: 900px)");
   function setNav(open) {
-    document.body.classList.toggle("nav-open", open);
+    if (narrow.matches) document.body.classList.toggle("nav-open", open);
+    else document.body.classList.toggle("side-closed", !open);
     menu.setAttribute("aria-expanded", String(open));
   }
-  menu.addEventListener("click", function () { setNav(!document.body.classList.contains("nav-open")); });
+  function navOpen() {
+    return narrow.matches ? document.body.classList.contains("nav-open") : !document.body.classList.contains("side-closed");
+  }
+  menu.addEventListener("click", function () { setNav(!navOpen()); });
   scrim.addEventListener("click", function () { setNav(false); });
+  narrow.addEventListener("change", function () {
+    document.body.classList.remove("nav-open", "side-closed");
+    menu.setAttribute("aria-expanded", String(!narrow.matches));
+  });
+  menu.setAttribute("aria-expanded", String(!narrow.matches));
+
+  /* Dropdown menus (language, Markdown): one open at a time, closed by a click outside or Esc. */
+  function closeMenus(except) {
+    document.querySelectorAll("[aria-haspopup='menu'][aria-expanded='true']").forEach(function (btn) {
+      if (btn === except) return;
+      btn.setAttribute("aria-expanded", "false");
+      document.getElementById(btn.getAttribute("aria-controls")).hidden = true;
+    });
+  }
+  document.querySelectorAll("[aria-haspopup='menu']").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var open = btn.getAttribute("aria-expanded") === "true";
+      closeMenus(btn);
+      btn.setAttribute("aria-expanded", String(!open));
+      document.getElementById(btn.getAttribute("aria-controls")).hidden = open;
+    });
+  });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".menu")) closeMenus(null); });
 
   /* A link icon on each heading, so a section can be sent to a colleague. */
   var link = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
@@ -37,17 +66,21 @@
   /* Copy the page's Markdown, for pasting into a chat with an AI or a colleague. */
   var copy = document.getElementById("copy-md");
   if (copy) {
-    copy.addEventListener("click", function () {
-      var label = copy.querySelector("span");
+    var split = document.getElementById("md");
+    var label = copy.querySelector("span");
+    var copyMarkdown = function () {
+      closeMenus(null);
       fetch(copy.getAttribute("data-src"))
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
         .then(function (text) { return navigator.clipboard.writeText(text); })
-        .then(function () { label.textContent = "已复制"; copy.classList.add("done"); })
-        .catch(function () { label.textContent = "复制失败，请点“查看 Markdown”"; })
+        .then(function () { split.classList.add("copied"); })
+        .catch(function () { label.textContent = "复制失败，请用“以 Markdown 查看”"; })
         .finally(function () {
-          setTimeout(function () { label.textContent = "复制 Markdown"; copy.classList.remove("done"); }, 2000);
+          setTimeout(function () { split.classList.remove("copied"); label.textContent = "复制 Markdown"; }, 2000);
         });
-    });
+    };
+    copy.addEventListener("click", copyMarkdown);
+    split.querySelector("[data-action='copy']").addEventListener("click", copyMarkdown);
   }
 
   /* "In this article": highlight the section being read. */
@@ -163,6 +196,9 @@
       e.preventDefault();
       q.focus();
     }
-    if (e.key === "Escape") setNav(false);
+    if (e.key === "Escape") {
+      closeMenus(null);
+      if (narrow.matches) setNav(false);
+    }
   });
 })();
