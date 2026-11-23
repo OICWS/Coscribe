@@ -1,0 +1,616 @@
+# The words of the frame around the pages, one table per language, in the order of the language
+# menu. A language is published once `published = true`; until then the menu shows it as coming.
+# A page a published language has not translated yet shows the English page with a notice.
+# English is the reference: every page must exist in content/en/.
+
+[en]
+name = "English"
+html_lang = "en"
+published = true
+docs = "Docs"
+docs_title = "coscribe Docs"
+home = "coscribe home"
+skip = "Skip to content"
+search = "Search the docs"
+search_empty = "Nothing found for “{q}”. Try other words, such as the name the app shows."
+theme = "Switch dark mode"
+language = "Language"
+coming_soon = "Coming soon"
+toggle_sidebar = "Show or hide the contents"
+crumbs = "Breadcrumb"
+sidebar = "Docs contents"
+toc = "In this article"
+prev = "Previous"
+next = "Next"
+pager = "Pages"
+copy_md = "Copy markdown"
+copy_md_hint = "Use with any AI or a colleague"
+copy_failed = "Couldn't copy; use “View as Markdown”"
+md_more = "More Markdown options"
+view_md = "View as Markdown"
+view_md_hint = "Open the page in another tab"
+anchor = "Link to this section"
+edit = "Edit this page on GitHub"
+report = "Something wrong? Tell us"
+untranslated = "This page is not translated into {lang} yet, so it is shown in English."
+llms_summary = "coscribe is an open-source office assistant that runs on your Windows PC."
+note = "Note"
+tip = "Tip"
+important = "Important"
+warning = "Warning"
+
+[en.groups.get-started]
+title = "Get started"
+description = "Download coscribe, connect a model and start your first conversation."
+
+[en.groups.use]
+title = "Use coscribe"
+description = "Work in a conversation: approvals, plans, files, the browser and models."
+
+[en.groups.workspaces]
+title = "Workspaces"
+description = "Choose the folders coscribe works in, and what a folder may tell it."
+
+[en.groups.office]
+title = "Office files"
+description = "Word, Excel, PowerPoint, PDF, and the Docs, designs and dashboards beside the conversation."
+
+[en.groups.workflows]
+title = "Scheduled tasks and workflows"
+description = "Have coscribe do a job on its own, on a schedule or when something happens."
+
+[en.groups.customize]
+title = "Customize"
+description = "Instructions, skills, connectors and design systems."
+
+[en.groups.reference]
+title = "Reference"
+description = "Every setting, command and keyboard shortcut."
+
+[en.groups.help]
+title = "Help"
+description = "Privacy and safety, and what to do when something goes wrong."
+
+[es]
+name = "Español"
+html_lang = "es"
+published = true
+docs = "Documentación"
+docs_title = "Documentación de coscribe"
+home = "Inicio de coscribe"
+skip = "Ir al contenido"
+search = "Buscar en la documentación"
+search_empty = "No se encontró nada para «{q}». Prueba con otras palabras, como el nombre que muestra la aplicación."
+theme = "Cambiar el modo oscuro"
+language = "Idioma"
+coming_soon = "Próximamente"
+toggle_sidebar = "Mostrar u ocultar el índice"
+crumbs = "Ruta de navegación"
+sidebar = "Índice de la documentación"
+toc = "En este artículo"
+prev = "Anterior"
+next = "Siguiente"
+pager = "Páginas"
+copy_md = "Copiar Markdown"
+copy_md_hint = "Para cualquier IA o un compañero"
+copy_failed = "No se pudo copiar; usa «Ver como Markdown»"
+md_more = "Más opciones de Markdown"
+view_md = "Ver como Markdown"
+view_md_hint = "Abre la página en otra pestaña"
+anchor = "Enlace a esta sección"
+edit = "Editar esta página en GitHub"
+report = "¿Algo está mal? Avísanos"
+untranslated = "Esta página aún no tiene versión en {lang}, así que se muestra en inglés."
+llms_summary = "coscribe es un asistente de oficina de código abierto que funciona en tu PC con Windows."
+note = "Nota"
+tip = "Consejo"
+important = "Importante"
+warning = "Advertencia"
+
+[es.groups.get-started]
+title = "Primeros pasos"
+description = "Descarga coscribe, conecta un modelo y empieza tu primera conversación."
+
+[es.groups.use]
+title = "Usar coscribe"
+description = "Trabaja en una conversación: aprobaciones, planes, archivos, el navegador y los modelos."
+
+[es.groups.workspaces]
+title = "Espacios de trabajo"
+description = "Elige las carpetas en las que trabaja coscribe y lo que una carpeta puede indicarle."
+
+[es.groups.office]
+title = "Archivos de Office"
+description = "Word, Excel, PowerPoint, PDF y los Docs, diseños y paneles junto a la conversación."
+
+[es.groups.workflows]
+title = "Tareas programadas y flujos de trabajo"
+description = "Haz que coscribe haga un trabajo por su cuenta, con un horario o cuando ocurre algo."
+
+[es.groups.customize]
+title = "Personalizar"
+description = "Instrucciones, habilidades, conectores y sistemas de diseño."
+
+[es.groups.reference]
+title = "Referencia"
+description = "Cada ajuste, comando y atajo de teclado."
+
+[es.groups.help]
+title = "Ayuda"
+description = "Privacidad y seguridad, y qué hacer cuando algo falla."
+
+[ja]
+name = "日本語"
+html_lang = "ja"
+published = true
+docs = "ドキュメント"
+docs_title = "coscribe ドキュメント"
+home = "coscribe ホーム"
+skip = "本文へスキップ"
+search = "ドキュメントを検索"
+search_empty = "「{q}」に一致するものはありませんでした。アプリに表示される名前など、別の言葉で試してください。"
+theme = "ダークモードを切り替え"
+language = "言語"
+coming_soon = "近日公開"
+toggle_sidebar = "目次の表示・非表示"
+crumbs = "現在地"
+sidebar = "ドキュメントの目次"
+toc = "この記事の内容"
+prev = "前へ"
+next = "次へ"
+pager = "ページ"
+copy_md = "Markdown をコピー"
+copy_md_hint = "AI や同僚に渡せます"
+copy_failed = "コピーできませんでした。「Markdown で表示」を使ってください"
+md_more = "その他の Markdown オプション"
+view_md = "Markdown で表示"
+view_md_hint = "別のタブで開きます"
+anchor = "このセクションへのリンク"
+edit = "GitHub でこのページを編集"
+report = "間違いを見つけたら教えてください"
+untranslated = "このページはまだ{lang}に翻訳されていないため、英語で表示しています。"
+llms_summary = "coscribe は Windows PC で動くオープンソースのオフィスアシスタントです。"
+note = "メモ"
+tip = "ヒント"
+important = "重要"
+warning = "警告"
+
+[ja.groups.get-started]
+title = "はじめに"
+description = "coscribe をダウンロードし、モデルをつないで、最初の会話を始めます。"
+
+[ja.groups.use]
+title = "coscribe を使う"
+description = "会話での作業：承認、計画、ファイル、ブラウザー、モデル。"
+
+[ja.groups.workspaces]
+title = "ワークスペース"
+description = "coscribe が作業するフォルダーと、フォルダーが伝えられることを選びます。"
+
+[ja.groups.office]
+title = "Office ファイル"
+description = "Word、Excel、PowerPoint、PDF、そして会話の横に開く Doc、デザイン、ダッシュボード。"
+
+[ja.groups.workflows]
+title = "スケジュールタスクとワークフロー"
+description = "決まった時刻や何かが起きたときに、coscribe に仕事を任せます。"
+
+[ja.groups.customize]
+title = "カスタマイズ"
+description = "指示、スキル、コネクター、デザインシステム。"
+
+[ja.groups.reference]
+title = "リファレンス"
+description = "すべての設定、コマンド、キーボードショートカット。"
+
+[ja.groups.help]
+title = "ヘルプ"
+description = "プライバシーと安全性、うまくいかないときの対処。"
+
+[pt]
+name = "Português do Brasil"
+html_lang = "pt-BR"
+published = true
+docs = "Documentação"
+docs_title = "Documentação do coscribe"
+home = "Início do coscribe"
+skip = "Pular para o conteúdo"
+search = "Pesquisar na documentação"
+search_empty = "Nada encontrado para “{q}”. Tente outras palavras, como o nome que aparece no app."
+theme = "Alternar modo escuro"
+language = "Idioma"
+coming_soon = "Em breve"
+toggle_sidebar = "Mostrar ou ocultar o índice"
+crumbs = "Você está aqui"
+sidebar = "Índice da documentação"
+toc = "Neste artigo"
+prev = "Anterior"
+next = "Próximo"
+pager = "Páginas"
+copy_md = "Copiar Markdown"
+copy_md_hint = "Para colar em qualquer IA ou para um colega"
+copy_failed = "Não foi possível copiar; use “Ver como Markdown”"
+md_more = "Mais opções de Markdown"
+view_md = "Ver como Markdown"
+view_md_hint = "Abre em uma nova aba"
+anchor = "Link para esta seção"
+edit = "Editar esta página no GitHub"
+report = "Encontrou um erro? Avise-nos"
+untranslated = "Esta página ainda não foi traduzida para {lang}, por isso aparece em inglês."
+llms_summary = "coscribe é um assistente de escritório de código aberto que roda no seu PC com Windows."
+note = "Observação"
+tip = "Dica"
+important = "Importante"
+warning = "Aviso"
+
+[pt.groups.get-started]
+title = "Introdução"
+description = "Baixe o coscribe, conecte um modelo e comece sua primeira conversa."
+
+[pt.groups.use]
+title = "Usar o coscribe"
+description = "Trabalhar em uma conversa: aprovações, planos, arquivos, navegador e modelos."
+
+[pt.groups.workspaces]
+title = "Espaços de trabalho"
+description = "Escolha as pastas em que o coscribe trabalha e o que uma pasta pode dizer a ele."
+
+[pt.groups.office]
+title = "Arquivos do Office"
+description = "Word, Excel, PowerPoint, PDF e os docs, designs e painéis que abrem ao lado da conversa."
+
+[pt.groups.workflows]
+title = "Tarefas agendadas e fluxos de trabalho"
+description = "Deixe o coscribe fazer o trabalho sozinho, em um horário ou quando algo acontece."
+
+[pt.groups.customize]
+title = "Personalizar"
+description = "Instruções, habilidades, conectores e sistemas de design."
+
+[pt.groups.reference]
+title = "Referência"
+description = "Todas as configurações, comandos e atalhos de teclado."
+
+[pt.groups.help]
+title = "Ajuda"
+description = "Privacidade e segurança, e o que fazer quando algo dá errado."
+
+[zh]
+name = "简体中文"
+html_lang = "zh-CN"
+published = true
+docs = "文档"
+docs_title = "coscribe 文档"
+home = "coscribe 主页"
+skip = "跳到正文"
+search = "搜索文档"
+search_empty = "没有找到“{q}”。换个说法试试，比如功能在程序里显示的名字。"
+theme = "切换深色模式"
+language = "语言"
+coming_soon = "即将推出"
+toggle_sidebar = "显示或隐藏目录"
+crumbs = "位置"
+sidebar = "文档目录"
+toc = "本页内容"
+prev = "上一页"
+next = "下一页"
+pager = "翻页"
+copy_md = "复制 Markdown"
+copy_md_hint = "粘贴给任意 AI 或同事"
+copy_failed = "复制失败，请用“以 Markdown 查看”"
+md_more = "更多 Markdown 选项"
+view_md = "以 Markdown 查看"
+view_md_hint = "在新标签页打开"
+anchor = "链接到这一节"
+edit = "在 GitHub 上修改这一页"
+report = "文档有误？告诉我们"
+untranslated = "这一页还没有{lang}版，下面显示的是英文原文。"
+llms_summary = "coscribe 是运行在 Windows 电脑上的开源办公助手。"
+note = "说明"
+tip = "提示"
+important = "重要"
+warning = "注意"
+
+[zh.groups.get-started]
+title = "入门"
+description = "下载 coscribe，接上模型，开始第一次对话。"
+
+[zh.groups.use]
+title = "使用 coscribe"
+description = "在对话里工作：审批、计划、文件、浏览器和模型。"
+
+[zh.groups.workspaces]
+title = "工作区"
+description = "选择 coscribe 工作的文件夹，以及文件夹能告诉它什么。"
+
+[zh.groups.office]
+title = "Office 文件"
+description = "Word、Excel、PowerPoint、PDF，以及对话旁边的文档、设计和仪表板。"
+
+[zh.groups.workflows]
+title = "定时任务和工作流"
+description = "让 coscribe 自己按时间或在某件事发生时完成工作。"
+
+[zh.groups.customize]
+title = "自定义"
+description = "指令、技能、连接器和设计系统。"
+
+[zh.groups.reference]
+title = "参考"
+description = "所有设置、命令和键盘快捷键。"
+
+[zh.groups.help]
+title = "帮助"
+description = "隐私和安全，以及出问题时怎么办。"
+
+[ru]
+name = "Русский"
+html_lang = "ru"
+published = true
+docs = "Документация"
+docs_title = "Документация coscribe"
+home = "Главная coscribe"
+skip = "Перейти к содержимому"
+search = "Поиск по документации"
+search_empty = "По запросу «{q}» ничего не найдено. Попробуйте другие слова, например название, которое показывает приложение."
+theme = "Переключить тёмную тему"
+language = "Язык"
+coming_soon = "Скоро"
+toggle_sidebar = "Показать или скрыть оглавление"
+crumbs = "Вы здесь"
+sidebar = "Оглавление документации"
+toc = "В этой статье"
+prev = "Назад"
+next = "Далее"
+pager = "Страницы"
+copy_md = "Копировать Markdown"
+copy_md_hint = "Чтобы вставить в любой ИИ или отправить коллеге"
+copy_failed = "Не удалось скопировать; используйте «Открыть как Markdown»"
+md_more = "Другие варианты Markdown"
+view_md = "Открыть как Markdown"
+view_md_hint = "Откроется в новой вкладке"
+anchor = "Ссылка на этот раздел"
+edit = "Изменить эту страницу на GitHub"
+report = "Нашли ошибку? Сообщите нам"
+untranslated = "Эта страница ещё не переведена на язык «{lang}», поэтому показана на английском."
+llms_summary = "coscribe — офисный помощник с открытым исходным кодом, который работает на вашем ПК с Windows."
+note = "Примечание"
+tip = "Совет"
+important = "Важно"
+warning = "Предупреждение"
+
+[ru.groups.get-started]
+title = "Начало работы"
+description = "Скачайте coscribe, подключите модель и начните первый разговор."
+
+[ru.groups.use]
+title = "Работа с coscribe"
+description = "Работа в разговоре: подтверждения, планы, файлы, браузер и модели."
+
+[ru.groups.workspaces]
+title = "Рабочие пространства"
+description = "Выберите папки, в которых работает coscribe, и что папка может ему сообщить."
+
+[ru.groups.office]
+title = "Файлы Office"
+description = "Word, Excel, PowerPoint, PDF, а также документы, дизайны и дашборды, которые открываются рядом с разговором."
+
+[ru.groups.workflows]
+title = "Запланированные задачи и рабочие процессы"
+description = "Пусть coscribe делает работу сам — по расписанию или когда что-то происходит."
+
+[ru.groups.customize]
+title = "Настройка"
+description = "Инструкции, навыки, коннекторы и дизайн-системы."
+
+[ru.groups.reference]
+title = "Справочник"
+description = "Все настройки, команды и сочетания клавиш."
+
+[ru.groups.help]
+title = "Помощь"
+description = "Конфиденциальность и безопасность, и что делать, если что-то не так."
+
+[fr]
+name = "Français"
+html_lang = "fr"
+published = true
+docs = "Documentation"
+docs_title = "Documentation de coscribe"
+home = "Accueil coscribe"
+skip = "Aller au contenu"
+search = "Rechercher dans la documentation"
+search_empty = "Aucun résultat pour « {q} ». Essayez d’autres mots, comme le nom affiché dans l’application."
+theme = "Activer ou désactiver le mode sombre"
+language = "Langue"
+coming_soon = "Bientôt disponible"
+toggle_sidebar = "Afficher ou masquer la table des matières"
+crumbs = "Vous êtes ici"
+sidebar = "Table des matières de la documentation"
+toc = "Dans cet article"
+prev = "Précédent"
+next = "Suivant"
+pager = "Pages"
+copy_md = "Copier le Markdown"
+copy_md_hint = "À coller dans une IA ou à envoyer à un collègue"
+copy_failed = "Copie impossible ; utilisez « Afficher en Markdown »"
+md_more = "Autres options Markdown"
+view_md = "Afficher en Markdown"
+view_md_hint = "S’ouvre dans un nouvel onglet"
+anchor = "Lien vers cette section"
+edit = "Modifier cette page sur GitHub"
+report = "Une erreur ? Signalez-la"
+untranslated = "Cette page n’est pas encore traduite en {lang}, elle s’affiche donc en anglais."
+llms_summary = "coscribe est un assistant de bureautique open source qui fonctionne sur votre PC Windows."
+note = "Remarque"
+tip = "Astuce"
+important = "Important"
+warning = "Attention"
+
+[fr.groups.get-started]
+title = "Prise en main"
+description = "Téléchargez coscribe, connectez un modèle et lancez votre première conversation."
+
+[fr.groups.use]
+title = "Utiliser coscribe"
+description = "Travailler dans une conversation : approbations, plans, fichiers, navigateur et modèles."
+
+[fr.groups.workspaces]
+title = "Espaces de travail"
+description = "Choisissez les dossiers où coscribe travaille et ce qu’un dossier peut lui indiquer."
+
+[fr.groups.office]
+title = "Fichiers Office"
+description = "Word, Excel, PowerPoint, PDF, et les docs, designs et tableaux de bord qui s’ouvrent à côté de la conversation."
+
+[fr.groups.workflows]
+title = "Tâches planifiées et workflows"
+description = "Laissez coscribe faire le travail seul, à une heure donnée ou quand quelque chose se produit."
+
+[fr.groups.customize]
+title = "Personnaliser"
+description = "Instructions, compétences, connecteurs et systèmes de design."
+
+[fr.groups.reference]
+title = "Référence"
+description = "Tous les paramètres, commandes et raccourcis clavier."
+
+[fr.groups.help]
+title = "Aide"
+description = "Confidentialité et sécurité, et que faire en cas de problème."
+
+[ko]
+name = "한국어"
+html_lang = "ko"
+published = true
+docs = "문서"
+docs_title = "coscribe 문서"
+home = "coscribe 홈"
+skip = "본문으로 건너뛰기"
+search = "문서 검색"
+search_empty = "“{q}”에 대한 결과가 없습니다. 앱에 표시되는 이름 등 다른 단어로 검색해 보세요."
+theme = "다크 모드 전환"
+language = "언어"
+coming_soon = "준비 중"
+toggle_sidebar = "목차 표시 또는 숨기기"
+crumbs = "현재 위치"
+sidebar = "문서 목차"
+toc = "이 문서의 내용"
+prev = "이전"
+next = "다음"
+pager = "페이지"
+copy_md = "Markdown 복사"
+copy_md_hint = "AI나 동료에게 붙여 넣을 수 있습니다"
+copy_failed = "복사하지 못했습니다. “Markdown으로 보기”를 사용하세요"
+md_more = "기타 Markdown 옵션"
+view_md = "Markdown으로 보기"
+view_md_hint = "새 탭에서 열립니다"
+anchor = "이 섹션 링크"
+edit = "GitHub에서 이 페이지 편집"
+report = "오류를 발견하셨나요? 알려 주세요"
+untranslated = "이 페이지는 아직 {lang}로 번역되지 않아 영어로 표시됩니다."
+llms_summary = "coscribe는 Windows PC에서 실행되는 오픈 소스 사무 도우미입니다."
+note = "참고"
+tip = "팁"
+important = "중요"
+warning = "경고"
+
+[ko.groups.get-started]
+title = "시작하기"
+description = "coscribe를 다운로드하고, 모델을 연결하고, 첫 대화를 시작합니다."
+
+[ko.groups.use]
+title = "coscribe 사용하기"
+description = "대화에서 작업하기: 승인, 계획, 파일, 브라우저, 모델."
+
+[ko.groups.workspaces]
+title = "워크스페이스"
+description = "coscribe가 작업할 폴더와, 폴더가 coscribe에 알려 줄 수 있는 내용을 정합니다."
+
+[ko.groups.office]
+title = "Office 파일"
+description = "Word, Excel, PowerPoint, PDF, 그리고 대화 옆에 열리는 문서, 디자인, 대시보드."
+
+[ko.groups.workflows]
+title = "예약 작업과 워크플로"
+description = "정해진 시간이나 어떤 일이 일어났을 때 coscribe가 알아서 작업하게 합니다."
+
+[ko.groups.customize]
+title = "사용자 지정"
+description = "지침, 스킬, 커넥터, 디자인 시스템."
+
+[ko.groups.reference]
+title = "참조"
+description = "모든 설정, 명령, 키보드 단축키."
+
+[ko.groups.help]
+title = "도움말"
+description = "개인정보 보호와 안전, 그리고 문제가 생겼을 때 할 일."
+
+[de]
+name = "Deutsch"
+html_lang = "de"
+published = true
+docs = "Dokumentation"
+docs_title = "coscribe-Dokumentation"
+home = "coscribe-Startseite"
+skip = "Zum Inhalt springen"
+search = "Dokumentation durchsuchen"
+search_empty = "Keine Treffer für „{q}“. Versuchen Sie andere Wörter, etwa den Namen, den die App anzeigt."
+theme = "Dunkelmodus umschalten"
+language = "Sprache"
+coming_soon = "Demnächst"
+toggle_sidebar = "Inhaltsverzeichnis ein- oder ausblenden"
+crumbs = "Sie sind hier"
+sidebar = "Inhaltsverzeichnis der Dokumentation"
+toc = "In diesem Artikel"
+prev = "Zurück"
+next = "Weiter"
+pager = "Seiten"
+copy_md = "Markdown kopieren"
+copy_md_hint = "Zum Einfügen in eine KI oder für Kollegen"
+copy_failed = "Kopieren fehlgeschlagen; verwenden Sie „Als Markdown anzeigen“"
+md_more = "Weitere Markdown-Optionen"
+view_md = "Als Markdown anzeigen"
+view_md_hint = "Öffnet in einem neuen Tab"
+anchor = "Link zu diesem Abschnitt"
+edit = "Diese Seite auf GitHub bearbeiten"
+report = "Fehler gefunden? Sagen Sie es uns"
+untranslated = "Diese Seite ist noch nicht auf {lang} übersetzt und wird daher auf Englisch angezeigt."
+llms_summary = "coscribe ist ein Open-Source-Büroassistent, der auf Ihrem Windows-PC läuft."
+note = "Hinweis"
+tip = "Tipp"
+important = "Wichtig"
+warning = "Warnung"
+
+[de.groups.get-started]
+title = "Erste Schritte"
+description = "coscribe herunterladen, ein Modell verbinden und die erste Unterhaltung beginnen."
+
+[de.groups.use]
+title = "coscribe verwenden"
+description = "In einer Unterhaltung arbeiten: Genehmigungen, Pläne, Dateien, Browser und Modelle."
+
+[de.groups.workspaces]
+title = "Arbeitsbereiche"
+description = "Wählen Sie die Ordner, in denen coscribe arbeitet, und was ein Ordner ihm mitteilen kann."
+
+[de.groups.office]
+title = "Office-Dateien"
+description = "Word, Excel, PowerPoint, PDF sowie Docs, Designs und Dashboards, die sich neben der Unterhaltung öffnen."
+
+[de.groups.workflows]
+title = "Geplante Aufgaben und Workflows"
+description = "Lassen Sie coscribe Arbeit selbstständig erledigen, zu einer festen Zeit oder wenn etwas passiert."
+
+[de.groups.customize]
+title = "Anpassen"
+description = "Anweisungen, Skills, Konnektoren und Designsysteme."
+
+[de.groups.reference]
+title = "Referenz"
+description = "Alle Einstellungen, Befehle und Tastenkombinationen."
+
+[de.groups.help]
+title = "Hilfe"
+description = "Datenschutz und Sicherheit, und was zu tun ist, wenn etwas nicht klappt."
