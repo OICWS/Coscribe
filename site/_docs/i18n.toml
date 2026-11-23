@@ -1,0 +1,119 @@
+# The words of the frame around the pages, one table per language, in the order of the language
+# menu. A language is published once `published = true`; until then the menu shows it as coming.
+# A page a published language has not translated yet shows the English page with a notice.
+# English is the reference: every page must exist in content/en/.
+
+[en]
+name = "English"
+html_lang = "en"
+published = true
+docs = "Docs"
+docs_title = "coscribe Docs"
+home = "coscribe home"
+skip = "Skip to content"
+search = "Search the docs"
+search_empty = "Nothing found for “{q}”. Try other words, such as the name the app shows."
+theme = "Switch dark mode"
+language = "Language"
+coming_soon = "Coming soon"
+toggle_sidebar = "Show or hide the contents"
+crumbs = "Breadcrumb"
+sidebar = "Docs contents"
+toc = "In this article"
+prev = "Previous"
+next = "Next"
+pager = "Pages"
+copy_md = "Copy markdown"
+copy_md_hint = "Use with any AI or a colleague"
+copy_failed = "Couldn't copy; use “View as Markdown”"
+md_more = "More Markdown options"
+view_md = "View as Markdown"
+view_md_hint = "Open the page in another tab"
+anchor = "Link to this section"
+edit = "Edit this page on GitHub"
+report = "Something wrong? Tell us"
+untranslated = "This page is not translated into {lang} yet, so it is shown in English."
+llms_summary = "coscribe is an open-source office assistant that runs on your Windows PC."
+note = "Note"
+tip = "Tip"
+important = "Important"
+warning = "Warning"
+
+[en.groups.get-started]
+title = "Get started"
+description = "Download coscribe, connect a model and start your first conversation."
+
+[es]
+name = "Español"
+html_lang = "es"
+published = false
+
+[ja]
+name = "日本語"
+html_lang = "ja"
+published = false
+
+[pt]
+name = "Português do Brasil"
+html_lang = "pt-BR"
+published = false
+
+[zh]
+name = "简体中文"
+html_lang = "zh-CN"
+published = true
+docs = "文档"
+docs_title = "coscribe 文档"
+home = "coscribe 主页"
+skip = "跳到正文"
+search = "搜索文档"
+search_empty = "没有找到“{q}”。换个说法试试，比如功能在程序里显示的名字。"
+theme = "切换深色模式"
+language = "语言"
+coming_soon = "即将推出"
+toggle_sidebar = "显示或隐藏目录"
+crumbs = "位置"
+sidebar = "文档目录"
+toc = "本页内容"
+prev = "上一页"
+next = "下一页"
+pager = "翻页"
+copy_md = "复制 Markdown"
+copy_md_hint = "粘贴给任意 AI 或同事"
+copy_failed = "复制失败，请用“以 Markdown 查看”"
+md_more = "更多 Markdown 选项"
+view_md = "以 Markdown 查看"
+view_md_hint = "在新标签页打开"
+anchor = "链接到这一节"
+edit = "在 GitHub 上修改这一页"
+report = "文档有误？告诉我们"
+untranslated = "这一页还没有{lang}版，下面显示的是英文原文。"
+llms_summary = "coscribe 是运行在 Windows 电脑上的开源办公助手。"
+note = "说明"
+tip = "提示"
+important = "重要"
+warning = "注意"
+
+[zh.groups.get-started]
+title = "入门"
+description = "下载 coscribe，接上模型，开始第一次对话。"
+
+[ru]
+name = "Русский"
+html_lang = "ru"
+published = false
+
+[fr]
+name = "Français"
+html_lang = "fr"
+published = false
+
+[ko]
+name = "한국어"
+html_lang = "ko"
+published = false
+
+[de]
+name = "Deutsch"
+html_lang = "de"
+published = false

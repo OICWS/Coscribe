@@ -13,7 +13,11 @@ site next to the existing promo page, laid out like GitHub Docs.
   models. The build fails on a link to a missing page or a page not in the sidebar.
 - `.github/workflows/pages.yml` builds the docs, and now also runs on pull requests that touch
   `site/` (build only, no deploy).
-- Four pages in Chinese under 入门: what coscribe is, download and first start, providers, the
+- Languages: `docs/<language>/`, the frame's words in `site/_docs/i18n.toml`, a menu of nine
+  languages (English and Chinese published, the other seven marked as coming), a page a
+  language lacks shown in English with a notice, and `docs/` opening the reader's language
+  (the one picked before, the promo page's, then the browser's).
+- Four pages in English and Chinese under Get started: what coscribe is, download and first start, providers, the
   first conversation (including the four permission modes).
 - The promo page links to the docs from its top bar and footer. Its Download button pointed at
   `releases/latest`, which skips pre-releases, and every release so far is one, so it led to a
@@ -26,7 +30,7 @@ site next to the existing promo page, laid out like GitHub Docs.
 ## Follow-ups
 - The rest of the outline: daily use, Office files, workflows, workspaces, models, customizing,
   the settings reference, privacy, troubleshooting.
-- English pages, once the Chinese ones settle.
+- Spanish, Japanese, Portuguese (Brazil), Russian, French, Korean and German.
 - The promo page's Settings mock still shows the old categories (Tools, Environment), and newer
   features are not on it.
 - A Help entry in the app that opens the docs, and "Learn more" links next to settings.

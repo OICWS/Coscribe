@@ -1,8 +1,7 @@
-# The order of the sidebar. Each page is content/<group id>/<page>.md; a page missing from
-# here fails the build, so nothing is published that the sidebar can't reach.
+# The order of the sidebar. Each page is content/<language>/<group id>/<page>.md, and each
+# group's title is in i18n.toml. A page missing from here fails the build, so nothing is
+# published that the sidebar can't reach.
 
 [[group]]
 id = "get-started"
-title = "入门"
-description = "下载 coscribe，接上模型，开始第一次对话。"
 pages = ["what-is-coscribe", "install", "providers", "first-conversation"]

@@ -23,7 +23,7 @@
   --pre-bg: #f6f8fa;
   --scrim: rgba(24, 22, 21, .28);
   --shadow: 0 1px 3px rgba(31, 35, 40, .06), 0 8px 24px rgba(31, 35, 40, .12);
-  --sans: "IBM Plex Sans", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --sans: "IBM Plex Sans", "Noto Sans SC", "Noto Sans JP", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Noto Sans SC", monospace;
   --top-h: 64px;
   --crumbs-h: 44px;
@@ -245,6 +245,10 @@ body.side-closed .sidebar { display: none; }
 .split .main-btn svg { width: 16px; height: 16px; }
 .split .main-btn .ok { display: none; color: var(--success); }
 .split.copied .main-btn .ok { display: block; }
+.untranslated {
+  margin: 0 0 16px; padding: 8px 12px; border-radius: 6px;
+  background: var(--bg-2); color: var(--fg-2); font-size: 14px;
+}
 
 /* Article body */
 .prose { font-size: 16px; line-height: 1.6; }

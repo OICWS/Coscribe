@@ -1,8 +1,18 @@
 (function () {
   "use strict";
-  /* The docs root is where this script was loaded from, so links work under any base path. */
-  var root = new URL(".", document.currentScript.src).href;
   var html = document.documentElement;
+  /* docs/ is where this script was loaded from, so links work under any base path. */
+  var root = new URL(".", document.currentScript.src).href;
+  var lang = html.getAttribute("data-lang") || "en";
+  var words = {};
+  try { words = JSON.parse(document.getElementById("strings").textContent); } catch (e) {}
+
+  /* A language picked in the menu is remembered, so docs/ opens in it next time. */
+  document.querySelectorAll("#lang-menu a[data-lang]").forEach(function (a) {
+    a.addEventListener("click", function () {
+      try { localStorage.setItem("coscribe-docs-lang", a.getAttribute("data-lang")); } catch (e) {}
+    });
+  });
 
   /* Theme: the same stored key as the main site, so a choice made there holds here. */
   document.getElementById("theme").addEventListener("click", function () {
@@ -58,7 +68,7 @@
     var a = document.createElement("a");
     a.className = "anchor";
     a.href = "#" + h.id;
-    a.setAttribute("aria-label", "链接到这一节");
+    a.setAttribute("aria-label", words.anchor || "");
     a.innerHTML = link;
     h.appendChild(a);
   });
@@ -68,15 +78,16 @@
   if (copy) {
     var split = document.getElementById("md");
     var label = copy.querySelector("span");
+    var original = label.textContent;
     var copyMarkdown = function () {
       closeMenus(null);
       fetch(copy.getAttribute("data-src"))
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
         .then(function (text) { return navigator.clipboard.writeText(text); })
         .then(function () { split.classList.add("copied"); })
-        .catch(function () { label.textContent = "复制失败，请用“以 Markdown 查看”"; })
+        .catch(function () { label.textContent = words.copy_failed || ""; })
         .finally(function () {
-          setTimeout(function () { split.classList.remove("copied"); label.textContent = "复制 Markdown"; }, 2000);
+          setTimeout(function () { split.classList.remove("copied"); label.textContent = original; }, 2000);
         });
     };
     copy.addEventListener("click", copyMarkdown);
@@ -107,7 +118,7 @@
 
   function load() {
     if (index) return Promise.resolve(index);
-    return fetch(root + "search.json").then(function (r) { return r.json(); }).then(function (d) { index = d; return d; });
+    return fetch(new URL(lang + "/search.json", root).href).then(function (r) { return r.json(); }).then(function (d) { index = d; return d; });
   }
   function escape(s) {
     return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
@@ -152,7 +163,10 @@
         .sort(function (a, b) { return b.s - a.s; })
         .slice(0, 8);
       if (!hits.length) {
-        box.innerHTML = '<div class="empty">没有找到“' + escape(q.value.trim()) + '”。换个说法试试，比如功能在程序里的名字。</div>';
+        var empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = (words.search_empty || "").replace("{q}", q.value.trim());
+        box.replaceChildren(empty);
       } else {
         // The link is set as a property, not spliced into markup; only escaped text goes through innerHTML.
         box.replaceChildren.apply(box, hits.map(function (r) {
