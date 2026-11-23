@@ -369,3 +369,29 @@ def test_one_skill_of_a_plugin_is_not_removed_alone_but_the_plugin_is(tmp_path: 
         remove_skill(skills_dir, state_dir, "one")
     assert remove_skill(skills_dir, state_dir, "kit", plugin=True) == ["one"]
     assert not (skills_dir / "kit").exists()
+
+
+def test_a_plugin_skill_tells_what_its_plugin_is_and_what_coscribe_leaves_unused(
+    tmp_path: Path,
+) -> None:
+    plugin = tmp_path / "kit"
+    (plugin / ".codex-plugin").mkdir(parents=True)
+    (plugin / ".codex-plugin" / "plugin.json").write_text(
+        '{"name": "kit", "version": "1.2.0", "description": "A kit.", "author": {"name": "Acme"}}',
+        encoding="utf-8",
+    )
+    (plugin / "hooks.json").write_text("{}", encoding="utf-8")
+    (plugin / ".mcp.json").write_text("{}", encoding="utf-8")
+    _write_skill(plugin / "skills", "one", _skill_md("one"))
+    _write_skill(tmp_path, "alone", _skill_md("alone"))
+
+    skills = {s.name: s for s in load_skills(tmp_path)}
+
+    assert skills["one"].plugin_info() == {
+        "name": "kit",
+        "description": "A kit.",
+        "version": "1.2.0",
+        "author": "Acme",
+        "unused": ["hooks", "MCP servers"],
+    }
+    assert skills["alone"].plugin_info() is None

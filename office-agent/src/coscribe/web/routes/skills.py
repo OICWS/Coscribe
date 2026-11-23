@@ -31,16 +31,11 @@ from ...tools import (
     set_skill_enabled,
     skill_source,
 )
-from ..connector_catalog import MCP_CATALOG
 from ..schemas import (
     SkillEnabledUpdate,
 )
 from ..state import AppState
 from .shared import MAX_UPLOAD_BYTES
-
-
-def _connector_url_key(url: str) -> str:
-    return url.split("#")[0].rstrip("/").lower()
 
 
 def _skill_row(skill: SkillInfo, source: str, enabled: bool) -> dict[str, Any]:
@@ -52,6 +47,7 @@ def _skill_row(skill: SkillInfo, source: str, enabled: bool) -> dict[str, Any]:
         "enabled": enabled,
         "updated": updated.isoformat(),
         "plugin": skill.plugin,
+        "plugin_info": skill.plugin_info(),
     }
 
 
@@ -137,15 +133,6 @@ def router(state: AppState) -> APIRouter:
             plugin = get_plugin(plugin_id)
         except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=404)
-        hosted = [e for e in MCP_CATALOG if e.get("server_url")]
-        by_url = {_connector_url_key(e["server_url"]): e["name"] for e in hosted}
-        names = {e["name"] for e in hosted}
-
-        def ours(c: dict[str, Any]) -> str | None:
-            found = by_url.get(_connector_url_key(c["url"])) if c["url"] else None
-            plain = c["name"].replace(" ", "-")
-            return found or (plain if plain in names else None)
-
         descriptions = {s["name"]: s["description"] for s in load_catalog()["skills"]}
         return JSONResponse(
             {
@@ -154,9 +141,6 @@ def router(state: AppState) -> APIRouter:
                 "skill_details": [
                     {"name": n, "description": descriptions.get(n, "")} for n in plugin["skills"]
                 ],
-                # `connector` is the coscribe connector that talks to the same
-                # server, or null when coscribe has none for it.
-                "connectors": [{**c, "connector": ours(c)} for c in plugin["connectors"]],
             }
         )
 

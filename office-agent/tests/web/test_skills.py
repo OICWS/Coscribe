@@ -589,6 +589,7 @@ def test_an_uploaded_plugin_lists_its_skills_and_is_removed_whole_lg(
         after = {s["name"] for s in client.get("/api/skills").json()}
 
     assert upload.json()["plugin"] == "kit"
+    assert upload.json()["plugin_info"]["name"] == "kit"
     assert listed["one"] == "kit"
     assert alone.status_code == 400
     assert removed.json() == {"removed": "kit", "skills": ["one"]}

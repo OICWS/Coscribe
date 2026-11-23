@@ -41,7 +41,13 @@ export function SkillRow({
         </div>
       </div>
       <span className="shrink-0 text-sm tabular-nums text-[color-mix(in_srgb,var(--fg)_60%,var(--bg))]">{shortDate(skill.updated)}</span>
-      <SkillMenu skill={skill} onToggle={onToggle} onRemove={onRemove} />
+      <SkillMenu
+        label={skill.name}
+        enabled={skill.enabled}
+        removable={skill.source !== "builtin"}
+        onToggle={onToggle}
+        onRemove={onRemove}
+      />
     </div>
   );
 }

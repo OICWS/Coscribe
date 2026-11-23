@@ -118,9 +118,13 @@ export interface SkillInfo {
   enabled: boolean;
   /** When its SKILL.md last changed, ISO 8601. */
   updated: string;
-  /** The plugin it came from; such a skill is removed only with its whole plugin. */
+  /** Its plugin, if any: then it is removed only with the whole plugin. */
   plugin: string | null;
+  plugin_info: InstalledPluginInfo | null;
 }
+
+/** A Claude or Codex plugin's manifest (decision 0058); `unused`: parts Coscribe keeps, unused. */
+export interface InstalledPluginInfo { name: string; description: string; version: string; author: string; unused: string[] }
 
 export interface SkillPlugin {
   id: string;
@@ -140,8 +144,6 @@ export interface SkillPlugin {
 export interface SkillPluginDetail extends SkillPlugin {
   files: string[];
   skill_details: { name: string; description: string }[];
-  /** `connector` is coscribe's connector for the same server, if it has one. */
-  connectors: { name: string; url: string; connector: string | null }[];
 }
 
 export type SkillsResponse = SkillInfo[];

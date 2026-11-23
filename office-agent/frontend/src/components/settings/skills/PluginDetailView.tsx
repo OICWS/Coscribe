@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { addSkillPlugin, getMcpCatalog, getSkillPlugin, getSkillPluginFile } from "../../../lib/rest";
-import type { McpCatalogEntry, SkillPluginDetail } from "../../../types/settings";
+import { addSkillPlugin, getSkillPlugin, getSkillPluginFile } from "../../../lib/rest";
+import type { SkillPluginDetail } from "../../../types/settings";
 import { ArrowLeftIcon, CheckIcon } from "../../icons";
-import { ConnectorIcon } from "../ConnectorIcon";
-import { shortDate, buildFileTree, connectorTitle } from "./helpers";
+import { shortDate, buildFileTree, tabClass } from "./helpers";
 import { SkillBadge } from "./badges";
 import { FileTreeView } from "./FileTree";
 import { FileViewer } from "./FileViewer";
@@ -25,7 +24,6 @@ export function PluginDetailView({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<McpCatalogEntry[]>([]);
 
   const load = () => {
     getSkillPlugin(id)
@@ -36,17 +34,8 @@ export function PluginDetailView({
       .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : "Couldn't load this plugin."));
   };
   useEffect(load, [id]);
-  useEffect(() => {
-    getMcpCatalog()
-      .then(setCatalog)
-      .catch(() => {});
-  }, []);
 
   const tree = useMemo(() => buildFileTree(plugin?.files ?? []), [plugin]);
-  const tabClass = (active: boolean) =>
-    `-mb-px border-b-2 px-4 py-2.5 text-[15px] ${
-      active ? "border-[var(--fg)] text-[var(--fg)]" : "border-transparent text-[var(--muted)] hover:text-[var(--fg)]"
-    }`;
   const tabButton = (value: PluginTab, label: string, count?: number) => (
     <button type="button" className={tabClass(tab === value)} onClick={() => setTab(value)}>
       {label}
@@ -116,7 +105,6 @@ export function PluginDetailView({
         {tabButton("overview", "Overview")}
         {tabButton("contents", "Contents", plugin.files.length)}
         {tabButton("skills", "Skills", plugin.skills.length)}
-        {tabButton("connectors", "Connectors", plugin.connectors.length)}
       </div>
 
       {tab === "overview" && (
@@ -174,33 +162,6 @@ export function PluginDetailView({
               <span className="line-clamp-2 text-sm text-[var(--muted)]">{skill.description}</span>
             </button>
           ))}
-        </div>
-      )}
-
-      {tab === "connectors" && (
-        <div>
-          {plugin.connectors.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[var(--muted)]">This plugin doesn't use any connectors.</p>
-          ) : (
-            <>
-              <p className="pb-2 text-sm text-[var(--muted)]">
-                Services these skills work with. The ones Coscribe has a connector for can be added under Connectors.
-              </p>
-              {plugin.connectors.map((c) => {
-                const entry = catalog.find((e) => e.name === c.connector);
-                return (
-                  <div key={c.name} className="flex items-center gap-4 border-b border-[var(--border)] py-3.5 last:border-b-0">
-                    <ConnectorIcon name={c.connector ?? c.name} title={entry?.title ?? connectorTitle(c.name)} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px]">{entry?.title ?? connectorTitle(c.name)}</div>
-                      {entry && <div className="truncate text-sm text-[var(--muted)]">{entry.description}</div>}
-                    </div>
-                    <span className="shrink-0 text-sm text-[var(--muted)]">{c.connector ? "In Coscribe" : "Not in Coscribe yet"}</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
         </div>
       )}
     </div>

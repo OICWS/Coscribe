@@ -824,8 +824,8 @@ any words you wrote on it.
 Every skill is a folder with a `SKILL.md` (YAML frontmatter
 `name`+`description`, then markdown instructions), optionally with
 reference files and scripts beside it -- the same format [Claude Code's
-Skills](https://code.claude.com/docs/en/skills) use. Settings → Skills
-lists them in three groups:
+Skills](https://code.claude.com/docs/en/skills) use. A plugin is a folder of
+skills (decision 0058). Settings → Plugins lists them in three groups:
 
 - **Built into Coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
   Spreadsheets*, *Word Documents* and *Skill Creator*. They can be switched off but not
@@ -846,13 +846,18 @@ lists them in three groups:
   skill, `.zip`/`.skill`/`.plugin`/`.md`) or written with Add → Create with
   coscribe. A folder there may also be a whole Claude or Codex plugin (a
   `plugin.json` in `.claude-plugin/`, `.codex-plugin/` or its root, and a
-  `skills/` folder): each of its skills is listed, and Remove on one removes
-  the plugin with all of them (decision 0058).
+  `skills/` folder): it is one row with its skill count.
 
-Clicking a skill opens it: **Overview** (description, the Coscribe tools
-it mentions) and **Contents** (its file tree; Markdown renders with a
-preview/source toggle, other text files show with line numbers). The ⋮
-menu turns a skill off or removes it.
+Clicking a plugin opens its page: its author, version and description, its
+skills as chips, and the parts Coscribe reads but does not use (commands,
+agents, hooks, MCP servers, apps, LSP servers). No connector is listed on a
+plugin: when a skill needs an outside service, the model offers one of
+Coscribe's own connectors in the conversation. On/off and Remove act on the
+whole plugin. Clicking a skill opens it: **Overview** (description, the
+Coscribe tools it mentions) and **Contents** (its file tree; Markdown
+renders with a preview/source toggle, other text files show with line
+numbers); a plugin's skill goes back to its plugin and is removed only with
+it. The ⋮ menu turns a skill off or removes it.
 
 **On/off is global**: a switched-off skill isn't offered in any
 conversation, and the change applies from the next message, including in

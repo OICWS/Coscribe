@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildFileTree, connectorTitle, extension, matches, PREVIEWABLE, shortDate, withoutFrontmatter } from "./helpers";
+import type { SkillInfo } from "../../../types/settings";
+import { buildFileTree, entryMatches, extension, listEntries, matches, PREVIEWABLE, shortDate, withoutFrontmatter } from "./helpers";
 
 describe("extension", () => {
   it("returns the lower-cased extension of the last path segment", () => {
@@ -72,14 +73,29 @@ describe("withoutFrontmatter", () => {
   });
 });
 
-describe("connectorTitle", () => {
-  it("uses the known brand spelling", () => {
-    expect(connectorTitle("hubspot")).toBe("HubSpot");
-    expect(connectorTitle("microsoft-365")).toBe("Microsoft 365");
+describe("listEntries", () => {
+  const skill = (name: string, plugin: string | null, enabled = true, updated = "2026-11-01T00:00:00Z"): SkillInfo => ({
+    name,
+    description: `${name} skill`,
+    source: "custom",
+    enabled,
+    updated,
+    plugin,
+    plugin_info: plugin ? { name: plugin, description: "", version: "", author: "", unused: [] } : null,
   });
 
-  it("title-cases an unknown name, turning - and _ into spaces", () => {
-    expect(connectorTitle("google-drive")).toBe("Google Drive");
-    expect(connectorTitle("my_tool")).toBe("My Tool");
+  it("folds a plugin's skills into one entry and keeps lone skills as they are", () => {
+    const entries = listEntries([skill("a", null), skill("b", "kit", false), skill("c", "kit", true, "2026-11-05T00:00:00Z")]);
+    expect(entries.map((e) => (e.kind === "skill" ? e.skill.name : e.info.name))).toEqual(["a", "kit"]);
+    const kit = entries[1];
+    expect(kit.kind === "plugin" && kit.skills.map((s) => s.name)).toEqual(["b", "c"]);
+    expect(kit.kind === "plugin" && kit.enabled).toBe(true);
+    expect(kit.kind === "plugin" && kit.updated).toBe("2026-11-05T00:00:00Z");
+  });
+
+  it("finds a plugin by the name of one of its skills", () => {
+    const [kit] = listEntries([skill("brief", "marketing")]);
+    expect(entryMatches("brie", kit)).toBe(true);
+    expect(entryMatches("nothing", kit)).toBe(false);
   });
 });
