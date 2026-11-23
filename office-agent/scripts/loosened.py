@@ -57,7 +57,10 @@ def _get(data: Any, *keys: str) -> Any:
 def baseline(before: dict[str, Any], after: dict[str, Any]) -> list[str]:
     found = []
     for metric, now in sorted(after.items()):
-        was = before.get(metric, {})
+        # A metric the base did not have limits something that was unlimited: a new ratchet.
+        if metric not in before:
+            continue
+        was = before[metric]
         for name, value in sorted(now.items()):
             if name not in was:
                 found.append(f"quality/baseline.json: {metric}: new {name} = {value}")

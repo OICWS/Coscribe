@@ -15,6 +15,8 @@ the others. Part of #1051, step 4.
   counted per pair. Today 106 such imports over 35 pairs, the largest the loose components into
   `workflow` (16) and `chatlog` (9), and `doc` into `slides` (8). The baseline holds them; a new
   pair or a larger count fails `check.sh`.
+- `scripts/loosened.py` (#1052) no longer counts a metric the base did not have as loosening:
+  a new metric is a new limit. Without this, adding any ratchet needed the maintainer's label.
 - `frontend/AGENTS.md` says how to use another feature: export it from that feature's
   `index.ts`.
 
