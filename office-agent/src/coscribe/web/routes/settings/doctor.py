@@ -80,7 +80,7 @@ def check_python(settings: Settings) -> Check:
     """The Python scripts run on: their environment, or a Python to make it from."""
     name = "Python for scripts"
     script_python = venv_python(settings.state_dir / "script-env")
-    if script_python.is_file():
+    if script_python.is_file() and not (settings.state_dir / "script-env.initializing").exists():
         return _check("python", name, "ok", "The scripts' environment is ready.")
     found = find_pythons(settings.state_dir)
     if found:

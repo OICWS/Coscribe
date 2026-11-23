@@ -1,7 +1,6 @@
 import pytest
 
-from coscribe.tools.exec import child_env
-from coscribe.tools.exec import env_allowlist
+from coscribe.tools.exec import child_env, env_allowlist
 
 
 def test_only_listed_names_pass_and_keys_do_not() -> None:

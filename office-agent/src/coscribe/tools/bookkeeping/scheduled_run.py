@@ -6,6 +6,27 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+# Every run's conversation is keyed off this prefix (see run_thread_id); the thread list filters
+# by it so a run shows under Scheduled only, never in the chat sidebar.
+SCHEDULED_THREAD_PREFIX = "scheduled-"
+
+
+def run_thread_id(trigger_id: str, run_id: str) -> str:
+    return f"{SCHEDULED_THREAD_PREFIX}{trigger_id}-{run_id}"
+
+
+def parse_run_thread_id(thread_id: str) -> tuple[str, str] | None:
+    """(trigger_id, run_id) for a run's own thread, None for anything else
+    -- including a pre-per-run trigger's single shared thread
+    ("scheduled-<trigger_id>", no run part)."""
+    if not thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+        return None
+    # rpartition: a run_id never contains "-", a trigger_id might.
+    trigger_id, sep, run_id = thread_id[len(SCHEDULED_THREAD_PREFIX) :].rpartition("-")
+    if not sep or not trigger_id or not run_id:
+        return None
+    return trigger_id, run_id
+
 
 @dataclass
 class ScheduledRun:
@@ -100,7 +121,9 @@ class ScheduledRun:
         )
 
 
-def fold_quiet(runs: list[ScheduledRun]) -> tuple[list[ScheduledRun], list[ScheduledRun]]:
+def retain_runs(
+    runs: list[ScheduledRun], limit: int
+) -> tuple[list[ScheduledRun], list[ScheduledRun]]:
     """Keep only the latest of each row of quiet runs, counting the ones it stands for: a task
     that checks every few minutes would otherwise bury its real runs."""
     kept: list[ScheduledRun] = []
@@ -110,4 +133,8 @@ def fold_quiet(runs: list[ScheduledRun]) -> tuple[list[ScheduledRun], list[Sched
             run.quiet += kept[-1].quiet
             dropped.append(kept.pop())
         kept.append(run)
-    return kept, dropped
+    # A person can still stop a running task or resume a paused one from its record.
+    excess = max(0, len(kept) - limit)
+    finished = [r for r in kept if r.status in ("completed", "failed", "stopped")][:excess]
+    removed_ids = {r.run_id for r in finished}
+    return [r for r in kept if r.run_id not in removed_ids], [*dropped, *finished]

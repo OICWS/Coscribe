@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from langchain_core.messages import HumanMessage, RemoveMessage, SystemMessage
@@ -117,6 +118,9 @@ class ConversationHistory:
         # its docstring for why not at construction).
         self._history_boundary_config: dict[str, Any] | None = None
         self._history_known_message_ids: set[str] | None = None
+
+    def title_path(self) -> Path:
+        return thread_file(self._host.settings.state_dir, self._host.thread_id, ".title")
 
     async def send_history(self, websocket: EventSink) -> None:
         """One-shot replay of this thread's checkpointed messages, sent
@@ -275,7 +279,7 @@ class ConversationHistory:
         tasks = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).open_tasks_note()
         if tasks:
             note = f"{note}\n\n{tasks}"
-        title_path = thread_file(self._host.settings.state_dir, self._host.thread_id, ".title")
+        title_path = self.title_path()
         if not title_path.exists():
             first_user = next(
                 (e["text"] for e in serialize_history_for_ws_lg(messages) if e["kind"] == "user"),

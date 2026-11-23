@@ -328,9 +328,11 @@ never the thread the task was created from and never a previous run's --
 so runs don't accumulate each other's context, and one run's mess can't
 leak into the next. A run's conversation opens with a "Ran scheduled task"
 card showing the exact instructions it got; the breadcrumb above it
-switches between that task's runs. Each task keeps its last 50 run records
-(older ones are pruned, their conversations deleted with them); deleting a
-task deletes all of its run conversations too.
+switches between that task's runs. When a new run starts, the task prunes the
+oldest finished runs and their conversations to keep up to 50 records. Running
+and paused runs stay available even if that takes the count over 50. Stop any
+running task or wait for it to finish before deleting it. Deleting the task
+also deletes its run conversations.
 
 **Notes carry memory between runs** (on by default; per task, "Remember
 between runs" on the task page). Every run is shown the task's current
@@ -637,6 +639,7 @@ under the permission mode.
   it, a command runs as the user only after the person allowed that, and each one is approved.
 - Off Windows, or let out of isolation, code runs as the user; a folder guard then catches
   mistaken writes and is not a security boundary.
+- Python and npm package installers start with the same allow-list and receive no conversation variables.
 - A script starts from an allow-list of environment variables, never the server's own (which holds
   the provider keys). Card: `src/coscribe/tools/exec/AGENTS.md`.
 

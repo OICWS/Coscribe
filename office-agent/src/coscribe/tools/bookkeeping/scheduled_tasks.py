@@ -31,7 +31,10 @@ from .schedule_rule import (
     _to_local_naive,
     compute_next_run_at,
 )
-from .scheduled_run import ScheduledRun, fold_quiet
+from .scheduled_run import (
+    SCHEDULED_THREAD_PREFIX as SCHEDULED_THREAD_PREFIX,
+)
+from .scheduled_run import ScheduledRun, parse_run_thread_id, retain_runs, run_thread_id
 from .task_calls import TaskCalls, check_calls
 from .task_memory import TaskMemory
 from .task_versions import TaskVersions
@@ -40,10 +43,6 @@ from .webhook_events import WebhookEvents
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
 DEFAULT_MAX_STEPS, _MOST_STEPS = 150, 1000
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
-
-# Every run's conversation is keyed off this prefix (see run_thread_id); the thread list filters
-# by it so a run shows under Scheduled only, never in the chat sidebar.
-SCHEDULED_THREAD_PREFIX = "scheduled-"
 
 # Respond-only interrupt tools (like ask_user_question): the call becomes a draft the user reviews
 # and edits, and what they decide is the tool's result; the bodies below run only outside a graph.
@@ -69,23 +68,6 @@ MAX_RUNS_KEPT = 50
 # The notes a run carries forward are part of every future run's prompt,
 # so they're kept deliberately small.
 MAX_NOTES_CHARS = 4000
-
-
-def run_thread_id(trigger_id: str, run_id: str) -> str:
-    return f"{SCHEDULED_THREAD_PREFIX}{trigger_id}-{run_id}"
-
-
-def parse_run_thread_id(thread_id: str) -> tuple[str, str] | None:
-    """(trigger_id, run_id) for a run's own thread, None for anything else
-    -- including a pre-per-run trigger's single shared thread
-    ("scheduled-<trigger_id>", no run part)."""
-    if not thread_id.startswith(SCHEDULED_THREAD_PREFIX):
-        return None
-    # rpartition: a run_id never contains "-", a trigger_id might.
-    trigger_id, sep, run_id = thread_id[len(SCHEDULED_THREAD_PREFIX) :].rpartition("-")
-    if not sep or not trigger_id or not run_id:
-        return None
-    return trigger_id, run_id
 
 
 def _now_iso() -> str:
@@ -282,7 +264,7 @@ class ScheduledTriggerStore:
         with self._run_lock:
             trigger = self.load(trigger_id)
             if trigger and any(run.status == "running" for run in trigger.runs):
-                raise ValueError("Stop the running task or wait for it to finish before deleting it.")
+                raise ValueError("Stop the running task or wait for it to finish before deleting.")
             path = trigger_file(self.root, trigger_id, ".json")
             path.unlink(missing_ok=True)
             trigger_file(self.root, trigger_id, ".notes.md").unlink(missing_ok=True)
@@ -317,13 +299,7 @@ class ScheduledTriggerStore:
                 inputs=inputs,
                 event=event,
             )
-            trigger.runs, pruned = fold_quiet(trigger.runs)
-            trigger.runs.append(run)
-            excess = max(0, len(trigger.runs) - MAX_RUNS_KEPT)
-            finished = [r for r in trigger.runs if r.status in ("completed", "failed", "stopped")]
-            pruned += finished[:excess]
-            dropped = {r.run_id for r in pruned}
-            trigger.runs = [r for r in trigger.runs if r.run_id not in dropped]
+            trigger.runs, pruned = retain_runs([*trigger.runs, run], MAX_RUNS_KEPT)
             trigger.last_run_at = run.started_at
             trigger.last_run_status = run.status
             self.save(trigger)

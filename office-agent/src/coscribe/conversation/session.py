@@ -78,7 +78,6 @@ from ..runtime_lg import (
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
-from ..thread_paths import thread_file
 from ..tools import (
     BROWSER_HOST,
     QUESTION_TOOL_NAMES,
@@ -385,7 +384,7 @@ class ChatSessionLG:
     def _title_path(self) -> Path:
         # The same sidecar app.py's rename endpoint writes and list_threads
         # reads.
-        return thread_file(self.settings.state_dir, self.thread_id, ".title")
+        return self._history.title_path()
 
     def _wants_title(self) -> bool:
         return (
