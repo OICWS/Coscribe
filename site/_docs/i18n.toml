@@ -142,7 +142,70 @@ description = "Privacidad y seguridad, y qué hacer cuando algo falla."
 [ja]
 name = "日本語"
 html_lang = "ja"
-published = false
+published = true
+docs = "ドキュメント"
+docs_title = "coscribe ドキュメント"
+home = "coscribe ホーム"
+skip = "本文へスキップ"
+search = "ドキュメントを検索"
+search_empty = "「{q}」に一致するものはありませんでした。アプリに表示される名前など、別の言葉で試してください。"
+theme = "ダークモードを切り替え"
+language = "言語"
+coming_soon = "近日公開"
+toggle_sidebar = "目次の表示・非表示"
+crumbs = "現在地"
+sidebar = "ドキュメントの目次"
+toc = "この記事の内容"
+prev = "前へ"
+next = "次へ"
+pager = "ページ"
+copy_md = "Markdown をコピー"
+copy_md_hint = "AI や同僚に渡せます"
+copy_failed = "コピーできませんでした。「Markdown で表示」を使ってください"
+md_more = "その他の Markdown オプション"
+view_md = "Markdown で表示"
+view_md_hint = "別のタブで開きます"
+anchor = "このセクションへのリンク"
+edit = "GitHub でこのページを編集"
+report = "間違いを見つけたら教えてください"
+untranslated = "このページはまだ{lang}に翻訳されていないため、英語で表示しています。"
+llms_summary = "coscribe は Windows PC で動くオープンソースのオフィスアシスタントです。"
+note = "メモ"
+tip = "ヒント"
+important = "重要"
+warning = "警告"
+
+[ja.groups.get-started]
+title = "はじめに"
+description = "coscribe をダウンロードし、モデルをつないで、最初の会話を始めます。"
+
+[ja.groups.use]
+title = "coscribe を使う"
+description = "会話での作業：承認、計画、ファイル、ブラウザー、モデル。"
+
+[ja.groups.workspaces]
+title = "ワークスペース"
+description = "coscribe が作業するフォルダーと、フォルダーが伝えられることを選びます。"
+
+[ja.groups.office]
+title = "Office ファイル"
+description = "Word、Excel、PowerPoint、PDF、そして会話の横に開く Doc、デザイン、ダッシュボード。"
+
+[ja.groups.workflows]
+title = "スケジュールタスクとワークフロー"
+description = "決まった時刻や何かが起きたときに、coscribe に仕事を任せます。"
+
+[ja.groups.customize]
+title = "カスタマイズ"
+description = "指示、スキル、コネクター、デザインシステム。"
+
+[ja.groups.reference]
+title = "リファレンス"
+description = "すべての設定、コマンド、キーボードショートカット。"
+
+[ja.groups.help]
+title = "ヘルプ"
+description = "プライバシーと安全性、うまくいかないときの対処。"
 
 [pt]
 name = "Português do Brasil"
