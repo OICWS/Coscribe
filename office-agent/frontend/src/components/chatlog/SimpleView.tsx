@@ -31,7 +31,7 @@ export function SimpleStatus({ turn }: { turn: Turn }) {
   return (
     <div role="status" data-testid="simple-status" className="flex items-baseline gap-1.5 text-sm">
       <span className="shimmer-text">{currentActivity(turn.items, connectorTools)}</span>
-      <span className="tabular-nums text-xs text-[var(--muted)]">{formatElapsed(now - start)}</span>
+      <span className="tabular-nums text-[var(--muted)]">{formatElapsed(now - start)}</span>
     </div>
   );
 }
