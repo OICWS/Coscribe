@@ -104,8 +104,8 @@ def _source_routes(router: APIRouter, state: AppState) -> None:
     async def remove_source(repo: str) -> JSONResponse:
         try:
             sources().remove(repo)
-        except SkillCatalogError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=404)
+        except SkillCatalogError:
+            return JSONResponse({"error": f"{repo!r} isn't a source"}, status_code=404)
         return JSONResponse({"removed": repo})
 
     router.add_api_route("/api/skills/sources", list_sources, methods=["GET"])
