@@ -2,13 +2,17 @@ name: PR text
 
 # A squash merge copies every commit message into the merged commit, so signature lines
 # make each commit longer for no reader's benefit. This fails a pull request whose title,
-# description or commit messages carry one. It is not a required check.
+# description or commit messages carry one. It is not a required check; `loosened` and
+# `independent-review` below are meant to be (the maintainer sets required checks in the
+# ruleset).
 "on":
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    # labeled and unlabeled: the `loosened` job reads the maintainer's label.
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
+  # independent-review reads the reviews posted on the pull request.
   pull-requests: read
 
 jobs:
@@ -58,6 +62,32 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python office-agent/scripts/doc_impact.py --base "$BASE_SHA" --head "$HEAD_SHA"
+
+  # Limits only the maintainer may raise (decision 0009): the ratchet baseline, the size budgets,
+  # import exceptions, the coverage floor, checks turned off in pyproject.toml. A pull request
+  # that loosens one says why (`Loosened:`) and carries the `loosening-approved` label, which
+  # only the maintainer adds (scripts/loosened.py).
+  loosened:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: What the pull request loosens
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # From the merge base: a limit main tightened since the branch started is not this
+        # pull request loosening it.
+        run: |
+          python office-agent/scripts/loosened.py \
+            --base "$(git merge-base "$BASE_SHA" "$HEAD_SHA")" --head "$HEAD_SHA"
 
   # A change to an invariant path links the independent GitHub review posted on this pull
   # request (office-agent/CLAUDE.md, "Code review"; scripts/pr_gates.py).
