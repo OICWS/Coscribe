@@ -137,14 +137,24 @@ def test_not_now_holds_for_the_conversation(
     assert "already declined" in str(messages[1].content)
 
 
+@pytest.mark.parametrize("spec", ["openpyxl", "openpyxl>=3", "openpyxl==3.1.*", "openpyxl~=3.1"])
 def test_an_installed_package_needs_no_card(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, spec: str
 ) -> None:
     env = _FakeEnv(installed={"openpyxl": "3.1.2"})
     _patch(monkeypatch, env)
-    messages, _ = _run(tmp_path, monkeypatch, [_call("c1", "openpyxl")], [], "t_pkg_have")
+    messages, _ = _run(tmp_path, monkeypatch, [_call("c1", spec)], [], "t_pkg_have")
     assert env.installs == []
     assert "openpyxl 3.1.2 is already installed" in str(messages[0].content)
+
+
+@pytest.mark.parametrize("spec", ["openpyxl>=4", "openpyxl!=3.1.2", "openpyxl[extra]"])
+def test_installed_distribution_does_not_satisfy_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, spec: str
+) -> None:
+    _patch(monkeypatch, _FakeEnv(installed={"openpyxl": "3.1.2"}))
+    _, events = _run(tmp_path, monkeypatch, [_call("c1", spec)], ["decline"], "t_pkg_range")
+    assert (events[0]["package"], events[0]["installed_version"]) == (spec, "3.1.2")
 
 
 @pytest.mark.parametrize(
@@ -173,8 +183,9 @@ def test_anything_but_one_name_is_refused_before_a_card(
     ("runtime", "package", "parsed"),
     [
         ("python", "openpyxl", ("openpyxl", None)),
-        ("python", "openpyxl==3.1.2", ("openpyxl", "3.1.2")),
-        ("python", "pandas>=2", ("pandas", None)),
+        ("python", "openpyxl==3.1.2", ("openpyxl", "==3.1.2")),
+        ("python", "pandas>=2", ("pandas", ">=2")),
+        ("python", "pandas>=2.*", None),
         ("python", "requests[socks]", ("requests", None)),
         ("node", "sharp", ("sharp", None)),
         ("node", "sharp@0.33.5", ("sharp", "0.33.5")),

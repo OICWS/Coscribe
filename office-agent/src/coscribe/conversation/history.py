@@ -21,6 +21,7 @@ from ..runtime import COMPACT_INSTRUCTIONS
 from ..runtime_lg import answer_every_tool_call, is_steer, serialize_history_for_ws_lg
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import render_transcript_lg as _render_transcript_lg
+from ..thread_paths import thread_file
 from ..tools import TaskToolkit
 from .events import EventSink
 from .export_text import conversation_markdown
@@ -117,6 +118,9 @@ class ConversationHistory:
         # its docstring for why not at construction).
         self._history_boundary_config: dict[str, Any] | None = None
         self._history_known_message_ids: set[str] | None = None
+
+    def title_path(self) -> Path:
+        return thread_file(self._host.settings.state_dir, self._host.thread_id, ".title")
 
     async def send_history(self, websocket: EventSink) -> None:
         """One-shot replay of this thread's checkpointed messages, sent
@@ -275,7 +279,7 @@ class ConversationHistory:
         tasks = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).open_tasks_note()
         if tasks:
             note = f"{note}\n\n{tasks}"
-        title_path = Path(self._host.settings.state_dir) / f"{self._host.thread_id}.title"
+        title_path = self.title_path()
         if not title_path.exists():
             first_user = next(
                 (e["text"] for e in serialize_history_for_ws_lg(messages) if e["kind"] == "user"),

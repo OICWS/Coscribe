@@ -25,6 +25,7 @@ its card, then the interface the card lists, then only that component's implemen
 | `runtime.models` | `office-agent/src/coscribe/runtime/models` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/runtime/models/AGENTS.md) |
 | `workflow_spec` | `office-agent/src/coscribe/workflow_spec` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/workflow_spec/AGENTS.md) |
 | `config` | `office-agent/src/coscribe/config.py` | runtime \| config | @OICWS | none |
+| `thread_paths` | `office-agent/src/coscribe/thread_paths.py` | runtime \| config | @OICWS | none |
 | `needs_permission` | `office-agent/src/coscribe/needs_permission.py` | runtime \| config | @OICWS | none |
 | `frontend` | `office-agent/frontend` | ui | @OICWS | [AGENTS.md](../office-agent/frontend/AGENTS.md) |
 | `desktop` | `office-agent-desktop` | ui | @OICWS | none |

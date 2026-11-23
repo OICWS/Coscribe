@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ...runtime import redactor, tool_metadata
+from ...thread_paths import is_thread_id, thread_file
 
 # An id comes from the model and from URLs, so it must never name a path outside
 # the state folder.
@@ -75,18 +76,22 @@ class MessagingStore:
         self.state_dir = Path(state_dir)
 
     def _inbox_path(self, thread_id: str) -> Path:
-        return self.state_dir / f"{thread_id}.inbox.json"
+        return thread_file(self.state_dir, thread_id, ".inbox.json")
 
     def archived(self, thread_id: str) -> bool:
         try:
-            raw = json.loads((self.state_dir / f"{thread_id}.meta.json").read_text("utf-8"))
+            raw = json.loads(
+                thread_file(self.state_dir, thread_id, ".meta.json").read_text("utf-8")
+            )
         except (OSError, ValueError):
             return False
         return isinstance(raw, dict) and bool(raw.get("archived"))
 
     def title(self, thread_id: str) -> str:
         try:
-            title = (self.state_dir / f"{thread_id}.title").read_text(encoding="utf-8").strip()
+            title = (
+                thread_file(self.state_dir, thread_id, ".title").read_text(encoding="utf-8").strip()
+            )
         except OSError:
             title = ""
         return title or thread_id
@@ -115,7 +120,7 @@ class MessagingStore:
         return len(self._read_inbox(thread_id))
 
     def delete(self, thread_id: str) -> None:
-        if not _SAFE_ID.fullmatch(thread_id):
+        if not is_thread_id(thread_id):
             return
         self._inbox_path(thread_id).unlink(missing_ok=True)
 
@@ -178,6 +183,7 @@ class _Reach:
             for other in await self.source.thread_ids()
             if other != self.thread_id
             and _SAFE_ID.fullmatch(other)
+            and is_thread_id(other)
             and not self.store.archived(other)
         ]
 

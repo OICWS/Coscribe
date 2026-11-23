@@ -14,6 +14,9 @@ import uuid
 from asyncio import Future, get_running_loop, to_thread
 from typing import Any
 
+from packaging.specifiers import InvalidSpecifier, Specifier
+from packaging.version import InvalidVersion
+
 from ..runtime_lg import AuditLog, record_decision
 from ..tools import (
     install_node_package,
@@ -43,15 +46,34 @@ _MAX_ERROR = 1500
 
 
 def parse_spec(runtime: str, package: str) -> tuple[str, str | None] | None:
-    """(name, exact version or None) when `package` is one plain package for `runtime`."""
+    """(name, version constraint or None) when `package` is one plain package for `runtime`."""
     pattern = {"python": _PYTHON_SPEC, "node": _NODE_SPEC}.get(runtime)
     if pattern is None or len(package) > _MAX_SPEC:
         return None
     match = pattern.fullmatch(package)
     if match is None:
         return None
-    exact = runtime == "node" or match.group("op") in ("==", "===")
-    return match.group("name"), (match.group("version") if exact else None)
+    version = match.group("version")
+    if runtime == "python" and version is not None:
+        try:
+            version = str(Specifier(match.group("op") + version))
+        except InvalidSpecifier:
+            return None
+    return match.group("name"), version
+
+
+def _satisfies(runtime: str, package: str, constraint: str | None, have: str) -> bool:
+    # The package listing can't tell which optional dependencies are present.
+    if runtime == "python" and "[" in package:
+        return False
+    if constraint is None:
+        return True
+    if runtime == "node":
+        return constraint == have
+    try:
+        return Specifier(constraint).contains(have, prereleases=True)
+    except InvalidVersion:
+        return False
 
 
 def _normalized(name: str) -> str:
@@ -116,7 +138,7 @@ async def decide_package_install(
         have = await to_thread(installed_version, state_dir, runtime, name)
     except RuntimeError:
         have = None
-    if have is not None and (version is None or version == have):
+    if have is not None and _satisfies(runtime, package, version, have):
         return {
             "type": "respond",
             "message": f"{name} {have} is already installed in {_ENVIRONMENT[runtime]}.",

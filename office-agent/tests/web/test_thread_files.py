@@ -10,6 +10,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 
 
 from coscribe.runtime import DEFAULT_ENVIRONMENT, Environments
+from coscribe.tools import TaskToolkit
 from coscribe.web.thread_files import ThreadFiles
 from tests.environment_helpers import in_environment
 
@@ -86,6 +87,20 @@ def test_thread_files_delete_every_file_of_a_thread_and_no_other(tmp_path: Path)
     assert not files.title_sidecar_path("t1").exists()
     assert not (settings.state_dir / "t1.tasks.json").exists()
     assert Environments(settings.state_dir).environment_of("t2") == env_id
+
+
+def test_fork_and_delete_keep_the_existing_quoted_task_filename(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    files = ThreadFiles(settings)
+    source = TaskToolkit("report @1", settings.state_dir)
+    task = source.create("Prepare the report")
+    assert (settings.state_dir / "report%20%401.tasks.json").is_file()
+
+    files.copy_for_fork("report @1", "report @2", "Second draft")
+    files.delete("report @1")
+
+    assert source.list_tasks() == []
+    assert TaskToolkit("report @2", settings.state_dir).list_tasks() == [task]
 
 
 def test_a_task_saved_with_a_folder_moves_into_an_environment_with_it(tmp_path: Path) -> None:

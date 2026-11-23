@@ -132,12 +132,18 @@ async def poll_due_wakes(
             continue
         try:
             session = await get_session(wake.thread_id)
+            current = wake_store.load(wake.wake_id)
+            if current is None or current.status != "pending":
+                continue
             message = f"[Scheduled wake-up reached ({wake.kind}) -- {wake.reason}]"
             await session.handle_user_message(message, SilentSocket())
         except Exception:
             logger.exception(
                 "selfwake: failed to resume thread %s for wake %s", wake.thread_id, wake.wake_id
             )
+            continue
+        current = wake_store.load(wake.wake_id)
+        if current is None or current.status != "pending":
             continue
         wake.status = "woken"
         wake.woken_at = datetime.now(UTC).isoformat()

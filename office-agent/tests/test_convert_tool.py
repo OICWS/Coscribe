@@ -57,6 +57,25 @@ def test_an_existing_output_is_never_replaced(tmp_path: Path) -> None:
     assert (tmp_path / "a.pdf").read_bytes() == b"keep me"
 
 
+def test_an_output_created_during_conversion_is_preserved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "a.xls").write_bytes(b"legacy")
+    destination = tmp_path / "a.xlsx"
+
+    def convert(source: Path, target: Path, to_format: str, timeout: float) -> str:
+        target.write_bytes(b"converted")
+        destination.write_bytes(b"another writer")
+        return "Excel.Application"
+
+    monkeypatch.setattr(_office_com, "convert", convert)
+    with pytest.raises(FileExistsError):
+        _convert(tmp_path)(path="a.xls", to_format="xlsx")
+
+    assert destination.read_bytes() == b"another writer"
+    assert not list(tmp_path.glob("coscribe_convert_*"))
+
+
 def test_without_an_office_program_it_says_one_is_needed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

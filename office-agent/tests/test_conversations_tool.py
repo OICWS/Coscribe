@@ -56,6 +56,7 @@ def test_every_other_conversation_is_listed_newest_first_without_asking_anyone(
     source = _Source(
         {
             "a": _talk(("user", "hi")),
+            "CON": _talk(("user", "legacy checkpoint")),
             "b": _talk(("user", "one"), ("assistant", "two"), at="2026-10-23T09:00:00Z"),
             "c": _talk(("user", "x"), at="2026-10-23T11:00:00Z"),
         }

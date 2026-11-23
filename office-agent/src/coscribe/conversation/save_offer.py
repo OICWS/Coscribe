@@ -18,6 +18,7 @@ from langgraph.constants import TAG_NOSTREAM
 
 from ..config import Settings
 from ..runtime_lg import extract_text
+from ..thread_paths import thread_file
 from ..tools import parse_run_thread_id
 from .activity import (
     _OUTPUT_RISKS,
@@ -93,7 +94,7 @@ class SaveOffer:
         self._task: asyncio.Task[None] | None = None
 
     def _marker(self) -> Path:
-        return Path(self._host.settings.state_dir) / f"{self._host.thread_id}.save-offered"
+        return thread_file(self._host.settings.state_dir, self._host.thread_id, ".save-offered")
 
     def consider(self, websocket: EventSink, user_text: str) -> None:
         """Called at the end of a turn; looks in the background when it finished its work."""

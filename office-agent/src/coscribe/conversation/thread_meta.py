@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from ..thread_paths import thread_file
+
 MAX_GROUP_NAME = 60
 
 
@@ -18,7 +20,7 @@ class ThreadMetaStore:
         self.root = Path(state_dir)
 
     def _path(self, thread_id: str) -> Path:
-        return self.root / f"{thread_id}.meta.json"
+        return thread_file(self.root, thread_id, ".meta.json")
 
     @property
     def _groups_path(self) -> Path:

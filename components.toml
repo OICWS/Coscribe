@@ -208,6 +208,12 @@ layer = "runtime | config"
 owner = ["@OICWS"]
 
 [[component]]
+name = "thread_paths"
+path = "office-agent/src/coscribe/thread_paths.py"
+layer = "runtime | config"
+owner = ["@OICWS"]
+
+[[component]]
 name = "needs_permission"
 path = "office-agent/src/coscribe/needs_permission.py"
 layer = "runtime | config"

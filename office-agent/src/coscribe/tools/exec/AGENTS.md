@@ -35,7 +35,9 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
   addresses without a user name or password, then the conversation's variables. Never from
   `os.environ`, which holds the provider keys (issue #667). The container's self-test starts
   its probe the same way. The commands Codex runs in the code module are not covered here
-  (part 2 of #667).
+  (part 2 of #667). Package installs (pip and npm, in `script_env.py` and `node_env.py`) are
+  not scripts and keep the full environment: a company mirror, registry or proxy set in
+  variables (`PIP_INDEX_URL`, `npm_config_registry`) must apply.
 - On Windows, where the self-test passed, every script run (the two tools and the background
   ones in `tools/bookkeeping/background_tasks.py`) starts in the AppContainer with only its
   conversation's folders (decision 0021). Where the self-test failed, `for_scripts` refuses the

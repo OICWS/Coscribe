@@ -27,12 +27,10 @@ Code's own Bash tool on a sandboxless host).
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
 import sys
 import threading
-from collections.abc import Mapping
 from pathlib import Path
 
 from .own_python import own_python_path
@@ -254,9 +252,15 @@ def _ensure_script_env(state_dir: Path) -> Path:
     without them would make that promise a lie the model has no way to
     detect until a script's `import pandas` fails confusingly later."""
     venv_dir = state_dir / "script-env"
-    if venv_python(venv_dir).is_file():
+    initializing = state_dir / "script-env.initializing"
+    if initializing.exists():
+        # An interrupted pip may leave an importable but incomplete package behind.
+        if venv_dir.exists():
+            shutil.rmtree(venv_dir)
+    elif venv_python(venv_dir).is_file():
         return venv_dir
     venv_dir.parent.mkdir(parents=True, exist_ok=True)
+    initializing.touch()
     candidates = _own_python_first(state_dir, _venv_create_candidates(state_dir))
     result = subprocess.run(
         [candidates[0], "-m", "venv", str(venv_dir)],
@@ -294,11 +298,10 @@ def _ensure_script_env(state_dir: Path) -> Path:
         timeout=_SETUP_TIMEOUT,
     )
     if seed_result.returncode != 0:
-        # Otherwise the next run would find the venv and use it without these packages.
-        shutil.rmtree(venv_dir, ignore_errors=True)
         raise RuntimeError(
             f"Could not install the default script packages: {seed_result.stderr.strip()}"
         )
+    initializing.unlink()
     return venv_dir
 
 
@@ -336,6 +339,7 @@ def install_package(
     `{"success": False, "error": ...}` rather than an exception."""
     venv_dir = ensure_script_env(state_dir)
     try:
+        # No child_env: the person's mirror, registry and proxy variables must reach the installer.
         result = subprocess.run(
             [str(venv_python(venv_dir)), "-m", "pip", "install", package],
             capture_output=True,
@@ -369,20 +373,6 @@ def uninstall_package(
     if result.returncode != 0:
         return {"success": False, "error": result.stderr.strip() or result.stdout.strip()}
     return {"success": True, "error": None}
-
-
-def overlay_env(base: Mapping[str, str], extra: Mapping[str, str] | None) -> dict[str, str]:
-    """`base` with `extra` laid over it. Windows environment names are
-    case-insensitive and its `os.environ` upper-cases them, so a variable
-    named `Path` replaces `PATH` there instead of sitting beside it with the
-    child free to see either."""
-    merged = dict(base)
-    if not extra:
-        return merged
-    existing = {k.upper(): k for k in merged} if os.name == "nt" else {}
-    for name, value in extra.items():
-        merged[existing.get(name.upper(), name)] = value
-    return merged
 
 
 _PYTHON_COMMANDS = frozenset({"python", "python3", "py"})

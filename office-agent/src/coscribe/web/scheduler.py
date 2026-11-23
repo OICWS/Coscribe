@@ -237,7 +237,8 @@ class Scheduler:
             for trigger in ScheduledTriggerStore(self._settings.state_dir).list_all()
             for run in trigger.runs
         }
-        orphans = [t for t in thread_ids if t not in known]
+        # Called tasks, parallel lanes and added steps append "~..." to their caller's id.
+        orphans = [t for t in thread_ids if t.partition("~")[0] not in known]
         for thread_id in orphans:
             await self._delete_thread_data(thread_id)
         return len(orphans)

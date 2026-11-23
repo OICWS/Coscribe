@@ -129,6 +129,17 @@ def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
             ws.send_json({"type": "load_older_messages"})
             third_older = ws.receive_json()
 
+        with (
+            client.websocket_connect("/ws/t_older3") as left,
+            client.websocket_connect("/ws/t_older3") as right,
+        ):
+            for tab in (left, right):
+                assert tab.receive_json()["type"] == "state"
+                assert tab.receive_json()["older_entries"] == first_older["entries"]
+            for tab in (left, right):
+                tab.send_json({"type": "load_older_messages"})
+                assert tab.receive_json() == second_older
+
     # The first compact's own synthetic note is a real HumanMessage
     # aupdate_state adds -- it becomes message #1 of the *next* epoch
     # going forward (the model's context after a compact genuinely

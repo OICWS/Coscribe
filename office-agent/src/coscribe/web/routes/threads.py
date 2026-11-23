@@ -26,11 +26,13 @@ from ...runtime_lg import (
     extract_text,
     strip_mode_note,
 )
+from ...thread_paths import is_thread_id
 from ...tools import (
     SCHEDULED_THREAD_PREFIX,
     BackgroundTaskStore,
     SubAgentTaskStore,
     TaskToolkit,
+    WakeStore,
     forget_finished_background_tasks,
     forget_finished_subagents,
     get_subagent_transcript,
@@ -119,7 +121,11 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
         # excluded here so it doesn't also show up in the ordinary chat
         # sidebar's session list, which would otherwise happen the moment
         # a trigger's first turn writes a checkpoint under its thread_id.
-        rows = [row for row in rows if not row[0].startswith(SCHEDULED_THREAD_PREFIX)]
+        rows = [
+            row
+            for row in rows
+            if is_thread_id(row[0]) and not row[0].startswith(SCHEDULED_THREAD_PREFIX)
+        ]
         waiting = await _threads_waiting_for_input(state)
         environment_of = Environments(settings.state_dir).assignments()
         # Real per-thread metadata (Phase 2 of ROADMAP.md), not just bare
@@ -180,7 +186,7 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
             "statuses": {
                 thread_id: _thread_status(state, thread_id, waiting, meta_store.get(thread_id))
                 for thread_id in known
-                if not thread_id.startswith(SCHEDULED_THREAD_PREFIX)
+                if is_thread_id(thread_id) and not thread_id.startswith(SCHEDULED_THREAD_PREFIX)
             }
         }
 
@@ -265,6 +271,8 @@ def _delete_and_rename_routes(router: APIRouter, state: AppState) -> None:
 
     @router.delete("/api/threads/{thread_id}")
     async def delete_thread(thread_id: str) -> JSONResponse:
+        # A poll already preparing the session must see the cancellation before starting a turn.
+        WakeStore(settings.state_dir).cancel_for_thread(thread_id)
         session = state.sessions.get(thread_id)
         if session is not None:
             await session.stop_and_wait()

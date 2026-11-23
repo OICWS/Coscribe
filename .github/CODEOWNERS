@@ -19,6 +19,7 @@
 /office-agent/src/coscribe/runtime/models/ @OICWS
 /office-agent/src/coscribe/workflow_spec/ @OICWS
 /office-agent/src/coscribe/config.py @OICWS
+/office-agent/src/coscribe/thread_paths.py @OICWS
 /office-agent/src/coscribe/needs_permission.py @OICWS
 /office-agent/frontend/ @OICWS
 /office-agent-desktop/ @OICWS

@@ -54,11 +54,12 @@ from typing import Any
 
 import uvicorn
 from dotenv import dotenv_values, load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, WebSocketException
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from pydantic import ValidationError
+from starlette.requests import HTTPConnection
 
 from .. import __version__
 from ..code_runtime import (
@@ -88,6 +89,7 @@ from ..runtime_lg import (
     poll_due_wakes,
     reconcile_interrupted_runs,
 )
+from ..thread_paths import InvalidThreadId, validate_thread_id
 from ..tools import (
     SkillInfo,
     enabled_skill_names,
@@ -363,6 +365,16 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
     return result
 
 
+async def _valid_thread_path(connection: HTTPConnection) -> None:
+    if "thread_id" in connection.path_params:
+        try:
+            validate_thread_id(connection.path_params["thread_id"])
+        except InvalidThreadId as exc:
+            if connection.scope["type"] == "websocket":
+                raise WebSocketException(code=1008, reason=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # Same reasoning as create_app: each provider SDK's own os.getenv() call
     # needs unprefixed keys in the real process environment, which Settings'
@@ -536,6 +548,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     )
 
     app = FastAPI(
+        dependencies=[Depends(_valid_thread_path)],
         lifespan=_make_lifespan(
             settings,
             checkpoint_path,
@@ -544,7 +557,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             mcp_oauth,
             scheduler,
             app_callback,
-        )
+        ),
     )
     app.add_middleware(LocalOnlyGuard, token=(token := launch_token()))
     # On app.state so tests publish to the bus _wake_poll_loop uses without

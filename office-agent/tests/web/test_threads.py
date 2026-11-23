@@ -331,7 +331,7 @@ def test_get_threads_endpoint_strips_mode_note_and_sorts_by_recency_lg(
 def test_delete_thread_endpoint_removes_checkpoints_and_tasks_sidecar_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.bookkeeping.tasks import TaskToolkit
+    from coscribe.tools import TaskToolkit, WakeRequest, WakeStore
 
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -346,7 +346,15 @@ def test_delete_thread_endpoint_removes_checkpoints_and_tasks_sidecar_lg(
         thread_ids = {t["thread_id"] for t in client.get("/api/threads").json()}
         assert "t_del1" in thread_ids
 
+        wakes = WakeStore(tmp_path / "state")
+        for thread_id in ["t_del1", "other"]:
+            wakes.save(
+                WakeRequest(
+                    thread_id, thread_id, "event", "remind me", "2026-01-01", event_key="ready"
+                )
+            )
         response = client.delete("/api/threads/t_del1")
+        assert [wake.thread_id for wake in wakes.list_pending()] == ["other"]
 
         assert response.status_code == 200
         assert response.json() == {"deleted": "t_del1"}
@@ -709,3 +717,15 @@ def test_the_title_comes_from_the_side_job_model_and_from_the_main_one_when_it_f
 
     assert asked_for_a_title(small) is small_works
     assert asked_for_a_title(main) is not small_works
+
+
+def test_invalid_thread_ids_are_refused_before_opening_state_files(tmp_path, monkeypatch):
+    from starlette.websockets import WebSocketDisconnect
+
+    model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        for name in ("bad%5Cname", "C%3Aname", "CON", "bad%2Aname"):
+            assert client.get(f"/api/threads/{name}/tasks").status_code == 400
+        with pytest.raises(WebSocketDisconnect) as error, client.websocket_connect("/ws/NUL"):
+            pytest.fail("Invalid conversation accepted")
+        assert error.value.code == 1008

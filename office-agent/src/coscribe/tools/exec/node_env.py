@@ -148,6 +148,7 @@ def install_package(
     than an exception, same contract as the Python side's install_package."""
     node_env_dir = ensure_node_env(state_dir)
     try:
+        # No child_env: the person's mirror, registry and proxy variables must reach the installer.
         result = subprocess.run(
             [_npm(), "install", package],
             cwd=str(node_env_dir),

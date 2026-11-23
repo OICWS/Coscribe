@@ -19,7 +19,7 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
 
 ## Depends on
 `coscribe`, `coscribe.code_runtime`, `coscribe.config`, `coscribe.conversation`,
-`coscribe.coordinator`, `coscribe.runtime`, `coscribe.runtime_lg`, `coscribe.tools`,
+`coscribe.coordinator`, `coscribe.runtime`, `coscribe.runtime_lg`, `coscribe.thread_paths`, `coscribe.tools`,
 `coscribe.workflow_spec`, `coscribe.workflows`.
 
 ## Invariants

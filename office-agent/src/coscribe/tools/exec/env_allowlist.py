@@ -12,7 +12,6 @@ import os
 from collections.abc import Mapping
 
 from ...runtime import without_credentials
-from .script_env import overlay_env
 
 # Upper-cased: Windows' names are case-insensitive, and the proxy and certificate names are
 # read in either case by different tools elsewhere.
@@ -75,6 +74,20 @@ _PASSED = frozenset(
 )
 
 _PROXIES = frozenset({"ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"})
+
+
+def overlay_env(base: Mapping[str, str], extra: Mapping[str, str] | None) -> dict[str, str]:
+    """`base` with `extra` laid over it. Windows environment names are
+    case-insensitive and its `os.environ` upper-cases them, so a variable
+    named `Path` replaces `PATH` there instead of sitting beside it with the
+    child free to see either."""
+    merged = dict(base)
+    if not extra:
+        return merged
+    existing = {k.upper(): k for k in merged} if os.name == "nt" else {}
+    for name, value in extra.items():
+        merged[existing.get(name.upper(), name)] = value
+    return merged
 
 
 def child_env(
