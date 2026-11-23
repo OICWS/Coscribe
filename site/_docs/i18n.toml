@@ -482,7 +482,70 @@ description = "Confidentialité et sécurité, et que faire en cas de problème.
 [ko]
 name = "한국어"
 html_lang = "ko"
-published = false
+published = true
+docs = "문서"
+docs_title = "coscribe 문서"
+home = "coscribe 홈"
+skip = "본문으로 건너뛰기"
+search = "문서 검색"
+search_empty = "“{q}”에 대한 결과가 없습니다. 앱에 표시되는 이름 등 다른 단어로 검색해 보세요."
+theme = "다크 모드 전환"
+language = "언어"
+coming_soon = "준비 중"
+toggle_sidebar = "목차 표시 또는 숨기기"
+crumbs = "현재 위치"
+sidebar = "문서 목차"
+toc = "이 문서의 내용"
+prev = "이전"
+next = "다음"
+pager = "페이지"
+copy_md = "Markdown 복사"
+copy_md_hint = "AI나 동료에게 붙여 넣을 수 있습니다"
+copy_failed = "복사하지 못했습니다. “Markdown으로 보기”를 사용하세요"
+md_more = "기타 Markdown 옵션"
+view_md = "Markdown으로 보기"
+view_md_hint = "새 탭에서 열립니다"
+anchor = "이 섹션 링크"
+edit = "GitHub에서 이 페이지 편집"
+report = "오류를 발견하셨나요? 알려 주세요"
+untranslated = "이 페이지는 아직 {lang}로 번역되지 않아 영어로 표시됩니다."
+llms_summary = "coscribe는 Windows PC에서 실행되는 오픈 소스 사무 도우미입니다."
+note = "참고"
+tip = "팁"
+important = "중요"
+warning = "경고"
+
+[ko.groups.get-started]
+title = "시작하기"
+description = "coscribe를 다운로드하고, 모델을 연결하고, 첫 대화를 시작합니다."
+
+[ko.groups.use]
+title = "coscribe 사용하기"
+description = "대화에서 작업하기: 승인, 계획, 파일, 브라우저, 모델."
+
+[ko.groups.workspaces]
+title = "워크스페이스"
+description = "coscribe가 작업할 폴더와, 폴더가 coscribe에 알려 줄 수 있는 내용을 정합니다."
+
+[ko.groups.office]
+title = "Office 파일"
+description = "Word, Excel, PowerPoint, PDF, 그리고 대화 옆에 열리는 문서, 디자인, 대시보드."
+
+[ko.groups.workflows]
+title = "예약 작업과 워크플로"
+description = "정해진 시간이나 어떤 일이 일어났을 때 coscribe가 알아서 작업하게 합니다."
+
+[ko.groups.customize]
+title = "사용자 지정"
+description = "지침, 스킬, 커넥터, 디자인 시스템."
+
+[ko.groups.reference]
+title = "참조"
+description = "모든 설정, 명령, 키보드 단축키."
+
+[ko.groups.help]
+title = "도움말"
+description = "개인정보 보호와 안전, 그리고 문제가 생겼을 때 할 일."
 
 [de]
 name = "Deutsch"
