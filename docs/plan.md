@@ -74,6 +74,10 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
+- **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):
+  106 imports reach into another feature's files; give each feature an `index.ts` and move its
+  users onto it, largest pairs first (the loose components into `workflow` and `chatlog`).
+
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
   workflow pins 3.11, so a change in how newer Pythons behave on Windows (3.13's owner-only ACL
   from `tempfile.mkdtemp` broke every contained script) is found only on a person's machine. A

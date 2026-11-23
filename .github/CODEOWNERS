@@ -22,6 +22,17 @@
 /office-agent/src/coscribe/thread_paths.py @OICWS
 /office-agent/src/coscribe/needs_permission.py @OICWS
 /office-agent/frontend/ @OICWS
+/office-agent/frontend/src/components/artifacts/ @OICWS
+/office-agent/frontend/src/components/chatlog/ @OICWS
+/office-agent/frontend/src/components/design/ @OICWS
+/office-agent/frontend/src/components/doc/ @OICWS
+/office-agent/frontend/src/components/dock/ @OICWS
+/office-agent/frontend/src/components/environment/ @OICWS
+/office-agent/frontend/src/components/files/ @OICWS
+/office-agent/frontend/src/components/sessions/ @OICWS
+/office-agent/frontend/src/components/settings/ @OICWS
+/office-agent/frontend/src/components/slides/ @OICWS
+/office-agent/frontend/src/components/workflow/ @OICWS
 /office-agent-desktop/ @OICWS
 # END generated
 
