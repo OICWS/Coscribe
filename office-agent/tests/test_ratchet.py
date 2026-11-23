@@ -429,3 +429,41 @@ def test_an_export_nothing_imports_is_listed_per_file(ratchet: ModuleType, tmp_p
     found = ratchet.frontend_unused_exports(tmp_path)
 
     assert found == {"office-agent/frontend/src/lib.ts": 2}
+
+
+def test_the_core_and_each_component_must_stay_inside_their_budgets(ratchet: ModuleType) -> None:
+    budgets = {"core_lines": 100, "component_lines": 60}
+    sizes = {"web": 50, "conversation": 55, "tools": 61}
+    assert ratchet.budget_problems(budgets, sizes, frozenset({"web", "conversation"})) == [
+        "core_lines: 105 over the budget of 100",
+        "component_lines: tools has 61, over the budget of 60",
+    ]
+    assert ratchet.budget_problems(budgets, {"web": 60}, frozenset({"web"})) == []
+
+
+def test_a_components_lines_leave_out_the_components_nested_in_it(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    src = tmp_path / "office-agent" / "src" / "coscribe"
+    (src / "tools" / "office" / "pptx").mkdir(parents=True)
+    (src / "tools" / "a.py").write_text("x = 1\ny = 2\n", encoding="utf-8")
+    (src / "tools" / "office" / "pptx" / "b.py").write_text("z = 3\n", encoding="utf-8")
+    (src / "cli.py").write_text("print()\n", encoding="utf-8")
+    toml = tmp_path / "components.toml"
+    toml.write_text(
+        '[[component]]\nname = "tools"\npath = "office-agent/src/coscribe/tools"\n'
+        '[[component]]\nname = "tools.office.pptx"\n'
+        'path = "office-agent/src/coscribe/tools/office/pptx"\n'
+        '[[component]]\nname = "cli"\npath = "office-agent/src/coscribe/cli.py"\ncore = true\n'
+        '[[component]]\nname = "frontend"\npath = "office-agent/frontend"\n',
+        encoding="utf-8",
+    )
+    assert ratchet.component_lines(toml) == {"tools": 2, "tools.office.pptx": 1, "cli": 1}
+    assert ratchet.core_components(toml) == frozenset({"cli"})
+
+
+def test_the_real_tree_is_inside_its_budgets(ratchet: ModuleType) -> None:
+    budgets = json.loads(ratchet.BUDGETS.read_text(encoding="utf-8"))
+    assert (
+        ratchet.budget_problems(budgets, ratchet.component_lines(), ratchet.core_components()) == []
+    )
