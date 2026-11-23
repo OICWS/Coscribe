@@ -27,6 +27,12 @@ site next to the existing promo page, laid out like GitHub Docs.
 - The promo page links to the docs from its top bar and footer. Its Download button pointed at
   `releases/latest`, which skips pre-releases, and every release so far is one, so it led to a
   404; it now opens the `beta` release.
+- The promo page's Settings mock follows the app again: General, Workspaces, Providers,
+  Capabilities and Secrets, then Skills, Connectors and Design systems (it showed Tools,
+  Environment, "Max steps per reply" and a log level, none of which exist now). Its script
+  approval card says scripts run isolated, the Get started steps name the first-start folder
+  and the default model, and a new FAQ answer lists workspaces, side chat, `/fork`, the simple
+  view, skills and plugins, and `/doctor`, with a link to the docs.
 
 ## Not verified
 - The Pages deploy itself: it runs only from `main`. The build was run here and the pages were
@@ -34,6 +40,7 @@ site next to the existing promo page, laid out like GitHub Docs.
 
 ## Follow-ups
 - Spanish, Japanese, Portuguese (Brazil), Russian, French, Korean and German.
-- The promo page's Settings mock still shows the old categories (Tools, Environment), and newer
-  features are not on it.
+- The app's script approval card says a script reaches the internet "only if this conversation's
+  Network setting is Full", but the setting is now the workspace's **Sites** (**Any site**)
+  (`frontend/src/components/chatlog/ScriptIsolationNote.tsx`); the docs use the current name.
 - A Help entry in the app that opens the docs, and "Learn more" links next to settings.
