@@ -43,6 +43,34 @@ warning = "Warning"
 title = "Get started"
 description = "Download coscribe, connect a model and start your first conversation."
 
+[en.groups.use]
+title = "Use coscribe"
+description = "Work in a conversation: approvals, plans, files, the browser and models."
+
+[en.groups.workspaces]
+title = "Workspaces"
+description = "Choose the folders coscribe works in, and what a folder may tell it."
+
+[en.groups.office]
+title = "Office files"
+description = "Word, Excel, PowerPoint, PDF, and the Docs, designs and dashboards beside the conversation."
+
+[en.groups.workflows]
+title = "Scheduled tasks and workflows"
+description = "Have coscribe do a job on its own, on a schedule or when something happens."
+
+[en.groups.customize]
+title = "Customize"
+description = "Instructions, skills, connectors and design systems."
+
+[en.groups.reference]
+title = "Reference"
+description = "Every setting, command and keyboard shortcut."
+
+[en.groups.help]
+title = "Help"
+description = "Privacy and safety, and what to do when something goes wrong."
+
 [es]
 name = "Español"
 html_lang = "es"
@@ -97,6 +125,34 @@ warning = "注意"
 [zh.groups.get-started]
 title = "入门"
 description = "下载 coscribe，接上模型，开始第一次对话。"
+
+[zh.groups.use]
+title = "使用 coscribe"
+description = "在对话里工作：审批、计划、文件、浏览器和模型。"
+
+[zh.groups.workspaces]
+title = "工作区"
+description = "选择 coscribe 工作的文件夹，以及文件夹能告诉它什么。"
+
+[zh.groups.office]
+title = "Office 文件"
+description = "Word、Excel、PowerPoint、PDF，以及对话旁边的文档、设计和仪表板。"
+
+[zh.groups.workflows]
+title = "定时任务和工作流"
+description = "让 coscribe 自己按时间或在某件事发生时完成工作。"
+
+[zh.groups.customize]
+title = "自定义"
+description = "指令、技能、连接器和设计系统。"
+
+[zh.groups.reference]
+title = "参考"
+description = "所有设置、命令和键盘快捷键。"
+
+[zh.groups.help]
+title = "帮助"
+description = "隐私和安全，以及出问题时怎么办。"
 
 [ru]
 name = "Русский"
