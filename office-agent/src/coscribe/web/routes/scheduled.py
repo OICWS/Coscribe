@@ -556,8 +556,11 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
         store = ScheduledTriggerStore(settings.state_dir)
         try:
             trigger = store.delete_idle_task(trigger_id)
-        except ValueError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=409)
+        except ValueError:
+            return JSONResponse(
+                {"error": "Stop the running task or wait for it to finish before deleting."},
+                status_code=409,
+            )
         if trigger is None:
             return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
         await _delete_run_threads(trigger.runs)
