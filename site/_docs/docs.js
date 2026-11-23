@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  var root = document.body.getAttribute("data-root") || "";
+  /* The docs root is where this script was loaded from, so links work under any base path. */
+  var root = new URL(".", document.currentScript.src).href;
   var html = document.documentElement;
 
   /* Theme: the same stored key as the main site, so a choice made there holds here. */
@@ -124,7 +125,7 @@
         box.replaceChildren.apply(box, hits.map(function (r) {
           var a = document.createElement("a");
           a.setAttribute("role", "option");
-          a.href = root + r.p.u;
+          a.href = new URL(r.p.u, root).href;
           a.innerHTML =
             (r.p.g ? '<div class="r-g">' + escape(r.p.g) + "</div>" : "") +
             '<div class="r-t">' + mark(r.p.t, terms) + "</div>" +
