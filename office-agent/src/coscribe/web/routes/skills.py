@@ -97,7 +97,7 @@ def _source_routes(router: APIRouter, state: AppState) -> None:
     async def add_source(payload: PluginSourceAdd) -> JSONResponse:
         try:
             source = await asyncio.to_thread(sources().add, payload.address)
-        except (SkillCatalogError, ValueError, KeyError) as exc:
+        except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(_source_row(source))
 

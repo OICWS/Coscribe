@@ -104,3 +104,10 @@ def test_a_plugin_installs_whole_and_a_changed_file_never_lands(tmp_path: Path) 
     assert [(s.name, s.plugin) for s in load_skills(skills_dir)] == [("tidy", "notes")]
     with pytest.raises(SkillCatalogError, match="already added"):
         sources.install(skills_dir, "gh:acme:plugins:notes")
+
+
+def test_an_answer_not_in_the_api_shape_is_refused_in_plain_words(tmp_path: Path) -> None:
+    files = fake_github()
+    files[f"{_API}/commits/HEAD"] = b"<html>not json</html>"
+    with pytest.raises(SkillCatalogError, match="Couldn't read acme/plugins as a plugin source"):
+        PluginSources(tmp_path, fetch=files.__getitem__).add("acme/plugins")

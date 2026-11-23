@@ -117,6 +117,17 @@ class PluginSources:
         """Reads the repository's marketplace at its branch's current commit; adding a source
         again re-reads it at the newest commit."""
         repo, ref = parse_address(address)
+        try:
+            source = self._read(repo, ref)
+        except SkillCatalogError:
+            raise
+        except (ValueError, LookupError, TypeError, AttributeError) as exc:
+            # An answer not in the shape GitHub's API or the marketplace format promise.
+            raise SkillCatalogError(f"Couldn't read {repo} as a plugin source") from exc
+        self._save([s for s in self.sources() if s["repo"] != repo] + [source])
+        return source
+
+    def _read(self, repo: str, ref: str | None) -> dict[str, Any]:
         api = _API.format(repo=repo)
         commit_info = json.loads(self._get(f"{api}/commits/{quote(ref or 'HEAD', safe='')}"))
         commit = commit_info["sha"]
@@ -168,7 +179,6 @@ class PluginSources:
             "plugins": [p for p in plugins if p["skills"]],
             "elsewhere": elsewhere,
         }
-        self._save([s for s in self.sources() if s["repo"] != repo] + [source])
         return source
 
     def _raw(self, repo: str, commit: str, path: str) -> bytes:
