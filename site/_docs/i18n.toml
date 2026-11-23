@@ -210,7 +210,70 @@ description = "プライバシーと安全性、うまくいかないときの�
 [pt]
 name = "Português do Brasil"
 html_lang = "pt-BR"
-published = false
+published = true
+docs = "Documentação"
+docs_title = "Documentação do coscribe"
+home = "Início do coscribe"
+skip = "Pular para o conteúdo"
+search = "Pesquisar na documentação"
+search_empty = "Nada encontrado para “{q}”. Tente outras palavras, como o nome que aparece no app."
+theme = "Alternar modo escuro"
+language = "Idioma"
+coming_soon = "Em breve"
+toggle_sidebar = "Mostrar ou ocultar o índice"
+crumbs = "Você está aqui"
+sidebar = "Índice da documentação"
+toc = "Neste artigo"
+prev = "Anterior"
+next = "Próximo"
+pager = "Páginas"
+copy_md = "Copiar Markdown"
+copy_md_hint = "Para colar em qualquer IA ou para um colega"
+copy_failed = "Não foi possível copiar; use “Ver como Markdown”"
+md_more = "Mais opções de Markdown"
+view_md = "Ver como Markdown"
+view_md_hint = "Abre em uma nova aba"
+anchor = "Link para esta seção"
+edit = "Editar esta página no GitHub"
+report = "Encontrou um erro? Avise-nos"
+untranslated = "Esta página ainda não foi traduzida para {lang}, por isso aparece em inglês."
+llms_summary = "coscribe é um assistente de escritório de código aberto que roda no seu PC com Windows."
+note = "Observação"
+tip = "Dica"
+important = "Importante"
+warning = "Aviso"
+
+[pt.groups.get-started]
+title = "Introdução"
+description = "Baixe o coscribe, conecte um modelo e comece sua primeira conversa."
+
+[pt.groups.use]
+title = "Usar o coscribe"
+description = "Trabalhar em uma conversa: aprovações, planos, arquivos, navegador e modelos."
+
+[pt.groups.workspaces]
+title = "Espaços de trabalho"
+description = "Escolha as pastas em que o coscribe trabalha e o que uma pasta pode dizer a ele."
+
+[pt.groups.office]
+title = "Arquivos do Office"
+description = "Word, Excel, PowerPoint, PDF e os docs, designs e painéis que abrem ao lado da conversa."
+
+[pt.groups.workflows]
+title = "Tarefas agendadas e fluxos de trabalho"
+description = "Deixe o coscribe fazer o trabalho sozinho, em um horário ou quando algo acontece."
+
+[pt.groups.customize]
+title = "Personalizar"
+description = "Instruções, habilidades, conectores e sistemas de design."
+
+[pt.groups.reference]
+title = "Referência"
+description = "Todas as configurações, comandos e atalhos de teclado."
+
+[pt.groups.help]
+title = "Ajuda"
+description = "Privacidade e segurança, e o que fazer quando algo dá errado."
 
 [zh]
 name = "简体中文"
