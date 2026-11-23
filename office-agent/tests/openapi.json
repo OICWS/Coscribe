@@ -6338,6 +6338,16 @@
               "title": "Name",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "plugin",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Plugin",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {

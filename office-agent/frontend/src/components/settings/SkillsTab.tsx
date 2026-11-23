@@ -61,7 +61,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     const target = removeTarget;
     setRemoveTarget(null);
     setActionError(null);
-    const result = await removeSkill(target.name);
+    const result = await removeSkill(target.plugin ?? target.name, Boolean(target.plugin));
     if ("error" in result) setActionError(result.error);
     setView({ kind: "list" });
     setCatalog(null);
@@ -70,12 +70,8 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
 
   const removeDialog = removeTarget && (
     <ConfirmDialog
-      title={`Remove ${removeTarget.name}?`}
-      description={
-        removeTarget.source === "anthropic"
-          ? "Its folder is deleted. You can add it again from Discover."
-          : "Its folder is deleted from your skills directory. This can't be undone."
-      }
+      title={removeTarget.plugin ? `Remove the plugin ${removeTarget.plugin}?` : `Remove ${removeTarget.name}?`}
+      description={removeDescription(removeTarget)}
       confirmLabel="Remove"
       onCancel={() => setRemoveTarget(null)}
       onConfirm={confirmRemove}
@@ -262,4 +258,10 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
       {removeDialog}
     </div>
   );
+}
+
+function removeDescription(skill: SkillInfo): string {
+  if (skill.plugin) return "Its folder is deleted with every skill in it. This can't be undone.";
+  if (skill.source === "anthropic") return "Its folder is deleted. You can add it again from Discover.";
+  return "Its folder is deleted from your skills directory. This can't be undone.";
 }

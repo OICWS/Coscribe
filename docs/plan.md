@@ -68,7 +68,8 @@ Last reviewed: 2026-11-22.
    folder (`plugin.json`, `skills/`, `.mcp.json`); a lone `SKILL.md` is a one-skill plugin.
    Steps, one PR each: read the format and uploads; Settings › Plugins; sources from a
    repository's `marketplace.json`; built-in plugins installed by default, PPTX Pages first;
-   `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record.
+   `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record;
+   reading the format and uploads (`docs/log/2026-11-22-plugin-folders.md`).
 
 ## Open, smaller
 

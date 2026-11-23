@@ -50,7 +50,7 @@ def load_catalog() -> dict[str, Any]:
 def skill_source(skill: SkillInfo, builtin_names: set[str]) -> SkillSource:
     if skill.name in builtin_names:
         return "builtin"
-    if (skill.dir / SOURCE_MARKER).is_file():
+    if ((skill.plugin_dir or skill.dir) / SOURCE_MARKER).is_file():
         return "anthropic"
     return "custom"
 
@@ -99,19 +99,37 @@ def enabled_skill_names(skills_dir: Path, state_dir: Path) -> set[str]:
     return {skill.name for skill in all_skills(skills_dir) if skill.name not in disabled}
 
 
-def remove_skill(skills_dir: Path, state_dir: Path, name: str) -> None:
-    """Deletes a user or Discover skill's folder. Built-in skills can only be
-    switched off."""
-    builtin_names = {skill.name for skill in load_builtin_skills()}
-    if name in builtin_names:
-        raise SkillCatalogError(f"{name!r} is built into Coscribe -- switch it off instead")
-    skill = next((s for s in load_skills(skills_dir) if s.name == name), None)
-    if skill is None:
-        raise SkillCatalogError(f"No skill named {name!r}")
-    if not skill.dir.resolve().is_relative_to(Path(skills_dir).resolve()):
+def remove_skill(
+    skills_dir: Path, state_dir: Path, name: str, *, plugin: bool = False
+) -> list[str]:
+    """Deletes a user or Discover skill's folder, or with `plugin` the folder of the plugin
+    called `name` with all its skills; returns the names of the skills removed. Built-in skills
+    can only be switched off."""
+    if plugin:
+        skills = [s for s in load_skills(skills_dir) if s.plugin == name]
+        if not skills:
+            raise SkillCatalogError(f"No plugin named {name!r}")
+        folder = skills[0].plugin_dir or skills[0].dir
+    else:
+        if name in {skill.name for skill in load_builtin_skills()}:
+            raise SkillCatalogError(f"{name!r} is built into Coscribe -- switch it off instead")
+        skill = next((s for s in load_skills(skills_dir) if s.name == name), None)
+        if skill is None:
+            raise SkillCatalogError(f"No skill named {name!r}")
+        if skill.plugin_dir is not None:
+            # One skill of a plugin is not taken out of it; the plugin goes whole or the skill
+            # is switched off.
+            raise SkillCatalogError(
+                f"{name!r} is part of the plugin {skill.plugin!r} -- remove the plugin or "
+                f"switch the skill off"
+            )
+        skills, folder = [skill], skill.dir
+    if not folder.resolve().is_relative_to(Path(skills_dir).resolve()):
         raise SkillCatalogError(f"{name!r} is outside the skills directory")
-    shutil.rmtree(skill.dir)
-    set_skill_enabled(state_dir, name, True)
+    shutil.rmtree(folder)
+    for skill in skills:
+        set_skill_enabled(state_dir, skill.name, True)
+    return [skill.name for skill in skills]
 
 
 def _download(url: str) -> bytes:

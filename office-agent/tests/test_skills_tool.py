@@ -260,3 +260,112 @@ def test_upload_rejects_unsupported_extension(tmp_path: Path) -> None:
 def test_upload_rejects_bad_zip_bytes(tmp_path: Path) -> None:
     with pytest.raises(SkillUploadError, match="Not a valid zip"):
         save_uploaded_skill(tmp_path, "broken.zip", b"not actually a zip")
+
+
+def _skill_md(name: str, body: str = "Do it.") -> str:
+    return f"---\nname: {name}\ndescription: {name} skill\n---\n{body}\n"
+
+
+@pytest.mark.parametrize(
+    "manifest", [".claude-plugin/plugin.json", ".codex-plugin/plugin.json", "plugin.json"]
+)
+def test_a_plugin_folder_loads_each_of_its_skills(tmp_path: Path, manifest: str) -> None:
+    plugin = tmp_path / "marketing-folder"
+    (plugin / manifest).parent.mkdir(parents=True, exist_ok=True)
+    (plugin / manifest).write_text('{"name": "marketing"}', encoding="utf-8")
+    _write_skill(plugin / "skills", "brief", _skill_md("brief"))
+    _write_skill(plugin / "skills", "seo", _skill_md("seo"))
+    _write_skill(tmp_path, "alone", _skill_md("alone"))
+
+    skills = {s.name: s for s in load_skills(tmp_path)}
+
+    assert set(skills) == {"alone", "brief", "seo"}
+    assert skills["brief"].plugin == "marketing" and skills["brief"].plugin_dir == plugin
+    assert skills["alone"].plugin is None
+
+
+def test_a_skills_folder_without_a_manifest_is_a_plugin_named_after_its_folder(
+    tmp_path: Path,
+) -> None:
+    _write_skill(tmp_path / "kit" / "skills", "one", _skill_md("one"))
+
+    (skill,) = load_skills(tmp_path)
+
+    assert skill.plugin == "kit"
+
+
+def test_a_manifest_can_name_its_skill_folders_but_not_one_outside_it(tmp_path: Path) -> None:
+    plugin = tmp_path / "p"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text(
+        '{"name": "p", "skills": ["./extra", "../outside"]}', encoding="utf-8"
+    )
+    _write_skill(plugin / "extra", "inner", _skill_md("inner"))
+    _write_skill(tmp_path / "outside", "stolen", _skill_md("stolen"))
+
+    names = {s.name for s in load_skills(tmp_path) if s.plugin == "p"}
+
+    assert names == {"inner"}
+
+
+def test_a_plugin_skill_with_a_taken_name_is_skipped(tmp_path: Path) -> None:
+    _write_skill(tmp_path, "a-first", _skill_md("same"))
+    _write_skill(tmp_path / "b-plugin" / "skills", "same", _skill_md("same"))
+
+    skills = load_skills(tmp_path)
+
+    assert [(s.name, s.plugin) for s in skills] == [("same", None)]
+
+
+def test_load_skill_fills_in_the_plugin_root_and_read_skill_file_reaches_it(
+    tmp_path: Path,
+) -> None:
+    plugin = tmp_path / "p"
+    (plugin / "plugin.json").parent.mkdir(parents=True)
+    (plugin / "plugin.json").write_text("{}", encoding="utf-8")
+    (plugin / "scripts").mkdir()
+    (plugin / "scripts" / "run.py").write_text("print(1)", encoding="utf-8")
+    _write_skill(plugin / "skills", "s", _skill_md("s", "Run ${CLAUDE_PLUGIN_ROOT}/scripts/run.py"))
+    load_skill, read_skill_file = build_skill_tools(load_skills(tmp_path))
+
+    assert f"Run {plugin.resolve()}/scripts/run.py" in load_skill("s")
+    assert read_skill_file("s", "../../scripts/run.py") == "print(1)"
+    with pytest.raises(PermissionError):
+        read_skill_file("s", "../../../p/../outside.txt")
+
+
+def test_upload_a_plugin_archive_keeps_the_whole_plugin(tmp_path: Path) -> None:
+    archive = _zip_bytes(
+        {
+            "mkt/.claude-plugin/plugin.json": '{"name": "Marketing Kit"}',
+            "mkt/.mcp.json": '{"mcpServers": {}}',
+            "mkt/skills/brief/SKILL.md": _skill_md("brief"),
+            "mkt/skills/seo/SKILL.md": _skill_md("seo"),
+        }
+    )
+
+    first = save_uploaded_skill(tmp_path, "mkt.plugin", archive)
+
+    assert first.plugin == "Marketing Kit"
+    assert (tmp_path / "marketing-kit" / ".mcp.json").is_file()
+    assert {s.name for s in load_skills(tmp_path)} == {"brief", "seo"}
+
+
+def test_upload_a_plugin_without_skills_is_rejected_and_leaves_nothing(tmp_path: Path) -> None:
+    archive = _zip_bytes({"plugin.json": '{"name": "empty"}', "README.md": "hi"})
+
+    with pytest.raises(SkillUploadError, match="no skill"):
+        save_uploaded_skill(tmp_path, "empty.zip", archive)
+    assert not (tmp_path / "empty").exists()
+
+
+def test_one_skill_of_a_plugin_is_not_removed_alone_but_the_plugin_is(tmp_path: Path) -> None:
+    from coscribe.tools import SkillCatalogError, remove_skill
+
+    skills_dir, state_dir = tmp_path / "skills", tmp_path / "state"
+    _write_skill(skills_dir / "kit" / "skills", "one", _skill_md("one"))
+
+    with pytest.raises(SkillCatalogError, match="part of the plugin"):
+        remove_skill(skills_dir, state_dir, "one")
+    assert remove_skill(skills_dir, state_dir, "kit", plugin=True) == ["one"]
+    assert not (skills_dir / "kit").exists()

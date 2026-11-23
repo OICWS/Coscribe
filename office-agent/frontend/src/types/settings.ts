@@ -118,6 +118,8 @@ export interface SkillInfo {
   enabled: boolean;
   /** When its SKILL.md last changed, ISO 8601. */
   updated: string;
+  /** The plugin it came from; such a skill is removed only with its whole plugin. */
+  plugin: string | null;
 }
 
 export interface SkillPlugin {
