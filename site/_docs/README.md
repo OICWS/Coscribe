@@ -38,3 +38,5 @@ the same pull request. Search `content/` for the label the UI shows.
 - Anchors that other pages link to are set by hand in every language (`## 权限模式 {#permission-modes}`),
   so one link works in all of them.
 - Say only what the app does now; check it in the code or the running app, not in a log.
+- Bold that ends in punctuation (**Browse…**, **+**) must not be followed directly by a letter,
+  or Markdown leaves the asterisks in: Korean writes **Browse…** 버튼을, not a particle glued on.

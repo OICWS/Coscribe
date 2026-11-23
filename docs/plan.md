@@ -73,10 +73,9 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
-- **User docs: the other languages and the promo page** (`docs/log/2026-11-23-user-docs-site.md`):
-  every page is in English and Chinese. Still to do: Spanish, Japanese, Portuguese (Brazil),
-  Russian, French, Korean and German; and a Help
-  entry in the app with "Learn more" links next to settings. A UI change that renames a label
+- **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
+  is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
+  settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
   workflow pins 3.11, so a change in how newer Pythons behave on Windows (3.13's owner-only ACL
