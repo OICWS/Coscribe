@@ -67,7 +67,7 @@ export function UploadSkillView({ onBack, onUploaded }: { onBack: () => void; on
           <input
             ref={inputRef}
             type="file"
-            accept=".md,.zip,.skill"
+            accept=".md,.zip,.skill,.plugin"
             className="hidden"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
@@ -75,6 +75,7 @@ export function UploadSkillView({ onBack, onUploaded }: { onBack: () => void; on
         <ul className="mt-2 list-disc pl-5 text-xs text-[var(--muted)]">
           <li>.md file must contain skill name and description formatted in YAML</li>
           <li>.zip or .skill file must include a SKILL.md file</li>
+          <li>.zip or .plugin file may hold a whole plugin: plugin.json and a skills folder</li>
         </ul>
       </div>
       <div className="flex items-center gap-3">

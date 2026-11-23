@@ -278,7 +278,9 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   conversation carries on ([decision 0046](docs/decisions/0046-a-conversation-offers-a-connector-the-person-connects.md)).
 - **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
   PowerPoint editing, Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
-  `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.
+  `src/coscribe/builtin_skills/`; users add their own in `skills_dir`. A folder there may also be
+  a plugin in the Claude and Codex format (`plugin.json`, `skills/`), whose skills load as any
+  other ([decision 0058](docs/decisions/0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md)).
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
   every conversation. The model cannot write to it: it can offer a line (`remember`), and only

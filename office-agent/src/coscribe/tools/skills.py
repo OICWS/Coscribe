@@ -106,6 +106,10 @@ class SkillInfo:
     description: str
     dir: Path
     body: str
+    # Set for a skill that came from a plugin's `skills/` folder (decision 0058); a lone
+    # SKILL.md folder is a one-skill plugin of its own and leaves these unset.
+    plugin: str | None = None
+    plugin_dir: Path | None = None
 
     @property
     def slug(self) -> str:
@@ -154,18 +158,98 @@ def _scan_skills_dir(root: Path, *, create_if_missing: bool) -> list[SkillInfo]:
         root.mkdir(parents=True, exist_ok=True)
     elif not root.is_dir():
         return []
-    skills = []
+    skills: list[SkillInfo] = []
     for entry in sorted(root.iterdir()):
         # A dot-folder is a skill still being downloaded (skill_catalog.py).
-        if entry.name.startswith("."):
+        if entry.name.startswith(".") or not entry.is_dir():
+            continue
+        if is_plugin_dir(entry):
+            skills += _plugin_skills(entry, {skill.name for skill in skills})
             continue
         skill_md = entry / "SKILL.md"
-        if not entry.is_dir() or not skill_md.is_file():
+        if not skill_md.is_file():
             continue
         try:
             skills.append(_parse_skill(entry, skill_md))
         except Exception:
             logger.warning("Skipping skill in %r: failed to parse SKILL.md", entry, exc_info=True)
+    return skills
+
+
+# Where Claude and Codex keep a plugin's manifest (decision 0058); either one, or none, may be
+# there. A plugin's skills sit in `skills/` unless its manifest names other folders.
+_MANIFEST_PATHS = (".claude-plugin/plugin.json", ".codex-plugin/plugin.json", "plugin.json")
+
+
+def plugin_manifest(plugin_dir: Path) -> dict[str, Any] | None:
+    """The plugin's manifest, or None when it has none or it isn't a JSON object."""
+    import json
+
+    for relative in _MANIFEST_PATHS:
+        path = plugin_dir / relative
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                logger.warning("Ignoring unreadable plugin manifest %r", path)
+                return None
+            return data if isinstance(data, dict) else None
+    return None
+
+
+def is_plugin_dir(path: Path) -> bool:
+    # A folder with its own SKILL.md and nothing else is a one-skill plugin, read as a skill.
+    return any((path / relative).is_file() for relative in _MANIFEST_PATHS) or (
+        (path / "skills").is_dir() and not (path / "SKILL.md").is_file()
+    )
+
+
+def _plugin_skill_roots(plugin_dir: Path, manifest: dict[str, Any] | None) -> list[Path]:
+    declared = (manifest or {}).get("skills")
+    if isinstance(declared, str):
+        declared = [declared]
+    if not isinstance(declared, list) or not declared:
+        declared = ["skills"]
+    roots = []
+    resolved_plugin = plugin_dir.resolve()
+    for relative in declared:
+        if not isinstance(relative, str):
+            continue
+        candidate = (plugin_dir / relative).resolve()
+        # A manifest is someone else's file: a path out of the plugin is not followed.
+        if candidate.is_relative_to(resolved_plugin) and candidate.is_dir():
+            roots.append(candidate)
+    return roots
+
+
+def _plugin_skills(plugin_dir: Path, taken: set[str]) -> list[SkillInfo]:
+    manifest = plugin_manifest(plugin_dir)
+    plugin_name = str((manifest or {}).get("name") or plugin_dir.name)
+    skills: list[SkillInfo] = []
+    for skills_root in _plugin_skill_roots(plugin_dir, manifest):
+        # A root that is itself one skill (`"skills": "./my-skill"`) counts as that skill.
+        candidates = (
+            [skills_root]
+            if (skills_root / "SKILL.md").is_file()
+            else sorted(p for p in skills_root.iterdir() if p.is_dir())
+        )
+        for skill_dir in candidates:
+            skill_md = skill_dir / "SKILL.md"
+            if skill_dir.name.startswith(".") or not skill_md.is_file():
+                continue
+            try:
+                skill = _parse_skill(skill_dir, skill_md)
+            except Exception:
+                logger.warning("Skipping skill in %r: failed to parse SKILL.md", skill_dir)
+                continue
+            if skill.name in taken:
+                logger.warning(
+                    "Skipping %r in plugin %r: a skill has that name", skill.name, plugin_name
+                )
+                continue
+            skill.plugin, skill.plugin_dir = plugin_name, plugin_dir
+            taken.add(skill.name)
+            skills.append(skill)
     return skills
 
 
@@ -227,21 +311,50 @@ def save_uploaded_skill(skills_dir: str | Path, filename: str, content: bytes) -
         target.mkdir(parents=True)
         (target / "SKILL.md").write_bytes(content)
         return _parse_skill(target, target / "SKILL.md")
-    if suffix in (".zip", ".skill"):
+    if suffix in (".zip", ".skill", ".plugin"):
         return _save_uploaded_skill_archive(root, content)
-    raise SkillUploadError(f"Unsupported file type {suffix!r} -- use .md, .zip, or .skill")
+    raise SkillUploadError(f"Unsupported file type {suffix!r} -- use .md, .zip, .skill or .plugin")
 
 
 def _save_uploaded_skill_archive(root: Path, content: bytes) -> SkillInfo:
     import io
+    import json
     import zipfile
 
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            names = zf.namelist()
+            plugin_prefix = _plugin_prefix(names)
+            if plugin_prefix is not None:
+                manifest_name = next(
+                    (plugin_prefix + m for m in _MANIFEST_PATHS if plugin_prefix + m in names), None
+                )
+                manifest: Any = {}
+                if manifest_name is not None:
+                    try:
+                        manifest = json.loads(zf.read(manifest_name).decode("utf-8"))
+                    except (UnicodeDecodeError, ValueError) as exc:
+                        raise SkillUploadError(f"{manifest_name} isn't valid JSON") from exc
+                fallback = plugin_prefix.rstrip("/") or "plugin"
+                name = (
+                    str(manifest.get("name") or fallback)
+                    if isinstance(manifest, dict)
+                    else fallback
+                )
+                target = root / slugify_skill_name(name)
+                if target.exists():
+                    raise SkillUploadError(f"A skill or plugin named {name!r} already exists")
+                _extract(zf, plugin_prefix, target)
+                skills = _plugin_skills(target, set())
+                if not skills:
+                    import shutil
+
+                    shutil.rmtree(target, ignore_errors=True)
+                    raise SkillUploadError(f"Plugin {name!r} has no skill with a SKILL.md")
+                return skills[0]
             # SKILL.md at the top level or exactly one folder down (the
             # shape you get zipping a folder) -- prefer the shallowest
             # match.
-            names = zf.namelist()
             candidates = [n for n in names if Path(n).name == "SKILL.md" and n.count("/") <= 1]
             if not candidates:
                 raise SkillUploadError(
@@ -261,23 +374,42 @@ def _save_uploaded_skill_archive(root: Path, content: bytes) -> SkillInfo:
             target = root / slugify_skill_name(name)
             if target.exists():
                 raise SkillUploadError(f"A skill named {name!r} already exists")
-            resolved_target = target.resolve()
-
-            for member in zf.namelist():
-                if not member.startswith(prefix) or member == prefix:
-                    continue
-                relative = member[len(prefix) :]
-                dest = (target / relative).resolve()
-                if not dest.is_relative_to(resolved_target):
-                    raise SkillUploadError("Archive contains an entry outside its own folder")
-                if member.endswith("/"):
-                    dest.mkdir(parents=True, exist_ok=True)
-                else:
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    dest.write_bytes(zf.read(member))
+            _extract(zf, prefix, target)
             return _parse_skill(target, target / "SKILL.md")
     except zipfile.BadZipFile as exc:
         raise SkillUploadError("Not a valid zip archive") from exc
+
+
+def _plugin_prefix(names: list[str]) -> str | None:
+    """The folder of an archive that holds a plugin (a manifest, or a `skills/` folder without
+    its own SKILL.md), at the top level or one folder down; None when it holds a lone skill."""
+    for prefix in sorted({""} | {n.split("/", 1)[0] + "/" for n in names if "/" in n}, key=len):
+        if any(prefix + m in names for m in _MANIFEST_PATHS):
+            return prefix
+        if prefix + "SKILL.md" not in names and any(
+            n.startswith(prefix + "skills/") and n.endswith("/SKILL.md") for n in names
+        ):
+            return prefix
+    return None
+
+
+def _extract(zf: Any, prefix: str, target: Path) -> None:
+    resolved_target = target.resolve()
+    for member in zf.namelist():
+        if not member.startswith(prefix) or member == prefix:
+            continue
+        relative = member[len(prefix) :]
+        dest = (target / relative).resolve()
+        if not dest.is_relative_to(resolved_target):
+            import shutil
+
+            shutil.rmtree(target, ignore_errors=True)
+            raise SkillUploadError("Archive contains an entry outside its own folder")
+        if member.endswith("/"):
+            dest.mkdir(parents=True, exist_ok=True)
+        else:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(zf.read(member))
 
 
 def format_skill_listing(skills: list[SkillInfo]) -> str:
@@ -305,10 +437,14 @@ def build_skill_tools(skills: list[SkillInfo]) -> list[Callable[..., Any]]:
         # Skills written for other agents refer to their own scripts and
         # assets by relative path; the absolute folder lets a script run
         # through run_python_script find them.
+        body = skill.body
+        if skill.plugin_dir is not None:
+            # Claude's plugins name their own scripts by this variable.
+            body = body.replace("${CLAUDE_PLUGIN_ROOT}", str(skill.plugin_dir.resolve()))
         return (
             f"(This skill's folder is {skill.dir.resolve()} -- read its files with "
             f"read_skill_file; a bundled script can be run with run_python_script, "
-            f"e.g. runpy.run_path on its absolute path.)\n\n{skill.body}"
+            f"e.g. runpy.run_path on its absolute path.)\n\n{body}"
         )
 
     def read_skill_file(name: str, path: str) -> str:
@@ -323,8 +459,10 @@ def build_skill_tools(skills: list[SkillInfo]) -> list[Callable[..., Any]]:
         if skill is None:
             raise ValueError(f"Unknown skill: {name!r}")
         resolved = (skill.dir / path).resolve()
+        # A plugin's skill may point to files elsewhere in its plugin (shared scripts).
+        allowed = skill.plugin_dir if skill.plugin_dir is not None else skill.dir
         try:
-            resolved.relative_to(skill.dir.resolve())
+            resolved.relative_to(allowed.resolve())
         except ValueError as exc:
             raise PermissionError(f"Path escapes skill directory: {path}") from exc
         if not resolved.is_file():

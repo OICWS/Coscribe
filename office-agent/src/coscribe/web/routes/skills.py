@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from ...tools import (
     SKILL_SOURCE_MARKER,
     SkillCatalogError,
+    SkillInfo,
     SkillUploadError,
     WorkspaceScope,
     all_skills,
@@ -42,29 +43,31 @@ def _connector_url_key(url: str) -> str:
     return url.split("#")[0].rstrip("/").lower()
 
 
+def _skill_row(skill: SkillInfo, source: str, enabled: bool) -> dict[str, Any]:
+    updated = datetime.fromtimestamp((skill.dir / "SKILL.md").stat().st_mtime, UTC)
+    return {
+        "name": skill.name,
+        "description": skill.description,
+        "source": source,
+        "enabled": enabled,
+        "updated": updated.isoformat(),
+        "plugin": skill.plugin,
+    }
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
     _skills_by_name = state.skills_by_name
 
-
     @router.get("/api/skills")
     async def get_skills() -> list[dict[str, Any]]:
         builtin_names = {skill.name for skill in load_builtin_skills()}
         disabled = disabled_skill_names(settings.state_dir)
-        result = []
-        for skill in all_skills(settings.skills_dir):
-            updated = datetime.fromtimestamp((skill.dir / "SKILL.md").stat().st_mtime, UTC)
-            result.append(
-                {
-                    "name": skill.name,
-                    "description": skill.description,
-                    "source": skill_source(skill, builtin_names),
-                    "enabled": skill.name not in disabled,
-                    "updated": updated.isoformat(),
-                }
-            )
-        return result
+        return [
+            _skill_row(skill, skill_source(skill, builtin_names), skill.name not in disabled)
+            for skill in all_skills(settings.skills_dir)
+        ]
 
     @router.post("/api/skills/{name}/enabled")
     async def update_skill_enabled(name: str, payload: SkillEnabledUpdate) -> JSONResponse:
@@ -74,12 +77,14 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse({"name": name, "enabled": payload.enabled})
 
     @router.delete("/api/skills/{name}")
-    async def delete_skill(name: str) -> JSONResponse:
+    async def delete_skill(name: str, plugin: bool = False) -> JSONResponse:
         try:
-            await asyncio.to_thread(remove_skill, settings.skills_dir, settings.state_dir, name)
+            removed = await asyncio.to_thread(
+                remove_skill, settings.skills_dir, settings.state_dir, name, plugin=plugin
+            )
         except SkillCatalogError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
-        return JSONResponse({"removed": name})
+        return JSONResponse({"removed": name, "skills": removed})
 
     @router.get("/api/skills/catalog")
     async def get_skill_catalog() -> list[dict[str, Any]]:
@@ -151,9 +156,7 @@ def router(state: AppState) -> APIRouter:
                 ],
                 # `connector` is the coscribe connector that talks to the same
                 # server, or null when coscribe has none for it.
-                "connectors": [
-                    {**c, "connector": ours(c)} for c in plugin["connectors"]
-                ],
+                "connectors": [{**c, "connector": ours(c)} for c in plugin["connectors"]],
             }
         )
 
@@ -257,8 +260,6 @@ def router(state: AppState) -> APIRouter:
             skill = save_uploaded_skill(settings.skills_dir, file.filename or "", content)
         except SkillUploadError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
-        return JSONResponse(
-            {"name": skill.name, "description": skill.description, "source": "custom"}
-        )
+        return JSONResponse(_skill_row(skill, "custom", True))
 
     return router

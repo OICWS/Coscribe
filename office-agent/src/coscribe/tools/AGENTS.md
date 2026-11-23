@@ -21,7 +21,8 @@ permissions: `validate_mcp_config`, `load_mcp_server_configs`, `prepare_for_conn
 `set_skill_enabled`, `remove_skill`, `skill_source`, `save_uploaded_skill`, `slugify_skill_name`,
 `format_skill_listing`, `format_template_listing`, `load_pptx_templates`, `build_skill_tools`,
 `SKILL_SAVE_CURATOR_INSTRUCTIONS`, `SKILL_SOURCE_MARKER`; the skill catalog: `SkillCatalogError`,
-`load_catalog`, `get_plugin`, `plugin_file`, `install_catalog_skill`, `install_plugin`. Design
+`load_catalog`, `get_plugin`, `plugin_file`, `install_catalog_skill`, `install_plugin`. A folder of the skills directory is a skill or a plugin in the Claude and Codex
+format (decision 0058); a plugin's skills carry its name in `SkillInfo.plugin`. Design
 systems (decision 0020): `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system`,
 `build_design_system_tools`. Folders, files and conversions: `WorkspaceScope`, `build_file_tools`,
 `build_convert_tools`, `pdf_page_count`, `render_pdf_page`, `render_single_page_preview`. The

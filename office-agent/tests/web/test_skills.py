@@ -250,7 +250,12 @@ def test_upload_skill_md_appears_in_get_skills_without_a_restart(
             files={"file": ("mine.md", md_content, "text/markdown")},
         )
         assert upload.status_code == 200
-        assert upload.json() == {"name": "mine", "description": "my own skill", "source": "custom"}
+        assert {k: upload.json()[k] for k in ("name", "description", "source", "plugin")} == {
+            "name": "mine",
+            "description": "my own skill",
+            "source": "custom",
+            "plugin": None,
+        }
 
         response = client.get("/api/skills")
         names = {s["name"] for s in response.json()}
@@ -348,7 +353,7 @@ def test_removing_a_skill_deletes_it_but_builtins_only_switch_off_lg(
         builtin = client.delete("/api/skills/PPTX%20Slides")
         names = {s["name"] for s in client.get("/api/skills").json()}
 
-    assert removed.json() == {"removed": "mine"}
+    assert removed.json() == {"removed": "mine", "skills": ["mine"]}
     assert "mine" not in names
     assert builtin.status_code == 400
     assert "PPTX Slides" in names
@@ -560,3 +565,31 @@ def test_create_skill_discarded_on_a_non_yes_answer_lg(
     assert discarded["type"] == "agent_message"
     assert "Discarded" in discarded["text"]
     assert not (tmp_path / "skills" / "throwaway").exists()
+
+
+def test_an_uploaded_plugin_lists_its_skills_and_is_removed_whole_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        zf.writestr(".claude-plugin/plugin.json", '{"name": "kit"}')
+        zf.writestr("skills/one/SKILL.md", "---\nname: one\ndescription: d\n---\nbody")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        upload = client.post(
+            "/api/skills/upload",
+            files={"file": ("kit.plugin", buffer.getvalue(), "application/zip")},
+        )
+        listed = {s["name"]: s["plugin"] for s in client.get("/api/skills").json()}
+        alone = client.delete("/api/skills/one")
+        removed = client.delete("/api/skills/kit?plugin=true")
+        after = {s["name"] for s in client.get("/api/skills").json()}
+
+    assert upload.json()["plugin"] == "kit"
+    assert listed["one"] == "kit"
+    assert alone.status_code == 400
+    assert removed.json() == {"removed": "kit", "skills": ["one"]}
+    assert "one" not in after

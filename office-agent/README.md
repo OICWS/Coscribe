@@ -847,8 +847,11 @@ lists them in three groups:
   A removed skill shows up in Discover again.
 - **Created by you**: folders in `COSCRIBE_SKILLS_DIR` (default
   `./skills`), whether dropped in by hand, uploaded (Add → Upload a
-  skill, `.zip`/`.skill`/`.md`) or written with Add → Create with
-  coscribe.
+  skill, `.zip`/`.skill`/`.plugin`/`.md`) or written with Add → Create with
+  coscribe. A folder there may also be a whole Claude or Codex plugin (a
+  `plugin.json` in `.claude-plugin/`, `.codex-plugin/` or its root, and a
+  `skills/` folder): each of its skills is listed, and Remove on one removes
+  the plugin with all of them (decision 0058).
 
 Clicking a skill opens it: **Overview** (description, the Coscribe tools
 it mentions) and **Contents** (its file tree; Markdown renders with a

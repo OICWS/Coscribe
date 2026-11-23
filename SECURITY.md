@@ -73,7 +73,10 @@ coscribe runs on your own computer.
   `mcp.json`, decision 0048) are written by whoever can write the folder, so nothing reads them
   until you accept the folder, and a change waits for you again. Its rules never allow a call
   that leaves the machine, and its connectors get none of your sign-ins, secrets or proxy
-  credentials, and every one of their calls asks. The file tools refuse to write these files.
+  credentials, and every one of their calls asks. Its `env` reaches scripts and commands as
+  names and text only: never a variable that loads code, picks a program or routes traffic
+  (`PATH`, the proxies and certificates, `PYTHON*`, `NODE_*` and the like), and a
+  `{{secret:NAME}}` in it stays as written. The file tools refuse to write these files.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 
