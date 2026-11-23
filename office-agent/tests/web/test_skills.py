@@ -380,7 +380,7 @@ def test_a_source_lists_its_plugins_in_discover_and_adds_one_whole_lg(
         after = client.get("/api/skills/sources").json()
 
     assert bad.status_code == 400
-    assert added.json()["plugins"] == 1 and added.json()["elsewhere"] == 1
+    assert added.json()["plugins"] == 1 and added.json()["elsewhere"] == 2
     assert [s["repo"] for s in sources] == ["acme/plugins"]
     assert [(p["id"], p["title"], p["skills"]) for p in listed] == [
         ("gh:acme:plugins:notes", "Notes", ["tidy"])

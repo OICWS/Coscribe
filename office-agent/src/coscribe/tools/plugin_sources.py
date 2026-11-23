@@ -39,6 +39,7 @@ _ADDRESS = re.compile(
     r"(?:/tree/([^?#]+))?/?$"
 )
 _PLUGIN_MAX_BYTES = 50_000_000
+_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 
 
 def parse_address(address: str) -> tuple[str, str | None]:
@@ -135,7 +136,8 @@ class PluginSources:
         plugins, elsewhere = [], 0
         for entry in marketplace.get("plugins") or []:
             path = _local_path(entry, plugin_root) if isinstance(entry, dict) else None
-            if path is None or not isinstance(entry.get("name"), str):
+            # The name becomes a folder of the skills directory, so it is never a path.
+            if path is None or not _NAME.fullmatch(str(entry.get("name"))):
                 elsewhere += 1
                 continue
             prefix = f"{path}/" if path else ""

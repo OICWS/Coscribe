@@ -19,7 +19,7 @@ def _blob(data: bytes) -> str:
 
 def fake_github(marketplace_path: str = ".claude-plugin/marketplace.json") -> dict[str, bytes]:
     """The URLs a source is read and installed from, for one repository at commit c0ffee: a
-    plugin `notes` inside it and one entry that lives in another repository."""
+    plugin `notes` inside it, one entry in another repository and one whose name is a path."""
     repo = {
         marketplace_path: json.dumps(
             {
@@ -28,6 +28,7 @@ def fake_github(marketplace_path: str = ".claude-plugin/marketplace.json") -> di
                 "plugins": [
                     {"name": "notes", "source": "./notes"},
                     {"name": "far", "source": {"source": "github", "repo": "acme/far"}},
+                    {"name": "../escape", "source": "./notes"},
                 ],
             }
         ).encode(),
@@ -69,7 +70,7 @@ def test_a_codex_marketplace_is_read_and_a_plugin_is_described_by_its_manifest(
     files = fake_github(".agents/plugins/marketplace.json")
     source = PluginSources(tmp_path, fetch=files.__getitem__).add("acme/plugins")
 
-    assert source["commit"] == "c0ffee" and source["elsewhere"] == 1
+    assert source["commit"] == "c0ffee" and source["elsewhere"] == 2
     [plugin] = source["plugins"]
     assert (plugin["title"], plugin["description"], plugin["author"]) == (
         "Notes",
