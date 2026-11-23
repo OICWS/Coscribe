@@ -1051,6 +1051,7 @@ footer a:hover { color: var(--fg); }
       <a href="#models"><span class="zh">模型与权限</span><span class="en">Models</span></a>
       <a href="#start"><span class="zh">快速开始</span><span class="en">Get started</span></a>
       <a href="#faq">FAQ</a>
+      <a href="docs/"><span class="zh">文档</span><span class="en">Docs</span></a>
     </nav>
     <div class="nav-end">
       <button class="tool-btn" id="lang" type="button" aria-label="Switch language"><span class="zh">EN</span><span class="en">中文</span></button>
@@ -1226,14 +1227,15 @@ footer a:hover { color: var(--fg); }
                 <div class="st-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Search</div>
                 <div class="st-g"><div class="gl">Settings</div>
                   <button type="button" data-t="general" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>General</button>
-                  <button type="button" data-t="workspace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Workspace</button>
+                  <button type="button" data-t="workspace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Workspaces</button>
                   <button type="button" data-t="providers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Providers</button>
-                  <button type="button" data-t="tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tools</button>
-                  <button type="button" data-t="environment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg>Environment</button>
+                  <button type="button" data-t="capabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Capabilities</button>
+                  <button type="button" data-t="secrets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Secrets</button>
                 </div>
                 <div class="st-g"><div class="gl">Customize</div>
                   <button type="button" data-t="skills"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Skills</button>
                   <button type="button" data-t="connectors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Connectors</button>
+                  <button type="button" data-t="design-systems"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>Design systems</button>
                 </div>
               </nav>
               <div class="st-main" id="st-main">
@@ -1242,15 +1244,15 @@ footer a:hover { color: var(--fg); }
                   <section class="st-sec"><h6>Appearance</h6>
                     <div class="st-rows">
                       <div><span class="sr-l"><b>Theme</b></span><span class="sseg"><button type="button" class="on" aria-label="Match the system"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button><button type="button" aria-label="Light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button type="button" aria-label="Dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button></span></div>
-                      <div><span class="sr-l"><b>Chat font</b></span><span class="sfield w-m">IBM Plex Sans<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+                      <div><span class="sr-l"><b>Interface font</b><span>Font for the whole interface: menus, sidebars, panels and conversations.</span></span><span class="sfield w-m">Figtree<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
                       <div><span class="sr-l"><b>Motion</b><span>Reduce animation in streaming responses and other parts of the interface.</span></span><span class="sseg"><button type="button" class="on">System</button><button type="button">Reduced</button></span></div>
+                      <div><span class="sr-l"><b>Conversation view</b><span>Simple shows each reply without the steps behind it, and one line saying what coscribe is doing while it works. Detailed shows every step.</span></span><span class="sseg"><button type="button" class="on">Detailed</button><button type="button">Simple</button></span></div>
                     </div>
                   </section>
                   <section class="st-sec"><h6>Model</h6>
                     <div class="st-rows">
                       <div><span class="sr-l"><b>Default model</b><span>What a new conversation starts with. Each conversation can switch from its own model picker.</span></span><span class="sfield w-l">deepseek-v4-pro · deepseek<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
                       <div><span class="sr-l"><b>Default mode</b><span>The permission mode a new conversation starts in. Auto lets a reviewer model approve routine work and stop risky actions; Manual asks before every change.</span></span><span class="sseg"><button type="button">Manual</button><button type="button">Accept Edits</button><button type="button">Plan</button><button type="button" class="on">Auto</button></span></div>
-                      <div><span class="sr-l"><b>Max steps per reply</b><span>The most model calls one reply can make before it stops, approvals included. Raise it if long tasks stop before they finish.</span></span><span class="sfield w-s num">150</span></div>
                     </div>
                   </section>
                   <section class="st-sec"><h6>Instructions</h6>
@@ -1264,31 +1266,20 @@ footer a:hover { color: var(--fg); }
                       <div><span class="sr-l"><b>Notifications</b><span>When a task run finishes. Problems only: when a run fails or is waiting for you. Clicking one opens the run.</span></span><span class="sseg"><button type="button" class="on">All</button><button type="button">Problems only</button><button type="button">Off</button></span></div>
                     </div>
                   </section>
-                  <section class="st-sec"><h6>Advanced</h6>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Log level</b><span>How much detail goes into coscribe's log file. Use Debug only while troubleshooting. Takes effect after a restart.</span></span><span class="sseg"><button type="button">Debug</button><button type="button" class="on">Info</button><button type="button">Warning</button><button type="button">Error</button></span></div>
-                    </div>
-                  </section>
                 </div>
 
                 <div class="st-tab" data-t="workspace">
-                  <section class="st-sec"><h6>Folders</h6>
+                  <section class="st-sec">
+                    <div class="st-h"><h6>Workspaces</h6><button type="button" class="sbtn">+ New</button></div>
+                    <p class="sd">A workspace is a folder you work in. Its conversations and tasks reach that folder, the allowed folders below, and the sites and secrets you give it. Choose one for a conversation under the message box.</p>
                     <div class="st-rows">
-                      <div><span class="sr-l"><b>Default workspace</b><span>Where a conversation works when you don't pick a folder for it.</span></span><span class="st-pair"><span class="sfield w-l mono">C:\Users\you\Documents\coscribe</span><button type="button" class="sbtn">Browse…</button></span></div>
-                      <div><span class="sr-l"><b>Skills folder</b><span>Where your own skills are kept, alongside the built-in ones.</span></span><span class="st-pair"><span class="sfield w-l mono ph">./skills</span><button type="button" class="sbtn">Browse…</button></span></div>
+                      <div><span class="sr-l"><b>Default</b><span class="mono">C:\Users\you\Documents\coscribe</span></span><button type="button" class="sbtn">Edit</button></div>
+                      <div><span class="sr-l"><b>Q3 review</b><span class="mono">D:\Finance\Q3 2026</span></span><button type="button" class="sbtn">Edit</button></div>
                     </div>
                   </section>
-                  <section class="st-sec"><h6>Other folders</h6>
-                    <p class="sd">coscribe can always read and change the workspace. Give it more folders here, each read-only or read and write.</p>
-                    <div class="st-box">
-                      <div class="dir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="mono">D:\Finance\2026</span><span class="sfield sm">Read only<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
-                      <div class="dir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="mono">\\fileserver\sales\reports</span><span class="sfield sm">Read and write<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
-                    </div>
-                    <div class="st-pair grow"><span class="sfield ph">Paste a folder path, or several separated by commas</span><button type="button" class="sbtn">Add</button><button type="button" class="sbtn">Browse…</button></div>
-                  </section>
-                  <section class="st-sec"><h6>Files</h6>
+                  <section class="st-sec">
                     <div class="st-rows">
-                      <div><span class="sr-l"><b>Memory file</b><span>Where your instructions and anything coscribe is asked to remember are kept.</span></span><span class="sfield w-l mono ph">./MEMORY.md</span></div>
+                      <div><span class="sr-l"><b>Allowed folders</b><span>2 folders: 1 read only, 1 read and write. A workspace reaches only the ones it picks.</span></span><button type="button" class="sbtn">Manage</button></div>
                     </div>
                   </section>
                 </div>
@@ -1313,25 +1304,35 @@ footer a:hover { color: var(--fg); }
                   </section>
                 </div>
 
-                <div class="st-tab" data-t="tools">
-                  <section class="st-sec"><h6>Tools</h6>
-                    <p class="sd">What coscribe can do on its own. Tools marked Needs approval ask first, depending on the conversation's mode.</p>
-                    <div class="st-list" id="st-tools"></div>
+                <div class="st-tab" data-t="capabilities">
+                  <section class="st-sec"><h6>Capabilities</h6>
+                    <div class="st-rows">
+                      <div><span class="sr-l"><b>Create and edit files</b><span>coscribe writes and changes files in the folders of its workspace: Word, Excel, PowerPoint, PDF and text. Off, it only reads them and answers in the conversation.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Create and edit files"></button></div>
+                      <div><span class="sr-l"><b>Artifacts</b><span>Docs, designs and dashboards that open beside the conversation.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Artifacts"></button></div>
+                      <div><span class="sr-l"><b>Run scripts</b><span>For work too big for the built-in tools, coscribe writes a Python or Node.js script and runs it after you approve it, kept to the folders of its workspace.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Run scripts"></button></div>
+                      <div><span class="sr-l"><b>Run commands</b><span>Command lines in cmd or PowerShell, for what a script can't do: git, build tools, installers. You approve each one.</span></span><button type="button" class="stog" role="switch" aria-checked="false" aria-label="Run commands"></button></div>
+                      <div><span class="sr-l"><b>Chats can hand tasks to Code</b><span>A conversation can give a coding job to Codex, a coding agent.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Chats can hand tasks to Code"></button></div>
+                    </div>
                   </section>
                 </div>
 
-                <div class="st-tab" data-t="environment">
-                  <section class="st-sec"><h6>Python</h6>
-                    <p class="sd">When a task is too big or too specific for coscribe's built-in tools, it can write and run a Python script. You approve each one first. Scripts run in their own space, apart from coscribe, so nothing added here can break the app.</p>
-                    <div class="st-sub"><b>Interpreter</b><span>Found automatically. Set a path only if scripts fail to run or the wrong Python is used.</span></div>
-                    <div class="st-pair grow"><span class="sfield ph mono">Blank to find it automatically, or a python.exe path</span><button type="button" class="sbtn">Save</button></div>
-                    <div class="st-sub"><b>Packages</b><span>Libraries scripts can use.</span></div>
-                    <div class="pk"><span>pandas</span><span>openpyxl</span><span>matplotlib</span><span>python-docx</span></div>
+                <div class="st-tab" data-t="secrets">
+                  <section class="st-sec">
+                    <div class="st-h"><h6>Secrets</h6><button type="button" class="sbtn">+ Add</button></div>
+                    <p class="sd">Add a key or token once, then give it to the workspaces that need it. The assistant can use it in a web request only for the hosts you allow here, and never sees its value.</p>
+                    <div class="st-rows">
+                      <div><span class="sr-l"><b class="mono">CRM_TOKEN</b><span>api.crm.example.com</span></span><button type="button" class="sbtn">Edit</button></div>
+                    </div>
                   </section>
-                  <section class="st-sec"><h6>Node.js</h6>
-                    <p class="sd">For slide decks beyond write_pptx's layouts, coscribe can write a Node.js script with pptxgenjs (already installed): custom shapes, multi-column layouts, icons. You approve each script first.</p>
-                    <div class="st-sub"><b>Packages</b><span>Libraries those scripts can use, besides pptxgenjs.</span></div>
-                    <p class="st-empty">None added beyond pptxgenjs.</p>
+                </div>
+
+                <div class="st-tab" data-t="design-systems">
+                  <section class="st-sec">
+                    <div class="st-h"><h6>Design systems</h6><button type="button" class="sbtn">Describe it</button><button type="button" class="sbtn">+ New design system</button></div>
+                    <p class="sd">A design system is your colors, fonts and spacing, kept once. A deck made with one gets a copy, so changing it later does not move a finished deck.</p>
+                    <div class="st-rows">
+                      <div><span class="sr-l"><b>Acme brand</b><span>6 colors · IBM Plex Sans · 3 logos</span></span><button type="button" class="sbtn">Open</button></div>
+                    </div>
                   </section>
                 </div>
 
@@ -1650,7 +1651,7 @@ df.to_excel("Q3 orders (clean).xlsx", index=False)</span><span class="zh">import
 df = pd.read_excel("Q3订单明细.xlsx")
 df = df.dropna(subset=["收货地址"])
 df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
-        <div class="an">This script isn’t sandboxed: it can read any file this app can and use the network. It can write only in the workspace and folders you added -- a safeguard against mistakes, not a security boundary. Review it before approving.</div>
+        <div class="an">Runs isolated: it can use only this conversation’s folders, can’t delete or rename files there, and reaches the internet only if the workspace allows any site. Review it before approving.</div>
         <div class="acts"><button type="button" class="yes" data-a="ok">Approve</button><button type="button" data-a="no">Deny</button></div>
         <p class="res" id="approve-res"></p>
       </div>
@@ -1677,15 +1678,15 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
       <p class="sub rv" style="--i:2"><span class="en">For Windows. Bring an API key from any model provider.</span><span class="zh">适用于 Windows，准备好任意一家模型服务的 API Key 即可。</span></p>
       <ol class="qs-steps">
         <li class="rv" style="--i:3"><span><span class="en">Download the portable <code>.zip</code> from GitHub Releases.</span><span class="zh">从 GitHub Releases 下载免安装版 <code>.zip</code>。</span></span></li>
-        <li class="rv" style="--i:4"><span><span class="en">Unzip it anywhere and open <code>Coscribe.exe</code>. Nothing to install.</span><span class="zh">解压到任意位置，打开 <code>Coscribe.exe</code>，无需安装。</span></span></li>
-        <li class="rv" style="--i:5"><span><span class="en">Add a key in Settings, under Providers, and start a conversation.</span><span class="zh">在设置的 Providers 里填入 Key，就可以开始对话。</span></span></li>
+        <li class="rv" style="--i:4"><span><span class="en">Unzip it anywhere and open <code>Coscribe.exe</code>, then pick the folder you keep your work in. Nothing to install.</span><span class="zh">解压到任意位置，打开 <code>Coscribe.exe</code>，选好存放工作文件的文件夹，无需安装。</span></span></li>
+        <li class="rv" style="--i:5"><span><span class="en">Add a key in Settings, under Providers, choose a default model, and start a conversation. <a href="docs/">Read the docs</a> for the rest.</span><span class="zh">在设置的 Providers 里填入 Key，选好默认模型，就可以开始对话。其余的看<a href="docs/">文档</a>。</span></span></li>
       </ol>
     </div>
     <div class="qs-r">
       <div class="dl rv" style="--i:2">
         <span class="dl-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/><path d="M12 12v5M9.5 14.5L12 17l2.5-2.5"/></svg></span>
         <span class="dl-t"><b><span class="en">coscribe for Windows</span><span class="zh">coscribe Windows 版</span></b><small><span class="en">Portable .zip · no installer · built-in browser</span><span class="zh">免安装 .zip · 解压即用 · 内置浏览器</span></small></span>
-        <a class="btn btn-primary dl-btn" href="https://github.com/OICWS/coscribe/releases/latest"><span class="en">Download</span><span class="zh">下载</span><svg class="dn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <a class="btn btn-primary dl-btn" href="https://github.com/OICWS/coscribe/releases/tag/beta"><span class="en">Download</span><span class="zh">下载</span><svg class="dn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
       </div>
       <div class="term-win rv" style="--i:3">
         <div class="term-bar">
@@ -1736,6 +1737,10 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
         <p><span class="zh">真正的 Word、PPT、Excel 文件：带修订和批注的合同、有图表的汇报、对好账的表格。它也能做数据分析、跑可重复的工作流，写代码的活可以交给代码模块。</span><span class="en">Real Word, PowerPoint and Excel files: contracts with tracked changes, decks with charts, reconciled spreadsheets. It also analyses data, runs workflows you can repeat, and can hand coding work to the code module.</span></p>
       </details>
       <details class="rv" style="--i:6">
+        <summary><span class="zh">还有哪些功能？</span><span class="en">What else is in it?</span><i></i></summary>
+        <div class="fa"><ul class="zh"><li><b>工作区</b>每个对话有自己的文件夹、网站和密钥范围。</li><li><b>题外话面板</b>随时问关于对话的问题，不打断它。</li><li><b>/fork</b>把对话复制一份，试另一个方向。</li><li><b>简洁视图</b>只看回答，不看背后的步骤。</li><li><b>技能和插件</b>添加别人做好的工作方法。</li><li><b>/doctor</b>检查电脑上缺什么，并告诉你怎么补。</li><li>完整说明见<a href="docs/">文档</a>。</li></ul><ul class="en"><li><b>Workspaces:</b>Each conversation has its own folders, sites and secrets.</li><li><b>Side chat:</b>Ask about the conversation without adding to it.</li><li><b>/fork:</b>Copy a conversation to try another direction.</li><li><b>Simple view:</b>Just the replies, without the steps behind them.</li><li><b>Skills and plugins:</b>Add ways of working others made.</li><li><b>/doctor:</b>Checks what your PC is missing and how to fix it.</li><li>The <a href="docs/">docs</a> cover all of it.</li></ul></div>
+      </details>
+      <details class="rv" style="--i:7">
         <summary><span class="zh">支持 Mac 或 Linux 吗？</span><span class="en">Is there a Mac or Linux version?</span><i></i></summary>
         <p><span class="zh">暂时不支持。</span><span class="en">Not yet.</span></p>
       </details>
@@ -1761,7 +1766,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     <nav aria-label="Footer">
       <a href="https://github.com/OICWS/coscribe">GitHub</a>
       <a href="https://github.com/OICWS/coscribe/blob/main/ARCHITECTURE.md">Architecture</a>
-      <a href="https://github.com/OICWS/coscribe/blob/main/office-agent/README.md"><span class="zh">文档</span><span class="en">Docs</span></a>
+      <a href="docs/"><span class="zh">文档</span><span class="en">Docs</span></a>
       <a href="https://github.com/OICWS/coscribe/issues">Issues</a>
     </nav>
   </div>
@@ -2441,7 +2446,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
             '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Listed files</span></div>' +
             '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Read <b>export_orders.py</b></span></div>' +
             '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Changed files' + ds(17, 2) + "</span></div></div>" +
-            '<div class="appr"><div class="at">' + svg(I.alert) + 'Run a command</div><pre>pytest -q</pre><div class="an">This script isn’t sandboxed: it can read any file this app can and use the network. It can write only in the workspace and folders you added -- a safeguard against mistakes, not a security boundary. Review it before approving.</div>' +
+            '<div class="appr"><div class="at">' + svg(I.alert) + 'Run a command</div><pre>pytest -q</pre><div class="an">Runs isolated: it can use only this conversation’s folders, can’t delete or rename files there, and reaches the internet only if the workspace allows any site. Review it before approving.</div>' +
             '<div class="acts"><button type="button" class="yes">Approve</button><button type="button">Deny</button><span class="res"></span></div></div></div>';
           card = agBody.querySelector(".appr");
           var bs = all("button", card);
@@ -2687,21 +2692,6 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
   });
   all(".stog", sett).forEach(function (t) {
     t.addEventListener("click", function () { t.setAttribute("aria-checked", t.getAttribute("aria-checked") === "true" ? "false" : "true"); });
-  });
-  var TOOLS = [["Filesystem", 10, [["list_files", false, "List files under the workspace."], ["read_file", false, "Read the text contents of a file under the workspace."], ["write_file", true, "Write text content to a file under the workspace, creating parent directories."], ["edit_file", true, "Replace an exact substring in a text file under the workspace (or a configured extra-writable directory), without rewriting the rest of the file."]]], ["Documents", 64, [["read_docx", false, "Read a Word (.docx) file under the workspace as markdown."], ["write_docx", true, "Create a Word (.docx) file under the workspace from structured text."], ["write_xlsx", true, "Create or update one sheet of an Excel (.xlsx) file under the workspace."], ["write_pptx", true, "Create a PowerPoint (.pptx) file under the workspace from structured text."]]], ["Web", 5, [["web_search", false, "Search the live web for current information beyond your training data."], ["read_web_page", false, "Read a web page's text, as markdown."], ["search_images", false, "Search the live web for images."], ["download_image", true, "Download an image from a URL."]]], ["Tasks", 3, [["task_create", false, "Add a new task to the plan for this conversation."], ["task_update", false, "Update a task's status as you make progress."], ["task_list", false, "List all tasks in the current plan, in creation order."]]], ["Interaction", 2, [["ask_user_question", false, "Ask the user a clarifying question with clickable choices, instead of only asking in a normal reply."], ["exit_plan_mode", false, "In plan mode, present your finished plan for the user's approval."]]], ["Memory", 1, [["remember", true, "Save a short, durable fact worth recalling in future sessions."]]], ["Selfwake", 7, [["sleep_until", true, "Pause this conversation and automatically resume it at a specific wall-clock time."], ["sleep_for", true, "Pause this conversation and automatically resume it after a given delay."], ["wake_on_task", true, "Pause this conversation and automatically resume it once a background script started via run_background_script finishes (succeeds, fails, times out, or is killed)."]]], ["Scheduled tasks", 6, [["create_scheduled_task", true, "Draft a scheduled task (a reusable workflow) for the user to review."], ["list_scheduled_tasks", false, "List every scheduled task, across all conversations."], ["pause_scheduled_task", true, "Pause a scheduled task."]]], ["Scripts", 2, [["run_python_script", true, "Run a Python script and return its output."], ["run_node_script", true, "Run a Node.js script and return its output."]]], ["Background tasks", 4, [["run_background_script", true, "Start a Python or Node.js script running in the background and return immediately."], ["check_background_task", false, "Check a background script's status and read its output."], ["list_background_tasks", false, "List this conversation's own background tasks (running or finished)."], ["kill_background_task", true, "Kill a running background script."]]], ["Subagent tasks", 3, [["list_subagent_tasks", false, "List this conversation's sub-agents, running or finished."], ["check_subagent_task", false, "Check a background sub-agent's status."], ["stop_subagent", false, "Stop a sub-agent that's still running."]]], ["Skills", 2, [["load_skill", false, "Load a skill's full instructions before following them."], ["read_skill_file", false, "Read a bundled reference/asset file within a skill's own directory."]]]];
-  $("st-tools").innerHTML = TOOLS.map(function (c, i) {
-    var rows = c[2].map(function (t) {
-      return "<div><span><code>" + t[0] + "</code><p>" + esc(t[2]) + "</p></span>" + (t[1] ? '<span class="na">Needs approval</span>' : "") + "</div>";
-    }).join("");
-    if (c[1] > c[2].length) rows += '<div><span class="more">' + (c[1] - c[2].length) + " more</span></div>";
-    return '<button type="button" aria-expanded="' + (i === 0) + '">' + c[0] + '<span class="cnt">' + c[1] + (c[1] === 1 ? " tool" : " tools") + "</span>" + svg(I.chevD) + '</button><div class="tl' + (i === 0 ? " on" : "") + '">' + rows + "</div>";
-  }).join("");
-  all("#st-tools > button", sett).forEach(function (b) {
-    b.addEventListener("click", function () {
-      var open = b.getAttribute("aria-expanded") !== "true";
-      b.setAttribute("aria-expanded", String(open));
-      b.nextElementSibling.classList.toggle("on", open);
-    });
   });
   var CAT = [
     ["anthropic", "Anthropic's Claude models.", ""], ["openai", "OpenAI's GPT models.", ""], ["gemini", "Google's Gemini models.", ""],

@@ -1,0 +1,35 @@
+# The order of the sidebar. Each page is content/<language>/<group id>/<page>.md, and each
+# group's title is in i18n.toml. A page missing from here fails the build, so nothing is
+# published that the sidebar can't reach.
+
+[[group]]
+id = "get-started"
+pages = ["what-is-coscribe", "install", "providers", "first-conversation"]
+
+[[group]]
+id = "use"
+pages = ["conversations", "approvals", "plans", "files-and-panels", "browser", "models"]
+
+[[group]]
+id = "workspaces"
+pages = ["workspaces", "folder-settings"]
+
+[[group]]
+id = "office"
+pages = ["word", "excel", "powerpoint", "pdf", "artifacts"]
+
+[[group]]
+id = "workflows"
+pages = ["scheduled-tasks", "workflows"]
+
+[[group]]
+id = "customize"
+pages = ["instructions", "skills", "connectors", "design-systems"]
+
+[[group]]
+id = "reference"
+pages = ["settings", "commands-and-shortcuts"]
+
+[[group]]
+id = "help"
+pages = ["privacy-and-safety", "troubleshooting"]
