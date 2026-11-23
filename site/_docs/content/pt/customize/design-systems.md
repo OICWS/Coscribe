@@ -1,22 +1,22 @@
 ---
 title: Sistemas de design
-description: Mantenha suas cores, fontes, espaçamentos e logotipos em um só lugar, para que as apresentações do coscribe tenham a sua cara.
+description: Mantenha suas cores, fontes, espaçamentos e logotipos em um só lugar, para que as apresentações do Coscribe tenham a sua cara.
 ---
 
-Um sistema de design são suas cores, fontes e espaçamentos, guardados uma única vez. Quando o coscribe cria uma apresentação com ele, a apresentação o segue. A apresentação recebe uma cópia própria, então alterar o sistema de design depois não muda uma apresentação já pronta.
+Um sistema de design são suas cores, fontes e espaçamentos, guardados uma única vez. Quando o Coscribe cria uma apresentação com ele, a apresentação o segue. A apresentação recebe uma cópia própria, então alterar o sistema de design depois não muda uma apresentação já pronta.
 
 ## Criar um sistema de design {#make-a-design-system}
 
 Abra **Settings** › **Design systems**:
 
-- **Describe it** abre uma conversa em que você descreve o visual, ou entrega ao coscribe uma apresentação ou um guia de marca de onde tirá-lo.
+- **Describe it** abre uma conversa em que você descreve o visual, ou entrega ao Coscribe uma apresentação ou um guia de marca de onde tirá-lo.
 - **New design system** começa um vazio, que você mesmo preenche.
 
 ## O que ele contém {#what-it-holds}
 
 | Seção | O que vai nela |
 |---|---|
-| **Overview** | Com suas palavras: para quem é e que sensação deve transmitir. O coscribe a lê quando cria algo com este sistema. |
+| **Overview** | Com suas palavras: para quem é e que sensação deve transmitir. O Coscribe a lê quando cria algo com este sistema. |
 | **Colors** | Cada cor com um nome para a função que cumpre, e quando usá-la. |
 | **Typography** | As fontes, uma por linha, como estão instaladas neste computador, e estilos de texto nomeados. A primeira fonte é a principal. |
 | **Spacing** | Espaçamentos nomeados, em pixels em um slide de 1920 pixels de largura. |

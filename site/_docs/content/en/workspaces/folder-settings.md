@@ -1,26 +1,26 @@
 ---
 title: A folder's own notes and rules
-description: Let a folder tell coscribe what it holds, which skills and connectors to use, and what may run without asking.
+description: Let a folder tell Coscribe what it holds, which skills and connectors to use, and what may run without asking.
 ---
 
-A folder can carry instructions for coscribe in a `.coscribe` folder inside it. coscribe reads them for any conversation that uses the folder, once you have accepted them.
+A folder can carry instructions for Coscribe in a `.coscribe` folder inside it. Coscribe reads them for any conversation that uses the folder, once you have accepted them.
 
 ## What a folder can hold
 
 | File | What it does |
 |---|---|
-| `.coscribe/memory.md` | Notes coscribe reads at the start of each conversation in this folder: what the folder is for, conventions, names. |
+| `.coscribe/memory.md` | Notes Coscribe reads at the start of each conversation in this folder: what the folder is for, conventions, names. |
 | `.coscribe/skills/<name>/SKILL.md` | [Skills](../customize/skills.md) that apply only in this folder. |
 | `.coscribe/settings.json` | Permission rules (`allow`, `ask`, `deny`) and environment variables for scripts. |
 | `.coscribe/mcp.json` | [Connectors](../customize/connectors.md) this folder uses. |
 
-coscribe itself never writes `memory.md`, `settings.json` or `mcp.json`; only you edit them. Attachments you send are kept in `.coscribe/uploads/`.
+Coscribe itself never writes `memory.md`, `settings.json` or `mcp.json`; only you edit them. Attachments you send are kept in `.coscribe/uploads/`.
 
 ## Accept a folder's settings
 
-Settings from a folder could come from anyone who could write to it, so coscribe doesn't follow them until you agree. The **Task details** panel shows **What Coscribe knows about this folder**, listing the skills, connectors and rules the folder brings, grouped as **Runs without asking**, **Always asks** and **Never runs**, and any variables for scripts. Click **Use them** to accept.
+Settings from a folder could come from anyone who could write to it, so Coscribe doesn't follow them until you agree. The **Task details** panel shows **What Coscribe knows about this folder**, listing the skills, connectors and rules the folder brings, grouped as **Runs without asking**, **Always asks** and **Never runs**, and any variables for scripts. Click **Use them** to accept.
 
-If any of these files changes outside coscribe, it asks again.
+If any of these files changes outside Coscribe, it asks again.
 
 ## Permission rules
 
@@ -39,7 +39,7 @@ If any of these files changes outside coscribe, it asks again.
 }
 ```
 
-A rule is a coscribe tool name, a `*` pattern of names, or either with a pattern of its main argument in brackets, such as `write_file(docs/*)`. The rules decide only actions that would otherwise wait for your approval. **deny** wins over **ask**, and **ask** over **allow**.
+A rule is a Coscribe tool name, a `*` pattern of names, or either with a pattern of its main argument in brackets, such as `write_file(docs/*)`. The rules decide only actions that would otherwise wait for your approval. **deny** wins over **ask**, and **ask** over **allow**.
 
 Some limits always hold:
 

@@ -1,11 +1,11 @@
 ---
 title: Files, outputs and panels
-description: Find what coscribe made, preview files, and arrange the panels beside the conversation.
+description: Find what Coscribe made, preview files, and arrange the panels beside the conversation.
 ---
 
 ## What a conversation made
 
-Files coscribe made or changed appear as notices above the message box:
+Files Coscribe made or changed appear as notices above the message box:
 
 - A document, deck or design opens in its panel beside the conversation.
 - Pictures are grouped in one notice; **View all** opens them in a viewer.
@@ -33,8 +33,8 @@ The toolbar above the conversation opens panels beside it:
 | **Task details** | The task list and what each step started. |
 | **Plan** | A plan waiting for you, and its steps. |
 | **Files** | The conversation's folders and file previews. |
-| **Browser** | coscribe's built-in browser (desktop app only). See [The built-in browser](browser.md). |
+| **Browser** | Coscribe's built-in browser (desktop app only). See [The built-in browser](browser.md). |
 | **Background tasks** | Scripts and commands still running, which you can stop. |
 | **Side chat** | Questions about the conversation that don't become part of it. See [Work in a conversation](conversations.md#ask-a-side-question). |
 
-Panels can be placed side by side, and most can also open in a window of their own. When a background script or command finishes, coscribe reports how it ended in the conversation on its own.
+Panels can be placed side by side, and most can also open in a window of their own. When a background script or command finishes, Coscribe reports how it ended in the conversation on its own.

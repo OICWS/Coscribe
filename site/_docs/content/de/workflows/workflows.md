@@ -9,10 +9,10 @@ Ein Workflow ist eine Aufgabe aus festen Schritten. Anders als eine geplante Auf
 
 Am einfachsten erledigen Sie die Arbeit einmal in einem Chat und machen dann einen Workflow daraus:
 
-- Wählen Sie **Save as workflow**, wenn coscribe **Save this job?** anbietet, oder im Bereich **Task details**.
+- Wählen Sie **Save as workflow**, wenn Coscribe **Save this job?** anbietet, oder im Bereich **Task details**.
 - Oder tippen Sie `/saveworkflow` ins Nachrichtenfeld, auf Wunsch gefolgt von einem Namen.
 
-coscribe entwirft die Schritte aus der Unterhaltung. Sehen Sie sie durch und speichern Sie.
+Coscribe entwirft die Schritte aus der Unterhaltung. Sehen Sie sie durch und speichern Sie.
 
 Sie können auch bei null anfangen: **Scheduled** › **New task** › **Build a workflow**. Geben Sie einen Namen und einen Zeitplan an, speichern Sie und fügen Sie dann auf seiner Seite die Schritte hinzu.
 
@@ -33,7 +33,7 @@ Die Seite hat vier Registerkarten:
 
 | Schritt | Was er tut |
 |---|---|
-| **Tool** | Nutzt eines der Werkzeuge von coscribe, ohne Modell. |
+| **Tool** | Nutzt eines der Werkzeuge von Coscribe, ohne Modell. |
 | **Script** | Führt ein festes Python-Skript aus, das Sie geprüft haben. |
 | **Model** | Ein Modellaufruf, der festgelegte Felder zurückgeben muss. |
 | **Agent** | Arbeitet mit Werkzeugen auf ein Ziel hin, innerhalb der von Ihnen gesetzten Grenzen: die Werkzeuge, die er aufrufen, die Ordner, die er ändern, und die Websites, die er öffnen darf. |
@@ -61,7 +61,7 @@ Websites ändern sich, und Dateien unterscheiden sich von Lauf zu Lauf. Die Eins
 | **Proactive** | KI-Schritte entscheiden, wie sie ihren Teil erledigen. Schlägt ein Schritt fehl, darf die KI einige Schritte hinzufügen; solche, die etwas ändern, warten auf Sie. |
 | **Autonomous** | Die KI darf die ganze Aufgabe auf ihre eigene Weise erledigen. |
 
-Hat ein Lauf eine Änderung umgangen, kann coscribe aktualisierte Schritte zur Prüfung vorschlagen, damit der nächste Lauf das nicht mehr muss.
+Hat ein Lauf eine Änderung umgangen, kann Coscribe aktualisierte Schritte zur Prüfung vorschlagen, damit der nächste Lauf das nicht mehr muss.
 
 ## Einen Workflow bei einem Ereignis starten {#start-on-an-event}
 
@@ -69,7 +69,7 @@ Neben den Zeitplänen, die jede Aufgabe hat, kann die **Frequency** eines Workfl
 
 - **Every few minutes**.
 - **When a file arrives in a folder**: Wählen Sie den **Folder to watch** und, falls gewünscht, ein **File name pattern**. Jede neue Datei startet einen Lauf, mit der Datei als Dateieingabe des Workflows. Die Option setzt einen Workflow voraus, der eine Datei entgegennimmt.
-- **When something new shows up in a connector**: Wählen Sie einen Konnektor und was er gefragt werden soll. coscribe fragt alle paar Minuten, und jedes neue Element startet einen Lauf. Die erste Prüfung betrachtet alles bereits Vorhandene als gesehen.
-- **When a program sends it an event**: Ein anderes Programm auf demselben Computer sendet eine Anfrage mit einem Schlüssel an eine Adresse, die coscribe anzeigt. **Wait for a sample** behält das nächste Ereignis, damit Sie auswählen können, welche seiner Felder die Eingaben füllen. Die Adresse nimmt nur Anfragen von Ihrem eigenen Computer an.
+- **When something new shows up in a connector**: Wählen Sie einen Konnektor und was er gefragt werden soll. Coscribe fragt alle paar Minuten, und jedes neue Element startet einen Lauf. Die erste Prüfung betrachtet alles bereits Vorhandene als gesehen.
+- **When a program sends it an event**: Ein anderes Programm auf demselben Computer sendet eine Anfrage mit einem Schlüssel an eine Adresse, die Coscribe anzeigt. **Wait for a sample** behält das nächste Ereignis, damit Sie auswählen können, welche seiner Felder die Eingaben füllen. Die Adresse nimmt nur Anfragen von Ihrem eigenen Computer an.
 
-Eine Datei, die ankam, während coscribe geschlossen war, startet einen Lauf, wenn coscribe wieder startet.
+Eine Datei, die ankam, während Coscribe geschlossen war, startet einen Lauf, wenn Coscribe wieder startet.

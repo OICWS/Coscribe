@@ -1,6 +1,6 @@
 ---
 title: Commandes et raccourcis
-description: Les commandes que vous pouvez taper dans la zone de message, et les raccourcis clavier de coscribe.
+description: Les commandes que vous pouvez taper dans la zone de message, et les raccourcis clavier de Coscribe.
 ---
 
 ## Commandes {#commands}
@@ -14,7 +14,7 @@ Tapez <kbd>/</kbd> dans la zone de message pour afficher la liste des commandes 
 | `/fork [name]` | Copie la conversation dans une nouvelle et l’ouvre. Voir [Copier une conversation](../use/conversations.md#copy-a-conversation). |
 | `/init` | Explore l’espace de travail et écrit ou met à jour `OVERVIEW.md` à sa racine. |
 | `/create-skill <name>` | Transforme la conversation en compétence réutilisable. Voir [Compétences et plugins](../customize/skills.md). |
-| `/doctor` | Vérifie ce dont coscribe a besoin sur cet ordinateur. Voir [Dépannage](../help/troubleshooting.md). |
+| `/doctor` | Vérifie ce dont Coscribe a besoin sur cet ordinateur. Voir [Dépannage](../help/troubleshooting.md). |
 | `/<skill>` | Utilise cette compétence pour votre demande. Chacune de vos compétences figure dans la liste sous son nom. |
 
 Quelques commandes ne figurent pas dans la liste parce qu’un bouton fait la même chose, mais elles fonctionnent si vous les tapez :

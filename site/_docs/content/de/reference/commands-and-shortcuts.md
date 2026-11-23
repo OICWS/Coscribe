@@ -1,6 +1,6 @@
 ---
 title: Befehle und Tastenkombinationen
-description: Die Befehle, die Sie ins Nachrichtenfeld tippen können, und die Tastenkombinationen von coscribe.
+description: Die Befehle, die Sie ins Nachrichtenfeld tippen können, und die Tastenkombinationen von Coscribe.
 ---
 
 ## Befehle {#commands}
@@ -14,7 +14,7 @@ Tippen Sie <kbd>/</kbd> ins Nachrichtenfeld, um die Befehlsliste zu sehen; tippe
 | `/fork [name]` | Kopiert die Unterhaltung in eine neue und öffnet sie. Siehe [Eine Unterhaltung kopieren](../use/conversations.md#copy-a-conversation). |
 | `/init` | Erkundet den Arbeitsbereich und schreibt oder aktualisiert `OVERVIEW.md` in dessen Stammordner. |
 | `/create-skill <name>` | Macht aus der Unterhaltung einen wiederverwendbaren Skill. Siehe [Skills und Plugins](../customize/skills.md). |
-| `/doctor` | Prüft, was coscribe auf diesem Computer braucht. Siehe [Fehlerbehebung](../help/troubleshooting.md). |
+| `/doctor` | Prüft, was Coscribe auf diesem Computer braucht. Siehe [Fehlerbehebung](../help/troubleshooting.md). |
 | `/<skill>` | Verwendet diesen Skill für Ihre Anfrage. Jeder Ihrer Skills steht unter seinem Namen in der Liste. |
 
 Einige Befehle stehen nicht in der Liste, weil eine Schaltfläche dasselbe tut, aber sie funktionieren, wenn Sie sie tippen:

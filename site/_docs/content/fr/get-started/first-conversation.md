@@ -1,6 +1,6 @@
 ---
 title: Votre première conversation
-description: Décrivez une tâche en une phrase, regardez coscribe travailler et décidez aux moments importants.
+description: Décrivez une tâche en une phrase, regardez Coscribe travailler et décidez aux moments importants.
 ---
 
 Une fois un fournisseur ajouté, décrivez une tâche dans la zone de message de l’écran d’accueil.
@@ -11,11 +11,11 @@ Une fois un fournisseur ajouté, décrivez une tâche dans la zone de message de
 
 > Supprime les commandes de `Commandes T3.xlsx` qui n’ont pas d’adresse de livraison, totalise les montants par fournisseur et enregistre le résultat dans un nouveau fichier Excel.
 
-Faites glisser les fichiers dans la fenêtre ou cliquez sur **+** en bas à gauche de la zone de message pour les joindre ; vous pouvez aussi simplement nommer un fichier, et coscribe le cherche dans l’espace de travail. Appuyez sur <kbd>Enter</kbd> pour envoyer et sur <kbd>Shift</kbd> + <kbd>Enter</kbd> pour aller à la ligne.
+Faites glisser les fichiers dans la fenêtre ou cliquez sur **+** en bas à gauche de la zone de message pour les joindre ; vous pouvez aussi simplement nommer un fichier, et Coscribe le cherche dans l’espace de travail. Appuyez sur <kbd>Enter</kbd> pour envoyer et sur <kbd>Shift</kbd> + <kbd>Enter</kbd> pour aller à la ligne.
 
 ## Le regarder travailler {#watch-it-work}
 
-coscribe lit d’abord les documents, puis travaille étape par étape. Une tâche plus importante commence par une liste de tâches, et chaque élément est barré une fois terminé. Les fichiers terminés apparaissent au-dessus de la zone de message ; cliquez sur l’un d’eux pour l’afficher.
+Coscribe lit d’abord les documents, puis travaille étape par étape. Une tâche plus importante commence par une liste de tâches, et chaque élément est barré une fois terminé. Les fichiers terminés apparaissent au-dessus de la zone de message ; cliquez sur l’un d’eux pour l’afficher.
 
 Vous n’avez pas besoin d’attendre pendant qu’il travaille :
 
@@ -24,7 +24,7 @@ Vous n’avez pas besoin d’attendre pendant qu’il travaille :
 
 ## Modes d’autorisation {#permission-modes}
 
-Un bouton de mode sous la zone de message détermine si coscribe vous demande votre accord avant d’agir :
+Un bouton de mode sous la zone de message détermine si Coscribe vous demande votre accord avant d’agir :
 
 | Mode | Ce qu’il fait |
 |---|---|
@@ -33,12 +33,12 @@ Un bouton de mode sous la zone de message détermine si coscribe vous demande vo
 | **Plan** | Étudie la tâche et rédige un plan que vous approuvez avant toute modification. |
 | **Auto** | Un modèle relecteur approuve les actions courantes et bloque les actions risquées au lieu de vous demander. |
 
-Quand votre approbation est nécessaire, une carte dans la conversation indique ce que coscribe veut faire. Lisez-la, puis cliquez sur **Approve** ou **Deny**.
+Quand votre approbation est nécessaire, une carte dans la conversation indique ce que Coscribe veut faire. Lisez-la, puis cliquez sur **Approve** ou **Deny**.
 
 > [!TIP]
-> Pour commencer, choisissez **Manual** ou **Plan**. Passez à **Accept Edits** ou **Auto** quand vous savez comment coscribe travaille.
+> Pour commencer, choisissez **Manual** ou **Plan**. Passez à **Accept Edits** ou **Auto** quand vous savez comment Coscribe travaille.
 
-Quel que soit le mode, coscribe n’écrit que dans l’espace de travail et les autres dossiers que vous avez autorisés.
+Quel que soit le mode, Coscribe n’écrit que dans l’espace de travail et les autres dossiers que vous avez autorisés.
 
 ## Commandes et raccourcis {#commands-and-shortcuts}
 

@@ -1,9 +1,9 @@
 ---
 title: 예약 작업
-description: 아침 브리핑처럼 coscribe가 일정에 따라 작업하게 하고, 실행할 때마다 보고서를 읽습니다.
+description: 아침 브리핑처럼 Coscribe가 일정에 따라 작업하게 하고, 실행할 때마다 보고서를 읽습니다.
 ---
 
-예약 작업은 coscribe가 사용자 없이 하는 일입니다. 정해진 시각에, 매시간, 또는 사용자가 시작할 때 실행됩니다. 실행마다 별도의 대화가 되며, 보고서로 끝납니다.
+예약 작업은 Coscribe가 사용자 없이 하는 일입니다. 정해진 시각에, 매시간, 또는 사용자가 시작할 때 실행됩니다. 실행마다 별도의 대화가 되며, 보고서로 끝납니다.
 
 두 종류가 있습니다. **예약 작업**은 글로 쓴 지침을 따르므로 매번 모델이 각 단계를 정합니다. **워크플로**는 저장해 둔 고정 단계를 실행하며 실행 중에 확인합니다. [워크플로](workflows.md)를 참고하세요. 이 페이지는 둘의 공통점을 다룹니다.
 
@@ -11,11 +11,11 @@ description: 아침 브리핑처럼 coscribe가 일정에 따라 작업하게 �
 
 탐색 메뉴에서 **Scheduled**를 열고 **New task**를 누릅니다.
 
-- **Create with Coscribe**: 작업을 설명하거나 한 번 함께 해 보는 채팅을 시작합니다. 그러면 coscribe가 카드에 작업 초안을 만들고, **Review & save**를 누르면 저장하기 전에 무엇이든 고칠 수 있습니다.
+- **Create with Coscribe**: 작업을 설명하거나 한 번 함께 해 보는 채팅을 시작합니다. 그러면 Coscribe가 카드에 작업 초안을 만들고, **Review & save**를 누르면 저장하기 전에 무엇이든 고칠 수 있습니다.
 - **Set up manually**: 이름, 지침, 일정을 직접 쓰는 양식을 엽니다.
 - **Build a workflow**: 빈 워크플로를 시작합니다. [워크플로](workflows.md)를 참고하세요.
 
-채팅에서 작업을 마친 뒤 coscribe가 **Save this job?** 카드를 보여 줄 수도 있습니다. **Save as workflow**는 다시 실행하거나 예약할 수 있는 고정 단계로 만들고, **Save as skill**은 다음을 위한 지침으로 보관합니다([스킬](../customize/skills.md) 참고).
+채팅에서 작업을 마친 뒤 Coscribe가 **Save this job?** 카드를 보여 줄 수도 있습니다. **Save as workflow**는 다시 실행하거나 예약할 수 있는 고정 단계로 만들고, **Save as skill**은 다음을 위한 지침으로 보관합니다([스킬](../customize/skills.md) 참고).
 
 ## 실행 시점 정하기 {#choose-when-it-runs}
 
@@ -40,9 +40,9 @@ description: 아침 브리핑처럼 coscribe가 일정에 따라 작업하게 �
 
 ## 앱을 계속 실행하기 {#keep-the-app-running}
 
-coscribe 창을 닫아도 알림 영역에서 계속 실행되므로 작업도 계속 실행됩니다. 종료하려면 알림 영역 아이콘에서 **Quit**을 고르세요. **Settings** › **General**에서 **Keep running in the background**를 끄면 창을 닫을 때 coscribe가 종료되고 작업도 함께 멈춥니다.
+Coscribe 창을 닫아도 알림 영역에서 계속 실행되므로 작업도 계속 실행됩니다. 종료하려면 알림 영역 아이콘에서 **Quit**을 고르세요. **Settings** › **General**에서 **Keep running in the background**를 끄면 창을 닫을 때 Coscribe가 종료되고 작업도 함께 멈춥니다.
 
-coscribe가 닫혀 있는 동안 예정된 실행이 있었다면, 다시 시작할 때 한 번 실행됩니다.
+Coscribe가 닫혀 있는 동안 예정된 실행이 있었다면, 다시 시작할 때 한 번 실행됩니다.
 
 ## 실행 확인하기 {#follow-the-runs}
 

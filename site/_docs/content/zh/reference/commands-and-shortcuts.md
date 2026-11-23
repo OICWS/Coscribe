@@ -1,6 +1,6 @@
 ---
 title: 命令和快捷键
-description: 可以在输入框里输入的命令，以及 coscribe 的键盘快捷键。
+description: 可以在输入框里输入的命令，以及 Coscribe 的键盘快捷键。
 ---
 
 ## 命令 {#commands}
@@ -14,7 +14,7 @@ description: 可以在输入框里输入的命令，以及 coscribe 的键盘快
 | `/fork [名字]` | 把对话复制成一个新对话并打开。见[复制一个对话](../use/conversations.md#copy-a-conversation)。 |
 | `/init` | 浏览工作区，在根目录写入或更新 `OVERVIEW.md`。 |
 | `/create-skill <名字>` | 把这个对话变成可以重复使用的技能。见[技能和插件](../customize/skills.md)。 |
-| `/doctor` | 检查 coscribe 在这台电脑上需要的东西。见[排查问题](../help/troubleshooting.md)。 |
+| `/doctor` | 检查 Coscribe 在这台电脑上需要的东西。见[排查问题](../help/troubleshooting.md)。 |
 | `/<技能>` | 用这个技能处理你的请求。你的每个技能都以自己的名字出现在列表里。 |
 
 有几个命令不在列表里，因为有按钮能做同样的事，但直接输入也能用：

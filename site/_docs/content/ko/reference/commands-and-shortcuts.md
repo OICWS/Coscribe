@@ -1,6 +1,6 @@
 ---
 title: 명령과 단축키
-description: 메시지 상자에 입력할 수 있는 명령과 coscribe의 키보드 단축키.
+description: 메시지 상자에 입력할 수 있는 명령과 Coscribe의 키보드 단축키.
 ---
 
 ## 명령 {#commands}
@@ -14,7 +14,7 @@ description: 메시지 상자에 입력할 수 있는 명령과 coscribe의 키�
 | `/fork [name]` | 대화를 새 대화로 복사해 엽니다. [대화 복사하기](../use/conversations.md#copy-a-conversation)를 참고하세요. |
 | `/init` | 워크스페이스를 살펴보고 그 루트의 `OVERVIEW.md`를 쓰거나 새로 고칩니다. |
 | `/create-skill <name>` | 대화를 재사용할 수 있는 스킬로 만듭니다. [스킬과 플러그인](../customize/skills.md)을 참고하세요. |
-| `/doctor` | 이 컴퓨터에서 coscribe에 필요한 것을 확인합니다. [문제 해결](../help/troubleshooting.md)을 참고하세요. |
+| `/doctor` | 이 컴퓨터에서 Coscribe에 필요한 것을 확인합니다. [문제 해결](../help/troubleshooting.md)을 참고하세요. |
 | `/<skill>` | 그 스킬을 요청에 씁니다. 내 스킬은 각자의 이름으로 목록에 있습니다. |
 
 몇몇 명령은 같은 일을 하는 버튼이 있어서 목록에 없지만, 입력하면 동작합니다.

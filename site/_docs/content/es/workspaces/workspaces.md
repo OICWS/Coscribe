@@ -29,7 +29,7 @@ Lo que significa cada opción de **Sites**:
 
 ## Carpetas permitidas {#allowed-folders}
 
-Todas las carpetas que coscribe puede usar fuera de la carpeta principal de un espacio de trabajo se guardan en una sola lista, **Allowed folders**, en **Settings › Workspaces › Manage**. Cada carpeta tiene un nivel de acceso (**Read only**, **Read and write** o **Read, write and delete**). Un espacio de trabajo solo llega a las carpetas permitidas que elige en su página **Allowed folders**: **Use an allowed folder** elige una de la lista, y **Add new folder…** añade una nueva, que entra en la lista como lectura y escritura.
+Todas las carpetas que Coscribe puede usar fuera de la carpeta principal de un espacio de trabajo se guardan en una sola lista, **Allowed folders**, en **Settings › Workspaces › Manage**. Cada carpeta tiene un nivel de acceso (**Read only**, **Read and write** o **Read, write and delete**). Un espacio de trabajo solo llega a las carpetas permitidas que elige en su página **Allowed folders**: **Use an allowed folder** elige una de la lista, y **Add new folder…** añade una nueva, que entra en la lista como lectura y escritura.
 
 Quitar una carpeta de **Allowed folders** la quita de todos los espacios de trabajo. Una carpeta que ahora no se encuentra, como una unidad desconectada, queda marcada y se vuelve a usar cuando regresa.
 
@@ -37,4 +37,4 @@ Cuando una conversación necesita una carpeta a la que no llega, lo pide en una 
 
 ## Scripts y aislamiento {#scripts-and-isolation}
 
-En Windows, los scripts se ejecutan aislados: solo pueden usar las carpetas de la conversación, no pueden eliminar ni renombrar archivos en ellas y solo llegan a internet cuando el ajuste **Sites** del espacio de trabajo es **Any site**. coscribe comprueba una vez si el aislamiento funciona en tu ordenador. Si la comprobación falló, los scripts quedan desactivados; **Run scripts without isolation**, en la página **Scripts and commands**, los vuelve a activar para ese espacio de trabajo, con el riesgo que eso conlleva.
+En Windows, los scripts se ejecutan aislados: solo pueden usar las carpetas de la conversación, no pueden eliminar ni renombrar archivos en ellas y solo llegan a internet cuando el ajuste **Sites** del espacio de trabajo es **Any site**. Coscribe comprueba una vez si el aislamiento funciona en tu ordenador. Si la comprobación falló, los scripts quedan desactivados; **Run scripts without isolation**, en la página **Scripts and commands**, los vuelve a activar para ese espacio de trabajo, con el riesgo que eso conlleva.

@@ -9,10 +9,10 @@ Um fluxo de trabalho é uma tarefa feita de passos fixos. Ao contrário de uma t
 
 O jeito mais fácil é fazer o trabalho uma vez em um chat e depois criar um fluxo de trabalho a partir dele:
 
-- Escolha **Save as workflow** quando o coscribe oferecer **Save this job?**, ou no painel **Task details**.
+- Escolha **Save as workflow** quando o Coscribe oferecer **Save this job?**, ou no painel **Task details**.
 - Ou digite `/saveworkflow` na caixa de mensagem, seguido de um nome, se quiser.
 
-O coscribe rascunha os passos a partir da conversa. Revise-os e salve.
+O Coscribe rascunha os passos a partir da conversa. Revise-os e salve.
 
 Você também pode começar do zero: **Scheduled** › **New task** › **Build a workflow**. Dê um nome e um horário, salve e adicione os passos na página dele.
 
@@ -33,7 +33,7 @@ A página tem quatro abas:
 
 | Passo | O que faz |
 |---|---|
-| **Tool** | Usa uma das ferramentas do coscribe, sem envolver nenhum modelo. |
+| **Tool** | Usa uma das ferramentas do Coscribe, sem envolver nenhum modelo. |
 | **Script** | Executa um script Python fixo que você revisou. |
 | **Model** | Uma chamada ao modelo que precisa devolver campos definidos. |
 | **Agent** | Trabalha em direção a um objetivo com ferramentas, dentro dos limites que você define: as ferramentas que pode chamar, as pastas que pode alterar e os sites que pode abrir. |
@@ -61,7 +61,7 @@ Sites mudam e arquivos variam de uma execução para outra. A configuração **I
 | **Proactive** | Os passos de IA decidem como fazer a sua parte. Se um passo falhar, a IA pode acrescentar alguns passos; os que alteram algo esperam por você. |
 | **Autonomous** | A IA pode fazer a tarefa inteira do seu próprio jeito. |
 
-Quando uma execução contornou uma mudança, o coscribe pode sugerir passos atualizados para você revisar, para que a próxima execução não precise contornar.
+Quando uma execução contornou uma mudança, o Coscribe pode sugerir passos atualizados para você revisar, para que a próxima execução não precise contornar.
 
 ## Iniciar um fluxo de trabalho com um evento {#start-on-an-event}
 
@@ -69,7 +69,7 @@ Além dos horários que toda tarefa tem, a **Frequency** de um fluxo de trabalho
 
 - **Every few minutes**.
 - **When a file arrives in a folder**: escolha a **Folder to watch** e, se quiser, um **File name pattern**. Cada arquivo novo inicia uma execução, com o arquivo como entrada de arquivo do fluxo de trabalho. A opção exige um fluxo de trabalho que receba um arquivo.
-- **When something new shows up in a connector**: escolha um conector e o que perguntar a ele. O coscribe pergunta a cada poucos minutos, e cada item novo inicia uma execução. A primeira verificação considera como já visto o que já existe.
-- **When a program sends it an event**: outro programa no mesmo computador envia uma requisição para um endereço que o coscribe mostra, com uma chave. **Wait for a sample** guarda o próximo evento para você escolher quais campos dele preenchem as entradas. O endereço só aceita requisições do seu próprio computador.
+- **When something new shows up in a connector**: escolha um conector e o que perguntar a ele. O Coscribe pergunta a cada poucos minutos, e cada item novo inicia uma execução. A primeira verificação considera como já visto o que já existe.
+- **When a program sends it an event**: outro programa no mesmo computador envia uma requisição para um endereço que o Coscribe mostra, com uma chave. **Wait for a sample** guarda o próximo evento para você escolher quais campos dele preenchem as entradas. O endereço só aceita requisições do seu próprio computador.
 
-Um arquivo que chegou enquanto o coscribe estava fechado inicia uma execução quando o coscribe abre de novo.
+Um arquivo que chegou enquanto o Coscribe estava fechado inicia uma execução quando o Coscribe abre de novo.

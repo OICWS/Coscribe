@@ -1,16 +1,16 @@
 ---
 title: 内置浏览器
-description: 让 coscribe 在一个你看得见的浏览器里使用网站，你随时可以接手，并逐个网站控制权限。
+description: 让 Coscribe 在一个你看得见的浏览器里使用网站，你随时可以接手，并逐个网站控制权限。
 ---
 
-桌面应用有自己的浏览器，显示在 **Browser** 面板里。coscribe 当着你的面使用它：打开网页、填完整张表单、上传和下载文件、把表格（跨多页）存成 CSV、把网页存成 PDF。登录状态会保留，所以一个网站只需登录一次。
+桌面应用有自己的浏览器，显示在 **Browser** 面板里。Coscribe 当着你的面使用它：打开网页、填完整张表单、上传和下载文件、把表格（跨多页）存成 CSV、把网页存成 PDF。登录状态会保留，所以一个网站只需登录一次。
 
 > [!NOTE]
-> 浏览器是桌面应用的一部分。如果你在自己的网页浏览器里使用 coscribe，就没有 Browser 面板。
+> 浏览器是桌面应用的一部分。如果你在自己的网页浏览器里使用 Coscribe，就没有 Browser 面板。
 
 ## 允许一个网站 {#allow-a-site}
 
-coscribe 第一次要用某个网站时，Browser 面板会问你：
+Coscribe 第一次要用某个网站时，Browser 面板会问你：
 
 - **Allow for this chat** 允许在这个对话里使用这个网站。
 - **Always allow** 把这个网站加到工作区，之后使用时不再询问。
@@ -20,9 +20,9 @@ coscribe 第一次要用某个网站时，Browser 面板会问你：
 
 ## 接手 {#take-over}
 
-点 **Take over** 自己操作页面，coscribe 会等着。点 **Allow AI** 交还给它。
+点 **Take over** 自己操作页面，Coscribe 会等着。点 **Allow AI** 交还给它。
 
-网站要求输入密码、一次性验证码或人机验证时，coscribe 会停下来请你处理。它从不输入你没有给它的密码或验证码。
+网站要求输入密码、一次性验证码或人机验证时，Coscribe 会停下来请你处理。它从不输入你没有给它的密码或验证码。
 
 ## 指给它看 {#point-at-something}
 

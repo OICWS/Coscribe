@@ -9,10 +9,10 @@ description: 작업을 고정된 단계로 저장하고, 일정이나 이벤트�
 
 가장 쉬운 방법은 채팅에서 작업을 한 번 한 뒤 그것으로 워크플로를 만드는 것입니다.
 
-- coscribe가 **Save this job?** 카드를 보여 줄 때나 **Task details** 패널에서 **Save as workflow**를 고릅니다.
+- Coscribe가 **Save this job?** 카드를 보여 줄 때나 **Task details** 패널에서 **Save as workflow**를 고릅니다.
 - 또는 메시지 상자에 `/saveworkflow`를 입력합니다. 원하면 뒤에 이름을 붙입니다.
 
-coscribe가 대화에서 단계 초안을 만듭니다. 살펴본 뒤 저장하세요.
+Coscribe가 대화에서 단계 초안을 만듭니다. 살펴본 뒤 저장하세요.
 
 처음부터 시작할 수도 있습니다. **Scheduled** › **New task** › **Build a workflow**로 가서 이름과 일정을 정해 저장한 뒤, 워크플로 페이지에서 단계를 추가합니다.
 
@@ -33,7 +33,7 @@ coscribe가 대화에서 단계 초안을 만듭니다. 살펴본 뒤 저장하�
 
 | 단계 | 동작 |
 |---|---|
-| **Tool** | 모델 없이 coscribe 도구 하나를 씁니다. |
+| **Tool** | 모델 없이 Coscribe 도구 하나를 씁니다. |
 | **Script** | 검토를 마친 고정 Python 스크립트를 실행합니다. |
 | **Model** | 정해진 필드를 반환해야 하는 모델 호출 한 번. |
 | **Agent** | 정한 한도 안에서 도구로 목표를 향해 작업합니다. 호출할 수 있는 도구, 바꿀 수 있는 폴더, 열 수 있는 사이트를 정합니다. |
@@ -61,7 +61,7 @@ coscribe가 대화에서 단계 초안을 만듭니다. 살펴본 뒤 저장하�
 | **Proactive** | AI 단계가 자기 몫을 어떻게 할지 정합니다. 단계가 실패하면 AI가 단계 몇 개를 추가할 수 있으며, 무언가를 바꾸는 단계는 사용자를 기다립니다. |
 | **Autonomous** | AI가 작업 전체를 자기 방식으로 할 수 있습니다. |
 
-실행이 변화를 우회했다면 coscribe가 검토할 수 있도록 업데이트된 단계를 제안할 수 있어서, 다음 실행은 우회할 필요가 없습니다.
+실행이 변화를 우회했다면 Coscribe가 검토할 수 있도록 업데이트된 단계를 제안할 수 있어서, 다음 실행은 우회할 필요가 없습니다.
 
 ## 이벤트로 워크플로 시작하기 {#start-on-an-event}
 
@@ -69,7 +69,7 @@ coscribe가 대화에서 단계 초안을 만듭니다. 살펴본 뒤 저장하�
 
 - **Every few minutes**.
 - **When a file arrives in a folder**: **Folder to watch**와, 원하면 **File name pattern**을 고릅니다. 새 파일이 생길 때마다 그 파일을 워크플로의 파일 입력으로 하여 실행합니다. 파일을 입력으로 받는 워크플로에서만 고를 수 있습니다.
-- **When something new shows up in a connector**: 커넥터와 무엇을 물어볼지 고릅니다. coscribe가 몇 분마다 물어보고, 새 항목마다 실행을 시작합니다. 첫 확인 때는 이미 있는 것을 모두 본 것으로 처리합니다.
-- **When a program sends it an event**: 같은 컴퓨터의 다른 프로그램이 coscribe가 보여 주는 주소로 키와 함께 요청을 보냅니다. **Wait for a sample**은 다음 이벤트를 보관해 두어, 그 이벤트의 어떤 필드로 입력을 채울지 고를 수 있게 합니다. 이 주소는 내 컴퓨터에서 온 요청만 받습니다.
+- **When something new shows up in a connector**: 커넥터와 무엇을 물어볼지 고릅니다. Coscribe가 몇 분마다 물어보고, 새 항목마다 실행을 시작합니다. 첫 확인 때는 이미 있는 것을 모두 본 것으로 처리합니다.
+- **When a program sends it an event**: 같은 컴퓨터의 다른 프로그램이 Coscribe가 보여 주는 주소로 키와 함께 요청을 보냅니다. **Wait for a sample**은 다음 이벤트를 보관해 두어, 그 이벤트의 어떤 필드로 입력을 채울지 고를 수 있게 합니다. 이 주소는 내 컴퓨터에서 온 요청만 받습니다.
 
-coscribe가 닫혀 있는 동안 도착한 파일은 coscribe가 다시 시작할 때 실행을 시작합니다.
+Coscribe가 닫혀 있는 동안 도착한 파일은 Coscribe가 다시 시작할 때 실행을 시작합니다.

@@ -1,22 +1,22 @@
 ---
 title: Designsysteme
-description: Halten Sie Ihre Farben, Schriftarten, Abstände und Logos an einem Ort, damit Präsentationen von coscribe nach Ihnen aussehen.
+description: Halten Sie Ihre Farben, Schriftarten, Abstände und Logos an einem Ort, damit Präsentationen von Coscribe nach Ihnen aussehen.
 ---
 
-Ein Designsystem sind Ihre Farben, Schriftarten und Abstände, einmal festgehalten. Wenn coscribe damit eine Präsentation erstellt, folgt die Präsentation ihm. Die Präsentation erhält eine eigene Kopie, eine spätere Änderung des Designsystems ändert also keine fertige Präsentation.
+Ein Designsystem sind Ihre Farben, Schriftarten und Abstände, einmal festgehalten. Wenn Coscribe damit eine Präsentation erstellt, folgt die Präsentation ihm. Die Präsentation erhält eine eigene Kopie, eine spätere Änderung des Designsystems ändert also keine fertige Präsentation.
 
 ## Ein Designsystem erstellen {#make-a-design-system}
 
 Öffnen Sie **Settings** › **Design systems**:
 
-- **Describe it** öffnet eine Unterhaltung, in der Sie das Erscheinungsbild beschreiben oder coscribe eine Präsentation oder einen Markenleitfaden geben, aus dem es übernommen wird.
+- **Describe it** öffnet eine Unterhaltung, in der Sie das Erscheinungsbild beschreiben oder Coscribe eine Präsentation oder einen Markenleitfaden geben, aus dem es übernommen wird.
 - **New design system** beginnt ein leeres, das Sie selbst ausfüllen.
 
 ## Was es enthält {#what-it-holds}
 
 | Abschnitt | Was hineingehört |
 |---|---|
-| **Overview** | In Ihren eigenen Worten: für wen es ist und wie es wirken soll. coscribe liest das, wenn es etwas mit diesem System erstellt. |
+| **Overview** | In Ihren eigenen Worten: für wen es ist und wie es wirken soll. Coscribe liest das, wenn es etwas mit diesem System erstellt. |
 | **Colors** | Jede Farbe mit einem Namen für ihre Aufgabe, und wann sie zu verwenden ist. |
 | **Typography** | Die Schriftarten, eine pro Zeile, wie sie auf diesem Computer installiert sind, und benannte Textstile. Die erste Schriftart ist die Hauptschrift. |
 | **Spacing** | Benannte Abstände, in Pixeln auf einer 1920 Pixel breiten Folie. |

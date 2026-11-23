@@ -1,9 +1,9 @@
 ---
 title: Approbations et modes d’autorisation
-description: Choisissez ce que coscribe peut faire seul, et répondez aux cartes qu’il affiche quand il a besoin de vous.
+description: Choisissez ce que Coscribe peut faire seul, et répondez aux cartes qu’il affiche quand il a besoin de vous.
 ---
 
-coscribe ne fait rien hors de sa portée sans votre accord. La fréquence de ses questions dépend du mode d’autorisation de la conversation ; ce qu’il peut atteindre dépend de l’[espace de travail](../workspaces/workspaces.md).
+Coscribe ne fait rien hors de sa portée sans votre accord. La fréquence de ses questions dépend du mode d’autorisation de la conversation ; ce qu’il peut atteindre dépend de l’[espace de travail](../workspaces/workspaces.md).
 
 ## Les quatre modes {#the-four-modes}
 
@@ -20,11 +20,11 @@ Si vous changez de mode pendant une réponse, le nouveau mode s’applique à la
 
 ## Approuver une action {#approve-an-action}
 
-Quand coscribe a besoin de votre approbation, une carte dans la conversation nomme l’action, par exemple « Run a command », et montre ce qu’elle fera : le fichier qu’elle écrira, le script ou la commande. Lisez-la, puis choisissez :
+Quand Coscribe a besoin de votre approbation, une carte dans la conversation nomme l’action, par exemple « Run a command », et montre ce qu’elle fera : le fichier qu’elle écrira, le script ou la commande. Lisez-la, puis choisissez :
 
 - **Approve** autorise cette action-là.
 - **Allow for this task** (affiché pour les commandes et modifications du module de code) autorise le même type d’action pour le reste de la tâche sans redemander.
-- **Deny** la refuse. Pour expliquer pourquoi, tapez plutôt votre raison dans la zone de message ; coscribe la lit et s’adapte.
+- **Deny** la refuse. Pour expliquer pourquoi, tapez plutôt votre raison dans la zone de message ; Coscribe la lit et s’adapte.
 
 Si la carte est sortie de l’écran, un avis au-dessus de la zone de message indique que quelque chose attend ; **Show** vous y ramène.
 
@@ -33,19 +33,19 @@ Si la carte est sortie de l’écran, un avis au-dessus de la zone de message in
 
 ## Donner accès à un autre dossier {#give-access-to-another-folder}
 
-Quand coscribe a besoin d’un dossier hors de l’espace de travail et des dossiers que vous avez autorisés, il le demande sur une carte. Choisissez l’accès (**Read only**, **Read and write** ou **Read, write and delete**), puis :
+Quand Coscribe a besoin d’un dossier hors de l’espace de travail et des dossiers que vous avez autorisés, il le demande sur une carte. Choisissez l’accès (**Read only**, **Read and write** ou **Read, write and delete**), puis :
 
 - **Allow** ajoute définitivement le dossier à vos dossiers autorisés.
 - **Only this chat** l’autorise pour cette conversation uniquement.
 - **Save in my workspace instead** (quand il voulait écrire) garde le fichier dans l’espace de travail.
 - **Don't allow** refuse.
 
-coscribe ne propose jamais un lecteur entier ni votre dossier personnel.
+Coscribe ne propose jamais un lecteur entier ni votre dossier personnel.
 
 ## Installer un paquet pour un script {#install-a-package-for-a-script}
 
-Un script peut avoir besoin d’une bibliothèque Python ou Node.js que coscribe n’a pas encore. La carte **Install a Python package** (ou Node.js) la nomme et explique pourquoi. **Install** l’installe dans l’environnement propre à coscribe, que le reste de votre ordinateur n’utilise pas ; **Not now** refuse pour cette conversation. Si l’installation échoue, **Details** affiche la sortie de l’installateur.
+Un script peut avoir besoin d’une bibliothèque Python ou Node.js que Coscribe n’a pas encore. La carte **Install a Python package** (ou Node.js) la nomme et explique pourquoi. **Install** l’installe dans l’environnement propre à Coscribe, que le reste de votre ordinateur n’utilise pas ; **Not now** refuse pour cette conversation. Si l’installation échoue, **Details** affiche la sortie de l’installateur.
 
 ## Répondre à une question {#answer-a-question}
 
-Parfois, coscribe vous demande de choisir, par exemple entre deux mises en page. Choisissez une option sur la carte ou tapez votre propre réponse dans la zone de message.
+Parfois, Coscribe vous demande de choisir, par exemple entre deux mises en page. Choisissez une option sur la carte ou tapez votre propre réponse dans la zone de message.

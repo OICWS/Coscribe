@@ -1,9 +1,9 @@
 ---
 title: Geplante Aufgaben
-description: Lassen Sie coscribe eine Arbeit nach Zeitplan erledigen, etwa ein Morgenbriefing, und lesen Sie den Bericht jedes Laufs.
+description: Lassen Sie Coscribe eine Arbeit nach Zeitplan erledigen, etwa ein Morgenbriefing, und lesen Sie den Bericht jedes Laufs.
 ---
 
-Eine geplante Aufgabe ist eine Arbeit, die coscribe ohne Sie erledigt: zu einer festen Zeit, jede Stunde oder wenn Sie sie starten. Jeder Lauf ist eine eigene Unterhaltung und endet mit einem Bericht.
+Eine geplante Aufgabe ist eine Arbeit, die Coscribe ohne Sie erledigt: zu einer festen Zeit, jede Stunde oder wenn Sie sie starten. Jeder Lauf ist eine eigene Unterhaltung und endet mit einem Bericht.
 
 Es gibt zwei Arten. Eine **geplante Aufgabe** folgt schriftlichen Anweisungen, das Modell entscheidet also jedes Mal jeden Schritt. Ein **Workflow** führt feste Schritte aus, die Sie gespeichert haben, und prüft sie während des Laufs; siehe [Workflows](workflows.md). Diese Seite behandelt, was beide gemeinsam haben.
 
@@ -11,11 +11,11 @@ Es gibt zwei Arten. Eine **geplante Aufgabe** folgt schriftlichen Anweisungen, d
 
 Öffnen Sie **Scheduled** in der Navigation und dann **New task**:
 
-- **Create with Coscribe** startet einen Chat, in dem Sie die Arbeit beschreiben oder einmal durchgehen. coscribe entwirft die Aufgabe dann in einer Karte; **Review & save** öffnet sie, damit Sie vor dem Speichern alles ändern können.
+- **Create with Coscribe** startet einen Chat, in dem Sie die Arbeit beschreiben oder einmal durchgehen. Coscribe entwirft die Aufgabe dann in einer Karte; **Review & save** öffnet sie, damit Sie vor dem Speichern alles ändern können.
 - **Set up manually** öffnet das Formular, in dem Sie Name, Anweisungen und Zeitplan selbst eintragen.
 - **Build a workflow** startet einen leeren Workflow. Siehe [Workflows](workflows.md).
 
-Nach einer Arbeit in einem Chat bietet coscribe möglicherweise auch **Save this job?** an. **Save as workflow** macht daraus feste Schritte, die Sie erneut ausführen oder planen können; **Save as skill** behält sie als Anweisungen für das nächste Mal (siehe [Skills](../customize/skills.md)).
+Nach einer Arbeit in einem Chat bietet Coscribe möglicherweise auch **Save this job?** an. **Save as workflow** macht daraus feste Schritte, die Sie erneut ausführen oder planen können; **Save as skill** behält sie als Anweisungen für das nächste Mal (siehe [Skills](../customize/skills.md)).
 
 ## Festlegen, wann sie läuft {#choose-when-it-runs}
 
@@ -40,9 +40,9 @@ Niemand beobachtet einen Lauf, daher legt eine Aufgabe ihre eigenen **Permission
 
 ## Die App laufen lassen {#keep-the-app-running}
 
-Wenn Sie das coscribe-Fenster schließen, läuft es im Infobereich der Taskleiste weiter, und Aufgaben laufen weiterhin. Zum Beenden wählen Sie **Quit** am Symbol im Infobereich. Schalten Sie **Keep running in the background** unter **Settings** › **General** aus, beendet das Schließen des Fensters coscribe, und die Aufgaben stoppen mit.
+Wenn Sie das Coscribe-Fenster schließen, läuft es im Infobereich der Taskleiste weiter, und Aufgaben laufen weiterhin. Zum Beenden wählen Sie **Quit** am Symbol im Infobereich. Schalten Sie **Keep running in the background** unter **Settings** › **General** aus, beendet das Schließen des Fensters Coscribe, und die Aufgaben stoppen mit.
 
-War ein Lauf fällig, während coscribe geschlossen war, läuft er einmal, wenn coscribe wieder startet.
+War ein Lauf fällig, während Coscribe geschlossen war, läuft er einmal, wenn Coscribe wieder startet.
 
 ## Die Läufe verfolgen {#follow-the-runs}
 
@@ -52,7 +52,7 @@ Die Seite einer Aufgabe zeigt, wann sie als Nächstes läuft, ihre letzten Läuf
 - Der Schalter neben dem Status pausiert die Aufgabe oder setzt sie fort.
 - Der Stift benennt die Aufgabe um oder ändert, wann sie läuft.
 
-**Notifications** unter **Settings** › **General** legt fest, ob coscribe Sie nach jedem Lauf benachrichtigt oder nur bei Problemen: einem fehlgeschlagenen Lauf oder einem, der auf Sie wartet. Ein Klick auf eine Benachrichtigung öffnet den Lauf.
+**Notifications** unter **Settings** › **General** legt fest, ob Coscribe Sie nach jedem Lauf benachrichtigt oder nur bei Problemen: einem fehlgeschlagenen Lauf oder einem, der auf Sie wartet. Ein Klick auf eine Benachrichtigung öffnet den Lauf.
 
 ## Gedächtnis zwischen Läufen {#remember-between-runs}
 

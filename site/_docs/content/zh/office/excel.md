@@ -1,9 +1,9 @@
 ---
 title: Excel 工作簿
-description: 让 coscribe 读取、清理、汇总和核对表格，并做出带公式和图表的工作簿。
+description: 让 Coscribe 读取、清理、汇总和核对表格，并做出带公式和图表的工作簿。
 ---
 
-coscribe 逐个工作表读取 `.xlsx` 文件，写出的是真正的工作簿：单元格、样式、公式和原生 Excel 图表。
+Coscribe 逐个工作表读取 `.xlsx` 文件，写出的是真正的工作簿：单元格、样式、公式和原生 Excel 图表。
 
 ## 可以让它做什么 {#what-to-ask-for}
 
@@ -16,11 +16,11 @@ coscribe 逐个工作表读取 `.xlsx` 文件，写出的是真正的工作簿�
 
 ## 公式就是公式 {#formulas-stay-formulas}
 
-一个值依赖其他单元格时，coscribe 会写成 Excel 公式，这样你改了数字，工作簿依然能算对。它还会计算公式并把结果存进文件，所以在打开时不重新计算的程序里也能看到数值。
+一个值依赖其他单元格时，Coscribe 会写成 Excel 公式，这样你改了数字，工作簿依然能算对。它还会计算公式并把结果存进文件，所以在打开时不重新计算的程序里也能看到数值。
 
 ## 大型或特殊的任务 {#large-or-unusual-jobs}
 
-内置工具做不到的事，coscribe 可以写一个 Python 脚本（比如用 `pandas` 和 `openpyxl`），经你批准后运行。见[审批和权限模式](../use/approvals.md)。
+内置工具做不到的事，Coscribe 可以写一个 Python 脚本（比如用 `pandas` 和 `openpyxl`），经你批准后运行。见[审批和权限模式](../use/approvals.md)。
 
 > [!TIP]
-> 想让 coscribe 遵守团队的惯例，比如输入和输出用什么颜色、数字用什么格式？把它们写进你的[指令](../customize/instructions.md)或一个[技能](../customize/skills.md)。
+> 想让 Coscribe 遵守团队的惯例，比如输入和输出用什么颜色、数字用什么格式？把它们写进你的[指令](../customize/instructions.md)或一个[技能](../customize/skills.md)。

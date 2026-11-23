@@ -3,7 +3,7 @@ title: Ajouter un fournisseur de modèles
 description: Saisissez la clé API d’un service de modèles et choisissez les modèles à utiliser.
 ---
 
-coscribe n’a pas de modèle à lui. Pour réfléchir et écrire, il fait appel au service de modèles que vous choisissez ; avant de commencer, ajoutez donc au moins un **fournisseur** (provider) et saisissez la clé API obtenue auprès de ce service.
+Coscribe n’a pas de modèle à lui. Pour réfléchir et écrire, il fait appel au service de modèles que vous choisissez ; avant de commencer, ajoutez donc au moins un **fournisseur** (provider) et saisissez la clé API obtenue auprès de ce service.
 
 ## Ajouter un fournisseur {#add-a-provider}
 

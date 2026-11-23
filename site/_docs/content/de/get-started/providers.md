@@ -3,7 +3,7 @@ title: Einen Modellanbieter hinzufügen
 description: Geben Sie einen API-Schlüssel für einen Modelldienst ein und wählen Sie die Modelle, die Sie nutzen möchten.
 ---
 
-coscribe hat kein eigenes Modell. Zum Denken und Schreiben ruft es den Modelldienst auf, den Sie wählen. Fügen Sie daher vor dem Start mindestens einen **Anbieter** (Provider) hinzu und geben Sie den API-Schlüssel ein, den Sie von diesem Dienst erhalten haben.
+Coscribe hat kein eigenes Modell. Zum Denken und Schreiben ruft es den Modelldienst auf, den Sie wählen. Fügen Sie daher vor dem Start mindestens einen **Anbieter** (Provider) hinzu und geben Sie den API-Schlüssel ein, den Sie von diesem Dienst erhalten haben.
 
 ## Einen Anbieter hinzufügen {#add-a-provider}
 

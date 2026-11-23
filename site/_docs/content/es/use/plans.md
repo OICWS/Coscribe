@@ -3,18 +3,18 @@ title: Planes y listas de tareas
 description: Revisa un plan antes de que empiece un trabajo grande, cambia sus pasos y sigue el progreso en la lista de tareas.
 ---
 
-Para un trabajo con muchos pasos o archivos, o uno difícil de deshacer, coscribe escribe primero un plan y te espera. En el modo **Plan** lo hace antes de cualquier cambio.
+Para un trabajo con muchos pasos o archivos, o uno difícil de deshacer, Coscribe escribe primero un plan y te espera. En el modo **Plan** lo hace antes de cualquier cambio.
 
 ## Revisar un plan {#review-a-plan}
 
-El plan llega como una tarjeta en la conversación y se abre en el panel **Plan** al lado. El panel muestra el plan y, debajo, los pasos que coscribe piensa dar. Mientras el plan espera, puedes editar los pasos ahí:
+El plan llega como una tarjeta en la conversación y se abre en el panel **Plan** al lado. El panel muestra el plan y, debajo, los pasos que Coscribe piensa dar. Mientras el plan espera, puedes editar los pasos ahí:
 
 - Desmarca un paso para omitirlo.
 - Haz clic en un paso para reescribirlo.
 - Mueve un paso arriba o abajo, o elimínalo.
 - Añade un paso; <kbd>Enter</kbd> en el último paso añade el siguiente.
 
-La tarjeta indica que cambiaste la lista, y coscribe ejecuta tu versión.
+La tarjeta indica que cambiaste la lista, y Coscribe ejecuta tu versión.
 
 ## Responder al plan {#answer-the-plan}
 

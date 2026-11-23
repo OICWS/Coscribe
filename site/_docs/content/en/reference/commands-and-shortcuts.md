@@ -1,6 +1,6 @@
 ---
 title: Commands and shortcuts
-description: The commands you can type in the message box, and coscribe's keyboard shortcuts.
+description: The commands you can type in the message box, and Coscribe's keyboard shortcuts.
 ---
 
 ## Commands
@@ -14,7 +14,7 @@ Type <kbd>/</kbd> in the message box for the list of commands; type more to filt
 | `/fork [name]` | Copies the conversation into a new one and opens it. See [Copy a conversation](../use/conversations.md#copy-a-conversation). |
 | `/init` | Explores the workspace and writes or refreshes `OVERVIEW.md` at its root. |
 | `/create-skill <name>` | Turns the conversation into a reusable skill. See [Skills and plugins](../customize/skills.md). |
-| `/doctor` | Checks what coscribe needs on this computer. See [Troubleshooting](../help/troubleshooting.md). |
+| `/doctor` | Checks what Coscribe needs on this computer. See [Troubleshooting](../help/troubleshooting.md). |
 | `/<skill>` | Uses that skill for your request. Each of your skills is in the list under its name. |
 
 A few commands aren't in the list because a button does the same, but they work when typed:
