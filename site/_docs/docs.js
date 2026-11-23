@@ -120,12 +120,17 @@
       if (!hits.length) {
         box.innerHTML = '<div class="empty">没有找到“' + escape(q.value.trim()) + '”。换个说法试试，比如功能在程序里的名字。</div>';
       } else {
-        box.innerHTML = hits.map(function (r) {
-          return '<a role="option" href="' + root + r.p.u + '">' +
+        // The link is set as a property, not spliced into markup; only escaped text goes through innerHTML.
+        box.replaceChildren.apply(box, hits.map(function (r) {
+          var a = document.createElement("a");
+          a.setAttribute("role", "option");
+          a.href = root + r.p.u;
+          a.innerHTML =
             (r.p.g ? '<div class="r-g">' + escape(r.p.g) + "</div>" : "") +
             '<div class="r-t">' + mark(r.p.t, terms) + "</div>" +
-            '<div class="r-x">' + mark(snippet(r.p.x, terms), terms) + "</div></a>";
-        }).join("");
+            '<div class="r-x">' + mark(snippet(r.p.x, terms), terms) + "</div>";
+          return a;
+        }));
       }
       box.hidden = false;
     });
