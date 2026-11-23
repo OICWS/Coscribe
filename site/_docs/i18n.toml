@@ -346,7 +346,70 @@ description = "隐私和安全，以及出问题时怎么办。"
 [ru]
 name = "Русский"
 html_lang = "ru"
-published = false
+published = true
+docs = "Документация"
+docs_title = "Документация coscribe"
+home = "Главная coscribe"
+skip = "Перейти к содержимому"
+search = "Поиск по документации"
+search_empty = "По запросу «{q}» ничего не найдено. Попробуйте другие слова, например название, которое показывает приложение."
+theme = "Переключить тёмную тему"
+language = "Язык"
+coming_soon = "Скоро"
+toggle_sidebar = "Показать или скрыть оглавление"
+crumbs = "Вы здесь"
+sidebar = "Оглавление документации"
+toc = "В этой статье"
+prev = "Назад"
+next = "Далее"
+pager = "Страницы"
+copy_md = "Копировать Markdown"
+copy_md_hint = "Чтобы вставить в любой ИИ или отправить коллеге"
+copy_failed = "Не удалось скопировать; используйте «Открыть как Markdown»"
+md_more = "Другие варианты Markdown"
+view_md = "Открыть как Markdown"
+view_md_hint = "Откроется в новой вкладке"
+anchor = "Ссылка на этот раздел"
+edit = "Изменить эту страницу на GitHub"
+report = "Нашли ошибку? Сообщите нам"
+untranslated = "Эта страница ещё не переведена на язык «{lang}», поэтому показана на английском."
+llms_summary = "coscribe — офисный помощник с открытым исходным кодом, который работает на вашем ПК с Windows."
+note = "Примечание"
+tip = "Совет"
+important = "Важно"
+warning = "Предупреждение"
+
+[ru.groups.get-started]
+title = "Начало работы"
+description = "Скачайте coscribe, подключите модель и начните первый разговор."
+
+[ru.groups.use]
+title = "Работа с coscribe"
+description = "Работа в разговоре: подтверждения, планы, файлы, браузер и модели."
+
+[ru.groups.workspaces]
+title = "Рабочие пространства"
+description = "Выберите папки, в которых работает coscribe, и что папка может ему сообщить."
+
+[ru.groups.office]
+title = "Файлы Office"
+description = "Word, Excel, PowerPoint, PDF, а также документы, дизайны и дашборды, которые открываются рядом с разговором."
+
+[ru.groups.workflows]
+title = "Запланированные задачи и рабочие процессы"
+description = "Пусть coscribe делает работу сам — по расписанию или когда что-то происходит."
+
+[ru.groups.customize]
+title = "Настройка"
+description = "Инструкции, навыки, коннекторы и дизайн-системы."
+
+[ru.groups.reference]
+title = "Справочник"
+description = "Все настройки, команды и сочетания клавиш."
+
+[ru.groups.help]
+title = "Помощь"
+description = "Конфиденциальность и безопасность, и что делать, если что-то не так."
 
 [fr]
 name = "Français"
