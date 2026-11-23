@@ -74,7 +74,70 @@ description = "Privacy and safety, and what to do when something goes wrong."
 [es]
 name = "Español"
 html_lang = "es"
-published = false
+published = true
+docs = "Documentación"
+docs_title = "Documentación de coscribe"
+home = "Inicio de coscribe"
+skip = "Ir al contenido"
+search = "Buscar en la documentación"
+search_empty = "No se encontró nada para «{q}». Prueba con otras palabras, como el nombre que muestra la aplicación."
+theme = "Cambiar el modo oscuro"
+language = "Idioma"
+coming_soon = "Próximamente"
+toggle_sidebar = "Mostrar u ocultar el índice"
+crumbs = "Ruta de navegación"
+sidebar = "Índice de la documentación"
+toc = "En este artículo"
+prev = "Anterior"
+next = "Siguiente"
+pager = "Páginas"
+copy_md = "Copiar Markdown"
+copy_md_hint = "Para cualquier IA o un compañero"
+copy_failed = "No se pudo copiar; usa «Ver como Markdown»"
+md_more = "Más opciones de Markdown"
+view_md = "Ver como Markdown"
+view_md_hint = "Abre la página en otra pestaña"
+anchor = "Enlace a esta sección"
+edit = "Editar esta página en GitHub"
+report = "¿Algo está mal? Avísanos"
+untranslated = "Esta página aún no tiene versión en {lang}, así que se muestra en inglés."
+llms_summary = "coscribe es un asistente de oficina de código abierto que funciona en tu PC con Windows."
+note = "Nota"
+tip = "Consejo"
+important = "Importante"
+warning = "Advertencia"
+
+[es.groups.get-started]
+title = "Primeros pasos"
+description = "Descarga coscribe, conecta un modelo y empieza tu primera conversación."
+
+[es.groups.use]
+title = "Usar coscribe"
+description = "Trabaja en una conversación: aprobaciones, planes, archivos, el navegador y los modelos."
+
+[es.groups.workspaces]
+title = "Espacios de trabajo"
+description = "Elige las carpetas en las que trabaja coscribe y lo que una carpeta puede indicarle."
+
+[es.groups.office]
+title = "Archivos de Office"
+description = "Word, Excel, PowerPoint, PDF y los Docs, diseños y paneles junto a la conversación."
+
+[es.groups.workflows]
+title = "Tareas programadas y flujos de trabajo"
+description = "Haz que coscribe haga un trabajo por su cuenta, con un horario o cuando ocurre algo."
+
+[es.groups.customize]
+title = "Personalizar"
+description = "Instrucciones, habilidades, conectores y sistemas de diseño."
+
+[es.groups.reference]
+title = "Referencia"
+description = "Cada ajuste, comando y atajo de teclado."
+
+[es.groups.help]
+title = "Ayuda"
+description = "Privacidad y seguridad, y qué hacer cuando algo falla."
 
 [ja]
 name = "日本語"
