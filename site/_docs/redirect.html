@@ -11,23 +11,27 @@
      language, then the browser's; English when none of them is published. */
   (function () {
     var choices = {{choices}};
+    var codes = Object.keys(choices);
+    /* The target is always one of the published codes, never the stored or typed text itself. */
+    function known(code) { var i = codes.indexOf(code); return i < 0 ? null : codes[i]; }
     var pick = null;
     try {
-      pick = localStorage.getItem("coscribe-docs-lang");
+      pick = known(localStorage.getItem("coscribe-docs-lang"));
       if (!pick) { var site = localStorage.getItem("coscribe-lang"); if (site) pick = site === "zh-CN" ? "zh" : "en"; }
     } catch (e) {}
-    if (!choices[pick]) {
-      pick = null;
+    if (!pick) {
       (navigator.languages || [navigator.language || ""]).some(function (l) {
         l = String(l).toLowerCase();
-        for (var code in choices) {
+        return codes.some(function (code) {
           var tag = choices[code].toLowerCase();
           if (l === tag || l.split("-")[0] === tag.split("-")[0]) { pick = code; return true; }
-        }
-        return false;
+          return false;
+        });
       });
     }
-    location.replace((pick || "en") + "/" + location.hash);
+    var target = new URL((pick || "en") + "/", location.href);
+    target.hash = location.hash;
+    location.replace(target.href);
   })();
 </script>
 </head>
