@@ -1,4 +1,4 @@
-# User docs on the website: the frame and the Get started pages (partly shipped)
+# User docs on the website: the frame and every page in English and Chinese (partly shipped)
 
 Why: the maintainer found the app hard going for office users as it grows, and asked for a docs
 site next to the existing promo page, laid out like GitHub Docs.
@@ -17,8 +17,13 @@ site next to the existing promo page, laid out like GitHub Docs.
   languages (English and Chinese published, the other seven marked as coming), a page a
   language lacks shown in English with a notice, and `docs/` opening the reader's language
   (the one picked before, the promo page's, then the browser's).
-- Four pages in English and Chinese under Get started: what coscribe is, download and first start, providers, the
-  first conversation (including the four permission modes).
+- 27 pages in English and Chinese, in eight groups: Get started; Use coscribe (conversations,
+  approvals, plans, files and panels, the browser, models and effort); Workspaces; Office files
+  (Word, Excel, PowerPoint, PDF, artifacts); Scheduled tasks and workflows; Customize
+  (instructions, skills and plugins, connectors, design systems); Reference (every setting,
+  commands and shortcuts); Help (privacy and safety, troubleshooting with `/doctor`). Each label
+  and behaviour was read from the frontend or the server, not from memory. Every heading has the
+  same id in both languages, so a link to a section works from either.
 - The promo page links to the docs from its top bar and footer. Its Download button pointed at
   `releases/latest`, which skips pre-releases, and every release so far is one, so it led to a
   404; it now opens the `beta` release.
@@ -28,8 +33,6 @@ site next to the existing promo page, laid out like GitHub Docs.
   looked at in Chromium on Linux, light, dark and at phone width.
 
 ## Follow-ups
-- The rest of the outline: daily use, Office files, workflows, workspaces, models, customizing,
-  the settings reference, privacy, troubleshooting.
 - Spanish, Japanese, Portuguese (Brazil), Russian, French, Korean and German.
 - The promo page's Settings mock still shows the old categories (Tools, Environment), and newer
   features are not on it.

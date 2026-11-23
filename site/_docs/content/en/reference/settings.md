@@ -28,7 +28,7 @@ Open settings with the gear at the top right, or <kbd>Ctrl</kbd> + <kbd>,</kbd> 
 
 ## Workspaces
 
-The list of your [workspaces](../workspaces/workspaces.md): **New** adds one, and each one's menu edits or deletes it. **Allowed folders** lists other folders every conversation may use.
+The list of your [workspaces](../workspaces/workspaces.md): **New** adds one, and each one's **⋯** menu edits or deletes it. **Allowed folders** is the one list of folders outside a workspace's main folder, each with its access; a workspace reaches only the ones it picks. See [Allowed folders](../workspaces/workspaces.md#allowed-folders).
 
 ## Providers
 
