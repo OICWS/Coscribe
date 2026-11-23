@@ -3,7 +3,7 @@ import { getSkillFileContent, getSkillFiles, getTools } from "../../../lib/rest"
 import type { SkillInfo } from "../../../types/settings";
 import { ArrowLeftIcon } from "../../icons";
 import { ToggleSwitch } from "../../ToggleSwitch";
-import { SOURCE_BYLINE, PREVIEWABLE, extension, shortDate, buildFileTree } from "./helpers";
+import { SOURCE_BYLINE, PREVIEWABLE, extension, shortDate, buildFileTree, tabClass } from "./helpers";
 import { SkillBadge } from "./badges";
 import { SkillMenu } from "./SkillMenu";
 import { FileTreeView } from "./FileTree";
@@ -11,11 +11,13 @@ import { FileViewer } from "./FileViewer";
 
 export function SkillDetailView({
   skill,
+  backLabel,
   onBack,
   onToggle,
   onRemove,
 }: {
   skill: SkillInfo;
+  backLabel: string;
   onBack: () => void;
   onToggle: () => void;
   onRemove: () => void;
@@ -58,26 +60,24 @@ export function SkillDetailView({
   }, [tab, files, skill.name]);
 
   const tree = useMemo(() => buildFileTree(files ?? []), [files]);
-  const tabClass = (active: boolean) =>
-    `-mb-px border-b-2 px-4 py-2.5 text-[15px] ${
-      active ? "border-[var(--fg)] text-[var(--fg)]" : "border-transparent text-[var(--muted)] hover:text-[var(--fg)]"
-    }`;
+  const removable = skill.source !== "builtin" && !skill.plugin;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5">
       <button type="button" className="flex w-fit items-center gap-2 text-[15px] text-[var(--fg)] hover:opacity-70" onClick={onBack}>
-        <ArrowLeftIcon className="h-4 w-4" /> Your skills
+        <ArrowLeftIcon className="h-4 w-4" /> {backLabel}
       </button>
       <div className="flex items-center gap-4">
         <SkillBadge large />
         <div className="min-w-0 flex-1">
           <div className="truncate text-lg font-semibold">{skill.name}</div>
           <div className="text-sm text-[var(--muted)]">
-            {SOURCE_BYLINE[skill.source].replace(/^./, (c) => c.toUpperCase())} &middot; updated {shortDate(skill.updated)}
+            {skill.plugin ? `Part of ${skill.plugin}` : SOURCE_BYLINE[skill.source].replace(/^./, (c) => c.toUpperCase())} &middot; updated{" "}
+            {shortDate(skill.updated)}
           </div>
         </div>
         <ToggleSwitch on={skill.enabled} onClick={onToggle} label={skill.enabled ? "Turn off" : "Turn on"} />
-        {skill.source !== "builtin" && <SkillMenu skill={skill} onToggle={onToggle} onRemove={onRemove} />}
+        {removable && <SkillMenu label={skill.name} enabled={skill.enabled} removable onToggle={onToggle} onRemove={onRemove} />}
       </div>
       <div className="flex border-b border-[var(--border)]">
         <button type="button" className={tabClass(tab === "overview")} onClick={() => setTab("overview")}>

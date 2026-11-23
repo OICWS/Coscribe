@@ -1,4 +1,4 @@
-import type { SkillInfo } from "../../../types/settings";
+import type { InstalledPluginInfo, SkillInfo } from "../../../types/settings";
 
 export const SOURCE_BYLINE: Record<SkillInfo["source"], string> = {
   custom: "by you",
@@ -25,6 +25,12 @@ export function shortDate(iso: string): string {
   const date = new Date(iso);
   const sameYear = date.getFullYear() === new Date().getFullYear();
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+}
+
+export function tabClass(active: boolean): string {
+  return `-mb-px border-b-2 px-4 py-2.5 text-[15px] ${
+    active ? "border-[var(--fg)] text-[var(--fg)]" : "border-transparent text-[var(--muted)] hover:text-[var(--fg)]"
+  }`;
 }
 
 export function matches(query: string, ...texts: string[]): boolean {
@@ -60,18 +66,34 @@ export function withoutFrontmatter(text: string): string {
   return text.replace(/^---\n[\s\S]*?\n---\n?/, "");
 }
 
-const CONNECTOR_TITLES: Record<string, string> = {
-  hubspot: "HubSpot",
-  bigquery: "BigQuery",
-  docusign: "DocuSign",
-  zoominfo: "ZoomInfo",
-  "otter-ai": "Otter.ai",
-  "microsoft-365": "Microsoft 365",
-  "amplitude-eu": "Amplitude (EU)",
-  gmail: "Gmail",
-  similarweb: "Similarweb",
-};
+/** One row of Your plugins: a skill on its own, or a plugin standing for all its skills. */
+export type ListEntry =
+  | { kind: "skill"; skill: SkillInfo }
+  | { kind: "plugin"; info: InstalledPluginInfo; skills: SkillInfo[]; source: SkillInfo["source"]; enabled: boolean; updated: string };
 
-export function connectorTitle(name: string): string {
-  return CONNECTOR_TITLES[name] ?? name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+export function listEntries(skills: SkillInfo[]): ListEntry[] {
+  const entries: ListEntry[] = [];
+  const plugins = new Map<string, Extract<ListEntry, { kind: "plugin" }>>();
+  for (const skill of skills) {
+    if (!skill.plugin_info) {
+      entries.push({ kind: "skill", skill });
+      continue;
+    }
+    let entry = plugins.get(skill.plugin_info.name);
+    if (!entry) {
+      entry = { kind: "plugin", info: skill.plugin_info, skills: [], source: skill.source, enabled: false, updated: skill.updated };
+      plugins.set(skill.plugin_info.name, entry);
+      entries.push(entry);
+    }
+    entry.skills.push(skill);
+    // On while any of its skills is; the newest skill dates it.
+    entry.enabled ||= skill.enabled;
+    if (skill.updated > entry.updated) entry.updated = skill.updated;
+  }
+  return entries;
+}
+
+export function entryMatches(query: string, entry: ListEntry): boolean {
+  if (entry.kind === "skill") return matches(query, entry.skill.name, entry.skill.description);
+  return matches(query, entry.info.name, entry.info.description, ...entry.skills.map((s) => s.name));
 }

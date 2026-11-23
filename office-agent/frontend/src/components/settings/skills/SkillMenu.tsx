@@ -1,15 +1,18 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "../../../lib/useClickOutside";
-import type { SkillInfo } from "../../../types/settings";
 import { MoreIcon } from "../../icons";
 
-/** "Off"/"On" and, unless it ships with coscribe, Remove. */
+/** "Off"/"On" for a skill or a plugin and, unless it ships with coscribe, Remove. */
 export function SkillMenu({
-  skill,
+  label,
+  enabled,
+  removable,
   onToggle,
   onRemove,
 }: {
-  skill: SkillInfo;
+  label: string;
+  enabled: boolean;
+  removable: boolean;
   onToggle: () => void;
   onRemove: () => void;
 }) {
@@ -21,7 +24,7 @@ export function SkillMenu({
     <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
-        aria-label={`Options for ${skill.name}`}
+        aria-label={`Options for ${label}`}
         aria-haspopup="menu"
         aria-expanded={open}
         className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
@@ -43,9 +46,9 @@ export function SkillMenu({
               onToggle();
             }}
           >
-            {skill.enabled ? "Turn off" : "Turn on"}
+            {enabled ? "Turn off" : "Turn on"}
           </button>
-          {skill.source !== "builtin" && (
+          {removable && (
             <button
               type="button"
               role="menuitem"

@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getSkillPlugins, getSkills, removeSkill, setSkillEnabled } from "../../lib/rest";
-import { useClickOutside } from "../../lib/useClickOutside";
 import { useFetchOnActive } from "../../lib/useFetchOnActive";
 import type { SkillInfo, SkillPlugin } from "../../types/settings";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { ChevronDownIcon, PencilIcon, PlusIcon, SearchIcon, UploadIcon } from "../icons";
+import { SearchIcon } from "../icons";
 import { FetchRetry } from "./FetchRetry";
-import { SECTIONS, matches } from "./skills/helpers";
-import { CountBadge } from "./skills/badges";
-import { SkillRow } from "./skills/SkillRow";
+import { entryMatches, listEntries, matches, type ListEntry } from "./skills/helpers";
+import { YoursSections } from "./skills/YoursSections";
+import { AddMenu } from "./skills/AddMenu";
+import { InstalledPluginView } from "./skills/InstalledPluginView";
 import { SkillDetailView } from "./skills/SkillDetailView";
 import { PluginCard } from "./skills/PluginCard";
 import { PluginDetailView } from "./skills/PluginDetailView";
@@ -22,9 +22,11 @@ interface SkillsTabProps {
   onCreateSkill: () => void;
 }
 
-/** Settings > Skills: your skills and the ones built in (Yours), and
- * Anthropic's open skills to add (Discover). Every skill is a folder with a
- * SKILL.md; switching one off stops it being offered in any conversation. */
+type PluginEntry = Extract<ListEntry, { kind: "plugin" }>;
+
+/** Settings > Plugins: your plugins and skills and the ones built in (Yours), and Anthropic's
+ * open plugins to add (Discover). A skill is a folder with a SKILL.md, a plugin a folder of
+ * skills (decision 0058); switching one off stops it being offered in any conversation. */
 export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
   const { data: skills, status, error, retry } = useFetchOnActive(active, getSkills, []);
   const [view, setView] = useState<View>({ kind: "list" });
@@ -33,10 +35,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
   const [catalog, setCatalog] = useState<SkillPlugin[] | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<SkillInfo | null>(null);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
-  const addMenuRef = useRef<HTMLDivElement>(null);
-  useClickOutside(addMenuRef, () => setAddMenuOpen(false), addMenuOpen);
+  const [removeTarget, setRemoveTarget] = useState<SkillInfo | PluginEntry | null>(null);
 
   const loadCatalog = () => {
     setCatalogError(null);
@@ -49,10 +48,14 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     if (active && tab === "discover" && catalog === null) loadCatalog();
   }, [active, tab, catalog]);
 
-  const toggle = async (skill: SkillInfo) => {
+  const toggle = async (target: SkillInfo | PluginEntry) => {
     setActionError(null);
-    const result = await setSkillEnabled(skill.name, !skill.enabled);
-    if ("error" in result) setActionError(result.error);
+    // A plugin switches as one: every skill of it on, or every one off.
+    const names = "info" in target ? target.skills.map((s) => s.name) : [target.name];
+    for (const name of names) {
+      const result = await setSkillEnabled(name, !target.enabled);
+      if ("error" in result) setActionError(result.error);
+    }
     retry();
   };
 
@@ -61,7 +64,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     const target = removeTarget;
     setRemoveTarget(null);
     setActionError(null);
-    const result = await removeSkill(target.plugin ?? target.name, Boolean(target.plugin));
+    const result = "info" in target ? await removeSkill(target.info.name, true) : await removeSkill(target.name);
     if ("error" in result) setActionError(result.error);
     setView({ kind: "list" });
     setCatalog(null);
@@ -70,7 +73,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
 
   const removeDialog = removeTarget && (
     <ConfirmDialog
-      title={removeTarget.plugin ? `Remove the plugin ${removeTarget.plugin}?` : `Remove ${removeTarget.name}?`}
+      title={"info" in removeTarget ? `Remove the plugin ${removeTarget.info.name}?` : `Remove ${removeTarget.name}?`}
       description={removeDescription(removeTarget)}
       confirmLabel="Remove"
       onCancel={() => setRemoveTarget(null)}
@@ -104,13 +107,33 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     );
   }
 
+  const entries = listEntries(skills);
+  const pluginEntry = (name: string) => entries.find((e): e is PluginEntry => e.kind === "plugin" && e.info.name === name);
+  const installed = view.kind === "installed" ? pluginEntry(view.name) : undefined;
+  if (installed) {
+    return (
+      <>
+        <InstalledPluginView
+          entry={installed}
+          onBack={() => setView({ kind: "list" })}
+          onOpenSkill={(name) => setView({ kind: "detail", name })}
+          onToggle={() => toggle(installed)}
+          onRemove={() => setRemoveTarget(installed)}
+        />
+        {removeDialog}
+      </>
+    );
+  }
+
   const detailSkill = view.kind === "detail" ? skills.find((s) => s.name === view.name) : undefined;
   if (detailSkill) {
+    const plugin = detailSkill.plugin;
     return (
       <>
         <SkillDetailView
           skill={detailSkill}
-          onBack={() => setView({ kind: "list" })}
+          backLabel={plugin ?? "Your plugins"}
+          onBack={() => setView(plugin ? { kind: "installed", name: plugin } : { kind: "list" })}
           onToggle={() => toggle(detailSkill)}
           onRemove={() => setRemoveTarget(detailSkill)}
         />
@@ -123,13 +146,13 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
     `rounded-md px-3.5 py-1 text-[15px] ${
       active ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm ring-1 ring-[var(--border)]" : "text-[var(--muted)] hover:text-[var(--fg)]"
     }`;
-  const visible = skills.filter((s) => matches(search, s.name, s.description));
+  const visible = entries.filter((e) => entryMatches(search, e));
   const discover = (catalog ?? []).filter((e) => matches(search, e.title, e.description, ...e.skills));
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="mr-1 text-[22px] font-semibold">Skills</h2>
+        <h2 className="mr-1 text-[22px] font-semibold">Plugins</h2>
         <div className="flex rounded-lg bg-[var(--card-bg)] p-0.5">
           <button type="button" aria-pressed={tab === "yours"} className={segment(tab === "yours")} onClick={() => setTab("yours")}>
             Yours
@@ -142,53 +165,14 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
         <div className="flex h-9 w-60 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--field-bg)] px-3 focus-within:border-[var(--focus)] focus-within:ring-2 focus-within:ring-[var(--focus)]/15">
           <SearchIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
           <input
-            aria-label="Search skills"
+            aria-label="Search plugins and skills"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
-            placeholder="Search skills"
+            placeholder="Search plugins and skills"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="relative" ref={addMenuRef}>
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={addMenuOpen}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3.5 text-sm font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]"
-            onClick={() => setAddMenuOpen((v) => !v)}
-          >
-            <PlusIcon className="h-4 w-4" /> Add <ChevronDownIcon className="h-3.5 w-3.5" />
-          </button>
-          {addMenuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 top-full z-20 mt-1 min-w-48 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] py-1 shadow-[var(--shadow)]"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[var(--card-bg)]"
-                onClick={() => {
-                  setAddMenuOpen(false);
-                  setView({ kind: "upload" });
-                }}
-              >
-                <UploadIcon className="h-3.5 w-3.5" /> Upload a skill
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[var(--card-bg)]"
-                onClick={() => {
-                  setAddMenuOpen(false);
-                  onCreateSkill();
-                }}
-              >
-                <PencilIcon className="h-3.5 w-3.5" /> Create with Coscribe
-              </button>
-            </div>
-          )}
-        </div>
+        <AddMenu onUpload={() => setView({ kind: "upload" })} onCreate={onCreateSkill} />
       </div>
 
       {actionError && (
@@ -200,32 +184,19 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
       {tab === "yours" ? (
         <>
           <FetchRetry status={status} error={error} onRetry={retry} />
-          {status === "success" &&
-            SECTIONS.map(({ source, title }) => {
-              const rows = visible.filter((s) => s.source === source);
-              if (rows.length === 0) return null;
-              return (
-                <section key={source}>
-                  <h3 className="flex items-center gap-2 text-[17px] font-medium">
-                    {title} <CountBadge count={rows.length} />
-                  </h3>
-                  <div className="mt-1">
-                    {rows.map((skill) => (
-                      <SkillRow
-                        key={skill.name}
-                        skill={skill}
-                        onOpen={() => setView({ kind: "detail", name: skill.name })}
-                        onToggle={() => toggle(skill)}
-                        onRemove={() => setRemoveTarget(skill)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+          {status === "success" && (
+            <YoursSections
+              entries={visible}
+              onOpen={(entry) =>
+                setView(entry.kind === "plugin" ? { kind: "installed", name: entry.info.name } : { kind: "detail", name: entry.skill.name })
+              }
+              onToggle={(entry) => toggle(entry.kind === "plugin" ? entry : entry.skill)}
+              onRemove={(entry) => setRemoveTarget(entry.kind === "plugin" ? entry : entry.skill)}
+            />
+          )}
           {status === "success" && visible.length === 0 && (
             <p className="py-6 text-center text-sm text-[var(--muted)]">
-              {skills.length === 0 ? "No skills yet." : `No skills match "${search.trim()}".`}
+              {skills.length === 0 ? "No plugins or skills yet." : `Nothing matches "${search.trim()}".`}
             </p>
           )}
         </>
@@ -260,8 +231,9 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
   );
 }
 
-function removeDescription(skill: SkillInfo): string {
-  if (skill.plugin) return "Its folder is deleted with every skill in it. This can't be undone.";
+function removeDescription(target: SkillInfo | PluginEntry): string {
+  if ("info" in target) return `Its folder is deleted with its ${target.skills.length} skills. This can't be undone.`;
+  const skill = target;
   if (skill.source === "anthropic") return "Its folder is deleted. You can add it again from Discover.";
   return "Its folder is deleted from your skills directory. This can't be undone.";
 }

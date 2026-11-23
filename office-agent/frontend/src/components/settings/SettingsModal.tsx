@@ -69,7 +69,7 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
   {
     label: "Customize",
     categories: [
-      { id: "skills", label: "Skills", icon: BookOpenIcon },
+      { id: "skills", label: "Plugins", icon: BookOpenIcon },
       { id: "connectors", label: "Connectors", icon: LinkIcon },
       { id: "design-systems", label: "Design systems", icon: SparkIcon },
     ],

@@ -111,6 +111,26 @@ class SkillInfo:
     plugin: str | None = None
     plugin_dir: Path | None = None
 
+    def plugin_info(self) -> dict[str, Any] | None:
+        """What Settings shows of the plugin this skill came from, None for a lone skill."""
+        if self.plugin_dir is None:
+            return None
+        manifest = plugin_manifest(self.plugin_dir) or {}
+        author = manifest.get("author")
+        if isinstance(author, dict):
+            author = author.get("name")
+        return {
+            "name": self.plugin,
+            "description": str(manifest.get("description") or ""),
+            "version": str(manifest.get("version") or ""),
+            "author": str(author or ""),
+            "unused": [
+                label
+                for label, paths in _UNUSED_PARTS
+                if any((self.plugin_dir / path).exists() for path in paths)
+            ],
+        }
+
     @property
     def slug(self) -> str:
         """The single-token identifier for the /<slug> chat command (see
@@ -178,6 +198,15 @@ def _scan_skills_dir(root: Path, *, create_if_missing: bool) -> list[SkillInfo]:
 
 # Where Claude and Codex keep a plugin's manifest (decision 0058); either one, or none, may be
 # there. A plugin's skills sit in `skills/` unless its manifest names other folders.
+# Parts of a Claude or Codex plugin that Coscribe reads but does not use (decision 0058).
+_UNUSED_PARTS = (
+    ("commands", ("commands",)),
+    ("agents", ("agents",)),
+    ("hooks", ("hooks", "hooks.json")),
+    ("MCP servers", (".mcp.json", "mcp.json")),
+    ("apps", (".app.json",)),
+    ("LSP servers", (".lsp.json",)),
+)
 _MANIFEST_PATHS = (".claude-plugin/plugin.json", ".codex-plugin/plugin.json", "plugin.json")
 
 
