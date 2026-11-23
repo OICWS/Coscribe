@@ -1,6 +1,6 @@
 """Plugin sources the person adds to Discover: a GitHub repository with a `marketplace.json`
-in the Claude form (`.claude-plugin/marketplace.json`) or the Codex form
-(`.agents/plugins/marketplace.json`), decision 0058.
+in the Claude form (in `.claude-plugin/`) or the Codex form (in `.agents/plugins/`),
+decision 0058.
 
 Adding a source pins it to the commit its branch points at then and records each listed
 plugin's files with their git blob hashes; a file is downloaded at that commit and must match

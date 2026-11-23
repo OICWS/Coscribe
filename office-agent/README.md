@@ -846,8 +846,8 @@ skills (decision 0058). Settings → Plugins lists them in three groups:
   redistribution, and Coscribe's built-in skills cover those formats.
   A removed skill shows up in Discover again.
 - **From your sources**: Discover's **Add a source** takes a GitHub repository with a
-  `marketplace.json` in the Claude form (`.claude-plugin/marketplace.json`) or the Codex form
-  (`.agents/plugins/marketplace.json`), such as a company's own or `openai/plugins`. Coscribe
+  `marketplace.json` in the Claude form (in `.claude-plugin/`) or the Codex form (in
+  `.agents/plugins/`), such as a company's own or `openai/plugins`. Coscribe
   reads it through GitHub's API at its branch's current commit and lists the plugins inside
   the repository (an entry pointing to another repository is counted, not shown); **Add**
   downloads the whole plugin at that commit and checks every file against the git hash the
