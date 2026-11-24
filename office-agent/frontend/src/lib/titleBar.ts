@@ -7,10 +7,15 @@ export const TITLE_BAR_PLATFORM = titleBarPlatform();
 export const DRAWS_TITLE_BAR = TITLE_BAR_PLATFORM !== null;
 export const APP_HEADER_HEIGHT = DRAWS_TITLE_BAR ? "2.5rem" : "3rem";
 
-/** A dialog's dimmed layer. In the desktop app the OS window buttons sit over the top 2.5rem and
- * no dialog may reach under them, so a dialog is centred in the window below that row, with the
- * same margin above and below it. */
-export const DIALOG_BACKDROP_CLASS = `fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6${DRAWS_TITLE_BAR ? " pt-16" : ""}`;
+/** The padding of a full-window dialog layer. In the desktop app the OS window buttons sit over
+ * the top 2.5rem and no dialog may reach under them. That row is dimmed with the rest of the
+ * window, so it reads as empty space: a dialog that kept a margin only below it looked low. The
+ * bottom keeps the same margin, so the dialog sits in the middle of the window as it is seen. */
+export const DIALOG_INSET_CLASS = DRAWS_TITLE_BAR ? "px-6 py-14" : "p-6";
+
+/** A dialog's dimmed layer. A dialog in it caps its height at `100%`, never `100vh`, so it stays
+ * inside the inset. */
+export const DIALOG_BACKDROP_CLASS = `fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`;
 
 /** Width of the top-left cluster (menu, sidebar toggle, back, forward)
  * while the sidebar is collapsed: 32px buttons, 2px gaps, 6px padding. */

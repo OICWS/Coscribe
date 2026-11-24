@@ -5,6 +5,7 @@ import type { WorkflowInput } from "../../types/workflow";
 import { PlayIcon } from "../icons";
 import { InputValueControl } from "./InputValueControl";
 import { VarToken } from "./parts";
+import { DIALOG_INSET_CLASS } from "../../lib/titleBar";
 
 interface RunInputsDialogProps {
   taskName: string;
@@ -41,7 +42,7 @@ export function RunInputsDialog({ taskName, inputs, onCancel, onRun }: RunInputs
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onCancel}>
       <form
         className="w-[min(460px,100vw-2rem)] rounded-[16px] border border-[var(--border)] bg-[var(--panel-bg)] p-5 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}

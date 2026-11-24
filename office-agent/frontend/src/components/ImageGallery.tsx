@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { copyImage } from "../lib/copyImage";
 import { ChevronRightIcon, CloseIcon } from "./icons";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 interface GalleryImage {
   name: string;
@@ -31,7 +32,7 @@ export function ImageGallery({ images, start, onClose }: { images: GalleryImage[
   const image = images[index];
   if (!image) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
         role="dialog"
         aria-label={image.name}
