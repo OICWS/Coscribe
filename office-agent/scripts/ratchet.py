@@ -512,22 +512,43 @@ METRICS = {
 }
 
 
+FRONTEND_SHELL = "frontend"  # the frontend outside its feature folders: the app's frame
+
+
+def _frontend_files(root: Path) -> list[Path]:
+    return [
+        f
+        for pattern in ("*.ts", "*.tsx")
+        for f in root.rglob(pattern)
+        if ".test." not in f.name and "node_modules" not in f.parts
+    ]
+
+
 def component_lines(components_toml: Path = COMPONENTS) -> dict[str, int]:
-    """Own source lines per Python component, without the components nested in it and without
-    vendored code."""
+    """Own source lines per component, without the components nested in it and without vendored
+    code: Python under `src/coscribe`, TypeScript under `frontend/src` (tests left out)."""
     components = tomllib.loads(components_toml.read_text("utf-8")).get("component", [])
     repo = components_toml.parent
     roots = {c["name"]: repo / c["path"] for c in components if "/src/coscribe" in c["path"]}
+    front = {
+        c["name"]: repo / c["path"] / ("src" if c["name"] == FRONTEND_SHELL else "")
+        for c in components
+        if c["name"] == FRONTEND_SHELL or c["name"].startswith(FRONTEND_SHELL + ".")
+    }
     sizes: dict[str, int] = {}
-    for name, root in roots.items():
-        nested = [r for n, r in roots.items() if n != name and root in r.parents]
-        files = [root] if root.suffix == ".py" else list(_python_files(root, skip_vendored=False))
-        sizes[name] = sum(
-            len(f.read_text(encoding="utf-8").splitlines())
-            for f in files
-            if not any(r == f or r in f.parents for r in nested)
-            and not any(v in f.as_posix() for v in VENDORED)
-        )
+    for group, listing in (
+        (roots, lambda root: _python_files(root, skip_vendored=False)),
+        (front, _frontend_files),
+    ):
+        for name, root in group.items():
+            nested = [r for n, r in group.items() if n != name and root in r.parents]
+            files = [root] if root.suffix == ".py" else list(listing(root))
+            sizes[name] = sum(
+                len(f.read_text(encoding="utf-8").splitlines())
+                for f in files
+                if not any(r == f or r in f.parents for r in nested)
+                and not any(v in f.as_posix() for v in VENDORED)
+            )
     return sizes
 
 
@@ -538,8 +559,15 @@ def budget_problems(
     total = sum(size for name, size in sizes.items() if name in core)
     if total > budgets["core_lines"]:
         problems.append(f"core_lines: {total} over the budget of {budgets['core_lines']}")
+    # The frame holds what no feature owns. Its budget sits just above its size when features
+    # became components, so a new screen goes into a feature folder rather than the frame.
+    shell = sizes.get(FRONTEND_SHELL, 0)
+    if "frontend_shell_lines" in budgets and shell > budgets["frontend_shell_lines"]:
+        problems.append(
+            f"frontend_shell_lines: {shell} over the budget of {budgets['frontend_shell_lines']}"
+        )
     for name, size in sorted(sizes.items()):
-        if size > budgets["component_lines"]:
+        if name != FRONTEND_SHELL and size > budgets["component_lines"]:
             problems.append(
                 f"component_lines: {name} has {size}, over the budget of "
                 f"{budgets['component_lines']}"
@@ -616,10 +644,12 @@ def main(argv: list[str] | None = None) -> int:
     sizes = component_lines()
     core = core_components()
     budgets = json.loads(BUDGETS.read_text(encoding="utf-8"))
+    parts = {k: v for k, v in sizes.items() if k != FRONTEND_SHELL}
     print(
         f"Budgets: core {sum(v for k, v in sizes.items() if k in core)} of "
-        f"{budgets['core_lines']} lines; largest component {max(sizes.values())} of "
-        f"{budgets['component_lines']}"
+        f"{budgets['core_lines']} lines; largest component {max(parts.values())} of "
+        f"{budgets['component_lines']}; frontend frame {sizes.get(FRONTEND_SHELL, 0)} of "
+        f"{budgets.get('frontend_shell_lines', 'no budget')}"
     )
     over = budget_problems(budgets, sizes, core)
     for line in over:

@@ -18,6 +18,11 @@ new limits (test selection, size budgets) need their own. Part of #1051, step 3.
   - The five component cards that the most commits to their code have passed since the card
     last changed.
   `--last` picks the week before this one.
+- Size budgets now cover the frontend (`scripts/ratchet.py`, `quality/budgets.json`). Each
+  feature folder (`frontend.<name>`) has the 20,000-line component budget; `workflow` is the
+  largest at 9,553. The frame outside the features (31,722 lines today) has its own budget,
+  `frontend_shell_lines`, set to 33,000, so a new screen goes into a feature folder. Tests are
+  left out of the count.
 - First run, by hand, for 2026-W47: 88 merged pull requests, 73 selected, 6 full, 9 docs only.
   They ran 38% of the 297 test files on average. The core is at 36% of its budget, and the
   `frontend` card is 10 commits behind.

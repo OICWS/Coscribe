@@ -105,11 +105,12 @@ def test_a_failed_audit_night_is_named_as_a_miss(metrics: ModuleType) -> None:
 def test_the_budgets_name_the_core_the_largest_and_those_near_the_limit(
     metrics: ModuleType,
 ) -> None:
-    budgets = {"core_lines": 1000, "component_lines": 100}
-    sizes = {"web": 300, "tools": 85, "pptx": 95, "small": 10}
+    budgets = {"core_lines": 1000, "component_lines": 100, "frontend_shell_lines": 500}
+    sizes = {"web": 300, "tools": 85, "pptx": 95, "small": 10, "frontend": 450}
     assert metrics.budget_lines(budgets, sizes, frozenset({"web", "small"})) == [
         "- core: 310 of 1000 lines (31%)",
         "- largest component: web, 300 of 100 lines",
+        "- frontend frame: 450 of 500 lines",
         "- near its budget: web (300 lines, 300%)",
         "- near its budget: pptx (95 lines, 95%)",
         "- near its budget: tools (85 lines, 85%)",

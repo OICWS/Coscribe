@@ -138,6 +138,8 @@ def audit_line(runs: list[dict[str, Any]]) -> str:
 
 
 def budget_lines(budgets: dict[str, int], sizes: dict[str, int], core: frozenset[str]) -> list[str]:
+    sizes = dict(sizes)
+    shell = sizes.pop("frontend", None)  # the frontend's frame, budgeted on its own
     total = sum(size for name, size in sizes.items() if name in core)
     largest = max(sizes, key=lambda name: sizes[name])
     limit = budgets["component_lines"]
@@ -145,6 +147,8 @@ def budget_lines(budgets: dict[str, int], sizes: dict[str, int], core: frozenset
         f"- core: {total} of {budgets['core_lines']} lines ({total / budgets['core_lines']:.0%})",
         f"- largest component: {largest}, {sizes[largest]} of {limit} lines",
     ]
+    if shell is not None and "frontend_shell_lines" in budgets:
+        lines.append(f"- frontend frame: {shell} of {budgets['frontend_shell_lines']} lines")
     near = sorted((n for n, s in sizes.items() if s >= BUDGET_WARN * limit), key=lambda n: sizes[n])
     for name in reversed(near):
         lines.append(f"- near its budget: {name} ({sizes[name]} lines, {sizes[name] / limit:.0%})")
