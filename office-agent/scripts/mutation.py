@@ -74,11 +74,17 @@ _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.M)
 
 
 def changed_lines(diff: str) -> set[int]:
-    """The new-side line numbers a unified diff with `-U0` adds or changes."""
+    """The new-side line numbers a unified diff with `-U0` adds or changes.
+
+    A hunk that only deletes has no new-side line; the lines on either side of
+    the gap stand for it, so a function that only lost statements is still mutated."""
     lines: set[int] = set()
     for match in _HUNK.finditer(diff):
         start, count = int(match.group(1)), int(match.group(2) or 1)
-        lines.update(range(start, start + count))
+        if count == 0:
+            lines.update({start, start + 1} - {0})
+        else:
+            lines.update(range(start, start + count))
     return lines
 
 

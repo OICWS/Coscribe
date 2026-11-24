@@ -29,7 +29,15 @@ def test_the_new_side_lines_of_each_hunk_are_the_changed_ones(mutation: ModuleTy
         "@@ -10,0 +11,2 @@\n+x = 1\n+y = 2\n"
         "@@ -20,3 +22,0 @@\n-gone\n-gone\n-gone\n"
     )
-    assert mutation.changed_lines(diff) == {3, 11, 12}
+    assert mutation.changed_lines(diff) == {3, 11, 12, 22, 23}
+
+
+def test_a_function_that_only_lost_lines_is_still_mutated(mutation: ModuleType) -> None:
+    before = "def check(value):\n    if value < 0:\n        raise ValueError\n    return value\n"
+    after = "def check(value):\n    return value\n"
+    diff = "@@ -2,2 +1,0 @@\n-    if value < 0:\n-        raise ValueError\n"
+    assert before != after
+    assert mutation.mutant_prefixes(after, mutation.changed_lines(diff)) == ["x_check__mutmut_"]
 
 
 SOURCE = """\
