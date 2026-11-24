@@ -24,3 +24,24 @@ describe("feature indexes", () => {
     });
   }
 });
+
+// On Windows, `./chatlog` finds `ChatLog.tsx` before the `chatlog/` folder. An import of a
+// feature whose name a loose file shares (ignoring case) names its index file.
+describe("feature imports on a case-insensitive disk", () => {
+  it("name the index where a loose file shares the feature's name", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const here = join(process.cwd(), "src", "components");
+    const loose = readdirSync(here).filter((name) => /\.tsx?$/.test(name));
+    const clashing = Object.keys(indexes)
+      .map((path) => path.split("/")[1])
+      .filter((feature) => loose.some((name) => name.replace(/\.tsx?$/, "").toLowerCase() === feature));
+    const sources = readdirSync(join(process.cwd(), "src"), { recursive: true, encoding: "utf8" })
+      .filter((name) => /\.tsx?$/.test(name));
+    const bad = sources.flatMap((name) => {
+      const text = readFileSync(join(process.cwd(), "src", name), "utf8");
+      return clashing.filter((feature) => text.includes(`/${feature}"`)).map((feature) => `${name}: ${feature}`);
+    });
+    expect(bad).toEqual([]);
+  });
+});

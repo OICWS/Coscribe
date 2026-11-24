@@ -5,8 +5,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { FILE_LINK, fileLinkPath, remarkFileChips } from "../lib/fileMentions";
-import { FileChip } from "./chatlog";
-import { ThreadFiles } from "./chatlog";
+import { FileChip } from "./chatlog/index";
+import { ThreadFiles } from "./chatlog/index";
 import { CopyButton } from "./CopyButton";
 
 const hoverCopy =

@@ -53,7 +53,7 @@ import { useDoctor } from "./components/DoctorCard";
 import { ArtifactsPage } from "./components/artifacts";
 import { SessionsPage } from "./components/sessions";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
-import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog";
+import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/index";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow";
 import { WorkflowRunView, type WorkflowAnswer } from "./components/workflow";

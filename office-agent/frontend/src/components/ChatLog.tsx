@@ -6,12 +6,12 @@ import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
 import { type DraftCards } from "./workflow";
-import { type TaskDraftItem } from "./chatlog";
-import { MessageActionsContext, NO_CONNECTOR_TOOLS } from "./chatlog";
+import { type TaskDraftItem } from "./chatlog/index";
+import { MessageActionsContext, NO_CONNECTOR_TOOLS } from "./chatlog/index";
 import { useMessageActions } from "../lib/messageActions";
-import { ChatContexts } from "./chatlog";
-import { ToolRunGroupView } from "./chatlog";
-import { TurnView, LogItemView } from "./chatlog";
+import { ChatContexts } from "./chatlog/index";
+import { ToolRunGroupView } from "./chatlog/index";
+import { TurnView, LogItemView } from "./chatlog/index";
 
 interface ChatLogProps {
   items: LogItem[];

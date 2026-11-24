@@ -15,7 +15,10 @@ to #1051 (the 2026-11-23 assessment's point 2).
   The label is now looked up on use, and `CHECK_WORDS`, which only `settings` uses, moved from
   `environment` to `settings`.
 - `src/components/featureIndexes.test.ts` loads each index first, in a fresh module graph, and
-  fails on such a cycle; it failed on the first version of this change. `frontend/AGENTS.md`
+  fails on such a cycle; it failed on the first version of this change. It also fails when an
+  import names a feature folder that a loose file shares ignoring case: on Windows `./chatlog`
+  found `ChatLog.tsx`, which the Windows `pytest` job caught, so those imports name
+  `./chatlog/index`. `frontend/AGENTS.md`
   says why.
 
 ## Not verified

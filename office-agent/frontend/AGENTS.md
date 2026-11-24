@@ -47,6 +47,8 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
   `index.ts` and import from there. The indexes import one another, so a file must not read
   another feature's export while its module loads (a constant built at the top of a file);
   `src/components/featureIndexes.test.ts` loads each index first and fails on such a cycle.
+  Import `chatlog` as `./chatlog/index`: on Windows `./chatlog` finds `ChatLog.tsx` first (the
+  same test fails otherwise).
 - UI text is English only. Unused files and exports fail `knip` (`knip.json`).
 - A build must pass `tsc -b`, not only `tsc --noEmit`: use `npm run build`.
 

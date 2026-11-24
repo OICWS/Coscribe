@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { planTitleOf, type PlanChoice, type PlanItem } from "../lib/planState";
 import { usePlanTaskDraft, draftEdits } from "../lib/planTaskDraft";
-import { Disclosure } from "./chatlog";
+import { Disclosure } from "./chatlog/index";
 import { PlanDiff } from "./PlanDiff";
 
 export type { PlanChoice, PlanItem };
