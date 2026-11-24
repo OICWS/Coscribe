@@ -82,6 +82,9 @@ Last reviewed: 2026-11-22.
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
+- **Browser steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
+  the detailed view labels `browser_*` calls by their raw names (`frontend/src/lib/transcriptGrouping.ts`
+  has no entry for them); the task page's words in `lib/plainSteps.ts` could be reused.
 - **Website layout polish** (`docs/log/2026-11-23-site-polish.md`, `docs/log/2026-11-24-promo-page-refresh.md`): the name and the paper-plane
   logo are done; the English pages get more polish with the maintainer first, then the other
   eight languages follow.

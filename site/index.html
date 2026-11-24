@@ -380,7 +380,7 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .frow { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; text-align: left; padding: 7px 8px; border-radius: 9px; cursor: pointer; animation: pop .45s var(--ease) both; transition: background .15s, transform .15s; }
 .frow:hover { background: var(--chip); }
 .fb { width: 34px; height: 34px; border-radius: 7px; flex: none; display: grid; place-items: center; font: 600 8.5px/1 var(--sans); letter-spacing: .04em; color: #fff; }
-.fb.pptx { background: var(--slides); } .fb.docx { background: var(--doc); } .fb.xlsx { background: var(--sheet); } .fb.py { background: var(--code); }
+.fb.pptx { background: var(--slides); } .fb.docx { background: var(--doc); } .fb.xlsx { background: var(--sheet); } .fb.csv { background: var(--sheet); } .fb.md { background: var(--doc); }
 :root[data-theme="dark"] .fb { color: #1c1b1a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fb { color: #1c1b1a; } }
 .frow .fn { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -437,7 +437,32 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .appr .out { font: 400 12px/1.5 var(--mono); color: var(--success); }
 
 /* browser pane */
-.bz-bar { display: flex; align-items: center; gap: 4px; padding: 0 8px 8px; }
+.bz-tabs { display: flex; align-items: center; gap: 4px; padding: 0 8px 6px; }
+.bz-tab { display: inline-flex; align-items: center; gap: 7px; max-width: 180px; height: 28px; padding: 0 8px 0 10px; border-radius: 8px; background: var(--chip); font-size: 12.5px; white-space: nowrap; }
+.bz-tab i { width: 12px; height: 12px; border-radius: 3px; background: #2f5f9e; flex: none; }
+.bz-tab svg { width: 12px; height: 12px; color: var(--muted); flex: none; }
+.bz-bar { display: flex; align-items: center; gap: 2px; padding: 0 8px 6px; }
+.bz-bar .ib[disabled] { opacity: .4; }
+.bz-act { display: flex; align-items: center; gap: 8px; margin: 0 8px 6px; padding: 6px 10px; border-radius: 8px; background: rgba(42, 120, 214, .1); font-size: 12px; }
+.bz-act[hidden], .bz-perm[hidden] { display: none; }
+.bz-act .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; flex: none; }
+.bz-act .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-act button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; font: 500 12px/1 var(--sans); color: var(--fg); padding: 3px 6px; border-radius: 6px; cursor: default; }
+.bz-act button i { width: 8px; height: 8px; border-radius: 1.5px; background: currentColor; }
+@keyframes pulse { 50% { opacity: .35; } }
+.bz-perm { margin: 0 8px 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); box-shadow: var(--shadow); display: grid; gap: 10px; animation: pop .35s var(--ease) both; }
+.bz-perm .q { display: flex; gap: 10px; font-size: 13px; }
+.bz-perm .q svg { width: 16px; height: 16px; color: var(--muted); flex: none; margin-top: 1px; }
+.bz-perm .q b { display: block; font-weight: 500; }
+.bz-perm .q span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.bz-perm .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.bz-perm .acts button { height: 27px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: none; font: 400 12.5px/1 var(--sans); color: var(--fg); cursor: default; }
+.bz-perm .acts button.pri { border-color: transparent; background: var(--primary); color: var(--primary-fg); font-weight: 500; }
+.crm-f { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; font-size: 11.5px; color: var(--paper-muted); }
+.crm-f i { display: inline-block; min-width: 64px; margin-left: 4px; padding: 3px 7px; border: 1px solid var(--paper-line); border-radius: 6px; font-style: normal; color: var(--paper-ink); }
+.crm-f i.on { border-color: var(--accent); }
+.crm-f .pg { margin-left: auto; }
+.crm-t tbody tr.scan { background: rgba(42, 120, 214, .08); }
 .bz-url { flex: 1; min-width: 0; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 8px; background: var(--chip); font-size: 12.5px; color: var(--fg-2); white-space: nowrap; overflow: hidden; }
 .bz-url svg { width: 12px; height: 12px; color: var(--muted); }
 .bz-page { flex: 1; min-height: 0; margin: 0 8px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--paper-ink); overflow: hidden; font-size: 12.5px; position: relative; }
@@ -660,21 +685,32 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .xl-tabs span { display: flex; align-items: center; padding: 0 14px; color: var(--paper-muted); }
 .xl-tabs span.on { background: var(--paper); color: #217346; font-weight: 600; border-bottom: 2px solid #217346; }
 
-.diff { position: absolute; inset: 0; display: flex; flex-direction: column; }
-.diff-f { flex: 1; min-height: 0; overflow: auto; background: var(--bg); font: 400 12.5px/1.65 var(--mono); padding: 10px 0; }
-.diff-f .fh { padding: 4px 16px 8px; font-family: var(--sans); font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; }
-.diff-f .fh b { color: var(--fg); font-weight: 500; }
-.dl { display: grid; grid-template-columns: 42px 16px minmax(0, 1fr); white-space: pre; padding-right: 16px; }
-.dl .no { color: var(--muted); text-align: right; padding-right: 10px; opacity: .7; }
-.dl .sg { color: var(--muted); }
-.dl.add { background: var(--add-bg); } .dl.add .sg { color: var(--success); }
-.dl.rm { background: var(--rm-bg); } .dl.rm .sg { color: var(--danger); }
-.dl.hunk { color: var(--muted); }
-.dl.add.hide { opacity: 0; transform: translateX(-8px); }
-.dl.add { transition: opacity .35s, transform .35s var(--ease); }
-.term { flex: none; background: var(--term-bg); color: var(--term-fg); font: 400 12.5px/1.6 var(--mono); padding: 10px 16px 12px; min-height: 86px; }
-.term .p { color: var(--term-muted); }
-.term .ok { color: #8fd19f; }
+.fcard { text-align: left; font: inherit; color: inherit; display: flex; align-items: center; gap: 12px; width: min(100%, 360px); margin: 4px 0 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer; animation: pop .35s var(--ease) both; }
+.fcard .ic { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(45, 98, 184, .12); color: var(--doc); flex: none; }
+.fcard .ic svg { width: 17px; height: 17px; }
+.fcard .nm { flex: 1; min-width: 0; font-size: 13.5px; }
+.fcard .nm small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+.fcard > svg { width: 14px; height: 14px; color: var(--muted); }
+.dk { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--paper); color: var(--paper-ink); }
+.dk-tb { height: 40px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--paper-line); color: var(--paper-muted); }
+.dk-tb svg { width: 15px; height: 15px; margin: 0 6px; }
+.dk-tb .sep { width: 1px; height: 16px; background: var(--paper-line); margin: 0 4px; }
+.dk-page { flex: 1; min-height: 0; overflow: hidden; padding: 30px min(8%, 56px) 24px; font-size: 13.5px; line-height: 1.6; }
+.dk-page h4 { font: 400 26px/1.25 Georgia, "Songti SC", serif; margin: 0 0 8px; }
+.dk-page h5 { font: 400 18px/1.3 Georgia, "Songti SC", serif; margin: 20px 0 8px; }
+.dk-page p { margin: 0; }
+.dk-chart { border: 1px solid var(--paper-line); border-radius: 8px; padding: 12px 16px 10px; }
+.dk-chart .ct { text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.dk-bars { height: 120px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; justify-items: center; align-items: end; border-bottom: 1px solid var(--paper-line); padding: 0 6px; }
+.dk-bars i { display: block; width: 34%; background: #4f6df5; border-radius: 2px 2px 0 0; transform-origin: bottom; transform: scaleY(var(--p, 1)); }
+.dk-lab { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; padding: 4px 6px 0; font-size: 11px; text-align: center; color: var(--paper-muted); }
+.dk-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dk-check li { display: flex; align-items: center; gap: 8px; }
+.dk-check .cb { width: 13px; height: 13px; border: 1.5px solid #8a8a88; border-radius: 3px; flex: none; display: grid; place-items: center; }
+.dk-check li.on .cb { background: #4f6df5; border-color: #4f6df5; }
+.dk-check li.on .cb::after { content: ""; width: 6px; height: 3px; border: solid #fff; border-width: 0 0 1.6px 1.6px; transform: translateY(-1px) rotate(-45deg); }
+.dk-note { margin-top: 14px; padding: 10px 14px; border-left: 3px solid #4f6df5; border-radius: 0 6px 6px 0; background: rgba(79, 109, 245, .08); }
+.dk-note b { display: block; font-size: 10.5px; letter-spacing: .06em; color: #4f6df5; margin-bottom: 2px; }
 
 /* ---------- modals inside the app ---------- */
 .modal { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: var(--scrim); opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
@@ -793,7 +829,7 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
 .cursor.down svg { transform: scale(.82); }
 
 /* scene picker under the window */
-.scenes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 6px 18px; margin-top: 22px; align-items: start; }
+.scenes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px 18px; margin-top: 22px; align-items: start; }
 .sc { position: relative; text-align: left; border: 0; background: none; padding: 14px 0 0; cursor: pointer; color: var(--muted); font: 500 14px/1.35 var(--sans); transition: color .2s; min-width: 0; }
 .sc small { display: block; font: 400 11.5px/1 var(--mono); letter-spacing: .04em; margin-bottom: 6px; }
 .sc .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 2px; background: var(--line); overflow: hidden; }
@@ -1099,7 +1135,7 @@ footer a:hover { color: var(--fg); }
               <div class="ticons">
                 <button class="ib" type="button" id="b-side" data-act="side" data-tip="Hide task details" aria-label="Task details" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg></button>
                 <button class="ib" type="button" id="b-browser" data-act="browser" data-tip="Browser" aria-label="Browser" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
-                <button class="ib" type="button" id="b-agents" data-act="agents" data-tip="Sub Agents" aria-label="Sub Agents" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg><span class="badge" id="ag-badge"></span></button>
+                <button class="ib" type="button" id="b-agents" data-act="agents" data-tip="All background tasks" aria-label="All background tasks" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg><span class="badge" id="ag-badge"></span></button>
                 <button class="ib" type="button" data-act="help" data-tip="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
                 <button class="ib" type="button" data-act="settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
               </div>
@@ -1109,7 +1145,8 @@ footer a:hover { color: var(--fg); }
               <div class="cbox" id="cbox">
                 <div class="ctext"><span class="ph">Type / for commands</span><span id="typed"><span class="zh"></span><span class="en"></span></span><span class="ccaret"></span></div>
                 <div class="crow">
-                  <button class="cb af" type="button" data-act="none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add folder</span></button>
+                  <button class="cb af" type="button" data-act="none" aria-label="Add files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+                  <button class="cb" type="button" data-act="none" data-tip="Workspace">Default</button>
                   <button class="cb mode" type="button" data-act="mode" id="modepill"><i></i><span>Auto</span></button>
                   <span class="sp"></span>
                   <button class="cb" type="button" data-act="settings">deepseek-v4-pro<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -1119,7 +1156,7 @@ footer a:hover { color: var(--fg); }
             </div>
             <div class="home" id="home">
               <h3>Good morning!</h3>
-              <div class="hc"><div class="hbox"><span class="ph">Type / for commands</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg></div><div class="hrow"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add folder</span><span>deepseek-v4-pro<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div></div>
+              <div class="hc"><div class="hbox"><span class="ph">Type / for commands</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg></div><div class="hrow"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Default</span><span>deepseek-v4-pro<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div></div>
             </div>
           </div>
 
@@ -1162,22 +1199,32 @@ footer a:hover { color: var(--fg); }
                 <span class="t">Browser</span>
                 <button class="ib" type="button" data-act="close-pane" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
               </div>
+              <div class="bz-tabs"><span class="bz-tab"><i></i><span id="bz-tab-t">Example CRM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></span><button class="ib" type="button" data-act="none" aria-label="New tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
               <div class="bz-bar">
                 <button class="ib" type="button" data-act="none" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+                <button class="ib" type="button" data-act="none" aria-label="Forward" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
                 <button class="ib" type="button" data-act="none" aria-label="Reload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
-                <div class="bz-url"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>crm.example.com/accounts</div>
-                <button class="ib" type="button" id="b-pick" data-act="pick" data-tip="Pick an element" aria-label="Pick an element" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 16 2.3-6.7L20.5 10z"/><path d="M14 14l5 5"/></svg></button>
+                <div class="bz-url" id="bz-url">crm.example.com/accounts</div>
+                <button class="ib" type="button" data-act="none" aria-label="Open in your browser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>
+                <button class="ib" type="button" data-act="none" aria-label="Annotate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+                <button class="ib" type="button" id="b-pick" data-act="pick" data-tip="Select an element to send to the chat" aria-label="Select element" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 16 2.3-6.7L20.5 10z"/><path d="M14 14l5 5"/></svg></button>
+              </div>
+              <div class="bz-act" id="bz-act" hidden><span class="dot"></span><span class="t">Coscribe is using the browser</span><button type="button" data-act="none"><i></i>Take over</button></div>
+              <div class="bz-perm" id="bz-perm" role="alertdialog" aria-label="Site permission" hidden>
+                <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><div><b>Allow Coscribe to use crm.example.com?</b><span>It will read and act on this site in the Browser panel.</span></div></div>
+                <div class="acts"><button type="button" data-act="none">Don't allow</button><button type="button" data-act="none" id="bz-once">Allow for this chat</button><button type="button" data-act="none" class="pri">Always allow</button></div>
               </div>
               <div class="bz-page" id="bz-page">
                 <div class="crm-top"><i></i>Example CRM<span>Q4 pipeline</span></div>
                 <div class="crm-h pickable">Accounts up for renewal</div>
+                <div class="crm-f"><span>Stage <i id="crm-stage">Any</i></span><span>Quarter <i id="crm-q">Any</i></span><span class="pg" id="crm-pg">Page 1 of 3</span></div>
                 <table class="crm-t">
                   <thead><tr><th>Account</th><th>Owner</th><th>Stage</th><th>Value</th></tr></thead>
                   <tbody>
                     <tr class="pickable"><td>Nova Retail</td><td>Li Wei</td><td><span class="stage-tag">Renewal</span></td><td>¥1.20M</td></tr>
                     <tr class="pickable"><td>Harbor Foods</td><td>Chen Jing</td><td><span class="stage-tag">Proposal</span></td><td>¥640K</td></tr>
                     <tr class="pickable"><td>Brightline Labs</td><td>Wang Fang</td><td><span class="stage-tag">Negotiation</span></td><td>¥910K</td></tr>
-                    <tr class="pickable"><td>Summit Logistics</td><td>Zhao Lei</td><td><span class="stage-tag">Won</span></td><td>¥480K</td></tr>
+                    <tr class="pickable"><td>Summit Logistics</td><td>Zhao Lei</td><td><span class="stage-tag">Renewal</span></td><td>¥480K</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -1365,7 +1412,8 @@ footer a:hover { color: var(--fg); }
         <button class="sc" role="tab" type="button" aria-selected="true" data-s="0"><span class="bar"><i></i></span><small>01 · PPTX</small><span class="zh">表格做成汇报 PPT</span><span class="en">Spreadsheet to board deck</span></button>
         <button class="sc" role="tab" type="button" aria-selected="false" data-s="1" tabindex="-1"><span class="bar"><i></i></span><small>02 · DOCX</small><span class="zh">合同修订加批注</span><span class="en">Contract with tracked changes</span></button>
         <button class="sc" role="tab" type="button" aria-selected="false" data-s="2" tabindex="-1"><span class="bar"><i></i></span><small>03 · XLSX</small><span class="zh">两份流水对账</span><span class="en">Reconcile two exports</span></button>
-        <button class="sc" role="tab" type="button" aria-selected="false" data-s="3" tabindex="-1"><span class="bar"><i></i></span><small>04 · CODE</small><span class="zh">把编程交给代码模块</span><span class="en">Hand code to the code module</span></button>
+        <button class="sc" role="tab" type="button" aria-selected="false" data-s="3" tabindex="-1"><span class="bar"><i></i></span><small>04 · WEB</small><span class="zh">从网站导出数据</span><span class="en">Export data from a website</span></button>
+        <button class="sc" role="tab" type="button" aria-selected="false" data-s="4" tabindex="-1"><span class="bar"><i></i></span><small>05 · DOC</small><span class="zh">写成可编辑的文档</span><span class="en">A doc you can edit</span></button>
         <button class="playp" type="button" id="playp" aria-pressed="false" aria-label="Pause the demo"><svg class="pa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg><svg class="pl" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
       </div>
     </div>
@@ -2027,13 +2075,13 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
   /* sub agents pane */
   var agBody = $("ag-body"), agBadge = $("ag-badge"), agBack = $("ag-back"), agTitle = $("ag-title");
   function agEmpty() {
-    agBody.innerHTML = '<p class="ag-empty">Sub-agents this conversation delegates to show up here.</p>';
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
+    agBody.innerHTML = '<p class="ag-empty">Sub-agents, scripts and commands this conversation runs in the background show up here.</p>';
+    agBack.hidden = true; agTitle.textContent = "Background tasks";
   }
   function badge(n) { agBadge.textContent = n || ""; agBadge.classList.toggle("on", !!n); }
   function facts(a) { return "<span>deepseek-v4-pro</span><span>" + a.tokens + " tokens</span><span>" + a.uses + " tool use" + (a.uses === 1 ? "" : "s") + "</span>"; }
   function agRunning(list) {
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
+    agBack.hidden = true; agTitle.textContent = "Background tasks";
     agBody.innerHTML = '<div class="ag-body"><div class="ag-h">Running</div>' + list.map(function (a) {
       return '<div class="ag-card"><div class="d"><span>' + bi(a.zh, a.en) + '</span><span class="ag-stop" title="Stop"><i></i></span></div>' +
         '<div class="ag-meta"><span>Agent</span><span class="tm">' + (a.tm || "0:00") + "</span>" + (a.need ? '<span class="ag-need">' + svg(I.alert) + "Needs your approval</span>" : "") + "</div>" +
@@ -2041,7 +2089,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     }).join("") + "</div>";
   }
   function agFinished(list) {
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
+    agBack.hidden = true; agTitle.textContent = "Background tasks";
     agBody.innerHTML = '<div class="ag-body"><div class="ag-fin">Finished ' + list.length + svg(I.chevD) + "</div>" + list.map(function (a) {
       return '<div class="ag-row"><span class="d">' + svg(I.done) + bi(a.zh, a.en) + '</span><span class="ag-facts">' + facts(a) + "</span></div>";
     }).join("") + "</div>";
@@ -2054,7 +2102,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
   /* file viewer */
   var viewerOf = -1;
   function vhead(kind, name, meta) {
-    var b = $("v-badge"); b.className = "fb " + kind; b.textContent = kind.toUpperCase();
+    var b = $("v-badge"); b.hidden = !kind; b.className = "fb " + (kind || ""); b.textContent = (kind || "").toUpperCase();
     $("v-name").innerHTML = name; $("v-meta").innerHTML = meta;
   }
   function openViewer(byUser) {
@@ -2260,43 +2308,75 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     $("xl-f").textContent = "=SUM(E2:E8)";
   }
 
-  /* ---------------------------- scene 4: code ---------------------------- */
-  var DIFF = [
-    ["f", "export_orders.py", "+5 −2"],
-    ["@", "@@ -1,18 +1,21 @@"],
-    [" ", 1, "import argparse"], ["+", 2, "from datetime import date"], [" ", 3, ""], [" ", 4, "import pandas as pd"], [" ", 5, ""], [" ", 6, ""],
-    ["-", 7, "def export(orders_path, out_path):"], ["+", 7, "def export(orders_path, out_path, since=None):"],
-    [" ", 8, "    df = pd.read_excel(orders_path)"], ["+", 9, "    if since:"], ["+", 10, '        df = df[df["order_date"].dt.date >= since]'],
-    [" ", 11, "    df.to_csv(out_path, index=False)"], [" ", 12, ""], [" ", 13, ""], [" ", 14, "def main():"],
-    [" ", 15, "    parser = argparse.ArgumentParser()"], [" ", 16, '    parser.add_argument("orders")'], ["+", 17, '    parser.add_argument("--since", type=date.fromisoformat)'],
-    [" ", 18, "    args = parser.parse_args()"], ["-", 19, '    export(args.orders, "orders.csv")'], ["+", 19, '    export(args.orders, "orders.csv", args.since)'],
-    ["f", "tests/test_export.py", "+12"],
-    ["@", "@@ -0,0 +1,12 @@"],
-    ["+", 1, "from datetime import date"], ["+", 2, ""], ["+", 3, "import pandas as pd"], ["+", 4, ""], ["+", 5, "from export_orders import export"], ["+", 6, ""], ["+", 7, ""],
-    ["+", 8, "def test_since_keeps_only_newer_orders(tmp_path):"],
-    ["+", 9, '    src, out = tmp_path / "orders.xlsx", tmp_path / "orders.csv"'],
-    ["+", 10, '    dates = pd.to_datetime(["2026-09-28", "2026-10-01", "2026-10-03"])'],
-    ["+", 11, '    pd.DataFrame({"order_id": [1, 2, 3], "order_date": dates}).to_excel(src, index=False)'],
-    ["+", 12, "    export(src, out, since=date(2026, 10, 1))"],
-    ["+", 13, '    assert pd.read_csv(out)["order_id"].tolist() == [2, 3]']
+  /* ---------------------------- scene 4: the browser ---------------------------- */
+  function bzReset() {
+    $("bz-perm").hidden = true; $("bz-act").hidden = true;
+    $("crm-stage").textContent = "Any"; $("crm-q").textContent = "Any"; $("crm-pg").textContent = "Page 1 of 3";
+    all(".crm-f i, .crm-t tbody tr", $("bz-page")).forEach(function (e) { e.classList.remove("on", "scan"); });
+  }
+  function bzType(id, text, p) {
+    var el = $(id);
+    el.classList.toggle("on", p > 0 && p < 1);
+    el.textContent = p > 0 ? text.slice(0, Math.max(1, Math.round(text.length * p))) : "Any";
+  }
+  function bzScan(p) {
+    var rows = all(".crm-t tbody tr", $("bz-page")), page = Math.min(3, 1 + Math.floor(p * 3)), k = Math.floor((p * 3 % 1) * rows.length);
+    $("crm-pg").textContent = "Page " + page + " of 3";
+    rows.forEach(function (r, i) { r.classList.toggle("scan", p < 1 && i === k); });
+  }
+  var RENEW = [
+    ["Nova Retail", "Li Wei", "2026-10-15", 1200000], ["Brightline Labs", "Wang Fang", "2026-11-02", 910000], ["Harbor Foods", "Chen Jing", "2026-11-20", 640000],
+    ["Summit Logistics", "Zhao Lei", "2026-12-01", 480000], ["Northgate Hotels", "Sun Mei", "2026-10-28", 455000], ["Pine & Co", "Liu Yang", "2026-12-12", 390000],
+    ["Orbit Media", "Xu Hao", "2026-11-09", 362000], ["Redwood Clinics", "Gao Min", "2026-12-18", 341000]
   ];
-  function codeViewer() {
-    vhead("py", "export_orders.py", bi("2 个文件 · +17 −2", "2 files · +17 −2"));
-    var html = DIFF.map(function (d) {
-      if (d[0] === "f") return '<div class="fh"><b>' + d[1] + "</b><span>" + d[2] + "</span></div>";
-      if (d[0] === "@") return '<div class="dl hunk"><span class="no"></span><span class="sg"></span><span>' + d[1] + "</span></div>";
-      var cls = d[0] === "+" ? "add hide" : d[0] === "-" ? "rm" : "";
-      return '<div class="dl ' + cls + '"><span class="no">' + d[1] + '</span><span class="sg">' + (d[0] === " " ? "" : d[0] === "-" ? "−" : "+") + "</span><span>" + esc(d[2]) + "</span></div>";
+  function csvViewer() {
+    vhead("csv", bi("续约客户.csv", "renewals.csv"), bi("23 行", "23 rows"));
+    var rows = RENEW.map(function (r, i) {
+      return '<tr class="r"><th>' + (i + 2) + "</th><td>" + esc(r[0]) + "</td><td>" + r[1] + "</td><td>" + r[2] + '</td><td class="n">' + r[3] + "</td></tr>";
     }).join("");
-    vbody.innerHTML = '<div class="diff"><div class="diff-f">' + html + '</div><div class="term" id="term"></div></div>';
+    var blank = "";
+    for (var j = 10; j <= 16; j++) blank += "<tr><th>" + j + "</th><td></td><td></td><td></td><td></td></tr>";
+    vbody.innerHTML = '<div class="xl"><div class="xl-fx"><span class="ref">A1</span><span class="fx">fx</span><code>account</code></div><div class="xl-grid"><table><thead><tr><th></th>' +
+      "ABCD".split("").map(function (c) { return "<th>" + c + "</th>"; }).join("") +
+      '</tr></thead><tbody><tr class="hd"><th>1</th><td>account</td><td>owner</td><td>renewal_date</td><td>value</td></tr>' + rows + blank +
+      '</tbody></table></div><div class="xl-tabs"><span class="on">' + bi("续约客户", "renewals") + "</span></div></div>";
   }
-  function codeLines(p) {
-    var adds = all(".dl.add", vbody), n = Math.round(adds.length * p);
-    adds.forEach(function (d, i) { d.classList.toggle("hide", i >= n); });
-    var box = vbody.querySelector(".diff-f"), last = adds[n - 1];
-    if (box && last && !ff) box.scrollTop = Math.max(0, last.offsetTop - box.clientHeight + 40);
+
+  /* ---------------------------- scene 5: a Doc ---------------------------- */
+  var BARS = [12.4, 11.8, 9.1, 8.2, 7.1];
+  function fileCard() {
+    var w = put(h("div", null)), c = h("button", "fcard", '<span class="ic">' + svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>') +
+      '</span><span class="nm">q3-review<small>Document · .md</small></span>' + svg(I.chev));
+    c.type = "button"; w.appendChild(c); scrollLog();
+    c.addEventListener("click", function () { hold("viewer"); openViewer(true); });
+    return c;
   }
-  function term(lines) { var t = $("term"); if (t) t.innerHTML = lines; }
+  function docArtifact() {
+    vhead(null, "q3-review.md" + svg(I.chevD), "Saved");
+    var tb = function (d) { return svg(d, 1.8); };
+    vbody.innerHTML = '<div class="dk"><div class="dk-tb">' + tb('<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>') + tb('<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>') +
+      '<span class="sep"></span>' + tb('<path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>') + tb('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>') +
+      tb('<path d="M3 6l2 2 4-4M3 16l2 2 4-4M13 6h8M13 16h8"/>') + '<span class="sep"></span>' + tb('<path d="M12 5v14M5 12h14"/>') +
+      '</div><div class="dk-page"><h4>' + bi("Q3 经营分析", "Q3 business review") + "</h4><p>" +
+      bi("Q3 收入 4,860 万元，达成目标的 101.3%，海外和华东领跑。", "Revenue reached ¥48.6M, 101.3% of target, led by Overseas and East.") + "</p><h5>" + bi("各区域", "By region") +
+      '</h5><div class="dk-chart"><div class="ct">' + bi("各区域收入（百万元）", "Revenue by region (¥M)") + '</div><div class="dk-bars">' +
+      BARS.map(function (v) { return '<i style="height:' + (v / 13 * 100).toFixed(1) + '%"></i>'; }).join("") + '</div><div class="dk-lab">' +
+      [["海外", "Overseas"], ["华东", "East"], ["华北", "North"], ["华南", "South"], ["西部", "West"]].map(function (l) { return "<span>" + bi(l[0], l[1]) + "</span>"; }).join("") +
+      "</div></div><h5>" + bi("下一步", "Next steps") + '</h5><ul class="dk-check"><li id="dk-c0"><span class="cb"></span><span>' + bi("跟进两笔未完成的续约", "Close the two open renewals") +
+      '</span></li><li><span class="cb"></span><span>' + bi("复盘华南定价", "Review South pricing") + '</span></li></ul><div class="dk-note"><b>NOTE</b>' +
+      bi("数据来自 Q3销售数据.xlsx。", "Figures are from Q3 sales.xlsx.") + "</div></div></div>";
+  }
+  function docBars(p) {
+    var e = 1 - Math.pow(1 - p, 3);
+    all(".dk-bars i", vbody).forEach(function (b, i) { b.style.setProperty("--p", clamp(e * 1.4 - i * 0.08).toFixed(3)); });
+  }
+  function docCheck() {
+    var li = $("dk-c0");
+    if (!li) return;
+    li.classList.add("on");
+    $("v-meta").textContent = "Saving…";
+    setTimeout(function () { $("v-meta").textContent = "Saved"; }, ff ? 0 : 700);
+  }
 
   /* ---------------------------- the scenes ---------------------------- */
   var SCENES = [
@@ -2427,77 +2507,76 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
       }
     },
     {
-      title: ["订单导出加 --since 参数", "Add --since to the orders export"], mode: "Accept Edits", len: 19600, rest: 12900,
-      viewer: codeViewer, settle: function () { codeLines(1); term('<span class="p">$</span> pytest -q<br>...                                    [100%]<br><span class="ok">3 passed in 0.41s</span>'); },
+      title: ["导出 Q4 续约客户", "Q4 renewals export"], mode: "Auto", len: 17600, rest: 11400,
+      viewer: csvViewer, settle: function () { all(".xl tr.r", vbody).forEach(function (r) { r.classList.add("on"); }); },
       beats: function () {
-        var P = ["给 export_orders.py 加一个 --since 参数，只导出这个日期之后的订单，再补一个测试。",
-                 "Add a --since option to export_orders.py so it only exports orders from that date on, and add a test."];
-        var g, out, say, card, sub;
-        var TASK = { zh: "给 export_orders.py 加 --since 参数", en: "Add --since to export_orders.py" };
-        var HAND = L("Handed a coding task to the code module", TASK.zh, TASK.en, ": ");
-        function detail() {
-          agBack.hidden = false; agTitle.innerHTML = bi(TASK.zh, TASK.en);
-          agBody.innerHTML = '<div class="ag-detail"><div class="rows">' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Listed files</span></div>' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Read <b>export_orders.py</b></span></div>' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Changed files' + ds(17, 2) + "</span></div></div>" +
-            '<div class="appr"><div class="at">' + svg(I.alert) + 'Run a command</div><pre>pytest -q</pre><div class="an">Runs isolated: it can use only this conversation’s folders, can’t delete or rename files there, and reaches the internet only if the workspace allows any site. Review it before approving.</div>' +
-            '<div class="acts"><button type="button" class="yes">Approve</button><button type="button">Deny</button><span class="res"></span></div></div></div>';
-          card = agBody.querySelector(".appr");
-          var bs = all("button", card);
-          bs[0].addEventListener("click", function () { approve(true); });
-          bs[1].addEventListener("click", function () { approve(false); });
-        }
-        function approve(yes) {
-          if (!card || card.getAttribute("data-done")) return;
-          card.setAttribute("data-done", "1");
-          all("button", card).forEach(function (b) { b.disabled = true; });
-          card.querySelector(".res").textContent = yes ? "Approved" : "Denied";
-          if (yes) {
-            sub = h("div", "rrow live", '<span class="ic"></span><span class="lb shimmer-text">Ran a command: <b>pytest -q</b></span>');
-            agBody.querySelector(".rows").appendChild(sub);
-          }
-        }
+        var P = ["打开 CRM，把 Q4 要续约的客户都导出到 续约客户.csv，按金额从高到低排。",
+                 "Open our CRM and export every account up for renewal in Q4 to renewals.csv, largest first."];
+        var g, r = [], out, say;
+        var OPEN = L("Opened", "crm.example.com", "crm.example.com");
+        var beats = [
+          [300, 1800, function (p) { typeTo(P[0], P[1], p); }],
+          [2300, function () { send(P[0], P[1]); }],
+          [2700, function () {
+            g = group(); r[0] = row(g, OPEN); head(g, L("Opening", "crm.example.com", "crm.example.com"), true);
+            setSide("browser"); $("bz-perm").hidden = false; ctx("TOOLS", "Browser");
+          }],
+          moveTo(3300, 750, function () { return $("bz-once"); }),
+          clickOn(4100, function () { return $("bz-once"); }, function () { $("bz-perm").hidden = true; $("bz-act").hidden = false; }),
+          hideCursor(4500),
+          [4600, function () { fin(r[0]); r[1] = row(g, "Filled in 2 fields"); head(g, OPEN, true); }],
+          [4700, 700, function (p) { bzType("crm-stage", "Renewal", p); }],
+          [5500, 500, function (p) { bzType("crm-q", "Q4", p); }],
+          [6200, function () { fin(r[1]); r[2] = row(g, L("Saved the table across its pages to", "续约客户.csv", "renewals.csv")); }],
+          [6300, 2400, function (p) { bzScan(p); }],
+          [8900, function () {
+            fin(r[2]); bzScan(1); $("bz-act").hidden = true; head(g, OPEN + ", and 2 more actions", false);
+            setSide(defaultSide());
+            out = output({ kind: "csv", zh: "续约客户.csv", en: "renewals.csv", meta: "Created today at 3:40 PM" });
+          }],
+          [9200, function () {
+            say = reply("导出了 Q4 要续约的 23 个客户，合计 1,860 万元，已按金额从高到低存进 <b>续约客户.csv</b>。最大的三家是诺瓦零售、明线实验室和海港食品。",
+              "Exported the 23 accounts up for renewal in Q4, ¥18.6M in total, to <b>renewals.csv</b>, largest first. The top three are Nova Retail, Brightline Labs and Harbor Foods.");
+          }],
+          [9200, 1600, function (p) { if (say) say(p); }],
+          moveTo(11300, 700, function () { return out; }),
+          clickOn(12050, function () { return out; }, function () { openViewer(); }),
+          hideCursor(12500)
+        ];
+        for (var i = 0; i < RENEW.length; i++) beats.push([12700 + i * 260, (function (k) { return function () { var rr = vbody.querySelectorAll(".xl tr.r")[k]; if (rr) rr.classList.add("on"); }; })(i)]);
+        return beats;
+      }
+    },
+    {
+      title: ["Q3 经营分析文档", "Q3 review doc"], mode: "Auto", len: 16400, rest: 11600,
+      viewer: docArtifact, settle: function () { docBars(1); docCheck(); },
+      beats: function () {
+        var P = ["读一下 Q3销售数据.xlsx，写一份 Q3 经营分析文档，配一张各区域的图表，最后列出下一步。",
+                 "Read Q3 sales.xlsx and write a Q3 review doc with a chart by region and the next steps."];
+        var g, r = [], card, say;
+        var F = L("Read", "Q3销售数据.xlsx", "Q3 sales.xlsx"), W = L("Wrote", "q3-review.md", "q3-review.md");
         return [
-          [300, 1700, function (p) { typeTo(P[0], P[1], p); }],
-          [2200, function () { send(P[0], P[1]); }],
-          [2600, function () {
-            g = group(); head(g, HAND, true); badge(1);
-            agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "2.1k", uses: 1, doing: "Reading export_orders.py" }]);
-            ctx("TOOLS", "Code module");
+          [300, 1900, function (p) { typeTo(P[0], P[1], p); }],
+          [2400, function () { send(P[0], P[1]); }],
+          [2800, function () { g = group(); r[0] = row(g, F); head(g, L("Reading", "Q3销售数据.xlsx", "Q3 sales.xlsx"), true); ctx("FILES READ", bi("Q3销售数据.xlsx", "Q3 sales.xlsx")); }],
+          [3600, function () { fin(r[0]); r[1] = row(g, L("Loaded skill", "Docs", "Docs")); head(g, F, true); ctx("TOOLS", "Skill"); }],
+          [4300, function () { fin(r[1]); r[2] = row(g, W); ctx("TOOLS", "Write file"); }],
+          [5600, function () {
+            fin(r[2]); head(g, F + ", " + L("wrote", "q3-review.md", "q3-review.md") + ", and 1 more action", false);
+            output({ kind: "md", zh: "q3-review.md", en: "q3-review.md", meta: "Created today at 4:05 PM" });
           }],
-          [2600, 8000, function (p) { agTimes(p * 8000); }],
-          moveTo(3200, 700, function () { return $("b-agents"); }),
-          clickOn(3950, function () { return $("b-agents"); }, function () { setSide("agents"); }),
-          [4800, function () { agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "5.8k", uses: 3, doing: "Changing files", tm: "0:02" }]); }],
-          [5800, function () { agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "8.4k", uses: 4, need: true, tm: "0:03" }]); }],
-          moveTo(6300, 700, function () { return agBody.querySelector(".ag-link"); }),
-          clickOn(7050, function () { return agBody.querySelector(".ag-link"); }, function () { detail(); }),
-          moveTo(8000, 700, function () { return card && card.querySelector(".yes"); }),
-          clickOn(8750, function () { return card && card.querySelector(".yes"); }, function () { approve(true); }),
-          [9900, function () {
-            if (sub) { sub.className = "rrow ok"; sub.querySelector(".ic").innerHTML = svg(I.check, 2.4); sub.querySelector(".lb").classList.remove("shimmer-text"); }
-            if (card) card.insertAdjacentHTML("beforeend", '<div class="out">3 passed in 0.41s</div>');
+          [5900, function () {
+            say = reply("文档写好了：Q3 收入 4,860 万元，达成目标的 101.3%，海外和华东领跑。各区域图表和下一步都在里面，可以直接在旁边改。",
+              "The doc is ready: revenue reached ¥48.6M, 101.3% of target, led by Overseas and East. The chart by region and the next steps are in it, and you can edit it right beside the chat.");
           }],
-          hideCursor(10200),
-          [10700, function () {
-            setSide(defaultSide()); badge(0);
-            agFinished([{ zh: TASK.zh, en: TASK.en, tokens: "9.0k", uses: 6 }]);
-            head(g, HAND, false);
-            out = output({ kind: "py", zh: "export_orders.py", en: "export_orders.py", meta: "Edited today at 2:16 PM" });
-            output({ kind: "py", zh: "test_export.py", en: "test_export.py", meta: "Created today at 2:16 PM" });
-          }],
-          [11000, function () {
-            say = reply("完成了。<b>export_orders.py</b> 现在支持 <code>--since YYYY-MM-DD</code>，新增的 <b>tests/test_export.py</b> 覆盖了它，3 个测试全部通过。",
-              "Done. <b>export_orders.py</b> now takes <code>--since YYYY-MM-DD</code>, and the new <b>tests/test_export.py</b> covers it. All 3 tests pass.");
-          }],
-          [11000, 1600, function (p) { if (say) say(p); }],
-          moveTo(13100, 700, function () { return out; }),
-          clickOn(13850, function () { return out; }, function () { openViewer(); }),
-          hideCursor(14300),
-          [14400, 2600, function (p) { codeLines(p); }],
-          [17200, function () { term('<span class="p">$</span> pytest -q'); }],
-          [17900, function () { term('<span class="p">$</span> pytest -q<br>...                                    [100%]<br><span class="ok">3 passed in 0.41s</span>'); }]
+          [5900, 1600, function (p) { if (say) say(p); }],
+          [7600, function () { card = fileCard(); }],
+          moveTo(8200, 700, function () { return card; }),
+          clickOn(8950, function () { return card; }, function () { openViewer(); docBars(0); }),
+          [9500, 1300, function (p) { docBars(p); }],
+          moveTo(11400, 800, function () { return $("dk-c0") && $("dk-c0").querySelector(".cb"); }),
+          clickOn(12300, function () { return $("dk-c0") && $("dk-c0").querySelector(".cb"); }, function () { docCheck(); }),
+          hideCursor(12800)
         ];
       }
     }
@@ -2526,7 +2605,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     $("modepill").querySelector("span").textContent = sc.mode;
     cursor.classList.remove("on", "down");
     placeCursor(app.clientWidth * 0.55, app.clientHeight - 80);
-    unpick();
+    unpick(); bzReset();
   }
   function load(i) {
     S.i = i; S.t = 0;
@@ -2629,7 +2708,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     else if (act === "scheduled" || act === "workflow") $("workflows").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
     else if (act === "mode") $("models").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
     else if (act === "pick") togglePick();
-    else if (act === "ag-back") { var sc = SCENES[S.i]; if (S.i === 3) agRunning([{ zh: "给 export_orders.py 加 --since 参数", en: "Add --since to export_orders.py", tokens: "9.0k", uses: 6 }]); else agEmpty(); }
+    else if (act === "ag-back") agEmpty();
   });
   all(".modal", app).forEach(function (m) {
     m.addEventListener("click", function (e) { if (e.target === m) { closeModals(); release("modal"); } });
