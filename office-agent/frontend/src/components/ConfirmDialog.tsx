@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 interface ConfirmDialogProps {
   title: string;
@@ -31,7 +32,7 @@ export function ConfirmDialog({
   // tree, could end up painted under a sibling panel despite z-index math
   // saying otherwise.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onCancel}>
       <div
         role="dialog"
         aria-modal="true"

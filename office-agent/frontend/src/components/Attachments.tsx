@@ -5,6 +5,7 @@ import { CloseIcon } from "./icons";
 
 import { type AttachmentView } from "../lib/attachments";
 import { copyImage } from "../lib/copyImage";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 function pdfPageUrl(path: string, threadId: string, page: number, width: number): string {
   const query = new URLSearchParams({ path, page: String(page), width: String(width) });
@@ -210,7 +211,7 @@ export function AttachmentDialog({
   });
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
         role="dialog"
         aria-label={view.name}
