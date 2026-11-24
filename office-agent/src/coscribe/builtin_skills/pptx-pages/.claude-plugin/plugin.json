@@ -1,0 +1,7 @@
+{
+  "name": "pptx-pages",
+  "description": "Build a new PowerPoint deck as one SVG page per slide, compiled into a .pptx whose shapes and text stay editable; a deck on the person's own template too.",
+  "author": { "name": "Coscribe" },
+  "skills": "./",
+  "coscribe": { "tools": ["build_pptx_from_pages"] }
+}

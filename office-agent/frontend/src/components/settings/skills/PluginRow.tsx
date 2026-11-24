@@ -48,7 +48,7 @@ export function PluginRow({
         </div>
       </div>
       <span className="shrink-0 text-sm tabular-nums text-[color-mix(in_srgb,var(--fg)_60%,var(--bg))]">{shortDate(entry.updated)}</span>
-      <SkillMenu label={info.name} enabled={entry.enabled} removable onToggle={onToggle} onRemove={onRemove} />
+      <SkillMenu label={info.name} enabled={entry.enabled} removable={entry.source !== "builtin"} onToggle={onToggle} onRemove={onRemove} />
     </div>
   );
 }

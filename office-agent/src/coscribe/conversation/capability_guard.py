@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import Agent, ToolMetadata, get_tool_metadata
-from ..tools import Capabilities, WorkspaceScope
+from ..tools import Capabilities, WorkspaceScope, load_builtin_skills
 from .dashboard import is_dashboard
 from .design_canvas import is_canvas
 
@@ -34,6 +34,11 @@ _ARTIFACTS_OFF = (
     "Artifacts are turned off on this computer (Settings › Capabilities), so this {kind} was not "
     "made. Answer in the conversation instead; if the person asked for a file to keep, write a "
     "Word, Excel or PowerPoint file. Tell them they can turn artifacts on there."
+)
+_PLUGIN_OFF = (
+    "The {plugin} plugin is turned off on this computer (Settings › Plugins), so this tool did "
+    "not run. Do the work another way if one fits, and tell the person they can turn the plugin "
+    "on there."
 )
 _DOC_MARKER = re.compile(r"^coscribe:\s*doc\s*$", re.IGNORECASE | re.MULTILINE)
 
@@ -101,6 +106,26 @@ def capability_refusal(
     return _ARTIFACTS_OFF.format(kind=kind)
 
 
+def held_plugin_tools(enabled_skills: set[str]) -> dict[str, str]:
+    """The built-in tools whose plugin is off, each with its plugin's name. A plugin is off when
+    none of its skills is on (Settings › Plugins switches them together)."""
+    plugins: dict[str, tuple[set[str], bool]] = {}
+    for skill in load_builtin_skills():
+        if skill.plugin and skill.builtin_tools():
+            tools, on = plugins.get(skill.plugin, (set(), False))
+            plugins[skill.plugin] = (
+                tools | set(skill.builtin_tools()),
+                on or skill.name in enabled_skills,
+            )
+    return {tool: plugin for plugin, (tools, on) in plugins.items() if not on for tool in tools}
+
+
+def plugin_refusal(name: str, enabled_skills: set[str]) -> str | None:
+    """Why this tool may not run, None when its plugin is on or it belongs to none."""
+    plugin = held_plugin_tools(enabled_skills).get(name)
+    return None if plugin is None else _PLUGIN_OFF.format(plugin=plugin)
+
+
 def _held(tool: Callable[..., Any], check: Callable[[Mapping[str, Any]], None]) -> Any:
     signature = inspect.signature(tool)
 
@@ -140,6 +165,25 @@ def hold_to_capabilities(
             refusal = capability_refusal(state_dir, name, metadata, args, scope)
             if refusal is not None:
                 raise TurnedOff(refusal)
+
+        return _held(tool, check)
+
+    return dataclasses.replace(agent, tools=[guard(tool) for tool in agent.tools])
+
+
+def hold_to_plugins(agent: Agent, enabled_skills: set[str]) -> Agent:
+    """The agent with each built-in tool of a switched-off plugin refusing. It stays in the list
+    with its schema, as a file tool held by its switch does; where the tools are searched for,
+    it is also left out of the search (`AgentAssembly.build_lg_agent`)."""
+    held = held_plugin_tools(enabled_skills)
+
+    def guard(tool: Callable[..., Any]) -> Any:
+        plugin = held.get(getattr(tool, "__name__", ""))
+        if plugin is None or not callable(tool):
+            return tool
+
+        def check(args: Mapping[str, Any]) -> None:
+            raise TurnedOff(_PLUGIN_OFF.format(plugin=plugin))
 
         return _held(tool, check)
 

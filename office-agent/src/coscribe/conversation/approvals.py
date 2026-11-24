@@ -52,7 +52,7 @@ from ..tools import (
     sandbox_codex,
     sandbox_mode,
 )
-from .capability_guard import capability_refusal
+from .capability_guard import capability_refusal, plugin_refusal
 from .events import EventSink
 from .folder_access import decide_folder_request
 from .package_install import decide_package_install
@@ -192,6 +192,7 @@ class ApprovalHost(Protocol):
     auto_mode: bool
     run_approval_mode: str | None
     preapproved_tools: frozenset[str]
+    enabled_skill_names: set[str]
     _gated_tool_risks: dict[str, str]
     _stop_requested: bool
     _auto_paused: bool
@@ -441,6 +442,9 @@ class ApprovalDecider:
 
     def _turned_off(self, name: str, args: dict[str, Any]) -> str | None:
         """Asked before a person is: nobody approves a write its switch then refuses."""
+        held = plugin_refusal(name, self._host.enabled_skill_names)
+        if held is not None:
+            return held
         metadata = self._host.tool_catalog().get(name)
         if metadata is None:
             return None

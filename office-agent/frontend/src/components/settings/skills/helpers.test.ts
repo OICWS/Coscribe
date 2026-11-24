@@ -81,7 +81,7 @@ describe("listEntries", () => {
     enabled,
     updated,
     plugin,
-    plugin_info: plugin ? { name: plugin, description: "", version: "", author: "", unused: [] } : null,
+    plugin_info: plugin ? { name: plugin, description: "", version: "", author: "", tools: [], unused: [] } : null,
   });
 
   it("folds a plugin's skills into one entry and keeps lone skills as they are", () => {
