@@ -8,8 +8,8 @@ name = "English"
 html_lang = "en"
 published = true
 docs = "Docs"
-docs_title = "coscribe Docs"
-home = "coscribe home"
+docs_title = "Coscribe Docs"
+home = "Coscribe home"
 skip = "Skip to content"
 search = "Search the docs"
 search_empty = "Nothing found for “{q}”. Try other words, such as the name the app shows."
@@ -33,7 +33,7 @@ anchor = "Link to this section"
 edit = "Edit this page on GitHub"
 report = "Something wrong? Tell us"
 untranslated = "This page is not translated into {lang} yet, so it is shown in English."
-llms_summary = "coscribe is an open-source office assistant that runs on your Windows PC."
+llms_summary = "Coscribe is an open-source office assistant that runs on your Windows PC."
 note = "Note"
 tip = "Tip"
 important = "Important"
@@ -41,15 +41,15 @@ warning = "Warning"
 
 [en.groups.get-started]
 title = "Get started"
-description = "Download coscribe, connect a model and start your first conversation."
+description = "Download Coscribe, connect a model and start your first conversation."
 
 [en.groups.use]
-title = "Use coscribe"
+title = "Use Coscribe"
 description = "Work in a conversation: approvals, plans, files, the browser and models."
 
 [en.groups.workspaces]
 title = "Workspaces"
-description = "Choose the folders coscribe works in, and what a folder may tell it."
+description = "Choose the folders Coscribe works in, and what a folder may tell it."
 
 [en.groups.office]
 title = "Office files"
@@ -57,7 +57,7 @@ description = "Word, Excel, PowerPoint, PDF, and the Docs, designs and dashboard
 
 [en.groups.workflows]
 title = "Scheduled tasks and workflows"
-description = "Have coscribe do a job on its own, on a schedule or when something happens."
+description = "Have Coscribe do a job on its own, on a schedule or when something happens."
 
 [en.groups.customize]
 title = "Customize"
@@ -76,8 +76,8 @@ name = "Español"
 html_lang = "es"
 published = true
 docs = "Documentación"
-docs_title = "Documentación de coscribe"
-home = "Inicio de coscribe"
+docs_title = "Documentación de Coscribe"
+home = "Inicio de Coscribe"
 skip = "Ir al contenido"
 search = "Buscar en la documentación"
 search_empty = "No se encontró nada para «{q}». Prueba con otras palabras, como el nombre que muestra la aplicación."
@@ -101,7 +101,7 @@ anchor = "Enlace a esta sección"
 edit = "Editar esta página en GitHub"
 report = "¿Algo está mal? Avísanos"
 untranslated = "Esta página aún no tiene versión en {lang}, así que se muestra en inglés."
-llms_summary = "coscribe es un asistente de oficina de código abierto que funciona en tu PC con Windows."
+llms_summary = "Coscribe es un asistente de oficina de código abierto que funciona en tu PC con Windows."
 note = "Nota"
 tip = "Consejo"
 important = "Importante"
@@ -109,15 +109,15 @@ warning = "Advertencia"
 
 [es.groups.get-started]
 title = "Primeros pasos"
-description = "Descarga coscribe, conecta un modelo y empieza tu primera conversación."
+description = "Descarga Coscribe, conecta un modelo y empieza tu primera conversación."
 
 [es.groups.use]
-title = "Usar coscribe"
+title = "Usar Coscribe"
 description = "Trabaja en una conversación: aprobaciones, planes, archivos, el navegador y los modelos."
 
 [es.groups.workspaces]
 title = "Espacios de trabajo"
-description = "Elige las carpetas en las que trabaja coscribe y lo que una carpeta puede indicarle."
+description = "Elige las carpetas en las que trabaja Coscribe y lo que una carpeta puede indicarle."
 
 [es.groups.office]
 title = "Archivos de Office"
@@ -125,7 +125,7 @@ description = "Word, Excel, PowerPoint, PDF y los Docs, diseños y paneles junto
 
 [es.groups.workflows]
 title = "Tareas programadas y flujos de trabajo"
-description = "Haz que coscribe haga un trabajo por su cuenta, con un horario o cuando ocurre algo."
+description = "Haz que Coscribe haga un trabajo por su cuenta, con un horario o cuando ocurre algo."
 
 [es.groups.customize]
 title = "Personalizar"
@@ -144,8 +144,8 @@ name = "日本語"
 html_lang = "ja"
 published = true
 docs = "ドキュメント"
-docs_title = "coscribe ドキュメント"
-home = "coscribe ホーム"
+docs_title = "Coscribe ドキュメント"
+home = "Coscribe ホーム"
 skip = "本文へスキップ"
 search = "ドキュメントを検索"
 search_empty = "「{q}」に一致するものはありませんでした。アプリに表示される名前など、別の言葉で試してください。"
@@ -169,7 +169,7 @@ anchor = "このセクションへのリンク"
 edit = "GitHub でこのページを編集"
 report = "間違いを見つけたら教えてください"
 untranslated = "このページはまだ{lang}に翻訳されていないため、英語で表示しています。"
-llms_summary = "coscribe は Windows PC で動くオープンソースのオフィスアシスタントです。"
+llms_summary = "Coscribe は Windows PC で動くオープンソースのオフィスアシスタントです。"
 note = "メモ"
 tip = "ヒント"
 important = "重要"
@@ -177,15 +177,15 @@ warning = "警告"
 
 [ja.groups.get-started]
 title = "はじめに"
-description = "coscribe をダウンロードし、モデルをつないで、最初の会話を始めます。"
+description = "Coscribe をダウンロードし、モデルをつないで、最初の会話を始めます。"
 
 [ja.groups.use]
-title = "coscribe を使う"
+title = "Coscribe を使う"
 description = "会話での作業：承認、計画、ファイル、ブラウザー、モデル。"
 
 [ja.groups.workspaces]
 title = "ワークスペース"
-description = "coscribe が作業するフォルダーと、フォルダーが伝えられることを選びます。"
+description = "Coscribe が作業するフォルダーと、フォルダーが伝えられることを選びます。"
 
 [ja.groups.office]
 title = "Office ファイル"
@@ -193,7 +193,7 @@ description = "Word、Excel、PowerPoint、PDF、そして会話の横に開く 
 
 [ja.groups.workflows]
 title = "スケジュールタスクとワークフロー"
-description = "決まった時刻や何かが起きたときに、coscribe に仕事を任せます。"
+description = "決まった時刻や何かが起きたときに、Coscribe に仕事を任せます。"
 
 [ja.groups.customize]
 title = "カスタマイズ"
@@ -212,8 +212,8 @@ name = "Português do Brasil"
 html_lang = "pt-BR"
 published = true
 docs = "Documentação"
-docs_title = "Documentação do coscribe"
-home = "Início do coscribe"
+docs_title = "Documentação do Coscribe"
+home = "Início do Coscribe"
 skip = "Pular para o conteúdo"
 search = "Pesquisar na documentação"
 search_empty = "Nada encontrado para “{q}”. Tente outras palavras, como o nome que aparece no app."
@@ -237,7 +237,7 @@ anchor = "Link para esta seção"
 edit = "Editar esta página no GitHub"
 report = "Encontrou um erro? Avise-nos"
 untranslated = "Esta página ainda não foi traduzida para {lang}, por isso aparece em inglês."
-llms_summary = "coscribe é um assistente de escritório de código aberto que roda no seu PC com Windows."
+llms_summary = "Coscribe é um assistente de escritório de código aberto que roda no seu PC com Windows."
 note = "Observação"
 tip = "Dica"
 important = "Importante"
@@ -245,15 +245,15 @@ warning = "Aviso"
 
 [pt.groups.get-started]
 title = "Introdução"
-description = "Baixe o coscribe, conecte um modelo e comece sua primeira conversa."
+description = "Baixe o Coscribe, conecte um modelo e comece sua primeira conversa."
 
 [pt.groups.use]
-title = "Usar o coscribe"
+title = "Usar o Coscribe"
 description = "Trabalhar em uma conversa: aprovações, planos, arquivos, navegador e modelos."
 
 [pt.groups.workspaces]
 title = "Espaços de trabalho"
-description = "Escolha as pastas em que o coscribe trabalha e o que uma pasta pode dizer a ele."
+description = "Escolha as pastas em que o Coscribe trabalha e o que uma pasta pode dizer a ele."
 
 [pt.groups.office]
 title = "Arquivos do Office"
@@ -261,7 +261,7 @@ description = "Word, Excel, PowerPoint, PDF e os docs, designs e painéis que ab
 
 [pt.groups.workflows]
 title = "Tarefas agendadas e fluxos de trabalho"
-description = "Deixe o coscribe fazer o trabalho sozinho, em um horário ou quando algo acontece."
+description = "Deixe o Coscribe fazer o trabalho sozinho, em um horário ou quando algo acontece."
 
 [pt.groups.customize]
 title = "Personalizar"
@@ -280,8 +280,8 @@ name = "简体中文"
 html_lang = "zh-CN"
 published = true
 docs = "文档"
-docs_title = "coscribe 文档"
-home = "coscribe 主页"
+docs_title = "Coscribe 文档"
+home = "Coscribe 主页"
 skip = "跳到正文"
 search = "搜索文档"
 search_empty = "没有找到“{q}”。换个说法试试，比如功能在程序里显示的名字。"
@@ -305,7 +305,7 @@ anchor = "链接到这一节"
 edit = "在 GitHub 上修改这一页"
 report = "文档有误？告诉我们"
 untranslated = "这一页还没有{lang}版，下面显示的是英文原文。"
-llms_summary = "coscribe 是运行在 Windows 电脑上的开源办公助手。"
+llms_summary = "Coscribe 是运行在 Windows 电脑上的开源办公助手。"
 note = "说明"
 tip = "提示"
 important = "重要"
@@ -313,15 +313,15 @@ warning = "注意"
 
 [zh.groups.get-started]
 title = "入门"
-description = "下载 coscribe，接上模型，开始第一次对话。"
+description = "下载 Coscribe，接上模型，开始第一次对话。"
 
 [zh.groups.use]
-title = "使用 coscribe"
+title = "使用 Coscribe"
 description = "在对话里工作：审批、计划、文件、浏览器和模型。"
 
 [zh.groups.workspaces]
 title = "工作区"
-description = "选择 coscribe 工作的文件夹，以及文件夹能告诉它什么。"
+description = "选择 Coscribe 工作的文件夹，以及文件夹能告诉它什么。"
 
 [zh.groups.office]
 title = "Office 文件"
@@ -329,7 +329,7 @@ description = "Word、Excel、PowerPoint、PDF，以及对话旁边的文档、�
 
 [zh.groups.workflows]
 title = "定时任务和工作流"
-description = "让 coscribe 自己按时间或在某件事发生时完成工作。"
+description = "让 Coscribe 自己按时间或在某件事发生时完成工作。"
 
 [zh.groups.customize]
 title = "自定义"
@@ -348,8 +348,8 @@ name = "Русский"
 html_lang = "ru"
 published = true
 docs = "Документация"
-docs_title = "Документация coscribe"
-home = "Главная coscribe"
+docs_title = "Документация Coscribe"
+home = "Главная Coscribe"
 skip = "Перейти к содержимому"
 search = "Поиск по документации"
 search_empty = "По запросу «{q}» ничего не найдено. Попробуйте другие слова, например название, которое показывает приложение."
@@ -373,7 +373,7 @@ anchor = "Ссылка на этот раздел"
 edit = "Изменить эту страницу на GitHub"
 report = "Нашли ошибку? Сообщите нам"
 untranslated = "Эта страница ещё не переведена на язык «{lang}», поэтому показана на английском."
-llms_summary = "coscribe — офисный помощник с открытым исходным кодом, который работает на вашем ПК с Windows."
+llms_summary = "Coscribe — офисный помощник с открытым исходным кодом, который работает на вашем ПК с Windows."
 note = "Примечание"
 tip = "Совет"
 important = "Важно"
@@ -381,15 +381,15 @@ warning = "Предупреждение"
 
 [ru.groups.get-started]
 title = "Начало работы"
-description = "Скачайте coscribe, подключите модель и начните первый разговор."
+description = "Скачайте Coscribe, подключите модель и начните первый разговор."
 
 [ru.groups.use]
-title = "Работа с coscribe"
+title = "Работа с Coscribe"
 description = "Работа в разговоре: подтверждения, планы, файлы, браузер и модели."
 
 [ru.groups.workspaces]
 title = "Рабочие пространства"
-description = "Выберите папки, в которых работает coscribe, и что папка может ему сообщить."
+description = "Выберите папки, в которых работает Coscribe, и что папка может ему сообщить."
 
 [ru.groups.office]
 title = "Файлы Office"
@@ -397,7 +397,7 @@ description = "Word, Excel, PowerPoint, PDF, а также документы, �
 
 [ru.groups.workflows]
 title = "Запланированные задачи и рабочие процессы"
-description = "Пусть coscribe делает работу сам — по расписанию или когда что-то происходит."
+description = "Пусть Coscribe делает работу сам — по расписанию или когда что-то происходит."
 
 [ru.groups.customize]
 title = "Настройка"
@@ -416,8 +416,8 @@ name = "Français"
 html_lang = "fr"
 published = true
 docs = "Documentation"
-docs_title = "Documentation de coscribe"
-home = "Accueil coscribe"
+docs_title = "Documentation de Coscribe"
+home = "Accueil Coscribe"
 skip = "Aller au contenu"
 search = "Rechercher dans la documentation"
 search_empty = "Aucun résultat pour « {q} ». Essayez d’autres mots, comme le nom affiché dans l’application."
@@ -441,7 +441,7 @@ anchor = "Lien vers cette section"
 edit = "Modifier cette page sur GitHub"
 report = "Une erreur ? Signalez-la"
 untranslated = "Cette page n’est pas encore traduite en {lang}, elle s’affiche donc en anglais."
-llms_summary = "coscribe est un assistant de bureautique open source qui fonctionne sur votre PC Windows."
+llms_summary = "Coscribe est un assistant de bureautique open source qui fonctionne sur votre PC Windows."
 note = "Remarque"
 tip = "Astuce"
 important = "Important"
@@ -449,15 +449,15 @@ warning = "Attention"
 
 [fr.groups.get-started]
 title = "Prise en main"
-description = "Téléchargez coscribe, connectez un modèle et lancez votre première conversation."
+description = "Téléchargez Coscribe, connectez un modèle et lancez votre première conversation."
 
 [fr.groups.use]
-title = "Utiliser coscribe"
+title = "Utiliser Coscribe"
 description = "Travailler dans une conversation : approbations, plans, fichiers, navigateur et modèles."
 
 [fr.groups.workspaces]
 title = "Espaces de travail"
-description = "Choisissez les dossiers où coscribe travaille et ce qu’un dossier peut lui indiquer."
+description = "Choisissez les dossiers où Coscribe travaille et ce qu’un dossier peut lui indiquer."
 
 [fr.groups.office]
 title = "Fichiers Office"
@@ -465,7 +465,7 @@ description = "Word, Excel, PowerPoint, PDF, et les docs, designs et tableaux de
 
 [fr.groups.workflows]
 title = "Tâches planifiées et workflows"
-description = "Laissez coscribe faire le travail seul, à une heure donnée ou quand quelque chose se produit."
+description = "Laissez Coscribe faire le travail seul, à une heure donnée ou quand quelque chose se produit."
 
 [fr.groups.customize]
 title = "Personnaliser"
@@ -484,8 +484,8 @@ name = "한국어"
 html_lang = "ko"
 published = true
 docs = "문서"
-docs_title = "coscribe 문서"
-home = "coscribe 홈"
+docs_title = "Coscribe 문서"
+home = "Coscribe 홈"
 skip = "본문으로 건너뛰기"
 search = "문서 검색"
 search_empty = "“{q}”에 대한 결과가 없습니다. 앱에 표시되는 이름 등 다른 단어로 검색해 보세요."
@@ -509,7 +509,7 @@ anchor = "이 섹션 링크"
 edit = "GitHub에서 이 페이지 편집"
 report = "오류를 발견하셨나요? 알려 주세요"
 untranslated = "이 페이지는 아직 {lang}로 번역되지 않아 영어로 표시됩니다."
-llms_summary = "coscribe는 Windows PC에서 실행되는 오픈 소스 사무 도우미입니다."
+llms_summary = "Coscribe는 Windows PC에서 실행되는 오픈 소스 사무 도우미입니다."
 note = "참고"
 tip = "팁"
 important = "중요"
@@ -517,15 +517,15 @@ warning = "경고"
 
 [ko.groups.get-started]
 title = "시작하기"
-description = "coscribe를 다운로드하고, 모델을 연결하고, 첫 대화를 시작합니다."
+description = "Coscribe를 다운로드하고, 모델을 연결하고, 첫 대화를 시작합니다."
 
 [ko.groups.use]
-title = "coscribe 사용하기"
+title = "Coscribe 사용하기"
 description = "대화에서 작업하기: 승인, 계획, 파일, 브라우저, 모델."
 
 [ko.groups.workspaces]
 title = "워크스페이스"
-description = "coscribe가 작업할 폴더와, 폴더가 coscribe에 알려 줄 수 있는 내용을 정합니다."
+description = "Coscribe가 작업할 폴더와, 폴더가 Coscribe에 알려 줄 수 있는 내용을 정합니다."
 
 [ko.groups.office]
 title = "Office 파일"
@@ -533,7 +533,7 @@ description = "Word, Excel, PowerPoint, PDF, 그리고 대화 옆에 열리는 �
 
 [ko.groups.workflows]
 title = "예약 작업과 워크플로"
-description = "정해진 시간이나 어떤 일이 일어났을 때 coscribe가 알아서 작업하게 합니다."
+description = "정해진 시간이나 어떤 일이 일어났을 때 Coscribe가 알아서 작업하게 합니다."
 
 [ko.groups.customize]
 title = "사용자 지정"
@@ -552,8 +552,8 @@ name = "Deutsch"
 html_lang = "de"
 published = true
 docs = "Dokumentation"
-docs_title = "coscribe-Dokumentation"
-home = "coscribe-Startseite"
+docs_title = "Coscribe-Dokumentation"
+home = "Coscribe-Startseite"
 skip = "Zum Inhalt springen"
 search = "Dokumentation durchsuchen"
 search_empty = "Keine Treffer für „{q}“. Versuchen Sie andere Wörter, etwa den Namen, den die App anzeigt."
@@ -577,7 +577,7 @@ anchor = "Link zu diesem Abschnitt"
 edit = "Diese Seite auf GitHub bearbeiten"
 report = "Fehler gefunden? Sagen Sie es uns"
 untranslated = "Diese Seite ist noch nicht auf {lang} übersetzt und wird daher auf Englisch angezeigt."
-llms_summary = "coscribe ist ein Open-Source-Büroassistent, der auf Ihrem Windows-PC läuft."
+llms_summary = "Coscribe ist ein Open-Source-Büroassistent, der auf Ihrem Windows-PC läuft."
 note = "Hinweis"
 tip = "Tipp"
 important = "Wichtig"
@@ -585,15 +585,15 @@ warning = "Warnung"
 
 [de.groups.get-started]
 title = "Erste Schritte"
-description = "coscribe herunterladen, ein Modell verbinden und die erste Unterhaltung beginnen."
+description = "Coscribe herunterladen, ein Modell verbinden und die erste Unterhaltung beginnen."
 
 [de.groups.use]
-title = "coscribe verwenden"
+title = "Coscribe verwenden"
 description = "In einer Unterhaltung arbeiten: Genehmigungen, Pläne, Dateien, Browser und Modelle."
 
 [de.groups.workspaces]
 title = "Arbeitsbereiche"
-description = "Wählen Sie die Ordner, in denen coscribe arbeitet, und was ein Ordner ihm mitteilen kann."
+description = "Wählen Sie die Ordner, in denen Coscribe arbeitet, und was ein Ordner ihm mitteilen kann."
 
 [de.groups.office]
 title = "Office-Dateien"
@@ -601,7 +601,7 @@ description = "Word, Excel, PowerPoint, PDF sowie Docs, Designs und Dashboards, 
 
 [de.groups.workflows]
 title = "Geplante Aufgaben und Workflows"
-description = "Lassen Sie coscribe Arbeit selbstständig erledigen, zu einer festen Zeit oder wenn etwas passiert."
+description = "Lassen Sie Coscribe Arbeit selbstständig erledigen, zu einer festen Zeit oder wenn etwas passiert."
 
 [de.groups.customize]
 title = "Anpassen"

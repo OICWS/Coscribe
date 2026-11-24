@@ -13,7 +13,7 @@ El selector muestra los modelos que activaste para cada proveedor en **Settings*
 
 Junto al modelo está el control de esfuerzo, una escala de **Faster** a **Smarter**. Más esfuerzo deja que el modelo razone más: mejor en tareas difíciles, más lento y más caro. **Medium** es un buen punto de partida.
 
-Cuando coscribe conoce los niveles propios del modelo, la escala muestra esos, como **Low**, **Medium**, **High**, **Extra high** y **Max**. Si no, muestra la escala completa y el modelo usa el nivel más cercano que admite. Un modelo sin ajuste de esfuerzo muestra el control en gris.
+Cuando Coscribe conoce los niveles propios del modelo, la escala muestra esos, como **Low**, **Medium**, **High**, **Extra high** y **Max**. Si no, muestra la escala completa y el modelo usa el nivel más cercano que admite. Un modelo sin ajuste de esfuerzo muestra el control en gris.
 
 Tu elección se mantiene al cambiar de modelo: el nuevo modelo usa su nivel más cercano.
 
@@ -21,7 +21,7 @@ Tu elección se mantiene al cambiar de modelo: el nuevo modelo usa su nivel más
 
 Cada modelo solo puede leer cierta cantidad a la vez: su ventana de contexto. Cuando una conversación ha empezado, un anillo junto al cuadro de mensaje muestra cuánto se ha usado. Haz clic en el anillo para ver qué ocupa el espacio: los mensajes, el prompt del sistema, las herramientas y habilidades, y el espacio libre que queda.
 
-Cuando la ventana está llena en unas cuatro quintas partes, coscribe resume por sí solo la parte anterior de la conversación para poder seguir. También puedes escribir `/compact` para hacerlo ya. Consulta [Mantener una conversación larga](conversations.md#keep-a-long-conversation-going).
+Cuando la ventana está llena en unas cuatro quintas partes, Coscribe resume por sí solo la parte anterior de la conversación para poder seguir. También puedes escribir `/compact` para hacerlo ya. Consulta [Mantener una conversación larga](conversations.md#keep-a-long-conversation-going).
 
 ## Gastar menos {#keep-costs-down}
 

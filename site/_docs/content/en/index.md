@@ -1,6 +1,6 @@
 ---
-title: coscribe Docs
-description: How to get Word, Excel, PowerPoint and PDF work done with coscribe, from the first download to a conversation turned into a workflow that runs every week.
+title: Coscribe Docs
+description: How to get Word, Excel, PowerPoint and PDF work done with Coscribe, from the first download to a conversation turned into a workflow that runs every week.
 ---
 
 New here? Start with [Download and first start](get-started/install.md); you can be in your first conversation within ten minutes.

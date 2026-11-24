@@ -1,16 +1,16 @@
 ---
 title: 排查问题
-description: 用 /doctor 检查 coscribe 在电脑上需要的东西，解决常见问题，并报告问题。
+description: 用 /doctor 检查 Coscribe 在电脑上需要的东西，解决常见问题，并报告问题。
 ---
 
 ## 运行检查 {#run-a-check}
 
-在任意对话里输入 `/doctor`。coscribe 会检查它在这台电脑上需要的东西，并显示一张卡片，列出每项结果（问题排在最前）和对应的解决办法。如果解决办法是某个设置，会直接链接到那一页。
+在任意对话里输入 `/doctor`。Coscribe 会检查它在这台电脑上需要的东西，并显示一张卡片，列出每项结果（问题排在最前）和对应的解决办法。如果解决办法是某个设置，会直接链接到那一页。
 
 | 检查项 | 检查什么 |
 |---|---|
 | **Model** | 默认模型能否回答。不能的话：检查服务商的密钥、地址和模型名称，或者网络和[代理](../reference/settings.md#general)。 |
-| **Python for scripts** | 有没有可以运行脚本的 Python。没有的话，在 **Settings** › **Capabilities** 里下载 coscribe 自带的 Python。 |
+| **Python for scripts** | 有没有可以运行脚本的 Python。没有的话，在 **Settings** › **Capabilities** 里下载 Coscribe 自带的 Python。 |
 | **Node.js for scripts** | 有没有安装 `node` 和 `npm`，用于 Node.js 脚本。需要的话从 [nodejs.org](https://nodejs.org) 安装。 |
 | **Office conversion** | 有没有 Microsoft Office 或 LibreOffice 用来生成页面预览和转换文档。都没有的话，安装 Office，或在 **Settings** › **Capabilities** 里下载 LibreOffice。 |
 | **Browser** | 有没有安装 Microsoft Edge 或 Google Chrome，用于浏览器面板和网页截图。 |
@@ -23,11 +23,11 @@ description: 用 /doctor 检查 coscribe 在电脑上需要的东西，解决常
 
 运行 `/doctor`，看 **Model** 一项。常见原因是密钥过期、模型名称写错，或者网络需要代理。有些公司网络会屏蔽 AI 服务，可以问问 IT 部门，或者在 **Settings** › **General** › **Proxy** 里设置代理。
 
-### coscribe 打不开某个文件或文件夹 {#coscribe-cant-open-a-file-or-folder}
+### Coscribe 打不开某个文件或文件夹 {#coscribe-cant-open-a-file-or-folder}
 
-coscribe 只在它的工作区和你允许的文件夹里工作。它请求访问另一个文件夹时，允许它，或者把这个文件夹加进工作区。见[允许访问另一个文件夹](../use/approvals.md#give-access-to-another-folder)。
+Coscribe 只在它的工作区和你允许的文件夹里工作。它请求访问另一个文件夹时，允许它，或者把这个文件夹加进工作区。见[允许访问另一个文件夹](../use/approvals.md#give-access-to-another-folder)。
 
-如果你也在编辑同一个 Word、Excel 或 PowerPoint 文件，提要求前先保存。coscribe 会发现文件在它上次读取后变了，重新读取并在你的版本上修改，但它只能看到你保存过的内容。
+如果你也在编辑同一个 Word、Excel 或 PowerPoint 文件，提要求前先保存。Coscribe 会发现文件在它上次读取后变了，重新读取并在你的版本上修改，但它只能看到你保存过的内容。
 
 ### 脚本不运行 {#scripts-dont-run}
 
@@ -39,7 +39,7 @@ coscribe 只在它的工作区和你允许的文件夹里工作。它请求访�
 
 ### 定时任务没有运行 {#a-scheduled-task-didnt-run}
 
-任务只在 coscribe 运行时执行，无论是在窗口里还是在托盘里。确认 **Settings** › **General** 里的 **Keep running in the background** 是打开的，并且任务没有被暂停。coscribe 关闭期间到点的运行，会在它再次启动时补跑一次。见[定时任务](../workflows/scheduled-tasks.md)。
+任务只在 Coscribe 运行时执行，无论是在窗口里还是在托盘里。确认 **Settings** › **General** 里的 **Keep running in the background** 是打开的，并且任务没有被暂停。Coscribe 关闭期间到点的运行，会在它再次启动时补跑一次。见[定时任务](../workflows/scheduled-tasks.md)。
 
 ## 报告问题 {#report-a-problem}
 

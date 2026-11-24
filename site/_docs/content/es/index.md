@@ -1,6 +1,6 @@
 ---
-title: Documentación de coscribe
-description: Cómo hacer trabajo de Word, Excel, PowerPoint y PDF con coscribe, desde la primera descarga hasta una conversación convertida en un flujo de trabajo que se ejecuta cada semana.
+title: Documentación de Coscribe
+description: Cómo hacer trabajo de Word, Excel, PowerPoint y PDF con Coscribe, desde la primera descarga hasta una conversación convertida en un flujo de trabajo que se ejecuta cada semana.
 ---
 
 ¿Eres nuevo? Empieza por [Descarga y primer inicio](get-started/install.md); puedes estar en tu primera conversación en diez minutos.

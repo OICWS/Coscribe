@@ -9,10 +9,10 @@ description: 把一项工作存成固定步骤，按时间表或在事件发生�
 
 最简单的办法是先在对话里把工作做一遍，再把它变成工作流：
 
-- coscribe 提示 **Save this job?** 时选 **Save as workflow**，或者在 **Task details** 面板里选。
+- Coscribe 提示 **Save this job?** 时选 **Save as workflow**，或者在 **Task details** 面板里选。
 - 或者在输入框里输入 `/saveworkflow`，后面可以跟一个名字。
 
-coscribe 会根据对话起草步骤。检查一遍，然后保存。
+Coscribe 会根据对话起草步骤。检查一遍，然后保存。
 
 也可以从零开始：**Scheduled** › **New task** › **Build a workflow**。起个名字、定好时间表，保存后在它的页面上添加步骤。
 
@@ -33,7 +33,7 @@ coscribe 会根据对话起草步骤。检查一遍，然后保存。
 
 | 步骤 | 做什么 |
 |---|---|
-| **Tool** | 使用 coscribe 的一个工具，不经过模型。 |
+| **Tool** | 使用 Coscribe 的一个工具，不经过模型。 |
 | **Script** | 运行一段你审阅过的固定 Python 脚本。 |
 | **Model** | 一次模型调用，必须返回指定的字段。 |
 | **Agent** | 在你设定的范围内用工具完成一个目标：它能调用的工具、能修改的文件夹、能打开的网站。 |
@@ -61,7 +61,7 @@ coscribe 会根据对话起草步骤。检查一遍，然后保存。
 | **Proactive** | AI 步骤自己决定怎么完成它那部分。某一步失败时，AI 可以加几步；会改动东西的步骤要等你同意。 |
 | **Autonomous** | AI 可以按自己的方式完成整个任务。 |
 
-运行中绕过了某个变化之后，coscribe 可以给出更新后的步骤供你审阅，这样下次运行就不用再绕了。
+运行中绕过了某个变化之后，Coscribe 可以给出更新后的步骤供你审阅，这样下次运行就不用再绕了。
 
 ## 在事件发生时启动工作流 {#start-on-an-event}
 
@@ -69,7 +69,7 @@ coscribe 会根据对话起草步骤。检查一遍，然后保存。
 
 - **Every few minutes**：每隔几分钟。
 - **When a file arrives in a folder**：选择 **Folder to watch**，需要的话再填一个 **File name pattern**。每来一个新文件就启动一次运行，这个文件作为工作流的文件输入。这个选项要求工作流有一个文件输入。
-- **When something new shows up in a connector**：选一个连接器，以及要问它什么。coscribe 每隔几分钟问一次，每出现一个新条目就启动一次运行。第一次检查会把已有的内容当作已经看过。
-- **When a program sends it an event**：同一台电脑上的另一个程序带着密钥，向 coscribe 显示的地址发送请求。**Wait for a sample** 会保留下一个事件，让你选出它的哪些字段填入输入。这个地址只接受来自你自己电脑的请求。
+- **When something new shows up in a connector**：选一个连接器，以及要问它什么。Coscribe 每隔几分钟问一次，每出现一个新条目就启动一次运行。第一次检查会把已有的内容当作已经看过。
+- **When a program sends it an event**：同一台电脑上的另一个程序带着密钥，向 Coscribe 显示的地址发送请求。**Wait for a sample** 会保留下一个事件，让你选出它的哪些字段填入输入。这个地址只接受来自你自己电脑的请求。
 
-coscribe 关闭期间到达的文件，会在 coscribe 再次启动时启动运行。
+Coscribe 关闭期间到达的文件，会在 Coscribe 再次启动时启动运行。

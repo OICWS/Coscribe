@@ -1,9 +1,9 @@
 ---
 title: Excel-Arbeitsmappen
-description: Lassen Sie coscribe Tabellen lesen, bereinigen, summieren und abstimmen, und Arbeitsmappen mit Formeln und Diagrammen erstellen.
+description: Lassen Sie Coscribe Tabellen lesen, bereinigen, summieren und abstimmen, und Arbeitsmappen mit Formeln und Diagrammen erstellen.
 ---
 
-coscribe liest `.xlsx`-Dateien Blatt für Blatt und schreibt echte Arbeitsmappen: Zellen, Formatierungen, Formeln und native Excel-Diagramme.
+Coscribe liest `.xlsx`-Dateien Blatt für Blatt und schreibt echte Arbeitsmappen: Zellen, Formatierungen, Formeln und native Excel-Diagramme.
 
 ## Worum Sie bitten können {#what-to-ask-for}
 
@@ -16,11 +16,11 @@ Nennen Sie die Dateien, und die Blätter, wenn eine Arbeitsmappe mehrere hat, un
 
 ## Formeln bleiben Formeln {#formulas-stay-formulas}
 
-Hängt ein Wert von anderen Zellen ab, schreibt coscribe ihn als Excel-Formel, damit die Arbeitsmappe weiter funktioniert, wenn Sie eine Zahl ändern. Es berechnet die Formeln außerdem und speichert ihre Ergebnisse in der Datei, sodass die Werte auch in Programmen erscheinen, die beim Öffnen nicht neu berechnen.
+Hängt ein Wert von anderen Zellen ab, schreibt Coscribe ihn als Excel-Formel, damit die Arbeitsmappe weiter funktioniert, wenn Sie eine Zahl ändern. Es berechnet die Formeln außerdem und speichert ihre Ergebnisse in der Datei, sodass die Werte auch in Programmen erscheinen, die beim Öffnen nicht neu berechnen.
 
 ## Große oder ungewöhnliche Aufgaben {#large-or-unusual-jobs}
 
-Für Arbeit, die die integrierten Werkzeuge nicht abdecken, kann coscribe ein Python-Skript schreiben (zum Beispiel mit `pandas` und `openpyxl`) und es mit Ihrer Genehmigung ausführen. Siehe [Genehmigungen und Berechtigungsmodi](../use/approvals.md).
+Für Arbeit, die die integrierten Werkzeuge nicht abdecken, kann Coscribe ein Python-Skript schreiben (zum Beispiel mit `pandas` und `openpyxl`) und es mit Ihrer Genehmigung ausführen. Siehe [Genehmigungen und Berechtigungsmodi](../use/approvals.md).
 
 > [!TIP]
-> Soll coscribe die Konventionen Ihres Teams befolgen, etwa Farben für Eingaben und Ausgaben oder ein Zahlenformat? Schreiben Sie sie in Ihre [Anweisungen](../customize/instructions.md) oder in einen [Skill](../customize/skills.md).
+> Soll Coscribe die Konventionen Ihres Teams befolgen, etwa Farben für Eingaben und Ausgaben oder ein Zahlenformat? Schreiben Sie sie in Ihre [Anweisungen](../customize/instructions.md) oder in einen [Skill](../customize/skills.md).

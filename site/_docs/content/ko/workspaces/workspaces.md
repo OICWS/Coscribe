@@ -29,7 +29,7 @@ description: 각 대화가 접근할 수 있는 폴더, 사이트, 시크릿, �
 
 ## 허용된 폴더 {#allowed-folders}
 
-coscribe가 워크스페이스의 기본 폴더 밖에서 쓸 수 있는 모든 폴더는 **Settings › Workspaces › Manage**의 **Allowed folders**라는 하나의 목록에 있습니다. 목록의 폴더마다 접근 수준(**Read only**, **Read and write**, **Read, write and delete**)이 있습니다. 워크스페이스는 자신의 **Allowed folders** 페이지에서 고른 허용 폴더에만 접근합니다. **Use an allowed folder**는 목록에서 하나를 고르고, **Add new folder…** 항목은 새 폴더를 추가하며 이 폴더는 읽기·쓰기 권한으로 목록에 들어갑니다.
+Coscribe가 워크스페이스의 기본 폴더 밖에서 쓸 수 있는 모든 폴더는 **Settings › Workspaces › Manage**의 **Allowed folders**라는 하나의 목록에 있습니다. 목록의 폴더마다 접근 수준(**Read only**, **Read and write**, **Read, write and delete**)이 있습니다. 워크스페이스는 자신의 **Allowed folders** 페이지에서 고른 허용 폴더에만 접근합니다. **Use an allowed folder**는 목록에서 하나를 고르고, **Add new folder…** 항목은 새 폴더를 추가하며 이 폴더는 읽기·쓰기 권한으로 목록에 들어갑니다.
 
 **Allowed folders**에서 폴더를 빼면 모든 워크스페이스에서 빠집니다. 분리된 드라이브처럼 지금 찾을 수 없는 폴더는 표시만 되어 있다가 다시 나타나면 다시 쓰입니다.
 
@@ -37,4 +37,4 @@ coscribe가 워크스페이스의 기본 폴더 밖에서 쓸 수 있는 모든 
 
 ## 스크립트와 격리 {#scripts-and-isolation}
 
-Windows에서 스크립트는 격리된 상태로 실행됩니다. 대화의 폴더만 쓸 수 있고, 그 안의 파일을 삭제하거나 이름을 바꿀 수 없으며, 워크스페이스의 **Sites** 설정이 **Any site**일 때만 인터넷에 접속합니다. coscribe는 내 컴퓨터에서 격리가 작동하는지 한 번 확인합니다. 확인에 실패하면 스크립트가 꺼지며, **Scripts and commands** 페이지의 **Run scripts without isolation**으로 그 워크스페이스에서 다시 켤 수 있습니다. 그에 따르는 위험은 감수해야 합니다.
+Windows에서 스크립트는 격리된 상태로 실행됩니다. 대화의 폴더만 쓸 수 있고, 그 안의 파일을 삭제하거나 이름을 바꿀 수 없으며, 워크스페이스의 **Sites** 설정이 **Any site**일 때만 인터넷에 접속합니다. Coscribe는 내 컴퓨터에서 격리가 작동하는지 한 번 확인합니다. 확인에 실패하면 스크립트가 꺼지며, **Scripts and commands** 페이지의 **Run scripts without isolation**으로 그 워크스페이스에서 다시 켤 수 있습니다. 그에 따르는 위험은 감수해야 합니다.

@@ -29,7 +29,7 @@ Was die Wahl bei **Sites** bedeutet:
 
 ## Erlaubte Ordner {#allowed-folders}
 
-Jeder Ordner, den coscribe außerhalb des Hauptordners eines Arbeitsbereichs nutzen darf, steht in einer einzigen Liste, **Allowed folders**, unter **Settings › Workspaces › Manage**. Jeder Ordner dort hat eine Zugriffsstufe (**Read only**, **Read and write** oder **Read, write and delete**). Ein Arbeitsbereich erreicht nur die erlaubten Ordner, die er auf seiner Seite **Allowed folders** auswählt: **Use an allowed folder** wählt einen aus der Liste, und **Add new folder…** fügt einen neuen hinzu, der mit Lese- und Schreibzugriff in die Liste aufgenommen wird.
+Jeder Ordner, den Coscribe außerhalb des Hauptordners eines Arbeitsbereichs nutzen darf, steht in einer einzigen Liste, **Allowed folders**, unter **Settings › Workspaces › Manage**. Jeder Ordner dort hat eine Zugriffsstufe (**Read only**, **Read and write** oder **Read, write and delete**). Ein Arbeitsbereich erreicht nur die erlaubten Ordner, die er auf seiner Seite **Allowed folders** auswählt: **Use an allowed folder** wählt einen aus der Liste, und **Add new folder…** fügt einen neuen hinzu, der mit Lese- und Schreibzugriff in die Liste aufgenommen wird.
 
 Entfernen Sie einen Ordner aus **Allowed folders**, wird er aus jedem Arbeitsbereich entfernt. Ein Ordner, der gerade nicht gefunden wird, etwa auf einem abgesteckten Laufwerk, wird markiert und wieder genutzt, sobald er zurück ist.
 
@@ -37,4 +37,4 @@ Braucht eine Unterhaltung einen Ordner, den sie nicht erreicht, fragt sie auf ei
 
 ## Skripte und Isolation {#scripts-and-isolation}
 
-Unter Windows laufen Skripte isoliert: Sie können nur die Ordner der Unterhaltung nutzen, dort keine Dateien löschen oder umbenennen und erreichen das Internet nur, wenn die Einstellung **Sites** des Arbeitsbereichs **Any site** ist. coscribe prüft einmal, ob die Isolation auf Ihrem Computer funktioniert. Ist die Prüfung fehlgeschlagen, sind Skripte aus; **Run scripts without isolation** auf der Seite **Scripts and commands** schaltet sie für diesen Arbeitsbereich wieder ein, mit dem damit verbundenen Risiko.
+Unter Windows laufen Skripte isoliert: Sie können nur die Ordner der Unterhaltung nutzen, dort keine Dateien löschen oder umbenennen und erreichen das Internet nur, wenn die Einstellung **Sites** des Arbeitsbereichs **Any site** ist. Coscribe prüft einmal, ob die Isolation auf Ihrem Computer funktioniert. Ist die Prüfung fehlgeschlagen, sind Skripte aus; **Run scripts without isolation** auf der Seite **Scripts and commands** schaltet sie für diesen Arbeitsbereich wieder ein, mit dem damit verbundenen Risiko.

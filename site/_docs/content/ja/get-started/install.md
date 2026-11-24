@@ -3,11 +3,11 @@ title: ダウンロードと初回起動
 description: ポータブル版をダウンロードして展開し、起動して、作業するフォルダーを選びます。
 ---
 
-coscribe はインストール不要です。zip ファイルを 1 つダウンロードし、好きな場所に展開して実行するだけです。システムの設定は何も変えません。
+Coscribe はインストール不要です。zip ファイルを 1 つダウンロードし、好きな場所に展開して実行するだけです。システムの設定は何も変えません。
 
 ## ダウンロード {#download}
 
-1. GitHub の [coscribe のリリースページ](https://github.com/OICWS/coscribe/releases/tag/beta) を開きます。
+1. GitHub の [Coscribe のリリースページ](https://github.com/OICWS/coscribe/releases/tag/beta) を開きます。
 2. **Assets** から `.zip` ファイルをダウンロードします。
 3. `D:\coscribe` など、見つけやすい場所に展開します。
 
@@ -22,15 +22,15 @@ coscribe はインストール不要です。zip ファイルを 1 つダウン�
 
 ## ワークスペースを選ぶ {#choose-a-workspace}
 
-初回起動時、coscribe は **ワークスペース**、つまり仕事のファイルを置くフォルダーを選ぶよう求めます。`Documents\Coscribe` が提案されます。別のフォルダーにするなら **Browse…** で選び、**Use this folder** をクリックします。
+初回起動時、Coscribe は **ワークスペース**、つまり仕事のファイルを置くフォルダーを選ぶよう求めます。`Documents\Coscribe` が提案されます。別のフォルダーにするなら **Browse…** で選び、**Use this folder** をクリックします。
 
 ワークスペースの役割は 2 つです。
 
-- coscribe が作ったファイルは、既定でここに保存されます。
+- Coscribe が作ったファイルは、既定でここに保存されます。
 - 会話に添付したファイルは、その `.coscribe` フォルダーにコピーされます。
 
-coscribe はワークスペース内のすべてのファイルを読み書きできます。別のワークスペースに切り替えたり、ほかのフォルダーにも触れられるようにしたりするには、メッセージ欄の下にある選択メニューか **Settings › Workspaces** を使います。
+Coscribe はワークスペース内のすべてのファイルを読み書きできます。別のワークスペースに切り替えたり、ほかのフォルダーにも触れられるようにしたりするには、メッセージ欄の下にある選択メニューか **Settings › Workspaces** を使います。
 
 ## 次のステップ {#next-step}
 
-次に [モデルプロバイダーを追加](providers.md) すれば、coscribe は仕事を始められます。
+次に [モデルプロバイダーを追加](providers.md) すれば、Coscribe は仕事を始められます。

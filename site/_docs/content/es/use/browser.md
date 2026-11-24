@@ -1,16 +1,16 @@
 ---
 title: El navegador integrado
-description: Deja que coscribe use sitios web en un navegador que puedes observar, tomar el control y gestionar sitio por sitio.
+description: Deja que Coscribe use sitios web en un navegador que puedes observar, tomar el control y gestionar sitio por sitio.
 ---
 
-La aplicación de escritorio tiene su propio navegador, que se muestra en el panel **Browser**. coscribe lo usa delante de ti: abre páginas, rellena formularios enteros, sube y descarga archivos, guarda tablas (a lo largo de varias páginas) como archivos CSV y páginas como PDF. Las sesiones iniciadas se conservan, así que inicias sesión en un sitio una sola vez.
+La aplicación de escritorio tiene su propio navegador, que se muestra en el panel **Browser**. Coscribe lo usa delante de ti: abre páginas, rellena formularios enteros, sube y descarga archivos, guarda tablas (a lo largo de varias páginas) como archivos CSV y páginas como PDF. Las sesiones iniciadas se conservan, así que inicias sesión en un sitio una sola vez.
 
 > [!NOTE]
-> El navegador forma parte de la aplicación de escritorio. Si usas coscribe en tu propio navegador web, no hay panel Browser.
+> El navegador forma parte de la aplicación de escritorio. Si usas Coscribe en tu propio navegador web, no hay panel Browser.
 
 ## Permitir un sitio {#allow-a-site}
 
-La primera vez que coscribe quiere usar un sitio, el panel Browser te pregunta:
+La primera vez que Coscribe quiere usar un sitio, el panel Browser te pregunta:
 
 - **Allow for this chat** le deja usar el sitio en esta conversación.
 - **Always allow** añade el sitio al espacio de trabajo, para usarlo sin preguntar desde entonces.
@@ -20,9 +20,9 @@ Cada espacio de trabajo guarda un nivel por sitio en **Edit workspace › Sites*
 
 ## Tomar el control {#take-over}
 
-Haz clic en **Take over** para usar la página tú mismo; coscribe espera. Haz clic en **Allow AI** para devolvérsela.
+Haz clic en **Take over** para usar la página tú mismo; Coscribe espera. Haz clic en **Allow AI** para devolvérsela.
 
-Cuando un sitio pide una contraseña, un código de un solo uso o un captcha, coscribe se detiene y te pide que te encargues. Nunca escribe una contraseña o un código que no le hayas dado.
+Cuando un sitio pide una contraseña, un código de un solo uso o un captcha, Coscribe se detiene y te pide que te encargues. Nunca escribe una contraseña o un código que no le hayas dado.
 
 ## Señalar algo {#point-at-something}
 

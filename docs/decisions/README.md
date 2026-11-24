@@ -19,7 +19,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0006](0006-changes-reach-main-through-pull-requests.md) | Changes reach `main` only through pull requests |
 | [0007](0007-working-with-more-than-one-human.md) | Working with more than one human and their AI sessions |
 | [0008](0008-conversations-can-message-each-other.md) | Conversations can message each other (opt-in replaced by 0023) |
-| [0009](0009-a-structure-period-then-growth-for-ai-sessions.md) | A structure period, so AI sessions can keep up with growth to 1M lines |
+| [0009](0009-a-structure-period-then-growth-for-ai-sessions.md) | A structure period, so AI sessions can keep up with growth to 1M lines (narrowed by 0059) |
 | [0010](0010-office-files-are-compiled-from-whole-page-sources.md) | Office files are compiled from whole-page sources; open-source code is reused as owned copies |
 | [0011](0011-workbooks-are-written-as-engine-neutral-blocks.md) | Workbooks are written as engine-neutral blocks; Excel engines come in stages (stage-1 engine superseded by 0012) |
 | [0012](0012-the-product-does-not-depend-on-libreoffice.md) | The product does not depend on LibreOffice (what it forbids superseded by 0026) |
@@ -68,3 +68,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0056](0056-a-scripts-own-scratch-folder-allows-delete.md) | A script's own scratch folder allows delete; the person's folders still don't (accepted) |
 | [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (accepted) |
 | [0058](0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md) | A plugin is a folder in the Claude and Codex format; the core is not a plugin (proposed) |
+| [0059](0059-a-pull-request-runs-the-tests-its-change-can-reach.md) | A pull request runs the tests its change can reach; main runs them all (proposed) |

@@ -83,8 +83,7 @@ svg { flex-shrink: 0; }
 .top-brand { padding-left: 20px; gap: 0; }
 .brand { display: flex; align-items: center; gap: 8px; color: var(--fg); font-size: 17px; font-weight: 600; }
 .brand:hover { text-decoration: none; }
-.brand svg { width: 24px; height: 24px; }
-.brand .caret { fill: var(--accent); }
+.brand img { width: 24px; height: 24px; display: block; }
 .brand-docs { margin-left: 6px; color: var(--fg-2); font-size: 17px; font-weight: 400; }
 .brand-docs:hover { color: var(--fg); text-decoration: none; }
 .top-search { margin-left: auto; border-left: 0 !important; }

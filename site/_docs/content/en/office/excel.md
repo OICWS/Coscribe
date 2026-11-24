@@ -1,9 +1,9 @@
 ---
 title: Excel workbooks
-description: Have coscribe read, clean, total and reconcile spreadsheets, and build workbooks with formulas and charts.
+description: Have Coscribe read, clean, total and reconcile spreadsheets, and build workbooks with formulas and charts.
 ---
 
-coscribe reads `.xlsx` files sheet by sheet and writes real workbooks: cells, styles, formulas and native Excel charts.
+Coscribe reads `.xlsx` files sheet by sheet and writes real workbooks: cells, styles, formulas and native Excel charts.
 
 ## What to ask for
 
@@ -16,11 +16,11 @@ Name the files and the sheets if a workbook has several, and say what the result
 
 ## Formulas stay formulas
 
-When a value depends on other cells, coscribe writes it as an Excel formula, so the workbook keeps working when you change a number. It also calculates the formulas and saves their results in the file, so the values show even in programs that don't recalculate on opening.
+When a value depends on other cells, Coscribe writes it as an Excel formula, so the workbook keeps working when you change a number. It also calculates the formulas and saves their results in the file, so the values show even in programs that don't recalculate on opening.
 
 ## Large or unusual jobs
 
-For work the built-in tools don't cover, coscribe can write a Python script (with `pandas` and `openpyxl`, for example) and run it, with your approval. See [Approvals and permission modes](../use/approvals.md).
+For work the built-in tools don't cover, Coscribe can write a Python script (with `pandas` and `openpyxl`, for example) and run it, with your approval. See [Approvals and permission modes](../use/approvals.md).
 
 > [!TIP]
-> Want coscribe to follow your team's conventions, such as colors for inputs and outputs or a number format? Put them in your [instructions](../customize/instructions.md) or a [skill](../customize/skills.md).
+> Want Coscribe to follow your team's conventions, such as colors for inputs and outputs or a number format? Put them in your [instructions](../customize/instructions.md) or a [skill](../customize/skills.md).

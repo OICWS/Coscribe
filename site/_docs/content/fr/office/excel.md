@@ -1,9 +1,9 @@
 ---
 title: Classeurs Excel
-description: Faites lire, nettoyer, totaliser et rapprocher des feuilles de calcul par coscribe, et créez des classeurs avec formules et graphiques.
+description: Faites lire, nettoyer, totaliser et rapprocher des feuilles de calcul par Coscribe, et créez des classeurs avec formules et graphiques.
 ---
 
-coscribe lit les fichiers `.xlsx` feuille par feuille et écrit de vrais classeurs : cellules, styles, formules et graphiques Excel natifs.
+Coscribe lit les fichiers `.xlsx` feuille par feuille et écrit de vrais classeurs : cellules, styles, formules et graphiques Excel natifs.
 
 ## Que demander {#what-to-ask-for}
 
@@ -16,11 +16,11 @@ Nommez les fichiers, et les feuilles si un classeur en contient plusieurs, et di
 
 ## Les formules restent des formules {#formulas-stay-formulas}
 
-Quand une valeur dépend d’autres cellules, coscribe l’écrit sous forme de formule Excel, pour que le classeur continue de fonctionner quand vous changez un nombre. Il calcule aussi les formules et enregistre leurs résultats dans le fichier, pour que les valeurs s’affichent même dans les programmes qui ne recalculent pas à l’ouverture.
+Quand une valeur dépend d’autres cellules, Coscribe l’écrit sous forme de formule Excel, pour que le classeur continue de fonctionner quand vous changez un nombre. Il calcule aussi les formules et enregistre leurs résultats dans le fichier, pour que les valeurs s’affichent même dans les programmes qui ne recalculent pas à l’ouverture.
 
 ## Travaux volumineux ou inhabituels {#large-or-unusual-jobs}
 
-Pour un travail que les outils intégrés ne couvrent pas, coscribe peut écrire un script Python (avec `pandas` et `openpyxl`, par exemple) et l’exécuter, avec votre approbation. Voir [Approbations et modes d’autorisation](../use/approvals.md).
+Pour un travail que les outils intégrés ne couvrent pas, Coscribe peut écrire un script Python (avec `pandas` et `openpyxl`, par exemple) et l’exécuter, avec votre approbation. Voir [Approbations et modes d’autorisation](../use/approvals.md).
 
 > [!TIP]
-> Vous voulez que coscribe suive les conventions de votre équipe, comme des couleurs pour les entrées et les sorties ou un format de nombre ? Mettez-les dans vos [instructions](../customize/instructions.md) ou dans une [compétence](../customize/skills.md).
+> Vous voulez que Coscribe suive les conventions de votre équipe, comme des couleurs pour les entrées et les sorties ou un format de nombre ? Mettez-les dans vos [instructions](../customize/instructions.md) ou dans une [compétence](../customize/skills.md).

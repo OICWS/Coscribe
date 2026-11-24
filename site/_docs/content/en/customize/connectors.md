@@ -1,18 +1,18 @@
 ---
 title: Connectors
-description: Connect coscribe to the services you use, such as your mail, calendar or project tracker, and choose what it may do there.
+description: Connect Coscribe to the services you use, such as your mail, calendar or project tracker, and choose what it may do there.
 ---
 
-A connector lets coscribe use another service: read your mail, add an event to a calendar, look up a ticket. Connectors use the Model Context Protocol (MCP), so any MCP server works, not only the ones coscribe lists.
+A connector lets Coscribe use another service: read your mail, add an event to a calendar, look up a ticket. Connectors use the Model Context Protocol (MCP), so any MCP server works, not only the ones Coscribe lists.
 
 ## Add a connector
 
 Open **Settings** › **Connectors** › **Discover**, pick the service and click **Connect**.
 
-- Most hosted services ask you to sign in. The sign-in opens on the service's own page, in your browser, and you sign in only once. coscribe never sees your password.
-- A service marked **Needs setup** wants an app registered with it first. coscribe walks you through it, one time only. If someone already set it up for your team, **Copy a message for your admin** asks them for the setup file.
+- Most hosted services ask you to sign in. The sign-in opens on the service's own page, in your browser, and you sign in only once. Coscribe never sees your password.
+- A service marked **Needs setup** wants an app registered with it first. Coscribe walks you through it, one time only. If someone already set it up for your team, **Copy a message for your admin** asks them for the setup file.
 
-coscribe can also offer a connector in a conversation, when your request needs a service you haven't connected. Click **Connect** on the card, and coscribe carries on once it's connected. **Not now** leaves it; you can connect it any time in **Settings** › **Connectors**.
+Coscribe can also offer a connector in a conversation, when your request needs a service you haven't connected. Click **Connect** on the card, and Coscribe carries on once it's connected. **Not now** leaves it; you can connect it any time in **Settings** › **Connectors**.
 
 ## Add a custom connector
 
@@ -30,9 +30,9 @@ Open a connector in **Yours** to see its tools, split into **Read-only tools** a
 
 | Choice | What happens |
 |---|---|
-| **Always allow** | coscribe uses it without asking. |
-| **Needs approval** | coscribe asks you each time. See [Approvals](../use/approvals.md). |
-| **Blocked** | coscribe can't use it. |
+| **Always allow** | Coscribe uses it without asking. |
+| **Needs approval** | Coscribe asks you each time. See [Approvals](../use/approvals.md). |
+| **Blocked** | Coscribe can't use it. |
 
 The connector's page also says whether it's connected. If it isn't, **Retry** connects again, and **Sign in** opens the service's sign-in page.
 

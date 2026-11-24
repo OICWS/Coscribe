@@ -1,22 +1,22 @@
 ---
 title: Sistemas de diseño
-description: Guarda tus colores, fuentes, espaciado y logotipos en un solo lugar, para que las presentaciones de coscribe tengan tu estilo.
+description: Guarda tus colores, fuentes, espaciado y logotipos en un solo lugar, para que las presentaciones de Coscribe tengan tu estilo.
 ---
 
-Un sistema de diseño son tus colores, fuentes y espaciado, guardados una vez. Cuando coscribe crea una presentación con uno, la presentación lo sigue. La presentación recibe su propia copia, así que cambiar el sistema de diseño más tarde no cambia una presentación terminada.
+Un sistema de diseño son tus colores, fuentes y espaciado, guardados una vez. Cuando Coscribe crea una presentación con uno, la presentación lo sigue. La presentación recibe su propia copia, así que cambiar el sistema de diseño más tarde no cambia una presentación terminada.
 
 ## Crear un sistema de diseño {#make-a-design-system}
 
 Abre **Settings** › **Design systems**:
 
-- **Describe it** abre una conversación donde describes el estilo, o le das a coscribe una presentación o una guía de marca de la que tomarlo.
+- **Describe it** abre una conversación donde describes el estilo, o le das a Coscribe una presentación o una guía de marca de la que tomarlo.
 - **New design system** empieza uno vacío que rellenas tú.
 
 ## Qué contiene {#what-it-holds}
 
 | Sección | Qué va en ella |
 |---|---|
-| **Overview** | Con tus palabras: para quién es y qué sensación debe dar. coscribe la lee cuando crea algo con este sistema. |
+| **Overview** | Con tus palabras: para quién es y qué sensación debe dar. Coscribe la lee cuando crea algo con este sistema. |
 | **Colors** | Cada color con un nombre para la función que cumple, y cuándo usarlo. |
 | **Typography** | Las fuentes, una por línea, tal como están instaladas en este ordenador, y estilos de texto con nombre. La primera fuente es la principal. |
 | **Spacing** | Espacios con nombre, en píxeles sobre una diapositiva de 1920 píxeles de ancho. |

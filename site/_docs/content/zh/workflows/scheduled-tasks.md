@@ -1,9 +1,9 @@
 ---
 title: 定时任务
-description: 让 coscribe 按时间表完成工作，比如每天早上的简报，并查看每次运行的报告。
+description: 让 Coscribe 按时间表完成工作，比如每天早上的简报，并查看每次运行的报告。
 ---
 
-定时任务是 coscribe 不需要你在场就能完成的工作：在设定的时间、每小时一次，或者在你启动它的时候。每次运行都是一个单独的对话，并以一份报告结束。
+定时任务是 Coscribe 不需要你在场就能完成的工作：在设定的时间、每小时一次，或者在你启动它的时候。每次运行都是一个单独的对话，并以一份报告结束。
 
 任务有两种。**定时任务**按照写好的指令执行，每一步都由模型现场决定。**工作流**执行你保存好的固定步骤，并在运行中逐步检查，见[工作流](workflows.md)。本页讲的是两者共有的部分。
 
@@ -11,11 +11,11 @@ description: 让 coscribe 按时间表完成工作，比如每天早上的简报
 
 在导航里打开 **Scheduled**，点 **New task**：
 
-- **Create with Coscribe** 开一个对话，让你描述这项工作，或者带它做一遍。然后 coscribe 会在一张卡片里起草任务；**Review & save** 打开草稿，保存之前什么都可以改。
+- **Create with Coscribe** 开一个对话，让你描述这项工作，或者带它做一遍。然后 Coscribe 会在一张卡片里起草任务；**Review & save** 打开草稿，保存之前什么都可以改。
 - **Set up manually** 打开表单，名称、指令和时间表都由你自己填写。
 - **Build a workflow** 新建一个空的工作流，见[工作流](workflows.md)。
 
-在对话里做完一项工作后，coscribe 也可能提示 **Save this job?**。**Save as workflow** 把它变成可以重跑或定时运行的固定步骤；**Save as skill** 把它存成下次照着做的说明（见[技能和插件](../customize/skills.md)）。
+在对话里做完一项工作后，Coscribe 也可能提示 **Save this job?**。**Save as workflow** 把它变成可以重跑或定时运行的固定步骤；**Save as skill** 把它存成下次照着做的说明（见[技能和插件](../customize/skills.md)）。
 
 ## 选择什么时候运行 {#choose-when-it-runs}
 
@@ -40,9 +40,9 @@ description: 让 coscribe 按时间表完成工作，比如每天早上的简报
 
 ## 让应用保持运行 {#keep-the-app-running}
 
-关掉 coscribe 的窗口后，它会留在系统托盘里继续运行，任务照常执行。要退出，在托盘图标的菜单里选 **Quit**。如果在 **Settings** › **General** 里关掉 **Keep running in the background**，关窗口就会退出 coscribe，任务也随之停止。
+关掉 Coscribe 的窗口后，它会留在系统托盘里继续运行，任务照常执行。要退出，在托盘图标的菜单里选 **Quit**。如果在 **Settings** › **General** 里关掉 **Keep running in the background**，关窗口就会退出 Coscribe，任务也随之停止。
 
-coscribe 关闭期间到点的运行，会在 coscribe 再次启动时补跑一次。
+Coscribe 关闭期间到点的运行，会在 Coscribe 再次启动时补跑一次。
 
 ## 跟进运行情况 {#follow-the-runs}
 
@@ -52,7 +52,7 @@ coscribe 关闭期间到点的运行，会在 coscribe 再次启动时补跑一�
 - 状态旁边的开关可以暂停或恢复任务。
 - 铅笔图标用来改名或修改运行时间。
 
-**Settings** › **General** 里的 **Notifications** 决定 coscribe 是每次运行结束都通知你，还是只在出问题时通知：运行失败或在等你。点击通知会打开那次运行。
+**Settings** › **General** 里的 **Notifications** 决定 Coscribe 是每次运行结束都通知你，还是只在出问题时通知：运行失败或在等你。点击通知会打开那次运行。
 
 ## 让运行之间记住东西 {#remember-between-runs}
 

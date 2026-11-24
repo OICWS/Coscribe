@@ -29,7 +29,7 @@ O que significa a escolha em **Sites**:
 
 ## Pastas permitidas {#allowed-folders}
 
-Toda pasta que o coscribe pode usar fora da pasta principal de um espaço de trabalho fica em uma única lista, **Allowed folders**, em **Settings › Workspaces › Manage**. Cada pasta ali tem um nível de acesso (**Read only**, **Read and write** ou **Read, write and delete**). Um espaço de trabalho alcança apenas as pastas permitidas que escolher na sua página **Allowed folders**: **Use an allowed folder** escolhe uma da lista, e **Add new folder…** adiciona uma nova, que entra na lista com leitura e gravação.
+Toda pasta que o Coscribe pode usar fora da pasta principal de um espaço de trabalho fica em uma única lista, **Allowed folders**, em **Settings › Workspaces › Manage**. Cada pasta ali tem um nível de acesso (**Read only**, **Read and write** ou **Read, write and delete**). Um espaço de trabalho alcança apenas as pastas permitidas que escolher na sua página **Allowed folders**: **Use an allowed folder** escolhe uma da lista, e **Add new folder…** adiciona uma nova, que entra na lista com leitura e gravação.
 
 Remover uma pasta de **Allowed folders** a remove de todos os espaços de trabalho. Uma pasta que não pode ser encontrada no momento, como uma unidade desconectada, é marcada e volta a ser usada quando reaparece.
 
@@ -37,4 +37,4 @@ Quando uma conversa precisa de uma pasta que não consegue alcançar, ela pergun
 
 ## Scripts e isolamento {#scripts-and-isolation}
 
-No Windows, os scripts rodam isolados: só podem usar as pastas da conversa, não podem excluir nem renomear arquivos nelas e só acessam a internet quando a configuração **Sites** do espaço de trabalho é **Any site**. O coscribe verifica uma vez se o isolamento funciona no seu computador. Se a verificação falhou, os scripts ficam desativados; **Run scripts without isolation**, na página **Scripts and commands**, os reativa para aquele espaço de trabalho, com o risco que isso traz.
+No Windows, os scripts rodam isolados: só podem usar as pastas da conversa, não podem excluir nem renomear arquivos nelas e só acessam a internet quando a configuração **Sites** do espaço de trabalho é **Any site**. O Coscribe verifica uma vez se o isolamento funciona no seu computador. Se a verificação falhou, os scripts ficam desativados; **Run scripts without isolation**, na página **Scripts and commands**, os reativa para aquele espaço de trabalho, com o risco que isso traz.

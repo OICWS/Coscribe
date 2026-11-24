@@ -1,18 +1,18 @@
 ---
 title: 커넥터
-description: 메일, 캘린더, 프로젝트 관리 도구처럼 쓰는 서비스에 coscribe를 연결하고, 거기서 할 수 있는 일을 정합니다.
+description: 메일, 캘린더, 프로젝트 관리 도구처럼 쓰는 서비스에 Coscribe를 연결하고, 거기서 할 수 있는 일을 정합니다.
 ---
 
-커넥터를 쓰면 coscribe가 다른 서비스를 이용할 수 있습니다. 메일 읽기, 캘린더에 일정 추가, 티켓 조회 같은 일입니다. 커넥터는 Model Context Protocol(MCP)을 쓰므로, coscribe 목록에 있는 것뿐 아니라 어떤 MCP 서버든 쓸 수 있습니다.
+커넥터를 쓰면 Coscribe가 다른 서비스를 이용할 수 있습니다. 메일 읽기, 캘린더에 일정 추가, 티켓 조회 같은 일입니다. 커넥터는 Model Context Protocol(MCP)을 쓰므로, Coscribe 목록에 있는 것뿐 아니라 어떤 MCP 서버든 쓸 수 있습니다.
 
 ## 커넥터 추가하기 {#add-a-connector}
 
 **Settings** › **Connectors** › **Discover**를 열고 서비스를 고른 뒤 **Connect**를 클릭합니다.
 
-- 대부분의 호스팅 서비스는 로그인을 요청합니다. 로그인은 브라우저에서 서비스 자체 페이지로 열리며, 한 번만 하면 됩니다. coscribe는 비밀번호를 절대 보지 않습니다.
-- **Needs setup** 표시가 있는 서비스는 먼저 앱을 등록해야 합니다. coscribe가 한 번만 안내합니다. 팀의 누군가가 이미 설정했다면 **Copy a message for your admin**으로 그 사람에게 설정 파일을 요청할 수 있습니다.
+- 대부분의 호스팅 서비스는 로그인을 요청합니다. 로그인은 브라우저에서 서비스 자체 페이지로 열리며, 한 번만 하면 됩니다. Coscribe는 비밀번호를 절대 보지 않습니다.
+- **Needs setup** 표시가 있는 서비스는 먼저 앱을 등록해야 합니다. Coscribe가 한 번만 안내합니다. 팀의 누군가가 이미 설정했다면 **Copy a message for your admin**으로 그 사람에게 설정 파일을 요청할 수 있습니다.
 
-연결하지 않은 서비스가 요청에 필요하면 coscribe가 대화 중에 커넥터를 제안할 수도 있습니다. 카드의 **Connect**를 클릭하면 연결된 뒤 coscribe가 이어서 작업합니다. **Not now**를 누르면 그대로 두며, 언제든 **Settings** › **Connectors**에서 연결할 수 있습니다.
+연결하지 않은 서비스가 요청에 필요하면 Coscribe가 대화 중에 커넥터를 제안할 수도 있습니다. 카드의 **Connect**를 클릭하면 연결된 뒤 Coscribe가 이어서 작업합니다. **Not now**를 누르면 그대로 두며, 언제든 **Settings** › **Connectors**에서 연결할 수 있습니다.
 
 ## 사용자 지정 커넥터 추가하기 {#add-a-custom-connector}
 
@@ -30,9 +30,9 @@ description: 메일, 캘린더, 프로젝트 관리 도구처럼 쓰는 서비�
 
 | 선택 | 동작 |
 |---|---|
-| **Always allow** | coscribe가 묻지 않고 씁니다. |
-| **Needs approval** | coscribe가 매번 묻습니다. [승인과 권한 모드](../use/approvals.md)를 참고하세요. |
-| **Blocked** | coscribe가 쓸 수 없습니다. |
+| **Always allow** | Coscribe가 묻지 않고 씁니다. |
+| **Needs approval** | Coscribe가 매번 묻습니다. [승인과 권한 모드](../use/approvals.md)를 참고하세요. |
+| **Blocked** | Coscribe가 쓸 수 없습니다. |
 
 커넥터 페이지에는 연결 여부도 표시됩니다. 연결되어 있지 않으면 **Retry**로 다시 연결하고, **Sign in**으로 서비스 로그인 페이지를 엽니다.
 

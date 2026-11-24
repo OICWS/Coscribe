@@ -1,18 +1,18 @@
 ---
 title: 连接器
-description: 把 coscribe 接到你常用的服务上，比如邮箱、日历或项目管理工具，并决定它在那里能做什么。
+description: 把 Coscribe 接到你常用的服务上，比如邮箱、日历或项目管理工具，并决定它在那里能做什么。
 ---
 
-连接器让 coscribe 能使用另一个服务：读你的邮件、在日历里加一个日程、查一个工单。连接器使用模型上下文协议（MCP），所以任何 MCP 服务器都能用，不限于 coscribe 列出的那些。
+连接器让 Coscribe 能使用另一个服务：读你的邮件、在日历里加一个日程、查一个工单。连接器使用模型上下文协议（MCP），所以任何 MCP 服务器都能用，不限于 Coscribe 列出的那些。
 
 ## 添加连接器 {#add-a-connector}
 
 打开 **Settings** › **Connectors** › **Discover**，选择服务，点 **Connect**。
 
-- 大多数在线服务需要你登录。登录页面是服务自己的，在你的浏览器里打开，只需登录一次。coscribe 看不到你的密码。
-- 标着 **Needs setup** 的服务需要先在它那里注册一个应用。coscribe 会一步步带你完成，只需做一次。如果团队里已经有人设置好了，**Copy a message for your admin** 可以向他们要设置文件。
+- 大多数在线服务需要你登录。登录页面是服务自己的，在你的浏览器里打开，只需登录一次。Coscribe 看不到你的密码。
+- 标着 **Needs setup** 的服务需要先在它那里注册一个应用。Coscribe 会一步步带你完成，只需做一次。如果团队里已经有人设置好了，**Copy a message for your admin** 可以向他们要设置文件。
 
-当你的请求需要一个还没连接的服务时，coscribe 也会在对话里推荐连接器。点卡片上的 **Connect**，连接好后 coscribe 会接着做。**Not now** 表示先不连；之后随时可以在 **Settings** › **Connectors** 里连接。
+当你的请求需要一个还没连接的服务时，Coscribe 也会在对话里推荐连接器。点卡片上的 **Connect**，连接好后 Coscribe 会接着做。**Not now** 表示先不连；之后随时可以在 **Settings** › **Connectors** 里连接。
 
 ## 添加自定义连接器 {#add-a-custom-connector}
 
@@ -30,9 +30,9 @@ description: 把 coscribe 接到你常用的服务上，比如邮箱、日历或
 
 | 选项 | 会怎样 |
 |---|---|
-| **Always allow** | coscribe 直接使用，不问你。 |
+| **Always allow** | Coscribe 直接使用，不问你。 |
 | **Needs approval** | 每次都问你。见[审批](../use/approvals.md)。 |
-| **Blocked** | coscribe 不能使用。 |
+| **Blocked** | Coscribe 不能使用。 |
 
 连接器的页面还会显示它是否已连接。没有连接时，**Retry** 重新连接，**Sign in** 打开服务的登录页面。
 

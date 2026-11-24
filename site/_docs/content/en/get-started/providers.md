@@ -3,7 +3,7 @@ title: Add a model provider
 description: Enter an API key for a model service and choose the models to use.
 ---
 
-coscribe has no model of its own. It calls the model service you choose to think and write, so before you start, add at least one **provider** and enter the API key you got from that service.
+Coscribe has no model of its own. It calls the model service you choose to think and write, so before you start, add at least one **provider** and enter the API key you got from that service.
 
 ## Add a provider
 

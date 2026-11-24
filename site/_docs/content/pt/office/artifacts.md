@@ -3,11 +3,11 @@ title: Docs, designs e painéis
 description: Documentos, apresentações, designs e painéis que abrem ao lado da conversa, onde você pode editá-los.
 ---
 
-Além dos arquivos do Office, o coscribe cria **artefatos**: trabalhos que abrem em um painel ao lado da conversa, onde você os lê e edita. Todos os artefatos aparecem na página **Artifacts**.
+Além dos arquivos do Office, o Coscribe cria **artefatos**: trabalhos que abrem em um painel ao lado da conversa, onde você os lê e edita. Todos os artefatos aparecem na página **Artifacts**.
 
 | Artefato | O que é |
 |---|---|
-| **Doc** | Um documento editável para textos que você quer guardar, editar, comentar ou enviar: um relatório, uma proposta, um plano, uma carta. O coscribe cria um Doc, a menos que você peça Word. |
+| **Doc** | Um documento editável para textos que você quer guardar, editar, comentar ou enviar: um relatório, uma proposta, um plano, uma carta. O Coscribe cria um Doc, a menos que você peça Word. |
 | **Slides** | Uma apresentação mostrada slide por slide ao lado da conversa. |
 | **Design** | Uma tela com quadros: telas de app, um cartaz, uma imagem para redes sociais, uma folha de logotipos, várias opções lado a lado. |
 | **Dashboard** | Uma página com seus dados reais, com números, gráficos, uma tabela e filtros, que pode ser atualizada quando os dados mudam. |
@@ -18,4 +18,4 @@ Na tela de um design, **Present** preenche o painel com os quadros, um após o o
 
 ## Alterar um artefato {#change-an-artifact}
 
-Edite um artefato no painel dele ou peça na conversa. Quando você mesmo altera uma apresentação ou um Doc, o coscribe é informado do que você mudou na sua próxima mensagem, para que ele construa sobre suas edições em vez de desfazê-las.
+Edite um artefato no painel dele ou peça na conversa. Quando você mesmo altera uma apresentação ou um Doc, o Coscribe é informado do que você mudou na sua próxima mensagem, para que ele construa sobre suas edições em vez de desfazê-las.

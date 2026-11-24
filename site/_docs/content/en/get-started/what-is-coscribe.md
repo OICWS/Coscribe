@@ -1,9 +1,9 @@
 ---
-title: What is coscribe
+title: What is Coscribe
 description: An office assistant that runs on your PC and makes Word, Excel and PowerPoint files you can edit.
 ---
 
-coscribe is an AI office assistant for Windows. Say in a sentence what you need, and it reads your spreadsheets and documents and makes the finished file: a contract with tracked changes and comments, a report deck with charts, a reconciled Excel workbook.
+Coscribe is an AI office assistant for Windows. Say in a sentence what you need, and it reads your spreadsheets and documents and makes the finished file: a contract with tracked changes and comments, a report deck with charts, a reconciled Excel workbook.
 
 It is open source (MIT license) and free to use. You pay only for the model service you choose.
 
@@ -18,13 +18,13 @@ It is open source (MIT license) and free to use. You pay only for the model serv
 
 ## How it differs from other AI tools
 
-**Your files stay on your PC.** coscribe has no cloud service of its own. Only what the model needs to read goes to the model provider you chose; with a model running on your own computer through Ollama, nothing leaves the machine.
+**Your files stay on your PC.** Coscribe has no cloud service of its own. Only what the model needs to read goes to the model provider you chose; with a model running on your own computer through Ollama, nothing leaves the machine.
 
 **You choose the model.** Claude, GPT and Gemini are built in. DeepSeek, Kimi, GLM, Qwen, Doubao and any other service with an OpenAI-compatible API work once you enter its address and API key. See [Add a model provider](providers.md).
 
 **It asks before it changes things.** Four permission modes range from "ask me before every step" to "let a reviewer model approve routine work for me". In every mode it writes only to the folders you allowed. See [Your first conversation](first-conversation.md#permission-modes).
 
-**It hands you finished files, not drafts.** After writing a file, coscribe renders it and looks at the result to check the layout and content, rather than handing you a block of text.
+**It hands you finished files, not drafts.** After writing a file, Coscribe renders it and looks at the result to check the layout and content, rather than handing you a block of text.
 
 ## System requirements
 
@@ -32,4 +32,4 @@ It is open source (MIT license) and free to use. You pay only for the model serv
 - An API key from a model service, or Ollama or LM Studio running on your PC.
 
 > [!NOTE]
-> coscribe is available for Windows only. There is no Mac or Linux version yet.
+> Coscribe is available for Windows only. There is no Mac or Linux version yet.

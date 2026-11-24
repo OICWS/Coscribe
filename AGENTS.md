@@ -86,7 +86,8 @@ Never read a file over 1,500 lines whole, and never read `docs/history/`, the fr
 ```bash
 cd office-agent
 bash scripts/check.sh --fast    # frontend build, oxlint, ruff, mypy
-bash scripts/check.sh           # also pytest (~4 min on 4 CPUs); CI runs exactly this
+bash scripts/check.sh           # also pytest (~4 min on 4 CPUs); CI runs this, a PR with only
+                                # the tests its change can reach (decision 0059)
 ```
 
 Then look at the documents your change can make untrue: `python office-agent/scripts/doc_impact.py`
