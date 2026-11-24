@@ -143,6 +143,7 @@ export interface ContextBreakdown {
 
 export interface ActivityFile {
   presentation_source?: boolean;
+  connector_download?: boolean;
   /** Relative to the workspace (or absolute, for an extra directory). */
   path: string;
   name: string;

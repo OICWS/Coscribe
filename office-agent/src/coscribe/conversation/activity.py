@@ -24,6 +24,7 @@ _OUTPUT_RISKS = frozenset({"WRITE_LOCAL", "EXTERNAL"})
 # Arguments naming a file the call reads, whichever tool takes them.
 _INPUT_PATH_ARGS = ("source_path", "template_path", "image_path", "audio_path")
 _SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script"})
+_FILE_REPORTING_TOOLS = _SCRIPT_TOOLS | {"save_connector_file"}
 _SKILL_TOOLS = frozenset({"load_skill", "read_skill_file"})
 # Plumbing the model uses on nearly every turn -- listing them as "tools
 # used" would bury the ones that say something about the work.
@@ -108,7 +109,7 @@ def _written_whole(call: dict[str, Any], metadata: ToolMetadata | None) -> list[
     """The files a call replaced whole: what a script reports writing, or the path a write_ or
     build_ tool was given."""
     name, path = call["name"], call["args"].get("path")
-    if name in _SCRIPT_TOOLS:
+    if name in _FILE_REPORTING_TOOLS:
         return _script_files(call["result"])
     whole = metadata is not None and metadata.risk_category in _OUTPUT_RISKS
     return (
@@ -143,51 +144,9 @@ def _file_entry(scope: WorkspaceScope, path: str) -> dict[str, Any] | None:
     return entry
 
 
-def summarize_activity(
-    messages: list[BaseMessage], catalog: dict[str, ToolMetadata], scope: WorkspaceScope
-) -> dict[str, Any]:
-    # (path, action) in call order; action is "write" (produces a whole
-    # file), "edit" (changes one in place) or "read".
-    touches: list[tuple[str, str]] = []
-    # Paths a call wrote whole (a script, or a write_/build_ tool, over what was there): their
-    # content is what coscribe made, whether or not the file existed before.
-    written_whole: set[str] = set()
-    presentation_sources: set[str] = set()
-    tool_counts: dict[str, int] = {}
-    connectors: dict[str, dict[str, int]] = {}
-    skills: list[str] = []
-
-    for call in _succeeded_calls(messages):
-        presentation_sources.update(_presentation_sources(call, scope))
-        name, args = call["name"], call["args"]
-        metadata = catalog.get(name)
-        category = metadata.category if metadata is not None else None
-        if name in _SKILL_TOOLS:
-            skill = args.get("name")
-            if isinstance(skill, str) and skill not in skills:
-                skills.append(skill)
-            continue
-        if category is not None and category.startswith("mcp:"):
-            server_tools = connectors.setdefault(category.removeprefix("mcp:"), {})
-            server_tools[name] = server_tools.get(name, 0) + 1
-            continue
-        if name not in _UNLISTED_TOOLS:
-            tool_counts[name] = tool_counts.get(name, 0) + 1
-        if name in _SCRIPT_TOOLS:
-            touches.extend((p, "write") for p in _script_files(call["result"]))
-        written_whole.update(_written_whole(call, metadata))
-        path = args.get("path")
-        if isinstance(path, str) and path:
-            if metadata is None or metadata.risk_category not in _OUTPUT_RISKS:
-                touches.append((path, "read"))
-            elif name.startswith(("write_", "build_")) and _lines_removed(call["result"]) == 0:
-                touches.append((path, "write"))
-            else:
-                touches.append((path, "edit"))
-        touches.extend(
-            (a, "read") for k in _INPUT_PATH_ARGS if isinstance(a := args.get(k), str) and a
-        )
-
+def _file_actions(
+    scope: WorkspaceScope, touches: list[tuple[str, str]]
+) -> tuple[dict[str, str], dict[str, str], dict[str, dict[str, Any]], list[str]]:
     # A file the conversation brought into being is "created" however often
     # it was changed after; one it changed that already existed (touched
     # first by a read or an in-place edit) is "edited"; the rest were read.
@@ -210,6 +169,59 @@ def summarize_activity(
             actions[key] = "created" if touch == "write" else "edited"
         elif previous == "read":
             actions[key] = "edited"
+    return actions, first_touch, entries, last_touched
+
+
+def summarize_activity(
+    messages: list[BaseMessage], catalog: dict[str, ToolMetadata], scope: WorkspaceScope
+) -> dict[str, Any]:
+    # (path, action) in call order; action is "write" (produces a whole
+    # file), "edit" (changes one in place) or "read".
+    touches: list[tuple[str, str]] = []
+    # Paths a call wrote whole (a script, or a write_/build_ tool, over what was there): their
+    # content is what coscribe made, whether or not the file existed before.
+    written_whole: set[str] = set()
+    presentation_sources: set[str] = set()
+    connector_downloads: set[str] = set()
+    tool_counts: dict[str, int] = {}
+    connectors: dict[str, dict[str, int]] = {}
+    skills: list[str] = []
+
+    for call in _succeeded_calls(messages):
+        presentation_sources.update(_presentation_sources(call, scope))
+        name, args = call["name"], call["args"]
+        metadata = catalog.get(name)
+        category = metadata.category if metadata is not None else None
+        if name in _SKILL_TOOLS:
+            skill = args.get("name")
+            if isinstance(skill, str) and skill not in skills:
+                skills.append(skill)
+            continue
+        if category is not None and category.startswith("mcp:"):
+            server_tools = connectors.setdefault(category.removeprefix("mcp:"), {})
+            server_tools[name] = server_tools.get(name, 0) + 1
+            continue
+        if name not in _UNLISTED_TOOLS:
+            tool_counts[name] = tool_counts.get(name, 0) + 1
+        if name in _FILE_REPORTING_TOOLS:
+            paths = _script_files(call["result"])
+            touches.extend((p, "write") for p in paths)
+            if name == "save_connector_file":
+                connector_downloads.update(paths)
+        written_whole.update(_written_whole(call, metadata))
+        path = args.get("path")
+        if isinstance(path, str) and path:
+            if metadata is None or metadata.risk_category not in _OUTPUT_RISKS:
+                touches.append((path, "read"))
+            elif name.startswith(("write_", "build_")) and _lines_removed(call["result"]) == 0:
+                touches.append((path, "write"))
+            else:
+                touches.append((path, "edit"))
+        touches.extend(
+            (a, "read") for k in _INPUT_PATH_ARGS if isinstance(a := args.get(k), str) and a
+        )
+
+    actions, first_touch, entries, last_touched = _file_actions(scope, touches)
     whole_keys = {
         entry["path"] for p in written_whole if (entry := _file_entry(scope, p)) is not None
     }
@@ -220,6 +232,7 @@ def summarize_activity(
             "action": actions[key],
             "rewritten": actions[key] == "created" or key in whole_keys,
             **({"presentation_source": True} if key in presentation_sources else {}),
+            **({"connector_download": True} if key in connector_downloads else {}),
         }
         for key in dict.fromkeys(reversed(last_touched))
         if actions[key] != "read"

@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from openpyxl import Workbook, load_workbook
 
+from coscribe.tools import _file_locks
 from coscribe.tools.office.xlsx.calc import recalculate
 
 
@@ -64,6 +68,49 @@ def test_a_file_the_engine_cannot_read_is_skipped_untouched(tmp_path: Path) -> N
 
     assert report["status"] == "skipped" and report["skipped_reason"]
     assert path.read_bytes() == b"not a workbook"
+
+
+def test_recalculation_leaves_a_formula_free_workbook_untouched(tmp_path: Path) -> None:
+    path = tmp_path / "plain.xlsx"
+    book = Workbook()
+    book.active.append(["name", 1])
+    book.save(path)
+    os.utime(path, (1_600_000_000, 1_600_000_000))
+    before = path.stat()
+    contents = path.read_bytes()
+
+    report = recalculate(path)
+
+    assert report["status"] == "success" and report["total_formulas"] == 0
+    assert path.stat().st_mtime_ns == before.st_mtime_ns
+    assert path.read_bytes() == contents
+
+
+def test_recalculation_retries_a_transient_windows_replace_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "formula.xlsx"
+    book = Workbook()
+    book.active.append(["=1+1"])
+    book.save(path)
+    real_replace = _file_locks.os.replace
+    attempts: list[Path] = []
+
+    def replace(src: Path, target: Path) -> None:
+        attempts.append(src)
+        if len(attempts) == 1:
+            raise PermissionError("File temporarily in use")
+        real_replace(src, target)
+
+    monkeypatch.setattr(_file_locks, "sys", SimpleNamespace(platform="win32"))
+    monkeypatch.setattr(
+        _file_locks, "os", SimpleNamespace(getpid=_file_locks.os.getpid, replace=replace)
+    )
+
+    assert recalculate(path)["status"] == "success"
+    assert len(attempts) == 2
+    assert load_workbook(path, data_only=True).active["A1"].value == 2
+    assert list(tmp_path.iterdir()) == [path]
 
 
 def test_a_function_the_engine_lacks_is_not_checked_rather_than_an_error(tmp_path: Path) -> None:

@@ -278,6 +278,13 @@ Last reviewed: 2026-11-22.
   (sign-in pages should open in the system browser); not reproduced.
 - A Hugging Face connector call once hung a turn; a 120 s limit and an automatic
   reconnect were added, the cause is unknown.
+- Connector Retry and automatic reconnect can overlap. Each path disconnects before awaiting
+  a new connection, and both can then register tools for the same name. Serialize connector
+  changes and test Retry or Remove while a reconnect is in flight (#1058).
+- Validate direct connector exports with a signed-in Canva account and check deployments that
+  require an HTTP proxy. Chat delivery currently accepts public HTTPS file links and downloads
+  directly. MCP resources without direct links and fixed workflow steps need their own delivery
+  checks (#1058).
 - Slack is not offered: its MCP is said to be limited to Marketplace or internal
   apps (third-party source, not checked against Slack's docs).
 - A sent message does not keep its attached files as cards; the file picker takes

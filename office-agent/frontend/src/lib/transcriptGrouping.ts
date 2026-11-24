@@ -461,6 +461,7 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   search_images: (a) => ({ verb: "Searched images", object: str(a, "query") ?? null, glue: ": " }),
   web_search: (a) => ({ verb: "Searched the web", object: str(a, "query") ?? null, glue: ": " }),
   download_image: (a) => ({ verb: "Downloaded", object: fileArg(a) ?? "an image" }),
+  save_connector_file: () => ({ verb: "Downloaded", object: "a connector file" }),
   set_pptx_background_image: () => ({ verb: "Set a slide background image", object: null }),
   add_pptx_scrim: () => ({ verb: "Added a text-legibility overlay", object: null }),
   add_pptx_chart: () => ({ verb: "Added a chart", object: null }),
