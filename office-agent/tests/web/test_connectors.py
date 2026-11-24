@@ -163,8 +163,9 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
     a stale npm cache) can be retried without deleting it first."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("", encoding="utf-8")
+    config_path = tmp_path / "mcp.json"
     fake_model = FakeToolCallingChatModel(responses=[])
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+    with _client_lg(tmp_path, monkeypatch, fake_model, mcp_config_path=config_path) as client:
         # connect_one_mcp_server_lg is stubbed to [] by _client_lg -- saved
         # but not connected, same as the first attempt failing.
         add_response = client.post(
@@ -201,7 +202,7 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
         assert servers["fetch"]["connected"] is True
         # The persisted config itself is untouched by a reconnect -- only
         # bump-version is allowed to rewrite mcp.json.
-        mcp_config = json.loads((tmp_path / "mcp.json").read_text(encoding="utf-8"))
+        mcp_config = json.loads(config_path.read_text(encoding="utf-8"))
         assert mcp_config["mcpServers"]["fetch"]["command"] == "uvx"
 
 
