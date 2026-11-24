@@ -565,12 +565,28 @@ async def test_a_connector_call_that_hangs_or_fails_comes_back_as_an_error_and_a
     async def blank(x: str = "") -> tuple[str, None]:
         return "", None
 
+    async def refused(x: str = "") -> tuple[str, None]:
+        from langchain_core.tools import ToolException
+
+        raise ToolException("bad request")
+
     async def load(session: Any, **_: Any) -> list[StructuredTool]:
         return [
             StructuredTool.from_function(
-                coroutine=fn, name=name, description="d", response_format="content_and_artifact"
+                coroutine=fn,
+                name=name,
+                description="d",
+                response_format="content_and_artifact",
+                metadata={"readOnlyHint": name == "hang"},
+                handle_tool_error=str,
             )
-            for name, fn in (("hang", hang), ("broken", broken), ("fine", fine), ("blank", blank))
+            for name, fn in (
+                ("hang", hang),
+                ("broken", broken),
+                ("fine", fine),
+                ("blank", blank),
+                ("refused", refused),
+            )
         ]
 
     monkeypatch.setattr(lg_mcp, "load_mcp_tools", load)
@@ -584,10 +600,12 @@ async def test_a_connector_call_that_hangs_or_fails_comes_back_as_an_error_and_a
     failed = await tools["broken"].ainvoke({"x": "a"})
     worked = await tools["fine"].ainvoke({"x": "a"})
     empty = await tools["blank"].ainvoke({"x": "a"})
+    invalid = await tools["refused"].ainvoke({"x": "a"})
     await connection.close()
 
     assert "didn't answer within" in hung and "try the same call again" in hung
-    assert "Session terminated" in failed
+    assert "may already have happened" in failed and "try the same call again" not in failed
     assert worked == "got a"
     assert "returned no content" in empty
+    assert invalid == "bad request"
     assert stale == ["fs", "fs"]
