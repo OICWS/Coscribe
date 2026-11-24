@@ -26,7 +26,11 @@ See [`README.md`](README.md). Then check your setup works:
    Open an issue before a change that is over about 200 lines, touches a hot file
    or an invariant path, and link it in the pull request (`Closes #N` or
    `Part of #N`); a smaller change writes `none: <why>` there.
-3. **Write the test with the change.** A bug fix gets a test that failed before.
+3. **Write the test with the change.** A change to code under `office-agent/src` comes with a
+   test that fails without it; the `PR tests` check runs your changed tests against the base's
+   code, and the `test` job asks for 80% of the changed lines covered. A line in the
+   description waives either when it can't apply: `Fails before: <why>`,
+   `Changed-line coverage: <why>`.
 4. **Run the checks:** `cd office-agent && bash scripts/check.sh --fast` before
    pushing; CI runs the full `bash scripts/check.sh` (frontend `tsc -b` and
    build, oxlint, ruff, mypy, pytest). Touching

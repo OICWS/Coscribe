@@ -2,8 +2,9 @@ name: PR text
 
 # A squash merge copies every commit message into the merged commit, so signature lines
 # make each commit longer for no reader's benefit. This fails a pull request whose title,
-# description or commit messages carry one. It is not a required check; `loosened` below is
-# meant to be one (the maintainer sets required checks in the ruleset).
+# description or commit messages carry one. It is not a required check; `loosened` and
+# `independent-review` below are meant to be (the maintainer sets required checks in the
+# ruleset).
 "on":
   pull_request:
     # labeled and unlabeled: the `loosened` job reads the maintainer's label.
@@ -11,6 +12,8 @@ name: PR text
 
 permissions:
   contents: read
+  # independent-review reads the reviews posted on the pull request.
+  pull-requests: read
 
 jobs:
   signature-lines:
@@ -84,4 +87,26 @@ jobs:
         # pull request loosening it.
         run: |
           python office-agent/scripts/loosened.py \
+            --base "$(git merge-base "$BASE_SHA" "$HEAD_SHA")" --head "$HEAD_SHA"
+
+  # A change to an invariant path links the independent GitHub review posted on this pull
+  # request (office-agent/CLAUDE.md, "Code review"; scripts/pr_gates.py).
+  independent-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: The review is linked and on this pull request
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python office-agent/scripts/pr_gates.py review --pr ${{ github.event.pull_request.number }} \
             --base "$(git merge-base "$BASE_SHA" "$HEAD_SHA")" --head "$HEAD_SHA"

@@ -13,6 +13,7 @@ DELETE /api/scheduled-tasks/{trigger_id}
 DELETE /api/scheduled-tasks/{trigger_id}/folders
 DELETE /api/script-env/packages/{name}
 DELETE /api/secrets/{name}
+DELETE /api/skills/sources/{repo:path}
 DELETE /api/skills/{name}
 DELETE /api/thread-groups/{name}
 DELETE /api/threads/{thread_id}
@@ -67,10 +68,10 @@ GET /api/script-isolation
 GET /api/secrets
 GET /api/settings/proxy
 GET /api/skills
-GET /api/skills/catalog
 GET /api/skills/plugins
 GET /api/skills/plugins/{plugin_id}
 GET /api/skills/plugins/{plugin_id}/files/{path:path}
+GET /api/skills/sources
 GET /api/skills/{name}/files
 GET /api/skills/{name}/files/{path:path}
 GET /api/subagents/{task_id}/transcript
@@ -158,8 +159,8 @@ POST /api/script-env/own-python
 POST /api/script-env/packages
 POST /api/script-isolation/test
 POST /api/settings/proxy/test
-POST /api/skills/catalog/{name}
 POST /api/skills/plugins/{plugin_id}
+POST /api/skills/sources
 POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop

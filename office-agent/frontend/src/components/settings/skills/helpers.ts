@@ -3,12 +3,14 @@ import type { InstalledPluginInfo, SkillInfo } from "../../../types/settings";
 export const SOURCE_BYLINE: Record<SkillInfo["source"], string> = {
   custom: "by you",
   anthropic: "from Anthropic",
+  github: "from a source you added",
   builtin: "built into Coscribe",
 };
 
 export const SECTIONS: { source: SkillInfo["source"]; title: string }[] = [
   { source: "custom", title: "Created by you" },
   { source: "anthropic", title: "From Anthropic" },
+  { source: "github", title: "From your sources" },
   { source: "builtin", title: "Built into Coscribe" },
 ];
 
