@@ -10,3 +10,6 @@ office-agent/src/coscribe/skill_catalog.json linguist-generated=true
 office-agent/tests/openapi.json -text linguist-generated=true
 office-agent/src/coscribe/conversation/_vendor/d3.min.js linguist-generated=true
 office-agent/src/coscribe/runtime/models/catalog.json linguist-generated=true
+site/demo/scenes/** linguist-generated=true
+site/demo/labels.js linguist-generated=true
+site/demo/app.css linguist-generated=true

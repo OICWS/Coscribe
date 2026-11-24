@@ -9,3 +9,6 @@ site/index.html
 office-agent/tests/openapi.json
 office-agent/src/coscribe/conversation/_vendor/
 office-agent/src/coscribe/runtime/models/catalog.json
+site/demo/scenes/
+site/demo/labels.js
+site/demo/app.css

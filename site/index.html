@@ -829,14 +829,9 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
 .cursor.down svg { transform: scale(.82); }
 
 /* scene picker under the window */
-.win.real { background: var(--bg-2); }
-.real-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
-.real-shot img { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 861; object-fit: cover; object-position: top; background: var(--bg); }
-.real-foot { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 1px solid var(--line); }
-.real-steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.real-steps button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--bg); color: var(--muted); font: 500 12px/1 var(--sans); cursor: pointer; }
-.real-steps button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-.real-cap { margin: 0; font: 400 14px/1.45 var(--sans); color: var(--fg); }
+.win.live { background: var(--bg); }
+.win.live iframe { display: block; width: 100%; aspect-ratio: 1280 / 861; border: 0; background: #fcfcfb; }
+@media (max-width: 700px) { .win.live iframe { aspect-ratio: 3 / 4; } }
 .real-note { margin: 10px 2px 0; font: 400 12.5px/1.5 var(--sans); color: var(--muted); }
 .scenes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px 18px; margin-top: 22px; align-items: start; }
 .sc { position: relative; text-align: left; border: 0; background: none; padding: 14px 0 0; cursor: pointer; color: var(--muted); font: 500 14px/1.35 var(--sans); transition: color .2s; min-width: 0; }
@@ -1127,16 +1122,10 @@ footer a:hover { color: var(--fg); }
     </div>
 
     <div class="stage" id="stage">
-      <div class="win real" id="win">
-        <button class="real-shot" id="rshot" type="button" aria-label="Next step">
-          <img id="rimg" alt="" width="1280" height="861" decoding="async">
-        </button>
-        <div class="real-foot">
-          <ol class="real-steps" id="rsteps" aria-label="Steps of this task"></ol>
-          <p class="real-cap" id="rcap" aria-live="polite"></p>
-        </div>
+      <div class="win live" id="win">
+        <iframe id="demo" title="Coscribe replaying a real conversation" src="demo/?scene=1&amp;autoplay=0" loading="lazy"></iframe>
       </div>
-      <p class="real-note"><span class="en">Real screenshots of Coscribe on Windows, running each task with deepseek-flash on sample files with made-up data. The CRM is a small sample site on the same computer.</span><span class="zh">以上都是 Coscribe 在 Windows 上的真实截图：用 deepseek-flash 跑每个任务，示例文件里是虚构数据；CRM 是同一台电脑上的一个示例网站。</span></p>
+      <p class="real-note"><span class="en">Real conversations replayed in Coscribe's own interface. Each task ran on Windows with deepseek-flash on sample files with made-up data; the CRM is a small sample site. Click the steps, the file notice or the slides.</span><span class="zh">在 Coscribe 自己的界面里重放真实对话。每个任务都在 Windows 上用 deepseek-flash 跑过，示例文件里是虚构数据，CRM 是一个示例网站。可以点开步骤、文件通知和幻灯片。</span></p>
 
       <div class="scenes" role="tablist" aria-label="Example tasks" id="scenes">
         <button class="sc" role="tab" type="button" aria-selected="true" data-s="0"><span class="bar"><i></i></span><small>01 · PPTX</small><span class="zh">表格做成汇报 PPT</span><span class="en">Spreadsheet to board deck</span></button>
@@ -1485,79 +1474,50 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
   }
 
   /* ---------------------------------------------------------------------
-     The example tasks: real captures of the app, a few steps each. Steps
-     advance on their own while the window is on screen; a click on a step,
-     the picture or a tab takes over, and the play button resumes.
+     The example tasks: demo/ replays each real conversation in the app's
+     own markup. A tab picks the task; the tour moves to the next task when
+     one finishes, and pauses while the window is off screen.
      --------------------------------------------------------------------- */
   (function () {
-    var STEPS = [
-      [["在输入框里写下需求", "The request, typed in the message box"],
-       ["它实际执行的步骤：读表、两个子代理并行分析，再逐页生成", "The steps it took: read the workbook, two sub-agents in parallel, then each slide"],
-       ["做好的 8 页 PPT 在侧边面板里打开", "The finished 8-slide deck, opened in the side panel"]],
-      [["在输入框里写下需求", "The request, typed in the message box"],
-       ["它实际执行的步骤", "The steps it took"],
-       ["每处修改对照标准条款说明理由，修订后的合同作为文件卡片给出", "Each change explained against our terms, and the edited contract as a file card"]],
-      [["在输入框里写下需求", "The request, typed in the message box"],
-       ["它实际执行的步骤", "The steps it took"],
-       ["对不上的条目列成表，并写进一个新的工作簿", "The mismatches listed, and written to a new workbook"]],
-      [["在输入框里写下需求", "The request, typed in the message box"],
-       ["第一次访问一个网站前，先问你是否允许", "Before using a site for the first time, it asks you"],
-       ["在浏览器面板里筛选 Q4、翻页读取", "In the Browser panel: filtered to Q4, read both pages"],
-       ["13 个客户按金额排序，存成 CSV", "13 accounts, sorted by ARR, saved as a CSV"]],
-      [["在输入框里写下需求", "The request, typed in the message box"],
-       ["它实际执行的步骤", "The steps it took"],
-       ["写好的文档在编辑器里打开，可以直接改", "The doc opened in the editor, ready to edit"]]
-    ];
-    var STEP_MS = 3800;
-    var img = $("rimg"), shot = $("rshot"), list = $("rsteps"), cap = $("rcap"), win = $("win");
-    var tabs = all("#scenes .sc"), playp = $("playp");
-    var at = { scene: 0, step: 0 }, paused = reduced, visible = false, timer = 0, started = 0;
+    var frame = $("demo"), win = $("win"), tabs = all("#scenes .sc"), playp = $("playp");
+    var at = 0, paused = reduced, visible = false, ready = false, fill = 0;
 
-    function src(scene, step) { return "media/demo/" + (isEn() ? "en" : "zh") + "/s" + (scene + 1) + "-" + (step + 1) + ".jpg"; }
-    function preload(scene) { STEPS[scene].forEach(function (_, k) { (new Image()).src = src(scene, k); }); }
+    function post(message) {
+      if (!ready) return;
+      message.type = "coscribe-demo";
+      frame.contentWindow.postMessage(message, "*");
+    }
+    function lang() { return isEn() ? "en" : "zh"; }
     function syncPlay() {
       playp.setAttribute("aria-pressed", paused ? "true" : "false");
       playp.setAttribute("aria-label", paused ? "Play the demo" : "Pause the demo");
+      post({ paused: paused || !visible || document.hidden });
     }
     function draw() {
-      var steps = STEPS[at.scene], words = steps[at.step];
-      img.src = src(at.scene, at.step);
-      img.alt = isEn() ? words[1] : words[0];
-      cap.innerHTML = bi(words[0], words[1]);
-      list.innerHTML = "";
-      steps.forEach(function (w, k) {
-        var li = h("li");
-        var b = h("button", k === at.step ? "on" : "", "<span>" + (k + 1) + "</span>");
-        b.type = "button";
-        b.setAttribute("aria-label", (k + 1) + ". " + (isEn() ? w[1] : w[0]));
-        b.setAttribute("aria-current", k === at.step ? "step" : "false");
-        b.addEventListener("click", function () { take(); show(at.scene, k); });
-        li.appendChild(b); list.appendChild(li);
-      });
       tabs.forEach(function (t, k) {
-        t.setAttribute("aria-selected", k === at.scene ? "true" : "false");
-        t.tabIndex = k === at.scene ? 0 : -1;
-        t.querySelector(".bar i").style.transform = "scaleX(" + (k === at.scene ? (at.step + 1) / steps.length : 0) + ")";
+        t.setAttribute("aria-selected", k === at ? "true" : "false");
+        t.tabIndex = k === at ? 0 : -1;
+        t.querySelector(".bar i").style.transform = "scaleX(" + (k === at ? fill : 0) + ")";
       });
     }
-    function show(scene, step) {
-      at.scene = scene; at.step = step;
-      if (step === 0) preload((scene + 1) % STEPS.length);
-      draw(); schedule();
+    function show(scene) {
+      at = scene; fill = 0;
+      draw();
+      post({ scene: scene + 1, lang: lang() });
     }
-    function next() {
-      var n = STEPS[at.scene].length;
-      if (at.step + 1 < n) show(at.scene, at.step + 1);
-      else show((at.scene + 1) % STEPS.length, 0);
-    }
-    function schedule() {
-      clearTimeout(timer);
-      if (!paused && visible && !document.hidden) timer = setTimeout(next, STEP_MS);
-    }
-    function take() { paused = true; syncPlay(); clearTimeout(timer); }
-
+    frame.addEventListener("load", function () {
+      ready = true;
+      show(at);
+      syncPlay();
+    });
+    window.addEventListener("message", function (e) {
+      if (e.source !== frame.contentWindow || !e.data || e.data.type !== "coscribe-demo") return;
+      /* The bar under the tab fills as the task plays. */
+      if (e.data.event === "progress") { fill = e.data.value; draw(); }
+      if (e.data.event === "done" && !paused) show((at + 1) % tabs.length);
+    });
     tabs.forEach(function (t, k) {
-      t.addEventListener("click", function () { take(); show(k, 0); });
+      t.addEventListener("click", function () { show(k); });
       t.addEventListener("keydown", function (e) {
         var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
         if (!d) return;
@@ -1566,17 +1526,16 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
         tabs[n].focus(); tabs[n].click();
       });
     });
-    shot.addEventListener("click", function () { take(); next(); });
-    playp.addEventListener("click", function () { paused = !paused; syncPlay(); schedule(); });
-    document.addEventListener("coscribe:lang", draw);
-    document.addEventListener("visibilitychange", schedule);
+    playp.addEventListener("click", function () { paused = !paused; syncPlay(); });
+    document.addEventListener("coscribe:lang", function () { show(at); });
+    document.addEventListener("visibilitychange", syncPlay);
     if ("IntersectionObserver" in window) {
       new IntersectionObserver(function (es) {
         es.forEach(function (e) { visible = e.isIntersecting; });
-        schedule();
+        syncPlay();
       }, { threshold: 0.2 }).observe(win);
     } else visible = true;
-    syncPlay(); preload(0); show(0, 0);
+    syncPlay(); draw();
   })();
 
   /* ---------------------------- workflow card ---------------------------- */
