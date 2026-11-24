@@ -34,7 +34,7 @@ _STATE_FILE = "skills.json"
 DEFAULT_OFF_SKILLS = frozenset({"markdown"})
 _RAW_URL = "https://raw.githubusercontent.com/{repo}/{commit}/{src}"
 
-SkillSource = Literal["builtin", "anthropic", "custom"]
+SkillSource = Literal["builtin", "anthropic", "github", "custom"]
 
 
 class SkillCatalogError(ValueError):
@@ -50,9 +50,15 @@ def load_catalog() -> dict[str, Any]:
 def skill_source(skill: SkillInfo, builtin_names: set[str]) -> SkillSource:
     if skill.name in builtin_names:
         return "builtin"
-    if ((skill.plugin_dir or skill.dir) / SOURCE_MARKER).is_file():
-        return "anthropic"
-    return "custom"
+    try:
+        marker = json.loads(
+            ((skill.plugin_dir or skill.dir) / SOURCE_MARKER).read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return "custom"
+    # A plugin added from a source the person added carries the plugin's name; Discover's
+    # own catalog marks each skill.
+    return "github" if isinstance(marker, dict) and "plugin" in marker else "anthropic"
 
 
 def _read_state(state_dir: Path) -> dict[str, set[str]]:
@@ -230,9 +236,7 @@ def install_plugin(
 _preview_cache: dict[tuple[str, str], bytes] = {}
 
 
-def plugin_file(
-    plugin_id: str, path: str, *, fetch: Callable[[str], bytes] | None = None
-) -> bytes:
+def plugin_file(plugin_id: str, path: str, *, fetch: Callable[[str], bytes] | None = None) -> bytes:
     """One file of a plugin as pinned in the catalog, for previewing before
     anything is added. Only paths the catalog lists can be asked for, and the
     download is checked against the catalog's SHA-256 like an install is."""

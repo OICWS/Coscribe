@@ -863,6 +863,19 @@
         "title": "PermissionsRequest",
         "type": "object"
       },
+      "PluginSourceAdd": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "title": "PluginSourceAdd",
+        "type": "object"
+      },
       "ProviderModelsRequest": {
         "properties": {
           "api_key": {
@@ -6089,66 +6102,6 @@
         "summary": "Get Skills"
       }
     },
-    "/api/skills/catalog": {
-      "get": {
-        "operationId": "get_skill_catalog_api_skills_catalog_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "title": "Response Get Skill Catalog Api Skills Catalog Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Skill Catalog"
-      }
-    },
-    "/api/skills/catalog/{name}": {
-      "post": {
-        "operationId": "add_catalog_skill_api_skills_catalog__name__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Catalog Skill"
-      }
-    },
     "/api/skills/plugins": {
       "get": {
         "operationId": "get_skill_plugins_api_skills_plugins_get",
@@ -6288,6 +6241,100 @@
           }
         },
         "summary": "Get Skill Plugin File"
+      }
+    },
+    "/api/skills/sources": {
+      "get": {
+        "operationId": "list_sources_api_skills_sources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Sources Api Skills Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Sources"
+      },
+      "post": {
+        "operationId": "add_source_api_skills_sources_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginSourceAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Source"
+      }
+    },
+    "/api/skills/sources/{repo}": {
+      "delete": {
+        "operationId": "remove_source_api_skills_sources__repo__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo",
+            "required": true,
+            "schema": {
+              "title": "Repo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Source"
       }
     },
     "/api/skills/upload": {

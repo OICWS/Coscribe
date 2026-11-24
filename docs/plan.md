@@ -70,7 +70,11 @@ Last reviewed: 2026-11-22.
    repository's `marketplace.json`; built-in plugins installed by default, PPTX Pages first;
    `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record;
    reading the format and uploads (`docs/log/2026-11-22-plugin-folders.md`); Settings › Plugins
-   (`docs/log/2026-11-23-plugins-page.md`).
+   (`docs/log/2026-11-23-plugins-page.md`); sources the person adds by address
+   (`docs/log/2026-11-23-plugin-sources.md`). Open in step 4: Discover's own catalog still adds
+   a plugin's skills one by one and is built by hand; building it from the curated repositories'
+   `marketplace.json` and adding its plugins whole, and following an entry that points to
+   another GitHub repository (`github`, `git-subdir`).
 
 ## Open, smaller
 
