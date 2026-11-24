@@ -868,7 +868,9 @@ Clicking a plugin opens its page: its author, version and description, its
 skills as chips, and the parts Coscribe reads but does not use (commands,
 agents, hooks, MCP servers, apps, LSP servers). No connector is listed on a
 plugin: when a skill needs an outside service, the model offers one of
-Coscribe's own connectors in the conversation. On/off and Remove act on the
+Coscribe's own connectors in the conversation. A plugin's MCP servers are never added or
+started; loading one of its skills tells the model their names and hosts and points it to
+`find_connector` and `offer_connector`. On/off and Remove act on the
 whole plugin. Clicking a skill opens it: **Overview** (description, the
 Coscribe tools it mentions) and **Contents** (its file tree; Markdown
 renders with a preview/source toggle, other text files show with line
