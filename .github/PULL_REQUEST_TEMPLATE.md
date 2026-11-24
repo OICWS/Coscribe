@@ -13,13 +13,13 @@
 ## How it was checked
 
 - [ ] `cd office-agent && bash scripts/check.sh` passes, or CI is green (frontend `tsc -b` and build, oxlint, ruff, mypy, pytest)
-- [ ] A test fails without this change (or: why none is possible)
+- [ ] A test fails without this change; `PR tests` checks it (or a `Fails before: <why>` line)
 - [ ] A UI change was looked at in the running app (screenshot below)
 - [ ] `docs/log/<date>-<slug>.md` records what shipped (and `docs/plan.md` is updated if the open work changed)
 
 ## Independent review
 
-<!-- Only if the change touches an invariant path (office-agent/CLAUDE.md): the link to the GitHub review posted by a session that did not write the change (the maintainer's or a collaborator's). Otherwise: not needed. -->
+<!-- Only if the change touches an invariant path (office-agent/CLAUDE.md): the link to the GitHub review posted on this pull request by a session that did not write the change (https://github.com/OICWS/coscribe/pull/<n>#pullrequestreview-<id>); the `independent-review` check reads it. Otherwise: not needed. -->
 
 ## Not verified
 
