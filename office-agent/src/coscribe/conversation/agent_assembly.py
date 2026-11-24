@@ -49,6 +49,7 @@ from ..tools import (
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
 from .capability_guard import hold_to_capabilities
+from .connector_files import ConnectorFiles
 from .connector_offer import ConnectorDirectory as ConnectorDirectory
 from .connector_offer import build_connector_offer_tools
 from .context_usage import build_context_breakdown
@@ -127,6 +128,11 @@ class AgentAssembly:
         self._side: tuple[str, Any] | None = None
 
     @cached_property
+    def connector_files(self) -> ConnectorFiles:
+        host = self._host
+        return ConnectorFiles(host.settings.state_dir, host.thread_id, host.workspace_scope)
+
+    @cached_property
     def folder_briefs(self) -> FolderBriefKeeper:
         return FolderBriefKeeper(
             Path(self._host.settings.state_dir),
@@ -194,7 +200,10 @@ class AgentAssembly:
         # sub-agent's own
         # selectable tool_names never includes spawn_agent, and does include
         # MCP tools.
-        combined_tools = [*self._host._base_tools, *self._host._extra_tools]
+        combined_tools = [
+            *self._host._base_tools,
+            *(self.connector_files.wrap(tool) for tool in self._host._extra_tools),
+        ]
         delegation_tools = build_delegation_tools(self._host._subagent_host(model), combined_tools)
         # The reviewer only ever gets read-only tools (document readers and
         # file listing/reading) -- independent verification of a generated
@@ -237,6 +246,7 @@ class AgentAssembly:
             *delegation_tools,
             *code_tools,
             *offer_tools,
+            self.connector_files.tool(),
             *build_http_tools(self._host.settings.state_dir, self._host.thread_id),
             *build_artifact_tools(self._host.settings.state_dir, self._host.workspace_scope),
             *build_page_tools(

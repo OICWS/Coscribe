@@ -36,6 +36,8 @@ Open a connector in **Yours** to see its tools, split into **Read-only tools** a
 
 The connector's page also says whether it's connected. If it isn't, **Retry** connects again, and **Sign in** opens the service's sign-in page.
 
+When a connector returns a direct file link in chat, ask Coscribe to save the original file. The file goes into your workspace’s `downloads` folder and appears above the message box. The download uses your workspace’s network settings. If a temporary link expires, ask Coscribe to export the file again.
+
 ## Connectors for one folder
 
 A folder can bring its own connectors in `.coscribe/mcp.json`. They apply only in conversations that use that folder, once you've accepted its settings. See [A folder's own notes and rules](../workspaces/folder-settings.md).
