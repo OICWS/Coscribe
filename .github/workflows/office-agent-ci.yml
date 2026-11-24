@@ -54,6 +54,13 @@ jobs:
             echo "Test files: $(grep '^tests=' "$GITHUB_OUTPUT" | cut -d= -f2- | wc -w) selected (0 means all)."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # A pull request that changes a component whose card fell LIMIT commits behind its code
+      # updates the card too (scripts/card_freshness.py). Before the dependencies: it needs
+      # only git and the standard library.
+      - name: Component cards keep up with their code
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/card_freshness.py --changed < "$RUNNER_TEMP/changed.txt"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"

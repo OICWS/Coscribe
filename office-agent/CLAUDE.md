@@ -202,6 +202,9 @@ so run the job again after editing); the review has no such line. A fourth repor
 `Mutation of the changes` mutates the functions the pull request changed and lists the
 mutants its tests did not notice; add a check for each, or say in the description why it
 can't matter (a Windows-only branch, a mutant that changes nothing visible).
+A component card 20 or more commits behind its code (`scripts/card_freshness.py`) fails the
+`test` job of the next pull request that changes that component until the card is read against
+the code and its `## Reviewed` section updated.
 
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before

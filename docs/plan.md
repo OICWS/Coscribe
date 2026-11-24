@@ -83,9 +83,9 @@ Last reviewed: 2026-11-22.
   (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
   Mondays: a card far behind its code or a component near its budget is the next piece of work.
 
-- **Remaining 0009 gaps** (#1051 follow-up, `docs/log/2026-11-24-mutation-of-changes.md`):
-  mutation of each pull request's changed functions shipped (report only); still open: a
-  component card that falls behind its code fails a check, the frontend features' `index.ts`,
+- **Remaining 0009 gaps** (#1051 follow-up, `docs/log/2026-11-24-mutation-and-cards.md`):
+  mutation of each pull request's changed functions (report only) and the check that a card 20
+  commits behind its code is updated shipped; still open: the frontend features' `index.ts`,
   splitting `conversation/session.py`, a second model family's review.
 
 - **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):

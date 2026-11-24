@@ -237,22 +237,6 @@ def _baseline_at(moment: datetime) -> dict[str, dict[str, int]] | None:
     return loaded
 
 
-def _cards_behind(components: list[dict[str, Any]]) -> dict[str, int]:
-    behind = {}
-    for component in components:
-        card = component.get("card")
-        if not card:
-            continue
-        since = _git("log", "-1", "--format=%H", "origin/main", "--", card).strip()
-        if not since:
-            continue
-        commits = _git(
-            "rev-list", "--count", f"{since}..origin/main", "--", component["path"], f":!{card}"
-        )
-        behind[component["name"]] = int(commits.strip() or 0)
-    return behind
-
-
 def scale_sections(
     repo: str, merged: list[dict[str, Any]], audit_runs: list[dict[str, Any]]
 ) -> list[str]:
@@ -260,6 +244,7 @@ def scale_sections(
     scripts = str(Path(__file__).resolve().parent)
     if scripts not in sys.path:
         sys.path.insert(0, scripts)
+    import card_freshness
     import ci_scope
     import ratchet
 
@@ -285,7 +270,13 @@ def scale_sections(
         *budget_lines(budgets, ratchet.component_lines(), ratchet.core_components()),
         "",
         "## Component cards behind their code",
-        *card_lines(_cards_behind(components)),
+        *card_lines(
+            {
+                c["name"]: card_freshness.behind(c, components, "origin/main")
+                for c in components
+                if c.get("card")
+            }
+        ),
         "",
     ]
 
