@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { readCanvas, type Canvas } from "../../lib/designCanvas";
-import { PanelFileMenu } from "../artifacts/PanelFileMenu";
-import { PanelTitleButton } from "../artifacts/PanelTitleButton";
-import { useDockPanel } from "../dock/dockContext";
+import { PanelFileMenu } from "../artifacts";
+import { PanelTitleButton } from "../artifacts";
+import { useDockPanel } from "../dock";
 import { FullScreenPlayer } from "./BoardPlay";
 import { BoardInspector } from "./BoardInspector";
 import { BoardTextEditor } from "./BoardTextEditor";
 import { boardExports, saveBoard } from "./boardExports";
-import type { MenuEntry } from "../slides/SlideMenu";
+import type { MenuEntry } from "../slides";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
 import { useBoardInspector } from "./useBoardInspector";

@@ -9,7 +9,7 @@ import {
   type SVGProps,
 } from "react";
 import { askSideQuestion, type SideChatMessage } from "../lib/rest";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 import { ArrowUpIcon, EyeIcon } from "./icons";
 
 const Markdown = lazy(() =>

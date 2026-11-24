@@ -3,10 +3,10 @@ import { folderName } from "../../lib/folderName";
 import type { BrowserLevel, SecretInfo } from "../../types/settings";
 import { FolderIcon, PlusIcon } from "../icons";
 import { SelectMenu, type SelectOption } from "../SelectMenu";
-import { DirBrowserModal } from "../settings/DirBrowserModal";
-import { DIR_PERMISSION_OPTIONS, type DirEntry } from "../settings/fields";
-import { SegmentedControl } from "../settings/SegmentedControl";
-import { fieldClass, secondaryButtonClass } from "../settings/SettingRow";
+import { DirBrowserModal } from "../settings";
+import { DIR_PERMISSION_OPTIONS, type DirEntry } from "../settings";
+import { SegmentedControl } from "../settings";
+import { fieldClass, secondaryButtonClass } from "../settings";
 import { normalizeSite, patternBase, reachesPattern } from "../../lib/workspaceSites";
 import type { NetworkDraft, SitesMode } from "./drafts";
 
@@ -33,11 +33,14 @@ function reach(network: NetworkDraft): string[] | null {
   return network.mode === "none" ? [] : network.mode === "any" ? null : network.sites;
 }
 
-const ACCESS_LABELS = Object.fromEntries(DIR_PERMISSION_OPTIONS.map((option) => [option.value, option.label]));
+// Looked up on use, not when the module loads: settings and this feature import each other.
+function permissionLabel(permission: string): string {
+  return DIR_PERMISSION_OPTIONS.find((option) => option.value === permission)?.label ?? permission;
+}
 
 /** A folder Allowed folders doesn't hold yet joins it as read and write when the workspace is saved. */
 function accessLabel(permission: string | undefined): string {
-  return permission ? ACCESS_LABELS[permission] : "Read and write (new)";
+  return permission ? permissionLabel(permission) : "Read and write (new)";
 }
 
 function PickedFolders({
@@ -103,7 +106,7 @@ export function FoldersSection({
   const access = new Map(library.map((entry) => [entry.path, entry.permission]));
   const unused: SelectOption<string>[] = library
     .filter((entry) => !folders.includes(entry.path))
-    .map((entry) => ({ value: entry.path, label: `${folderName(entry.path)} · ${ACCESS_LABELS[entry.permission]}` }));
+    .map((entry) => ({ value: entry.path, label: `${folderName(entry.path)} · ${permissionLabel(entry.permission)}` }));
   const pick = (path: string) => {
     if (browsing === "main") onChange([path, ...more.filter((folder) => folder !== path)]);
     else if (!folders.includes(path)) onChange(main === undefined ? [path] : [...folders, path]);

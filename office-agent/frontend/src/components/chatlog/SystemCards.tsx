@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { PAGE_KINDS } from "../../lib/artifacts";
 import { savedSystems } from "../../lib/savedSystems";
 import { ChevronRightIcon } from "../icons";
-import { KindIcon } from "../artifacts/artifactIcons";
+import { KindIcon } from "../artifacts";
 import { OpenDesignSystem } from "./contexts";
 import type { ToolOrApprovalItem } from "./types";
 

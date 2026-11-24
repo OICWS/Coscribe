@@ -163,8 +163,9 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
     a stale npm cache) can be retried without deleting it first."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("", encoding="utf-8")
+    config_path = tmp_path / "mcp.json"
     fake_model = FakeToolCallingChatModel(responses=[])
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+    with _client_lg(tmp_path, monkeypatch, fake_model, mcp_config_path=config_path) as client:
         # connect_one_mcp_server_lg is stubbed to [] by _client_lg -- saved
         # but not connected, same as the first attempt failing.
         add_response = client.post(
@@ -201,7 +202,7 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
         assert servers["fetch"]["connected"] is True
         # The persisted config itself is untouched by a reconnect -- only
         # bump-version is allowed to rewrite mcp.json.
-        mcp_config = json.loads((tmp_path / "mcp.json").read_text(encoding="utf-8"))
+        mcp_config = json.loads(config_path.read_text(encoding="utf-8"))
         assert mcp_config["mcpServers"]["fetch"]["command"] == "uvx"
 
 
@@ -1530,3 +1531,94 @@ def test_a_connector_tool_is_asked_once_for_the_task_form_lg(
     assert missing.status_code == 404
     assert listed["mail_search"]["read_only"] is True and listed["mail_label"]["read_only"] is False
     assert tasks[0]["connector_check"] == {"last_check": None, "missed": []}
+
+
+def test_connector_download_survives_chat_replay_without_exposing_signed_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    import httpx
+    from langchain_core.tools import StructuredTool
+
+    from coscribe.conversation import connector_files
+    from coscribe.runtime import tool_metadata
+
+    url = "https://files.example.com/export?signature=temporary-signature"
+    file_ref = "fixture-file-reference"
+    pdf = b"%PDF-1.7\noriginal bytes\n%%EOF\n"
+    monkeypatch.setattr(
+        connector_files, "secrets", SimpleNamespace(token_urlsafe=lambda _: file_ref)
+    )
+
+    async def export_design() -> tuple[str, None]:
+        return json.dumps({"urls": [url]}), None
+
+    async def connect(*args: Any, **kwargs: Any) -> tuple[list[Any], Any, None]:
+        tool = StructuredTool.from_function(
+            coroutine=export_design,
+            name="fixture_export_design",
+            description="Export a PDF",
+            response_format="content_and_artifact",
+        )
+        tool_metadata(tool, risk_category="READ", category="mcp:fixture")
+        return [tool], SimpleNamespace(close=noop), None
+
+    async def public_ip(host: str, port: int) -> str:
+        return "192.0.2.5"
+
+    async def download(transport: Any, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, stream=httpx.ByteStream(pdf), headers={"content-type": "application/pdf"}
+        )
+
+    async def noop() -> None:
+        pass
+
+    monkeypatch.setattr(connector_files, "_public_ip", public_ip)
+    monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", download)
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_tool_call("export", "fixture_export_design", {})]),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call("save", "save_connector_file", {"file_ref": file_ref}),
+                ],
+            ),
+            AIMessage(content="Saved the original PDF."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", connect)
+        client.post(
+            "/api/mcp/servers", json={"name": "fixture", "server_url": "https://example.com/mcp"}
+        )
+        client.put(
+            "/api/mcp/servers/fixture/permissions",
+            json={
+                "tools": {"fixture_export_design": "allow"},
+            },
+        )
+        with client.websocket_connect("/ws/connector-download") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json({"type": "user_message", "text": "Export and save the PDF"})
+            events = _receive_until(ws, "approval_required")
+            approval = events[-1]
+            assert approval["tool_name"] == "save_connector_file"
+            assert not (tmp_path / "workspace" / "downloads").exists()
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            events.extend(_receive_until(ws, "tasks_changed"))
+        assert file_ref in repr(events) and "temporary-signature" not in repr(events)
+        with client.websocket_connect("/ws/connector-download") as ws:
+            ws.receive_json()
+            history = ws.receive_json()
+        assert "temporary-signature" not in repr(history)
+        activity = client.get("/api/threads/connector-download/activity").json()
+        output = activity["outputs"][0]
+        assert output["connector_download"] and output["path"] == "downloads/export.pdf"
+        result = client.get(
+            "/api/threads/connector-download/files/download", params={"path": output["path"]}
+        )
+        assert result.content == pdf

@@ -43,12 +43,13 @@ export function madeOutputs(outputs: ActivityFile[], docs: ReadonlySet<string>):
     if (isImageFile(path)) {
       if (imagesAt < 0) imagesAt = made.length;
       images.push(file);
-    } else if (isViewable(path)) {
-      if (isDocMarkdown(path) && !docs.has(path)) continue;
+    } else if (isViewable(path) && (!isDocMarkdown(path) || docs.has(path))) {
       made.push({ kind: "artifact", artifact: kindOfFile(path), file: path === file.path ? file : { ...file, path, name: baseName(path) } });
     } else {
       const type = externalType(path);
-      if (type && file.openable) made.push({ kind: "external", type, file });
+      if (file.connector_download || (type && file.openable)) {
+        made.push({ kind: "external", type: type ?? "File", file });
+      }
     }
   }
   if (images.length > 0) made.splice(imagesAt, 0, { kind: "images", files: images });

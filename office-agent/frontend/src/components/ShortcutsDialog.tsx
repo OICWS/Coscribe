@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { DRAWS_TITLE_BAR } from "../lib/titleBar";
+import { DRAWS_TITLE_BAR, DIALOG_INSET_CLASS } from "../lib/titleBar";
 import { CloseIcon } from "./icons";
 
 interface Shortcut {
@@ -64,7 +64,7 @@ export function ShortcutsDialog({ onClose }: ShortcutsDialogProps) {
   // Portaled to document.body -- same fix as SettingsModal (see its
   // docstring) and ConfirmDialog.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
         className="w-[min(420px,100vw-2rem)] rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}

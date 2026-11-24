@@ -85,18 +85,22 @@ Last reviewed: 2026-11-22.
 
 - **Remaining 0009 gaps** (#1051 follow-up, `docs/log/2026-11-24-mutation-and-cards.md`):
   mutation of each pull request's changed functions (report only) and the check that a card 20
-  commits behind its code is updated shipped; still open: the frontend features' `index.ts`,
-  splitting `conversation/session.py`, a second model family's review.
-
-- **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):
-  106 imports reach into another feature's files; give each feature an `index.ts` and move its
-  users onto it, largest pairs first (the loose components into `workflow` and `chatlog`).
+  commits behind its code is updated shipped; the features' `index.ts` shipped in #1064. Still
+  open: splitting `conversation/session.py` (held for now; the ratchet keeps it from growing) and
+  a second model family's review on every PR (Codex reviews on an `@codex review` comment today).
 
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
-- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`): the name and the paper-plane
+- **Browser steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
+  the detailed view labels `browser_*` calls by their raw names (`frontend/src/lib/transcriptGrouping.ts`
+  has no entry for them); the task page's words in `lib/plainSteps.ts` could be reused.
+- **Seen in the real runs behind the promo demo** (`docs/log/2026-11-24-promo-page-refresh.md`,
+  desktop app on Windows): two dollar amounts in a reply are drawn as maths (`$13,375,000 revenue,
+  $4,798,139` turns into italic run-together text), and clicking a .docx output card opened no
+  panel, where a .pptx and a .md card did.
+- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`, `docs/log/2026-11-24-promo-page-refresh.md`): the name and the paper-plane
   logo are done; the English pages get more polish with the maintainer first, then the other
   eight languages follow.
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
@@ -283,6 +287,13 @@ Last reviewed: 2026-11-22.
   (sign-in pages should open in the system browser); not reproduced.
 - A Hugging Face connector call once hung a turn; a 120 s limit and an automatic
   reconnect were added, the cause is unknown.
+- Connector Retry and automatic reconnect can overlap. Each path disconnects before awaiting
+  a new connection, and both can then register tools for the same name. Serialize connector
+  changes and test Retry or Remove while a reconnect is in flight (#1058).
+- Validate direct connector exports with a signed-in Canva account and check deployments that
+  require an HTTP proxy. Chat delivery currently accepts public HTTPS file links and downloads
+  directly. MCP resources without direct links and fixed workflow steps need their own delivery
+  checks (#1058).
 - Slack is not offered: its MCP is said to be limited to Marketplace or internal
   apps (third-party source, not checked against Slack's docs).
 - A sent message does not keep its attached files as cards; the file picker takes

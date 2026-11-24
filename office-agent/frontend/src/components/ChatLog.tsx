@@ -5,13 +5,13 @@ import { useFollowEnd } from "../lib/useFollowEnd";
 import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
-import { type DraftCards } from "./workflow/draftCards";
-import { type TaskDraftItem } from "./chatlog/types";
-import { MessageActionsContext, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
+import { type DraftCards } from "./workflow";
+import { type TaskDraftItem } from "./chatlog/index";
+import { MessageActionsContext, NO_CONNECTOR_TOOLS } from "./chatlog/index";
 import { useMessageActions } from "../lib/messageActions";
-import { ChatContexts } from "./chatlog/ChatContexts";
-import { ToolRunGroupView } from "./chatlog/ToolRuns";
-import { TurnView, LogItemView } from "./chatlog/TurnView";
+import { ChatContexts } from "./chatlog/index";
+import { ToolRunGroupView } from "./chatlog/index";
+import { TurnView, LogItemView } from "./chatlog/index";
 
 interface ChatLogProps {
   items: LogItem[];

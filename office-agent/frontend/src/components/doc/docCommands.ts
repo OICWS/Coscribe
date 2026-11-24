@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { CALLOUT_TYPES } from "../../lib/docModel";
-import type { MenuEntry } from "../slides/SlideMenu";
+import type { MenuEntry } from "../slides";
 
 type Chain = ReturnType<Editor["chain"]>;
 const run = (editor: Editor, command: (chain: Chain) => { run: () => boolean }) => () => void command(editor.chain().focus()).run();
