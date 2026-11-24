@@ -28,6 +28,13 @@ const EXTERNAL_COLOURS: Record<string, string> = {
 const imageSrc = (threadId: string, file: ActivityFile) =>
   `${threadFileDownloadUrl(threadId, file.path)}&v=${encodeURIComponent(file.modified_at ?? "")}`;
 
+function downloadFile(threadId: string, file: ActivityFile) {
+  const link = document.createElement("a");
+  link.href = threadFileDownloadUrl(threadId, file.path);
+  link.download = file.name;
+  link.click();
+}
+
 function useClosed(threadId: string) {
   const [closed, setClosed] = useState<Set<string>>(() => {
     try {
@@ -184,7 +191,9 @@ export function useOutputNotices(
         detail: [type, folder].filter(Boolean).join(" · "),
         plainDetail: true,
         actions: [
-          { label: "Open", title: `Open in its own program`, onClick: () => void openThreadFile(threadId, file.path, false) },
+          file.openable
+            ? { label: "Open", title: "Open in its own program", onClick: () => void openThreadFile(threadId, file.path, false) }
+            : { label: "Download", onClick: () => downloadFile(threadId, file) },
           { label: "Show in folder", icon: <FolderIcon className="h-4 w-4" />, onClick: () => void openThreadFile(threadId, file.path, true) },
         ],
         onDismiss: () => close([file]),

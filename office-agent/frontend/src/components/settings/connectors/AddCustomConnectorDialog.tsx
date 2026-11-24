@@ -7,6 +7,7 @@ import { fieldClass, primaryButtonClass, secondaryButtonClass } from "../Setting
 import { insertAtCaret, parseEnvLines, parseHeaderLines, secretProblems } from "./helpers";
 import { SecretPicker } from "./SecretPicker";
 import type { LocalServerArgs, RemoteServerArgs } from "./types";
+import { DIALOG_INSET_CLASS } from "../../../lib/titleBar";
 
 /** Name plus an MCP server URL, or a local command for a server that runs
  * on this computer. */
@@ -69,7 +70,7 @@ export function AddCustomConnectorDialog({
   const hint = "mt-1.5 text-[13px] text-[var(--muted)]";
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+      className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

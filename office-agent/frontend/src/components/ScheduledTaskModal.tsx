@@ -18,6 +18,7 @@ import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { EnvironmentPicker } from "./EnvironmentPicker";
 import { FrequencyRow } from "./ScheduleFields";
 import { SelectMenu } from "./SelectMenu";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 const APPROVAL_OPTIONS: { value: ApprovalMode; label: string }[] = [
   { value: "manual", label: "Ask before every action" },
@@ -223,9 +224,9 @@ export function ScheduledTaskModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-[min(720px,100vw-2rem)] flex-col rounded-[16px] border border-[var(--border)] bg-[var(--panel-bg)] p-6 shadow-[var(--shadow)]"
+        className="flex max-h-full w-[min(720px,100%)] flex-col rounded-[16px] border border-[var(--border)] bg-[var(--panel-bg)] p-6 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">

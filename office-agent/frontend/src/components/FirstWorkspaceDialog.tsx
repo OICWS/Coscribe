@@ -4,6 +4,7 @@ import { chooseFirstWorkspace, getFirstWorkspace } from "../lib/rest";
 import { FolderIcon } from "./icons";
 import { DirBrowserModal } from "./settings";
 import { primaryButtonClass, secondaryButtonClass } from "./settings";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 /** The first start asks where Coscribe keeps its work (decision 0048), instead of a hidden folder. */
 export function FirstWorkspaceDialog() {
@@ -28,7 +29,7 @@ export function FirstWorkspaceDialog() {
     else window.location.reload();
   };
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`}>
       <div
         role="dialog"
         aria-modal="true"

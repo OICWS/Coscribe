@@ -1,3 +1,4 @@
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 /** Full-content click-to-preview overlay for a pasted-text attachment --
  * same overlay/click-outside-to-close convention as AttachmentDialog, just for
  * plain text too long to read inline (the composer's pending-paste chip).
@@ -6,7 +7,7 @@
 export function TextLightbox({ text, onClose }: { text: string; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 ${DIALOG_INSET_CLASS}`}
       onClick={onClose}
     >
       <div
