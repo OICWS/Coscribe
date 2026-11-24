@@ -1,0 +1,50 @@
+name: PR tests
+
+# What a pull request's tests prove (scripts/pr_gates.py, #1051): a change to coscribe's code
+# comes with a test that fails on the base's code. It runs again when the description is edited,
+# so a `Fails before: <why>` line takes effect without a new push.
+"on":
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: pr-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: office-agent
+
+permissions:
+  contents: read
+
+jobs:
+  fails-before:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+
+      # The dependencies only: the base's source is put first on PYTHONPATH by the script.
+      - name: Install the dependencies
+        run: python scripts/install_locked.py --extra dev --extra web --no-project
+
+      - name: A changed test fails on the base's code
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/pr_gates.py fails-before --base "$(git merge-base "$BASE_SHA" HEAD)"

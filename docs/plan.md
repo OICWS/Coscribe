@@ -74,11 +74,14 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
-- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059),
-  the gate on loosening a limit and the weekly numbers (`docs/log/2026-11-24-weekly-numbers.md`)
-  shipped; still open: the gates on what tests prove, frontend boundaries. Read the "Weekly
-  numbers" issue on Mondays: a card far behind its code or a component near its budget is the
-  next piece of work there.
+- **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
+  the checks on what tests prove, the frontend features and the weekly numbers
+  (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
+  Mondays: a card far behind its code or a component near its budget is the next piece of work.
+
+- **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):
+  106 imports reach into another feature's files; give each feature an `index.ts` and move its
+  users onto it, largest pairs first (the loose components into `workflow` and `chatlog`).
 
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
@@ -218,8 +221,9 @@ Last reviewed: 2026-11-22.
 
 ## For the maintainer (settings and decisions)
 
-- Required checks for #1051: `loosened` (PR text). Create the `loosening-approved` label; only
-  the maintainer adds it (`docs/log/2026-11-23-loosening-gate.md`).
+- Required checks for #1051: `PR text / loosened`, `PR text / independent-review` and
+  `PR tests / fails-before`. Create the `loosening-approved` label; only the maintainer adds it
+  (`docs/log/2026-11-23-loosening-gate.md`, `docs/log/2026-11-23-pr-test-gates.md`).
 
 - Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`, `docs/log/2026-11-21-doctor-checks.md`):
   `/doctor` shipped in the web UI; the CLI has none. `/changes` is not needed for now
@@ -230,7 +234,6 @@ Last reviewed: 2026-11-22.
   shipped (`docs/log/2026-11-21-side-chat.md`).
 
 - Read the CodeQL alerts and the first `audit.yml` run.
-- Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Moving `script-env` and `node-env` off the system drive (a "Change location…" in Settings,
   suggested on #1002) is not wanted (decided 2026-11-21); they stay under the state directory.
 - A workflow run's pages stay open when it ends, so the person can check them (decided

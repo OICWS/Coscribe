@@ -39,6 +39,12 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
   replaces the log wholesale (`reducer.ts`); keep new sends behind that.
 - Hot files: `App.tsx` (about 1,100 lines, ratcheted in `quality/baseline.json`) and
   `components/dock/*` change often (Slides work); look at the open pull requests first.
+- A folder of `src/components/` is a feature (`frontend.<folder>` in `components.toml`, with its
+  own `CODEOWNERS` line). Another feature, the loose components, `lib/` or `App.tsx` enter it
+  through its `index.ts`; an import into any other file of it is counted per pair by
+  `frontend_feature_imports` in `scripts/ratchet.py`, and the counts may only shrink. To use
+  something a feature does not export yet, add it to that feature's `index.ts` and import from
+  there.
 - UI text is English only. Unused files and exports fail `knip` (`knip.json`).
 - A build must pass `tsc -b`, not only `tsc --noEmit`: use `npm run build`.
 

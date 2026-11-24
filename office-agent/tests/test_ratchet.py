@@ -431,6 +431,34 @@ def test_an_export_nothing_imports_is_listed_per_file(ratchet: ModuleType, tmp_p
     assert found == {"office-agent/frontend/src/lib.ts": 2}
 
 
+def test_an_import_into_another_frontend_features_files_is_counted_unless_through_its_index(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    files = {
+        "components/slides/index.ts": "export { Deck } from './Deck';\n",
+        "components/slides/Deck.tsx": "export const Deck = 1;\n",
+        "components/slides/Notes.tsx": "import { Deck } from './Deck';\n",
+        "components/doc/Doc.tsx": (
+            "import { Deck } from '../slides/Deck';\n"
+            "import { Notes } from '../slides/Notes.tsx';\n"
+            "import { Deck as D } from '../slides';\n"
+            "const lazy = import('../slides/Deck');\n"
+        ),
+        "components/Shell.tsx": "import { Doc } from './doc/Doc';\nimport React from 'react';\n",
+        "lib/util.ts": "export * from '../components/doc/Doc';\n",
+        "components/doc/Doc.test.tsx": "import { Deck } from '../slides/Deck';\n",
+    }
+    for rel, text in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding="utf-8")
+
+    assert ratchet.frontend_feature_imports(tmp_path) == {
+        "components/doc -> components/slides": 3,
+        "components -> components/doc": 1,
+        "lib -> components/doc": 1,
+    }
+
+
 def test_the_core_and_each_component_must_stay_inside_their_budgets(ratchet: ModuleType) -> None:
     budgets = {"core_lines": 100, "component_lines": 60}
     sizes = {"web": 50, "conversation": 55, "tools": 61}
