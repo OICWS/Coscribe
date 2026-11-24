@@ -91,9 +91,12 @@ Last reviewed: 2026-11-22.
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
-- **Browser steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
-  the detailed view labels `browser_*` calls by their raw names (`frontend/src/lib/transcriptGrouping.ts`
-  has no entry for them); the task page's words in `lib/plainSteps.ts` could be reused.
+- **Some steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
+  the detailed view labels `browser_*` calls, `build_pptx_from_pages`, `render_pptx_preview`,
+  `replace_docx_text`, `insert_docx_text`, `edit_docx_review`, `copy_file` and `move_file` by
+  their raw names (`frontend/src/lib/transcriptGrouping.ts` has no entry for them); the task
+  page's words in `lib/plainSteps.ts` could be reused. The homepage demo words them itself
+  (`site/demo/demo.js`, `WORDS`) until then.
 - **Seen in the real runs behind the promo demo** (`docs/log/2026-11-24-promo-page-refresh.md`,
   desktop app on Windows): two dollar amounts in a reply are drawn as maths (`$13,375,000 revenue,
   $4,798,139` turns into italic run-together text), and clicking a .docx output card opened no
