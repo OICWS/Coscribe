@@ -229,6 +229,64 @@ def frontend_unused_exports(repo: Path | None = None) -> dict[str, int]:
     return found
 
 
+_TS_IMPORT = re.compile(
+    r"""(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]"""
+    r"""|import\s*\(\s*['"]([^'"]+)['"]\s*\)"""
+    r"""|^\s*import\s+['"]([^'"]+)['"]""",
+    re.MULTILINE,
+)
+
+
+def _frontend_part(path: Path, src: Path) -> str:
+    """The feature a file belongs to (`components/<feature>/`), or the folder it sits in."""
+    parts = path.relative_to(src).parts
+    if parts[0] == "components" and len(parts) > 2:
+        return f"components/{parts[1]}"
+    if parts[0] == "components":
+        return "components"
+    return parts[0] if len(parts) > 1 else "src"
+
+
+def _resolve_ts(source: Path, spec: str) -> Path | None:
+    if not spec.startswith("."):
+        return None
+    base = (source.parent / spec).resolve()
+    for candidate in (
+        base,
+        base.with_name(base.name + ".ts"),
+        base.with_name(base.name + ".tsx"),
+        base / "index.ts",
+        base / "index.tsx",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def frontend_feature_imports(src: Path | None = None) -> dict[str, int]:
+    """Imports from outside a frontend feature (`components/<feature>/`) into one of its files
+    other than its `index.ts`, per pair: a feature entered through its index can change inside
+    without its users changing, like a Python package through `__all__`."""
+    src = (src or ROOT / "frontend" / "src").resolve()
+    found: dict[str, int] = {}
+    for path in sorted(src.rglob("*.ts*")):
+        if ".test." in path.name or path.suffix not in (".ts", ".tsx"):
+            continue
+        source = _frontend_part(path, src)
+        for match in _TS_IMPORT.finditer(path.read_text(encoding="utf-8")):
+            target = _resolve_ts(path, next(g for g in match.groups() if g))
+            if target is None or src not in target.parents:
+                continue
+            feature = _frontend_part(target, src)
+            if feature == source or not feature.startswith("components/"):
+                continue
+            if target.stem == "index":
+                continue
+            key = f"{source} -> {feature}"
+            found[key] = found.get(key, 0) + 1
+    return found
+
+
 def suppressions(src: Path = SRC) -> dict[str, int]:
     counts = dict.fromkeys(SUPPRESSIONS, 0)
     for path in _python_files(src, skip_vendored=True):
@@ -442,6 +500,7 @@ METRICS = {
     "frontend_file_lines": frontend_file_lines,
     "frontend_long_functions": frontend_long_functions,
     "frontend_unused_exports": frontend_unused_exports,
+    "frontend_feature_imports": frontend_feature_imports,
     "suppressions": suppressions,
     "deep_imports": deep_imports,
     "interface_size": interface_size,

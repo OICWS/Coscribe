@@ -35,6 +35,14 @@ def test_a_worse_or_new_baseline_number_is_loosening_and_a_better_one_is_not(
     assert loosened.baseline(after, {"file_lines": {"a.py": 900}}) == []
 
 
+def test_a_new_metric_in_the_baseline_is_a_new_limit_not_a_loosening(
+    loosened: ModuleType,
+) -> None:
+    before = {"file_lines": {"a.py": 900}}
+    after = {**before, "frontend_feature_imports": {"components/doc -> components/slides": 8}}
+    assert loosened.baseline(before, after) == []
+
+
 def test_a_raised_or_removed_budget_is_loosening(loosened: ModuleType) -> None:
     before = {"core_lines": 100000, "component_lines": 20000}
     assert loosened.budgets(before, {"core_lines": 120000}) == [

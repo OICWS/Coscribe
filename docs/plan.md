@@ -75,8 +75,13 @@ Last reviewed: 2026-11-22.
 ## Open, smaller
 
 - **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
-  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
-  on what tests prove, weekly numbers, frontend boundaries.
+  `docs/log/2026-11-23-test-selection.md`) and the gate on loosening a limit
+  (`docs/log/2026-11-23-loosening-gate.md`) shipped; still open: the gates on what tests prove,
+  weekly numbers.
+
+- **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):
+  106 imports reach into another feature's files; give each feature an `index.ts` and move its
+  users onto it, largest pairs first (the loose components into `workflow` and `chatlog`).
 
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
