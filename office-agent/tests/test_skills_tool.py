@@ -377,7 +377,8 @@ def test_a_plugin_skill_tells_what_its_plugin_is_and_what_coscribe_leaves_unused
     plugin = tmp_path / "kit"
     (plugin / ".codex-plugin").mkdir(parents=True)
     (plugin / ".codex-plugin" / "plugin.json").write_text(
-        '{"name": "kit", "version": "1.2.0", "description": "A kit.", "author": {"name": "Acme"}}',
+        '{"name": "kit", "version": "1.2.0", "description": "A kit.", "author": {"name": "Acme"},'
+        ' "coscribe": {"tools": ["run_python_script"]}}',
         encoding="utf-8",
     )
     (plugin / "hooks.json").write_text("{}", encoding="utf-8")
@@ -392,6 +393,16 @@ def test_a_plugin_skill_tells_what_its_plugin_is_and_what_coscribe_leaves_unused
         "description": "A kit.",
         "version": "1.2.0",
         "author": "Acme",
+        "tools": [],
         "unused": ["hooks", "MCP servers"],
     }
     assert skills["alone"].plugin_info() is None
+
+
+def test_pptx_pages_is_a_built_in_plugin_that_brings_its_build_tool() -> None:
+    [skill] = [s for s in load_builtin_skills() if s.name == "PPTX Pages"]
+
+    assert skill.plugin == "pptx-pages"
+    assert skill.builtin_tools() == ["build_pptx_from_pages"]
+    tools = {t.__name__: t for t in build_skill_tools([skill])}
+    assert tools["read_skill_file"](name="PPTX Pages", path="methods/academic-research.md")

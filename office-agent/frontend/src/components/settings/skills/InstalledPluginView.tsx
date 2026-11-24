@@ -37,7 +37,7 @@ export function InstalledPluginView({
           </div>
         </div>
         <ToggleSwitch on={entry.enabled} onClick={onToggle} label={entry.enabled ? "Turn off" : "Turn on"} />
-        <SkillMenu label={info.name} enabled={entry.enabled} removable onToggle={onToggle} onRemove={onRemove} />
+        <SkillMenu label={info.name} enabled={entry.enabled} removable={entry.source !== "builtin"} onToggle={onToggle} onRemove={onRemove} />
       </div>
       {info.description && <p className="text-[15px] leading-relaxed">{info.description}</p>}
       <div>
@@ -60,6 +60,12 @@ export function InstalledPluginView({
           ))}
         </div>
       </div>
+      {info.tools.length > 0 && (
+        <p className="text-sm text-[var(--muted)]">
+          Built into Coscribe with its own {info.tools.length === 1 ? "tool" : "tools"} ({info.tools.join(", ")}). Switched off, its
+          skills are not offered and its tools are neither found nor run.
+        </p>
+      )}
       {info.unused.length > 0 && (
         <p className="text-sm text-[var(--muted)]">
           This plugin also has {formatList(info.unused)}. Coscribe keeps them in its folder but does not use them; when a skill needs an

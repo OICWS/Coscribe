@@ -833,7 +833,11 @@ skills (decision 0058). Settings → Plugins lists them in three groups:
 
 - **Built into Coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
   Spreadsheets*, *Word Documents* and *Skill Creator*. They can be switched off but not
-  removed.
+  removed. *PPTX Pages* is a plugin in the Claude form that also brings one of Coscribe's own
+  tools, `build_pptx_from_pages` (its manifest's `coscribe.tools`); only a plugin built into
+  Coscribe can bring a tool. Switched off, its skill is not offered and its tool is neither
+  found by the model nor run: the model is told the plugin is off and does the work another
+  way. The tools bound to the model keep their shape (decision 0001).
 - **From Anthropic** (the **Discover** tab): Apache-2.0 skills from
   [anthropics/skills](https://github.com/anthropics/skills) that work with
   Coscribe's own tools -- algorithmic-art, brand-guidelines,

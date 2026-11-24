@@ -124,7 +124,7 @@ export interface SkillInfo {
 }
 
 /** A Claude or Codex plugin's manifest (decision 0058); `unused`: parts Coscribe keeps, unused. */
-export interface InstalledPluginInfo { name: string; description: string; version: string; author: string; unused: string[] }
+export interface InstalledPluginInfo { name: string; description: string; version: string; author: string; tools: string[]; unused: string[] }
 
 export interface SkillPlugin {
   id: string;

@@ -48,7 +48,7 @@ from ..tools import (
 )
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
-from .capability_guard import hold_to_capabilities
+from .capability_guard import held_plugin_tools, hold_to_capabilities, hold_to_plugins
 from .connector_files import ConnectorFiles
 from .connector_offer import ConnectorDirectory as ConnectorDirectory
 from .connector_offer import build_connector_offer_tools
@@ -284,6 +284,12 @@ class AgentAssembly:
             ),
         )
         core_names, defer = self.tool_binding(model_string, lg_tools)
+        if defer:
+            # A tool searched for is not in any schema, so a switched-off plugin's is not found.
+            held = held_plugin_tools(self._host.enabled_skill_names)
+            lg_tools = [
+                t for t in lg_tools if tool_name(t) in core_names or tool_name(t) not in held
+            ]
         return build_langgraph_agent(
             model,
             lg_tools,
@@ -306,7 +312,8 @@ class AgentAssembly:
     def held_to_capabilities(self, agent: Agent) -> Agent:
         """The coordinator's agent with its file-writing tools following Settings › Capabilities."""
         host = self._host
-        return hold_to_capabilities(agent, host.settings.state_dir, host.workspace_scope)
+        agent = hold_to_capabilities(agent, host.settings.state_dir, host.workspace_scope)
+        return hold_to_plugins(agent, host.enabled_skill_names)
 
     def _max_turns(self) -> int | None:
         """A conversation has no cap unless one is set: its person stops a reply that runs on.
