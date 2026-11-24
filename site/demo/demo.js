@@ -485,6 +485,12 @@
     });
   }
 
+  // Standalone, #zh plays the Chinese runs.
+  window.addEventListener("hashchange", function () {
+    lang = location.hash === "#zh" ? "zh" : "en";
+    start(sceneNo);
+  });
+
   window.addEventListener("message", function (event) {
     var m = event.data;
     if (!m || m.type !== "coscribe-demo") return;
