@@ -13,21 +13,26 @@ Why: the maintainer found much of the promo page out of date. It stays in Englis
   backs; it adds artifacts and the built-in browser.
 - Run from source: installs through `scripts/install_locked.py` as the README does, without the
   old `google-genai` pin.
-- The product mock's sub-agent pane is named "Background tasks", as in the app, and the message
-  box shows the workspace ("Default") instead of "Add folder".
-- The demo's fourth scene (handing code to the code module) is replaced by two, drawn from the
-  running app: **04 · WEB** asks to export renewals from a CRM; the Browser panel asks "Allow
-  Coscribe to use crm.example.com?", shows "Coscribe is using the browser" with Take over while it
-  fills two fields and saves the table across three pages to a CSV. **05 · DOC** writes a Doc
-  (`q3-review.md`, the file card "Document · .md"), opens it in the Doc panel with its chart,
-  checklist and NOTE callout, and ticks a checklist item ("Saved").
+- The hero's demo is no longer a hand-built recreation of the app: the maintainer found it did not
+  match the real one. It now steps through real screenshots (`site/media/demo/{en,zh}/`), three
+  or four per scene, taken from the desktop app built from `main` on the maintainer's Windows
+  machine, running each scene's request with deepseek-flash on sample files with made-up data.
+  The tabs, step buttons, a click on the picture and the play button move through them; captions
+  say only what the frame shows. **04 · WEB** asks for a small sample CRM served on the same
+  computer, so its request names that address; the app asked to use the site first, and the
+  maintainer allowed it. Both decks have 8 slides, and both reviewed contracts hold tracked
+  changes and comments (checked in the files).
 
 ## Not verified
-- The browser scene follows `DesktopBrowserPanel.tsx`; the desktop app itself was not run here
-  (the web UI's panel needs a local Edge or Chrome).
-- The Pages deploy itself (runs only from `main`). Looked at in Chromium on Linux, both languages.
+- Opening a .docx output card did not open a panel in the desktop app, so the contract scene ends
+  on the reply and its file card.
+- The Pages deploy itself (runs only from `main`). The page was looked at in Edge on Windows,
+  both languages, at desktop and phone width.
 
 ## Follow-ups
+- Things the real runs showed, also in `docs/plan.md`: dollar amounts in a reply are drawn as
+  maths (`$13,375,000 revenue, $4,798,139` becomes italic run-together text); a .docx output card
+  opened no panel; the English web run answered partly in Chinese.
 - In the app's detailed view a browser step's row shows the raw tool name (`browser_fill_form`,
   `browser_save_table`): `lib/transcriptGrouping.ts` has no labels for them. The demo uses words
   like the task page's (`lib/plainSteps.ts`). Noted in `docs/plan.md`.

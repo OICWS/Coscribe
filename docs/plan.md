@@ -85,6 +85,10 @@ Last reviewed: 2026-11-22.
 - **Browser steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
   the detailed view labels `browser_*` calls by their raw names (`frontend/src/lib/transcriptGrouping.ts`
   has no entry for them); the task page's words in `lib/plainSteps.ts` could be reused.
+- **Seen in the real runs behind the promo demo** (`docs/log/2026-11-24-promo-page-refresh.md`,
+  desktop app on Windows): two dollar amounts in a reply are drawn as maths (`$13,375,000 revenue,
+  $4,798,139` turns into italic run-together text), and clicking a .docx output card opened no
+  panel, where a .pptx and a .md card did.
 - **Website layout polish** (`docs/log/2026-11-23-site-polish.md`, `docs/log/2026-11-24-promo-page-refresh.md`): the name and the paper-plane
   logo are done; the English pages get more polish with the maintainer first, then the other
   eight languages follow.
