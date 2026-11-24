@@ -212,7 +212,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/secrets",
     "/api/settings/proxy",
     "/api/skills",
-    "/api/skills/catalog",
+    "/api/skills/sources",
     "/api/skills/plugins",
     "/api/script-isolation",
     "/api/skills/plugins/{plugin_id}",

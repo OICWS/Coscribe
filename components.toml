@@ -93,6 +93,7 @@ protected_modules = [
     "coscribe.tools.design_systems",
     "coscribe.tools.skills",
     "coscribe.tools.skill_catalog",
+    "coscribe.tools.plugin_sources",
     "coscribe.tools.pptx_templates",
     "coscribe.tools.presentations",
     "coscribe.tools._chart_data",

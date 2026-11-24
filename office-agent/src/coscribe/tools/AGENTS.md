@@ -4,7 +4,7 @@
 Owns the tool layer's shared entry point and the tools that fit no smaller component: files and
 folders (`files.py`), conversions (`convert.py`, `pdf_pages.py`), finding a LibreOffice (`libreoffice.py`), the page check of a laid-out document (`_page_check.py`), the connector config and
 permissions (`mcp.py`, `connector_permissions.py`) and the skills and PowerPoint template
-catalogs (`skills.py`, `skill_catalog.py`, `pptx_templates.py`). The rest is split by card:
+catalogs (`skills.py`, `skill_catalog.py`, `plugin_sources.py`, `pptx_templates.py`). The rest is split by card:
 Word, Excel, PowerPoint and PDF in `office/<format>/`, scripts in `exec/`, the browser, search,
 HTTP and images in `web/`, the model's own state in `bookkeeping/`. Does not own the agent loop
 or approvals (`runtime_lg/`), the routes (`web/`) or the coordinator's tool list (`coordinator.py`).
@@ -21,7 +21,8 @@ permissions: `validate_mcp_config`, `load_mcp_server_configs`, `prepare_for_conn
 `set_skill_enabled`, `remove_skill`, `skill_source`, `save_uploaded_skill`, `slugify_skill_name`,
 `format_skill_listing`, `format_template_listing`, `load_pptx_templates`, `build_skill_tools`,
 `SKILL_SAVE_CURATOR_INSTRUCTIONS`, `SKILL_SOURCE_MARKER`; the skill catalog: `SkillCatalogError`,
-`load_catalog`, `get_plugin`, `plugin_file`, `install_catalog_skill`, `install_plugin`. A folder of the skills directory is a skill or a plugin in the Claude and Codex
+`load_catalog`, `get_plugin`, `plugin_file`, `install_plugin`; the sources the person adds to
+Discover (a GitHub repository's `marketplace.json`): `PluginSources`. A folder of the skills directory is a skill or a plugin in the Claude and Codex
 format (decision 0058); a plugin's skills carry its name in `SkillInfo.plugin`. Design
 systems (decision 0020): `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system`,
 `build_design_system_tools`. Folders, files and conversions: `WorkspaceScope`, `build_file_tools`,

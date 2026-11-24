@@ -204,6 +204,7 @@ from .office.pptx import (
 )
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pdf_pages import pdf_page_count, render_pdf_page
+from .plugin_sources import PluginSources
 from .pptx_templates import (
     format_template_listing,
     load_pptx_templates,
@@ -215,7 +216,6 @@ from .skill_catalog import (
     disabled_skill_names,
     enabled_skill_names,
     get_plugin,
-    install_catalog_skill,
     install_plugin,
     load_catalog,
     plugin_file,
@@ -268,7 +268,7 @@ __all__ = [
     "all_skills",
     "disabled_skill_names",
     "get_plugin",
-    "install_catalog_skill",
+    "PluginSources",
     "install_plugin",
     "load_catalog",
     "pdf_page_count",
