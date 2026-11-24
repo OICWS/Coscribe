@@ -1,18 +1,18 @@
 ---
 title: Konnektoren
-description: Verbinden Sie coscribe mit den Diensten, die Sie nutzen, etwa Mail, Kalender oder Projekt-Tracker, und legen Sie fest, was es dort tun darf.
+description: Verbinden Sie Coscribe mit den Diensten, die Sie nutzen, etwa Mail, Kalender oder Projekt-Tracker, und legen Sie fest, was es dort tun darf.
 ---
 
-Ein Konnektor lässt coscribe einen anderen Dienst nutzen: Ihre Mails lesen, einen Termin in einen Kalender eintragen, ein Ticket nachschlagen. Konnektoren verwenden das Model Context Protocol (MCP), daher funktioniert jeder MCP-Server, nicht nur die, die coscribe auflistet.
+Ein Konnektor lässt Coscribe einen anderen Dienst nutzen: Ihre Mails lesen, einen Termin in einen Kalender eintragen, ein Ticket nachschlagen. Konnektoren verwenden das Model Context Protocol (MCP), daher funktioniert jeder MCP-Server, nicht nur die, die Coscribe auflistet.
 
 ## Einen Konnektor hinzufügen {#add-a-connector}
 
 Öffnen Sie **Settings** › **Connectors** › **Discover**, wählen Sie den Dienst und klicken Sie auf **Connect**.
 
-- Die meisten gehosteten Dienste bitten Sie, sich anzumelden. Die Anmeldung öffnet sich auf der Seite des Dienstes selbst, in Ihrem Browser, und Sie melden sich nur einmal an. coscribe sieht Ihr Passwort nie.
-- Ein Dienst mit der Markierung **Needs setup** braucht zuerst eine bei ihm registrierte App. coscribe führt Sie einmalig durch die Einrichtung. Hat jemand das bereits für Ihr Team eingerichtet, bittet **Copy a message for your admin** diese Person um die Einrichtungsdatei.
+- Die meisten gehosteten Dienste bitten Sie, sich anzumelden. Die Anmeldung öffnet sich auf der Seite des Dienstes selbst, in Ihrem Browser, und Sie melden sich nur einmal an. Coscribe sieht Ihr Passwort nie.
+- Ein Dienst mit der Markierung **Needs setup** braucht zuerst eine bei ihm registrierte App. Coscribe führt Sie einmalig durch die Einrichtung. Hat jemand das bereits für Ihr Team eingerichtet, bittet **Copy a message for your admin** diese Person um die Einrichtungsdatei.
 
-coscribe kann einen Konnektor auch in einer Unterhaltung anbieten, wenn Ihre Anfrage einen Dienst braucht, den Sie nicht verbunden haben. Klicken Sie auf der Karte auf **Connect**, und coscribe macht weiter, sobald die Verbindung steht. **Not now** lässt es dabei; Sie können ihn jederzeit unter **Settings** › **Connectors** verbinden.
+Coscribe kann einen Konnektor auch in einer Unterhaltung anbieten, wenn Ihre Anfrage einen Dienst braucht, den Sie nicht verbunden haben. Klicken Sie auf der Karte auf **Connect**, und Coscribe macht weiter, sobald die Verbindung steht. **Not now** lässt es dabei; Sie können ihn jederzeit unter **Settings** › **Connectors** verbinden.
 
 ## Einen benutzerdefinierten Konnektor hinzufügen {#add-a-custom-connector}
 
@@ -30,9 +30,9 @@ Für einen MCP-Server, der nicht gelistet ist, wählen Sie **Add** › **Add cus
 
 | Wahl | Was passiert |
 |---|---|
-| **Always allow** | coscribe verwendet es ohne Nachfrage. |
-| **Needs approval** | coscribe fragt Sie jedes Mal. Siehe [Genehmigungen und Berechtigungsmodi](../use/approvals.md). |
-| **Blocked** | coscribe kann es nicht verwenden. |
+| **Always allow** | Coscribe verwendet es ohne Nachfrage. |
+| **Needs approval** | Coscribe fragt Sie jedes Mal. Siehe [Genehmigungen und Berechtigungsmodi](../use/approvals.md). |
+| **Blocked** | Coscribe kann es nicht verwenden. |
 
 Die Seite des Konnektors zeigt auch, ob er verbunden ist. Wenn nicht, verbindet **Retry** erneut, und **Sign in** öffnet die Anmeldeseite des Dienstes.
 

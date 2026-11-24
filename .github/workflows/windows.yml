@@ -40,29 +40,35 @@ jobs:
           cache: pip
           cache-dependency-path: office-agent/uv.lock
 
-      # A pull request that changes documentation only (scripts/ci_scope.py, the same rule as the
-      # Linux `test` job) runs none of the steps below. The job still runs and reports rather
-      # than being skipped with `if:`, because a job skipped after a failed `needs:` would also
-      # count as passed.
+      # A pull request runs the tests its change can reach, and one that changes documentation
+      # only runs none of the steps below (scripts/ci_scope.py, decision 0059, the same rule as
+      # the Linux `test` job). The job still runs and reports rather than being skipped with
+      # `if:`, because a job skipped after a failed `needs:` would also count as passed.
       - name: Decide what to check
         id: scope
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
-              | python scripts/ci_scope.py >> "$GITHUB_OUTPUT"
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > "$RUNNER_TEMP/changed.txt"
+          else
+            : > "$RUNNER_TEMP/changed.txt"
+          fi
+          if [ -s "$RUNNER_TEMP/changed.txt" ]; then
+            python scripts/ci_scope.py < "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
+            echo "tests=$(python scripts/ci_scope.py --tests < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
           else
             echo "scope=full" >> "$GITHUB_OUTPUT"
+            echo "tests=" >> "$GITHUB_OUTPUT"
           fi
           grep '^scope=' "$GITHUB_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
 
       # Reads uv.lock for scripts/install_locked.py.
       - uses: astral-sh/setup-uv@v7
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'docs'
         with:
           version: "0.13.7"
 
       - uses: actions/setup-node@v4
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'docs'
         with:
           node-version: "20"
           cache: npm
@@ -70,29 +76,29 @@ jobs:
 
       # web/static/ is a build output that tests constructing the app need.
       - name: Build the frontend
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'docs'
         working-directory: office-agent/frontend
         run: |
           npm ci
           npm run build
 
       - name: Install coscribe
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'docs'
         run: |
           python scripts/install_locked.py --extra dev --extra web
 
       # The text widths the deck engine sizes boxes with, measured on this machine's fonts.
       # The table is committed; the test below keeps it equal to the fonts.
       - name: Measure font advances
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'docs'
         run: python scripts/measure_font_advances.py "C:/Windows/Fonts" --out windows-font-advances.json
 
       - name: Tests
-        if: steps.scope.outputs.scope == 'full'
-        run: python -m pytest -q -n 4 -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml
+        if: steps.scope.outputs.scope != 'docs'
+        run: python -m pytest -q -n 4 -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml ${{ steps.scope.outputs.tests }}
 
       - name: Summary of the failures
-        if: always() && steps.scope.outputs.scope == 'full'
+        if: always() && steps.scope.outputs.scope != 'docs'
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import xml.etree.ElementTree as ET
@@ -113,7 +119,7 @@ jobs:
           PY
 
       - uses: actions/upload-artifact@v4
-        if: always() && steps.scope.outputs.scope == 'full'
+        if: always() && steps.scope.outputs.scope != 'docs'
         with:
           name: windows-junit
           path: |

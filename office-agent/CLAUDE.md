@@ -186,6 +186,12 @@ pass: the run lists it at the end and in the job summary. Open an issue for it a
 may fail meanwhile; after the date it fails with the issue's number (`tests/flaky_policy.py`).
 Do not assert on elapsed wall-clock time.
 
+A pull request's CI runs only the tests its change can reach through imports (decision 0059,
+`scripts/ci_scope.py`); `main` runs them all. A changed file that is not Python is matched to
+the tests whose text names it, and one no test names runs every test: name a fixture file in
+the test that reads it rather than building its path from parts. To see what a branch runs:
+`git diff --name-only origin/main... | python scripts/ci_scope.py --tests`.
+
 Three checks read what the tests prove (`scripts/pr_gates.py`): a pull request that changes
 code under `src/` changes a test, and one of its changed test files fails on the base's code
 (`PR tests`); the lines it changed are at least 80% covered once 5 or more are measurable (the

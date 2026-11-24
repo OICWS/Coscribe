@@ -3,7 +3,7 @@ title: Adicionar um provedor de modelos
 description: Informe uma chave de API de um serviço de modelos e escolha os modelos que vai usar.
 ---
 
-O coscribe não tem modelo próprio. Ele chama o serviço de modelos que você escolher para pensar e escrever; por isso, antes de começar, adicione pelo menos um **provedor** e informe a chave de API que você obteve desse serviço.
+O Coscribe não tem modelo próprio. Ele chama o serviço de modelos que você escolher para pensar e escrever; por isso, antes de começar, adicione pelo menos um **provedor** e informe a chave de API que você obteve desse serviço.
 
 ## Adicionar um provedor {#add-a-provider}
 

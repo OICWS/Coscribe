@@ -1,9 +1,9 @@
 ---
 title: Excel 통합 문서
-description: coscribe가 스프레드시트를 읽고, 정리하고, 합계를 내고, 대조하며, 수식과 차트가 있는 통합 문서를 만들게 합니다.
+description: Coscribe가 스프레드시트를 읽고, 정리하고, 합계를 내고, 대조하며, 수식과 차트가 있는 통합 문서를 만들게 합니다.
 ---
 
-coscribe는 `.xlsx` 파일을 시트별로 읽고, 셀, 스타일, 수식, Excel 기본 차트를 갖춘 진짜 통합 문서를 씁니다.
+Coscribe는 `.xlsx` 파일을 시트별로 읽고, 셀, 스타일, 수식, Excel 기본 차트를 갖춘 진짜 통합 문서를 씁니다.
 
 ## 무엇을 요청할까 {#what-to-ask-for}
 
@@ -16,11 +16,11 @@ coscribe는 `.xlsx` 파일을 시트별로 읽고, 셀, 스타일, 수식, Excel
 
 ## 수식은 수식으로 남습니다 {#formulas-stay-formulas}
 
-값이 다른 셀에 따라 달라지면 coscribe는 그것을 Excel 수식으로 씁니다. 그래서 숫자를 바꿔도 통합 문서가 계속 제대로 동작합니다. 수식을 계산한 결과도 파일에 저장하므로, 열 때 다시 계산하지 않는 프로그램에서도 값이 보입니다.
+값이 다른 셀에 따라 달라지면 Coscribe는 그것을 Excel 수식으로 씁니다. 그래서 숫자를 바꿔도 통합 문서가 계속 제대로 동작합니다. 수식을 계산한 결과도 파일에 저장하므로, 열 때 다시 계산하지 않는 프로그램에서도 값이 보입니다.
 
 ## 크거나 특이한 작업 {#large-or-unusual-jobs}
 
-기본 제공 도구로 감당할 수 없는 작업에는 coscribe가 Python 스크립트(예: `pandas`와 `openpyxl` 사용)를 작성해 사용자의 승인을 받아 실행할 수 있습니다. [승인과 권한 모드](../use/approvals.md)를 참고하세요.
+기본 제공 도구로 감당할 수 없는 작업에는 Coscribe가 Python 스크립트(예: `pandas`와 `openpyxl` 사용)를 작성해 사용자의 승인을 받아 실행할 수 있습니다. [승인과 권한 모드](../use/approvals.md)를 참고하세요.
 
 > [!TIP]
-> 입력과 출력의 색상이나 숫자 형식처럼 팀의 규칙을 coscribe가 따르게 하고 싶나요? [지침](../customize/instructions.md)이나 [스킬](../customize/skills.md)에 적어 두세요.
+> 입력과 출력의 색상이나 숫자 형식처럼 팀의 규칙을 Coscribe가 따르게 하고 싶나요? [지침](../customize/instructions.md)이나 [스킬](../customize/skills.md)에 적어 두세요.

@@ -29,7 +29,7 @@ What the **Sites** choice means:
 
 ## Allowed folders
 
-Every folder coscribe may use outside a workspace's main folder is kept in one list, **Allowed folders**, under **Settings › Workspaces › Manage**. Each folder there has an access level (**Read only**, **Read and write**, or **Read, write and delete**). A workspace reaches only the allowed folders it picks on its **Allowed folders** page: **Use an allowed folder** picks one from the list, and **Add new folder…** adds a new one, which joins the list as read and write.
+Every folder Coscribe may use outside a workspace's main folder is kept in one list, **Allowed folders**, under **Settings › Workspaces › Manage**. Each folder there has an access level (**Read only**, **Read and write**, or **Read, write and delete**). A workspace reaches only the allowed folders it picks on its **Allowed folders** page: **Use an allowed folder** picks one from the list, and **Add new folder…** adds a new one, which joins the list as read and write.
 
 Removing a folder from **Allowed folders** removes it from every workspace. A folder that can't be found right now, such as an unplugged drive, is marked and used again when it comes back.
 
@@ -37,4 +37,4 @@ When a conversation needs a folder it can't reach, it asks on a card; see [Give 
 
 ## Scripts and isolation
 
-On Windows, scripts run isolated: they can use only the conversation's folders, can't delete or rename files there, and reach the internet only when the workspace's **Sites** setting is **Any site**. coscribe checks once whether isolation works on your computer. If the check failed, scripts are off; **Run scripts without isolation** on the **Scripts and commands** page turns them back on for that workspace, with the risk that comes with it.
+On Windows, scripts run isolated: they can use only the conversation's folders, can't delete or rename files there, and reach the internet only when the workspace's **Sites** setting is **Any site**. Coscribe checks once whether isolation works on your computer. If the check failed, scripts are off; **Run scripts without isolation** on the **Scripts and commands** page turns them back on for that workspace, with the risk that comes with it.

@@ -74,10 +74,17 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
+- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
+  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
+  on what tests prove, weekly numbers, frontend boundaries.
+
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
+- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`): the name and the paper-plane
+  logo are done; the English pages get more polish with the maintainer first, then the other
+  eight languages follow.
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
   workflow pins 3.11, so a change in how newer Pythons behave on Windows (3.13's owner-only ACL
   from `tempfile.mkdtemp` broke every contained script) is found only on a person's machine. A

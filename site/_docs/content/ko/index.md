@@ -1,6 +1,6 @@
 ---
-title: coscribe 문서
-description: 처음 다운로드부터 매주 실행되는 워크플로로 바꾼 대화까지, coscribe로 Word, Excel, PowerPoint, PDF 작업을 하는 방법.
+title: Coscribe 문서
+description: 처음 다운로드부터 매주 실행되는 워크플로로 바꾼 대화까지, Coscribe로 Word, Excel, PowerPoint, PDF 작업을 하는 방법.
 ---
 
 처음이신가요? [다운로드와 첫 실행](get-started/install.md)부터 시작하세요. 10분 안에 첫 대화를 시작할 수 있습니다.

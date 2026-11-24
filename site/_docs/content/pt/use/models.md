@@ -13,7 +13,7 @@ O seletor lista os modelos que você ativou para cada provedor em **Settings** �
 
 Ao lado do modelo fica o controle de esforço, uma escala de **Faster** a **Smarter**. Mais esforço deixa o modelo raciocinar por mais tempo: melhor em tarefas difíceis, mais lento e mais caro. **Medium** é um bom começo.
 
-Quando o coscribe conhece os níveis próprios do modelo, a escala mostra esses níveis, como **Low**, **Medium**, **High**, **Extra high** e **Max**. Caso contrário, mostra a escala inteira, e o modelo usa o nível mais próximo que suporta. Um modelo sem configuração de esforço mostra o controle desativado.
+Quando o Coscribe conhece os níveis próprios do modelo, a escala mostra esses níveis, como **Low**, **Medium**, **High**, **Extra high** e **Max**. Caso contrário, mostra a escala inteira, e o modelo usa o nível mais próximo que suporta. Um modelo sem configuração de esforço mostra o controle desativado.
 
 Sua escolha é mantida quando você troca de modelo: o novo modelo usa o nível mais próximo que tem.
 
@@ -21,7 +21,7 @@ Sua escolha é mantida quando você troca de modelo: o novo modelo usa o nível 
 
 Cada modelo só consegue ler uma certa quantidade de uma vez: a sua janela de contexto. Depois que uma conversa começa, um anel ao lado da caixa de mensagem mostra quanto dela está em uso. Clique no anel para ver o que ocupa o espaço: as mensagens, o prompt do sistema, ferramentas e habilidades, e o espaço livre restante.
 
-Quando a janela está cerca de quatro quintos cheia, o coscribe resume por conta própria a parte anterior da conversa para poder continuar. Você também pode digitar `/compact` para fazer isso agora. Veja [Manter uma conversa longa](conversations.md#keep-a-long-conversation-going).
+Quando a janela está cerca de quatro quintos cheia, o Coscribe resume por conta própria a parte anterior da conversa para poder continuar. Você também pode digitar `/compact` para fazer isso agora. Veja [Manter uma conversa longa](conversations.md#keep-a-long-conversation-going).
 
 ## Reduzir custos {#keep-costs-down}
 

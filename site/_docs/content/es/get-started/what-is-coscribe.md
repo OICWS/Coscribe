@@ -1,9 +1,9 @@
 ---
-title: Qué es coscribe
+title: Qué es Coscribe
 description: Un asistente de oficina que funciona en tu PC y crea archivos de Word, Excel y PowerPoint que puedes editar.
 ---
 
-coscribe es un asistente de oficina con IA para Windows. Di en una frase lo que necesitas, y lee tus hojas de cálculo y documentos y crea el archivo terminado: un contrato con control de cambios y comentarios, una presentación de informe con gráficos, un libro de Excel conciliado.
+Coscribe es un asistente de oficina con IA para Windows. Di en una frase lo que necesitas, y lee tus hojas de cálculo y documentos y crea el archivo terminado: un contrato con control de cambios y comentarios, una presentación de informe con gráficos, un libro de Excel conciliado.
 
 Es de código abierto (licencia MIT) y gratuito. Solo pagas el servicio de modelos que elijas.
 
@@ -18,13 +18,13 @@ Es de código abierto (licencia MIT) y gratuito. Solo pagas el servicio de model
 
 ## En qué se diferencia de otras herramientas de IA {#how-it-differs-from-other-ai-tools}
 
-**Tus archivos se quedan en tu PC.** coscribe no tiene un servicio en la nube propio. Solo lo que el modelo necesita leer va al proveedor de modelos que elegiste; con un modelo que se ejecuta en tu propio ordenador mediante Ollama, nada sale de la máquina.
+**Tus archivos se quedan en tu PC.** Coscribe no tiene un servicio en la nube propio. Solo lo que el modelo necesita leer va al proveedor de modelos que elegiste; con un modelo que se ejecuta en tu propio ordenador mediante Ollama, nada sale de la máquina.
 
 **Tú eliges el modelo.** Claude, GPT y Gemini vienen integrados. DeepSeek, Kimi, GLM, Qwen, Doubao y cualquier otro servicio con una API compatible con OpenAI funcionan en cuanto introduces su dirección y tu clave de API. Consulta [Añadir un proveedor de modelos](providers.md).
 
 **Pregunta antes de cambiar cosas.** Cuatro modos de permisos van desde «pregúntame antes de cada paso» hasta «deja que un modelo revisor apruebe el trabajo rutinario por mí». En todos los modos solo escribe en las carpetas que permitiste. Consulta [Tu primera conversación](first-conversation.md#permission-modes).
 
-**Te entrega archivos terminados, no borradores.** Después de escribir un archivo, coscribe lo renderiza y mira el resultado para comprobar el diseño y el contenido, en lugar de darte un bloque de texto.
+**Te entrega archivos terminados, no borradores.** Después de escribir un archivo, Coscribe lo renderiza y mira el resultado para comprobar el diseño y el contenido, en lugar de darte un bloque de texto.
 
 ## Requisitos del sistema {#system-requirements}
 
@@ -32,4 +32,4 @@ Es de código abierto (licencia MIT) y gratuito. Solo pagas el servicio de model
 - Una clave de API de un servicio de modelos, u Ollama o LM Studio en tu PC.
 
 > [!NOTE]
-> coscribe solo está disponible para Windows. Todavía no hay versión para Mac ni Linux.
+> Coscribe solo está disponible para Windows. Todavía no hay versión para Mac ni Linux.

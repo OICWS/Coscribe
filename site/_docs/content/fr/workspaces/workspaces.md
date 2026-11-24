@@ -29,7 +29,7 @@ Ce que signifie le choix **Sites** :
 
 ## Dossiers autorisés {#allowed-folders}
 
-Tous les dossiers que coscribe peut utiliser hors du dossier principal d’un espace de travail figurent dans une seule liste, **Allowed folders**, sous **Settings › Workspaces › Manage**. Chaque dossier y a un niveau d’accès (**Read only**, **Read and write** ou **Read, write and delete**). Un espace de travail n’atteint que les dossiers autorisés qu’il choisit sur sa page **Allowed folders** : **Use an allowed folder** en choisit un dans la liste, et **Add new folder…** en ajoute un nouveau, qui rejoint la liste en lecture et écriture.
+Tous les dossiers que Coscribe peut utiliser hors du dossier principal d’un espace de travail figurent dans une seule liste, **Allowed folders**, sous **Settings › Workspaces › Manage**. Chaque dossier y a un niveau d’accès (**Read only**, **Read and write** ou **Read, write and delete**). Un espace de travail n’atteint que les dossiers autorisés qu’il choisit sur sa page **Allowed folders** : **Use an allowed folder** en choisit un dans la liste, et **Add new folder…** en ajoute un nouveau, qui rejoint la liste en lecture et écriture.
 
 Retirer un dossier de **Allowed folders** le retire de tous les espaces de travail. Un dossier introuvable pour le moment, comme un lecteur débranché, est signalé et réutilisé quand il revient.
 
@@ -37,4 +37,4 @@ Quand une conversation a besoin d’un dossier qu’elle ne peut pas atteindre, 
 
 ## Scripts et isolation {#scripts-and-isolation}
 
-Sous Windows, les scripts s’exécutent isolés : ils ne peuvent utiliser que les dossiers de la conversation, ne peuvent pas y supprimer ni renommer de fichiers, et n’accèdent à Internet que si le paramètre **Sites** de l’espace de travail est **Any site**. coscribe vérifie une fois si l’isolation fonctionne sur votre ordinateur. Si la vérification a échoué, les scripts sont désactivés ; **Run scripts without isolation**, sur la page **Scripts and commands**, les réactive pour cet espace de travail, avec le risque que cela comporte.
+Sous Windows, les scripts s’exécutent isolés : ils ne peuvent utiliser que les dossiers de la conversation, ne peuvent pas y supprimer ni renommer de fichiers, et n’accèdent à Internet que si le paramètre **Sites** de l’espace de travail est **Any site**. Coscribe vérifie une fois si l’isolation fonctionne sur votre ordinateur. Si la vérification a échoué, les scripts sont désactivés ; **Run scripts without isolation**, sur la page **Scripts and commands**, les réactive pour cet espace de travail, avec le risque que cela comporte.

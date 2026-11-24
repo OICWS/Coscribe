@@ -1,6 +1,6 @@
 ---
 title: Comandos y atajos
-description: Los comandos que puedes escribir en el cuadro de mensaje y los atajos de teclado de coscribe.
+description: Los comandos que puedes escribir en el cuadro de mensaje y los atajos de teclado de Coscribe.
 ---
 
 ## Comandos {#commands}
@@ -14,7 +14,7 @@ Escribe <kbd>/</kbd> en el cuadro de mensaje para ver la lista de comandos; escr
 | `/fork [nombre]` | Copia la conversación en una nueva y la abre. Consulta [Copiar una conversación](../use/conversations.md#copy-a-conversation). |
 | `/init` | Explora el espacio de trabajo y escribe o actualiza `OVERVIEW.md` en su raíz. |
 | `/create-skill <nombre>` | Convierte la conversación en una habilidad reutilizable. Consulta [Habilidades y plugins](../customize/skills.md). |
-| `/doctor` | Comprueba lo que coscribe necesita en este ordenador. Consulta [Solución de problemas](../help/troubleshooting.md). |
+| `/doctor` | Comprueba lo que Coscribe necesita en este ordenador. Consulta [Solución de problemas](../help/troubleshooting.md). |
 | `/<habilidad>` | Usa esa habilidad para tu petición. Cada una de tus habilidades aparece en la lista con su nombre. |
 
 Algunos comandos no están en la lista porque un botón hace lo mismo, pero funcionan si los escribes:

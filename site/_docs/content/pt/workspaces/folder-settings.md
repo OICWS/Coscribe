@@ -1,26 +1,26 @@
 ---
 title: Notas e regras próprias de uma pasta
-description: Deixe uma pasta dizer ao coscribe o que ela contém, quais habilidades e conectores usar e o que pode rodar sem perguntar.
+description: Deixe uma pasta dizer ao Coscribe o que ela contém, quais habilidades e conectores usar e o que pode rodar sem perguntar.
 ---
 
-Uma pasta pode levar instruções para o coscribe em uma pasta `.coscribe` dentro dela. O coscribe as lê em qualquer conversa que use a pasta, depois que você as aceitar.
+Uma pasta pode levar instruções para o Coscribe em uma pasta `.coscribe` dentro dela. O Coscribe as lê em qualquer conversa que use a pasta, depois que você as aceitar.
 
 ## O que uma pasta pode conter {#what-a-folder-can-hold}
 
 | Arquivo | O que faz |
 |---|---|
-| `.coscribe/memory.md` | Notas que o coscribe lê no início de cada conversa nesta pasta: para que a pasta serve, convenções, nomes. |
+| `.coscribe/memory.md` | Notas que o Coscribe lê no início de cada conversa nesta pasta: para que a pasta serve, convenções, nomes. |
 | `.coscribe/skills/<name>/SKILL.md` | [Habilidades](../customize/skills.md) que valem apenas nesta pasta. |
 | `.coscribe/settings.json` | Regras de permissão (`allow`, `ask`, `deny`) e variáveis de ambiente para scripts. |
 | `.coscribe/mcp.json` | [Conectores](../customize/connectors.md) que esta pasta usa. |
 
-O próprio coscribe nunca grava `memory.md`, `settings.json` nem `mcp.json`; só você os edita. Os anexos que você envia ficam em `.coscribe/uploads/`.
+O próprio Coscribe nunca grava `memory.md`, `settings.json` nem `mcp.json`; só você os edita. Os anexos que você envia ficam em `.coscribe/uploads/`.
 
 ## Aceitar as configurações de uma pasta {#accept-a-folders-settings}
 
-As configurações de uma pasta podem vir de qualquer pessoa que consiga gravar nela, então o coscribe não as segue até você concordar. O painel **Task details** mostra **What Coscribe knows about this folder**, listando as habilidades, os conectores e as regras que a pasta traz, agrupados em **Runs without asking**, **Always asks** e **Never runs**, além de eventuais variáveis para scripts. Clique em **Use them** para aceitar.
+As configurações de uma pasta podem vir de qualquer pessoa que consiga gravar nela, então o Coscribe não as segue até você concordar. O painel **Task details** mostra **What Coscribe knows about this folder**, listando as habilidades, os conectores e as regras que a pasta traz, agrupados em **Runs without asking**, **Always asks** e **Never runs**, além de eventuais variáveis para scripts. Clique em **Use them** para aceitar.
 
-Se algum desses arquivos mudar fora do coscribe, ele pergunta de novo.
+Se algum desses arquivos mudar fora do Coscribe, ele pergunta de novo.
 
 ## Regras de permissão {#permission-rules}
 
@@ -39,7 +39,7 @@ Se algum desses arquivos mudar fora do coscribe, ele pergunta de novo.
 }
 ```
 
-Uma regra é o nome de uma ferramenta do coscribe, um padrão de nomes com `*`, ou qualquer um dos dois com um padrão do argumento principal entre parênteses, como `write_file(docs/*)`. As regras decidem apenas ações que, de outra forma, esperariam sua aprovação. **deny** prevalece sobre **ask**, e **ask** sobre **allow**.
+Uma regra é o nome de uma ferramenta do Coscribe, um padrão de nomes com `*`, ou qualquer um dos dois com um padrão do argumento principal entre parênteses, como `write_file(docs/*)`. As regras decidem apenas ações que, de outra forma, esperariam sua aprovação. **deny** prevalece sobre **ask**, e **ask** sobre **allow**.
 
 Alguns limites sempre valem:
 

@@ -13,7 +13,7 @@ Die Auswahl listet die Modelle, die Sie für jeden Anbieter unter **Settings** �
 
 Neben dem Modell liegt der Aufwandsregler, eine Skala von **Faster** bis **Smarter**. Mehr Aufwand lässt das Modell länger nachdenken: besser bei schweren Aufgaben, langsamer und teurer. **Medium** ist ein guter Anfang.
 
-Kennt coscribe die eigenen Stufen des Modells, zeigt die Skala diese an, etwa **Low**, **Medium**, **High**, **Extra high** und **Max**. Andernfalls zeigt sie die ganze Skala, und das Modell verwendet die nächstgelegene unterstützte Stufe. Bei einem Modell ohne Aufwandseinstellung ist der Regler ausgegraut.
+Kennt Coscribe die eigenen Stufen des Modells, zeigt die Skala diese an, etwa **Low**, **Medium**, **High**, **Extra high** und **Max**. Andernfalls zeigt sie die ganze Skala, und das Modell verwendet die nächstgelegene unterstützte Stufe. Bei einem Modell ohne Aufwandseinstellung ist der Regler ausgegraut.
 
 Ihre Wahl bleibt beim Modellwechsel erhalten: Das neue Modell verwendet die nächstgelegene Stufe, die es hat.
 
@@ -21,7 +21,7 @@ Ihre Wahl bleibt beim Modellwechsel erhalten: Das neue Modell verwendet die näc
 
 Jedes Modell kann nur eine begrenzte Menge auf einmal lesen: sein Kontextfenster. Sobald eine Unterhaltung begonnen hat, zeigt ein Ring neben dem Nachrichtenfeld, wie viel davon belegt ist. Klicken Sie auf den Ring, um zu sehen, was den Platz einnimmt: die Nachrichten, der System-Prompt, Werkzeuge und Skills sowie der verbleibende freie Platz.
 
-Ist das Fenster etwa zu vier Fünfteln voll, fasst coscribe den früheren Teil der Unterhaltung von selbst zusammen, um weitermachen zu können. Sie können auch `/compact` tippen, um das sofort zu tun. Siehe [Eine lange Unterhaltung fortführen](conversations.md#keep-a-long-conversation-going).
+Ist das Fenster etwa zu vier Fünfteln voll, fasst Coscribe den früheren Teil der Unterhaltung von selbst zusammen, um weitermachen zu können. Sie können auch `/compact` tippen, um das sofort zu tun. Siehe [Eine lange Unterhaltung fortführen](conversations.md#keep-a-long-conversation-going).
 
 ## Kosten niedrig halten {#keep-costs-down}
 
