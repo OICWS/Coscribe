@@ -82,7 +82,7 @@ Last reviewed: 2026-11-22.
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
-- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`): the name and the paper-plane
+- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`, `docs/log/2026-11-24-promo-page-refresh.md`): the name and the paper-plane
   logo are done; the English pages get more polish with the maintainer first, then the other
   eight languages follow.
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
