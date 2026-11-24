@@ -8,10 +8,10 @@ import { getThreadActivity, openThreadFile, setThreadMeta, threadFileDownloadUrl
 import { readStored, writeStored } from "../lib/storage";
 import { isDocMarkdown } from "../lib/viewers";
 import type { ActivityFile } from "../types/session";
-import { KindIcon } from "./artifacts/artifactIcons";
+import { KindIcon } from "./artifacts";
 import { FolderIcon } from "./icons";
 import { ImageGallery } from "./ImageGallery";
-import { FileIcon, FileSheetIcon } from "./files/fileIcons";
+import { FileIcon, FileSheetIcon } from "./files";
 import type { Notice } from "./NoticeStack";
 
 const CLOSED_KEY = "coscribe.closedOutputNotices";

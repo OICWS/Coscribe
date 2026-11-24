@@ -10,12 +10,12 @@ import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
 import { ChevronRightIcon, PencilIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
-import { PLAIN_LABEL } from "./workflow/AutonomySetting";
-import { PlainStepList, PlainText } from "./workflow/PlainStepList";
-import { InputQuickPanel, QuickEditPanel } from "./workflow/QuickEditPanel";
-import { TaskOverviewLine } from "./workflow/TaskOverviewLine";
-import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
-import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
+import { PLAIN_LABEL } from "./workflow";
+import { PlainStepList, PlainText } from "./workflow";
+import { InputQuickPanel, QuickEditPanel } from "./workflow";
+import { TaskOverviewLine } from "./workflow";
+import { WorkflowCanvas } from "./workflow";
+import { WorkflowPermissions } from "./workflow";
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (

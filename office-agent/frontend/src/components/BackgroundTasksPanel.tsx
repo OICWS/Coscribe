@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 import { formatElapsed, formatTokenCount } from "../lib/format";
 import {
   type BackgroundEntry,

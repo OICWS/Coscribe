@@ -5,11 +5,11 @@ import { isPptx } from "../lib/slides";
 import { isDesignCanvas } from "../lib/designCanvas";
 import { isDesign, isDocMarkdown } from "../lib/viewers";
 import { DesignPanel } from "./DesignPanel";
-import { SlidesPanel } from "./slides/SlidesPanel";
+import { SlidesPanel } from "./slides";
 
 // The editor and the canvas load when a document or a canvas is first opened, not with the app.
-const DesignCanvasPanel = lazy(() => import("./design/DesignCanvasPanel").then((m) => ({ default: m.DesignCanvasPanel })));
-const DocPanel = lazy(() => import("./doc/DocPanel").then((m) => ({ default: m.DocPanel })));
+const DesignCanvasPanel = lazy(() => import("./design").then((m) => ({ default: m.DesignCanvasPanel })));
+const DocPanel = lazy(() => import("./doc").then((m) => ({ default: m.DocPanel })));
 
 const NO_DRAFTS: DraftPage[] = [];
 

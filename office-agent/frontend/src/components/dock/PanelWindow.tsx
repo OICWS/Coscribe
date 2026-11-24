@@ -13,7 +13,7 @@ import {
 import { useTitleBarColors } from "../../lib/titleBar";
 import { BackgroundTasksPanel } from "../BackgroundTasksPanel";
 import { BrowserPanel } from "../BrowserPanel";
-import { FilesPanel } from "../files/FilesPanel";
+import { FilesPanel } from "../files";
 import { PlanPanel } from "../PlanPanel";
 import { ViewerPanel } from "../ViewerPanel";
 import { DockBackIcon, PinIcon } from "./windowIcons";

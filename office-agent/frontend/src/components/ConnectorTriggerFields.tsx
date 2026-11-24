@@ -8,7 +8,7 @@ import type { ConnectorCheckResult, ToolInfo } from "../types/settings";
 import type { Workflow } from "../types/workflow";
 import { InputsFromItem, PerHour } from "./ItemInputs";
 import { SelectMenu } from "./SelectMenu";
-import { ArgControl } from "./workflow/StepEditors";
+import { ArgControl } from "./workflow";
 
 // A task that starts when something new shows up in a connector (decision 0039): which tool to
 // ask, with what, and which of the workflow's inputs each new item fills in.

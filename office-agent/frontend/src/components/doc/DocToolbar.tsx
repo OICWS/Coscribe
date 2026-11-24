@@ -3,8 +3,8 @@ import { useEditorState } from "@tiptap/react";
 import { useState } from "react";
 import type { DocLook, Face } from "../../lib/docLook";
 import { ChevronDownIcon, MoreIcon, PlusIcon, RedoIcon, UndoIcon } from "../icons";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
-import { TableIcon } from "../slides/formatIcons";
+import { SlideMenu, type MenuEntry } from "../slides";
+import { TableIcon } from "../slides";
 import { calloutEntries, insertEntries, tableEntries } from "./docCommands";
 import { ChecklistIcon, FontIcon, ImageIcon, WidthIcon } from "./docIcons";
 

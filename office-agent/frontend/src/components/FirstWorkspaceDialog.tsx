@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { chooseFirstWorkspace, getFirstWorkspace } from "../lib/rest";
 import { FolderIcon } from "./icons";
-import { DirBrowserModal } from "./settings/DirBrowserModal";
-import { primaryButtonClass, secondaryButtonClass } from "./settings/SettingRow";
+import { DirBrowserModal } from "./settings";
+import { primaryButtonClass, secondaryButtonClass } from "./settings";
 
 /** The first start asks where Coscribe keeps its work (decision 0048), instead of a hidden folder. */
 export function FirstWorkspaceDialog() {

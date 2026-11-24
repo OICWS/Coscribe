@@ -42,9 +42,11 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 - A folder of `src/components/` is a feature (`frontend.<folder>` in `components.toml`, with its
   own `CODEOWNERS` line). Another feature, the loose components, `lib/` or `App.tsx` enter it
   through its `index.ts`; an import into any other file of it is counted per pair by
-  `frontend_feature_imports` in `scripts/ratchet.py`, and the counts may only shrink. To use
-  something a feature does not export yet, add it to that feature's `index.ts` and import from
-  there.
+  `frontend_feature_imports` in `scripts/ratchet.py`, and the count is 0, so any such import
+  fails `check.sh`. To use something a feature does not export yet, add it to that feature's
+  `index.ts` and import from there. The indexes import one another, so a file must not read
+  another feature's export while its module loads (a constant built at the top of a file);
+  `src/components/featureIndexes.test.ts` loads each index first and fails on such a cycle.
 - UI text is English only. Unused files and exports fail `knip` (`knip.json`).
 - A build must pass `tsc -b`, not only `tsc --noEmit`: use `npm run build`.
 

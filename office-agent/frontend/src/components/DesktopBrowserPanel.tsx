@@ -47,7 +47,7 @@ import { getThreads, setThreadBrowserSite } from "../lib/rest";
 import { useOverlayOverlap } from "../lib/useOverlayOverlap";
 import { useBackdropOpen } from "../lib/titleBar";
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 
 // Matches the desktop app's own limit (browserPanel.ts's MAX_TABS).
 const MAX_TABS = 16;

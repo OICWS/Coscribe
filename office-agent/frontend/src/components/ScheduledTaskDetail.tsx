@@ -24,11 +24,11 @@ import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
 import { TaskReachProvider, TaskReachSection } from "./TaskReachSection";
 import { TaskMemorySection } from "./TaskMemorySection";
 import { ToggleSwitch } from "./ToggleSwitch";
-import { RunInputsDialog } from "./workflow/RunInputsDialog";
-import { TaskSettingsTab } from "./workflow/TaskSettingsTab";
-import { ViewToggle } from "./workflow/ViewToggle";
-import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
-import { WorkflowEditor } from "./workflow/WorkflowEditor";
+import { RunInputsDialog } from "./workflow";
+import { TaskSettingsTab } from "./workflow";
+import { ViewToggle } from "./workflow";
+import { WorkflowCanvas } from "./workflow";
+import { WorkflowEditor } from "./workflow";
 
 // Mirrors tools/bookkeeping/scheduled_tasks.py's MAX_NOTES_CHARS.
 const MAX_NOTES_CHARS = 4000;

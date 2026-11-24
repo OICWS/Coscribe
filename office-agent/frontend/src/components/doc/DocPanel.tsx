@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { exportDoc, type DocExportKind } from "../../lib/docExport";
 import { getDoc, NotADocError, restoreDoc, type DocRead } from "../../lib/docFile";
 import type { CommentLink } from "../../lib/slideComments";
-import { PanelFileMenu } from "../artifacts/PanelFileMenu";
-import { PanelTitleButton } from "../artifacts/PanelTitleButton";
-import { useDockPanel } from "../dock/dockContext";
+import { PanelFileMenu } from "../artifacts";
+import { PanelTitleButton } from "../artifacts";
+import { useDockPanel } from "../dock";
 import { DownloadIcon } from "../icons";
-import type { MenuEntry } from "../slides/SlideMenu";
+import type { MenuEntry } from "../slides";
 import { DocEditor } from "./DocEditor";
 
 interface PanelProps {

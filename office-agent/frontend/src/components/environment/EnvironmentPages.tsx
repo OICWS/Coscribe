@@ -1,5 +1,5 @@
 import { ChevronRightIcon } from "../icons";
-import { fieldClass } from "../settings/SettingRow";
+import { fieldClass } from "../settings";
 
 const introClass = "text-[13px] leading-relaxed text-[var(--muted)]";
 

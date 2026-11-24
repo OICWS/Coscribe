@@ -3,7 +3,7 @@ import type { PanelId } from "../../lib/dockLayout";
 import { showArtifacts } from "../../lib/nav";
 import { CONVERSATION_ITEMS, type ToolbarItem } from "../../lib/toolbarItems";
 import { DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../../lib/titleBar";
-import { ArtifactsIcon } from "../artifacts/artifactIcons";
+import { ArtifactsIcon } from "../artifacts";
 import { BrowserIcon, FolderIcon, ListChecksIcon, PanelRightIcon, SidebarIcon, SubAgentsIcon } from "../icons";
 import { MessagesIcon } from "../SideChatPanel";
 import { ToolbarDialog, ToolbarMenu, type ToolbarEntry } from "./ToolbarMenu";

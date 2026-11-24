@@ -3,7 +3,7 @@ import { editedLabel, type SystemItem } from "../../lib/artifacts";
 import { duplicateSystem, removeSystem, renameSystem } from "../../lib/designSystemItems";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { CopyIcon, PencilIcon, TrashIcon } from "../icons";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
+import { SlideMenu, type MenuEntry } from "../slides";
 import { PinIcon } from "./artifactIcons";
 import { RenameDialog } from "./RenameDialog";
 

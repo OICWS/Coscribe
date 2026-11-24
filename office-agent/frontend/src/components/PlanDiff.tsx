@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { diffLines, diffStat, withContext, type DiffRow } from "../lib/lineDiff";
-import { Disclosure } from "./chatlog/SummaryLabel";
+import { Disclosure } from "./chatlog";
 
 const ROW_TINT = { same: "", add: "bg-emerald-500/10", del: "bg-[var(--danger)]/10" };
 const MARK_TINT = { add: "bg-emerald-500/25", del: "bg-[var(--danger)]/25" };
