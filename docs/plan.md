@@ -74,9 +74,11 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
-- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
-  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
-  on what tests prove, weekly numbers, frontend boundaries.
+- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059),
+  the gate on loosening a limit and the weekly numbers (`docs/log/2026-11-24-weekly-numbers.md`)
+  shipped; still open: the gates on what tests prove, frontend boundaries. Read the "Weekly
+  numbers" issue on Mondays: a card far behind its code or a component near its budget is the
+  next piece of work there.
 
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to

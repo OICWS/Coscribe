@@ -75,3 +75,54 @@ def test_the_ratchet_trend_says_n_a_without_history(metrics: ModuleType) -> None
         "| fan_out | 2 | 1 | -1 |",
         "| long_functions | 0 | 2 | +2 |",
     ]
+
+
+def test_the_selection_share_counts_a_full_run_as_the_whole_suite(metrics: ModuleType) -> None:
+    plans = {
+        "a": ("selected", ["tests/test_a.py"]),
+        "b": ("full", []),
+        "c": ("docs", ["tests/test_doc_files.py", "tests/test_doc_freshness.py"]),
+    }
+    lines = metrics.selection([["a"], ["b"], ["c"]], lambda files: plans[files[0]], 10)
+    assert lines == [
+        "- scope of the 3 merged pull requests: 1 selected, 1 full, 1 docs only",
+        "- share of the 10 test files they ran: mean 43%, median 20%",
+    ]
+    assert metrics.selection([], lambda files: plans["a"], 10) == [
+        "- no merged pull request this week"
+    ]
+
+
+def test_a_failed_audit_night_is_named_as_a_miss(metrics: ModuleType) -> None:
+    runs = [{"conclusion": "success"}, {"conclusion": "failure"}, {"conclusion": "cancelled"}]
+    assert metrics.audit_line(runs) == (
+        "- nightly selection audit: 2 runs, 1 failed (a test that fails was not selected)"
+    )
+    assert metrics.audit_line(runs[:1]) == "- nightly selection audit: 1 runs, 0 failed (no miss)"
+    assert metrics.audit_line([]) == "- nightly selection audit: no run this week"
+
+
+def test_the_budgets_name_the_core_the_largest_and_those_near_the_limit(
+    metrics: ModuleType,
+) -> None:
+    budgets = {"core_lines": 1000, "component_lines": 100}
+    sizes = {"web": 300, "tools": 85, "pptx": 95, "small": 10}
+    assert metrics.budget_lines(budgets, sizes, frozenset({"web", "small"})) == [
+        "- core: 310 of 1000 lines (31%)",
+        "- largest component: web, 300 of 100 lines",
+        "- near its budget: web (300 lines, 300%)",
+        "- near its budget: pptx (95 lines, 95%)",
+        "- near its budget: tools (85 lines, 85%)",
+    ]
+
+
+def test_the_cards_furthest_behind_their_code_come_first(metrics: ModuleType) -> None:
+    behind = {"web": 3, "runtime": 9, "tools": 0, "cli": 3}
+    assert metrics.card_lines(behind, listed=3) == [
+        "- runtime: 9 commits since its card changed",
+        "- cli: 3 commits since its card changed",
+        "- web: 3 commits since its card changed",
+    ]
+    assert metrics.card_lines({"tools": 0}) == [
+        "- every card changed with its code's latest commit"
+    ]
