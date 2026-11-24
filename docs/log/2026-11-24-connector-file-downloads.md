@@ -11,6 +11,9 @@ starts. Saving the bytes directly preserves the original file, including its tex
   their partial files. Existing files keep their contents and names.
 - A connector timeout or connection failure tells the model to check the outcome of a possible
   write before repeating it. A connector that returns an application error stays connected.
+- Windows CI found a file replacement error in spreadsheet recalculation. Recalculation now
+  leaves a workbook alone when it has no values to write. Formula cache writes use the shared
+  atomic writer with a bounded retry for temporary Windows file locks.
 
 ## Not verified
 
