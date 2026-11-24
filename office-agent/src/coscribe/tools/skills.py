@@ -124,12 +124,23 @@ class SkillInfo:
             "description": str(manifest.get("description") or ""),
             "version": str(manifest.get("version") or ""),
             "author": str(author or ""),
+            "tools": self.builtin_tools(),
             "unused": [
                 label
                 for label, paths in _UNUSED_PARTS
                 if any((self.plugin_dir / path).exists() for path in paths)
             ],
         }
+
+    def builtin_tools(self) -> list[str]:
+        """The built-in tools this skill's plugin brings (its manifest's `coscribe.tools`). Only
+        a plugin shipped with Coscribe brings any: an installed one adds instructions and scripts,
+        never a tool of the app (decision 0058)."""
+        if self.plugin_dir is None or self.plugin_dir.parent != _BUILTIN_SKILLS_DIR:
+            return []
+        extension = (plugin_manifest(self.plugin_dir) or {}).get("coscribe")
+        tools = extension.get("tools") if isinstance(extension, dict) else None
+        return [t for t in tools if isinstance(t, str)] if isinstance(tools, list) else []
 
     @property
     def slug(self) -> str:

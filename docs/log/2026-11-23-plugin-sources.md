@@ -26,8 +26,9 @@ Why: step 4 of #1036 (decision 0058): a company's own repository and the open on
   its 13 files from raw.githubusercontent.com, checked them and listed its 8 skills.
 
 ## Not verified
-- Adding a source through GitHub's real API (refused here); on Windows; GitHub's unauthenticated
-  limit of 60 API requests an hour (a source costs two).
+- GitHub's unauthenticated limit of 60 API requests an hour (a source costs two). Adding
+  `openai/plugins` through the real API was checked on Windows afterwards: 46 plugins listed,
+  Add took about 32 seconds behind a proxy.
 
 ## Follow-ups
 - Build Discover's own catalog from the curated repositories' marketplace.json and add its
