@@ -1,0 +1,88 @@
+name: Test selection audit
+
+# A pull request runs only the tests its change can reach (decision 0059). This checks the
+# import graph behind that choice: in modules picked at random, every function raises, the
+# whole suite runs, and every test that fails must be one the selection would have run for a
+# change to that module (scripts/selection_audit.py). A miss fails the run and names the test.
+# Nightly, by hand (with modules to check), and on a pull request that changes the selection.
+"on":
+  schedule:
+    - cron: "11 21 * * *"
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: "Paths under office-agent/ to check, separated by spaces (none: 3 at random)"
+        required: false
+        default: ""
+  pull_request:
+    paths:
+      - ".github/workflows/test-selection-audit.yml"
+      - "office-agent/scripts/ci_scope.py"
+      - "office-agent/scripts/selection_audit.py"
+
+concurrency:
+  group: selection-audit-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: office-agent/frontend/package-lock.json
+
+      # web/static/ is a build output that tests constructing the app need.
+      - name: Build the frontend
+        working-directory: office-agent/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install coscribe
+        run: python scripts/install_locked.py --extra dev --extra web
+
+      # The date is the seed, so a nightly failure can be run again by hand with the same pick.
+      - name: Audit
+        env:
+          MODULES: ${{ github.event.inputs.modules }}
+        run: |
+          read -r -a modules <<< "${MODULES:-}"
+          pick=3
+          [ "${#modules[@]}" -gt 0 ] && pick=0
+          python scripts/selection_audit.py --pick "$pick" --seed "$(date -u +%F)" "${modules[@]}" \
+            | tee audit.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          [ -f audit.txt ] || exit 0
+          {
+            echo '```'
+            cat audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

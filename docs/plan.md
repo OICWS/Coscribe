@@ -74,6 +74,10 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
+- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
+  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
+  on what tests prove, weekly numbers, frontend boundaries.
+
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label

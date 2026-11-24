@@ -7,7 +7,7 @@ time given. Tick the check on #844 and say what you saw; a failure becomes its o
 
 Scripted parts run in `.github/workflows/windows-more-checks.yml` (`real-windows`, the tests in
 `office-agent/tests/test_windows_real.py`; `codeowners`), nightly and on a pull request that
-changes it. The existing jobs stay: `windows.yml` (the whole pytest suite, nightly and on every pull request that changes code) and
+changes it. The existing jobs stay: `windows.yml` (the whole pytest suite nightly, and on a pull request the tests its change can reach, decision 0059) and
 `windows-checks.yml` (the repository's scripts).
 
 Each scripted test was shown to fail when its thing breaks (PR #408, closed). On the Windows
