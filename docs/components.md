@@ -28,4 +28,15 @@ its card, then the interface the card lists, then only that component's implemen
 | `thread_paths` | `office-agent/src/coscribe/thread_paths.py` | runtime \| config | @OICWS | none |
 | `needs_permission` | `office-agent/src/coscribe/needs_permission.py` | runtime \| config | @OICWS | none |
 | `frontend` | `office-agent/frontend` | ui | @OICWS | [AGENTS.md](../office-agent/frontend/AGENTS.md) |
+| `frontend.artifacts` | `office-agent/frontend/src/components/artifacts` | ui | @OICWS | none |
+| `frontend.chatlog` | `office-agent/frontend/src/components/chatlog` | ui | @OICWS | none |
+| `frontend.design` | `office-agent/frontend/src/components/design` | ui | @OICWS | none |
+| `frontend.doc` | `office-agent/frontend/src/components/doc` | ui | @OICWS | none |
+| `frontend.dock` | `office-agent/frontend/src/components/dock` | ui | @OICWS | none |
+| `frontend.environment` | `office-agent/frontend/src/components/environment` | ui | @OICWS | none |
+| `frontend.files` | `office-agent/frontend/src/components/files` | ui | @OICWS | none |
+| `frontend.sessions` | `office-agent/frontend/src/components/sessions` | ui | @OICWS | none |
+| `frontend.settings` | `office-agent/frontend/src/components/settings` | ui | @OICWS | none |
+| `frontend.slides` | `office-agent/frontend/src/components/slides` | ui | @OICWS | none |
+| `frontend.workflow` | `office-agent/frontend/src/components/workflow` | ui | @OICWS | none |
 | `desktop` | `office-agent-desktop` | ui | @OICWS | none |
