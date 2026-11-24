@@ -19,10 +19,10 @@ import {
   type Tabs,
   type WorkspaceRoot,
 } from "../../lib/workspaceFiles";
-import { useDockPanel } from "../dock/dockContext";
+import { useDockPanel } from "../dock";
 import { CheckIcon, CloseIcon, CodeIcon, EyeIcon, MoreIcon, SearchIcon } from "../icons";
 import { itemClass, menuClass } from "../menuStyle";
-import { PinIcon } from "../dock/windowIcons";
+import { PinIcon } from "../dock";
 import { CollapseAllIcon, TreeToggleIcon } from "./fileIcons";
 import { FilePreview } from "./FilePreview";
 import { FileTree } from "./FileTree";

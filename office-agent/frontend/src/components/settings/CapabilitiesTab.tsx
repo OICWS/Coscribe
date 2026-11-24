@@ -3,7 +3,7 @@ import { getCapabilities, getScriptIsolation, retestScriptIsolation, setCapabili
 import { useCodePermissions } from "../../lib/useCodePermissions";
 import { useCodeStatus } from "../../lib/useCodeStatus";
 import type { Capabilities, ScriptIsolation } from "../../types/settings";
-import { CHECK_WORDS } from "../environment/checkWords";
+import { CHECK_WORDS } from "./checkWords";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { AdvancedSection } from "./AdvancedSection";
 import { CommandRows } from "./CommandRows";

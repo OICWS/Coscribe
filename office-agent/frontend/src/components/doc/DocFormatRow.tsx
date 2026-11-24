@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { ChevronDownIcon, LinkIcon, MessageCircleIcon } from "../icons";
-import { BoldIcon, CommentPlusIcon, ItalicIcon, ListIcon } from "../slides/formatIcons";
-import type { MenuEntry } from "../slides/SlideMenu";
+import { BoldIcon, CommentPlusIcon, ItalicIcon, ListIcon } from "../slides";
+import type { MenuEntry } from "../slides";
 import { currentStyle, listEntries, styleEntries } from "./docCommands";
 import { CodeInlineIcon, StrikeIcon } from "./docIcons";
 

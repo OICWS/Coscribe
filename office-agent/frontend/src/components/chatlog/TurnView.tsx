@@ -22,7 +22,7 @@ import { BACKGROUND_REPORT_PREFIX, BackgroundTaskReportCard } from "../Backgroun
 import { SUBAGENT_REPORT_PREFIX, SubAgentReportCard } from "../SubAgentReportCard";
 import { TaskDraftCard } from "../TaskDraftCard";
 import { TaskCard } from "./TaskCard";
-import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
+import { WorkflowDraftCard } from "../workflow";
 import { CONNECTED_NOTE_PREFIX, ConnectorConnectedNote, ConnectorOfferCard } from "./ConnectorOfferCard";
 import { FolderAccessCard } from "./FolderAccessCard";
 import { PackageInstallCard } from "./PackageInstallCard";

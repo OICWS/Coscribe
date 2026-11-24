@@ -2,7 +2,7 @@ import { useContext, useRef, useState, type MouseEvent, type FocusEvent } from "
 import { createPortal } from "react-dom";
 import { editedLabel, KINDS, lookupArtifact, type ArtifactSummary } from "../../lib/artifacts";
 import { baseName, KIND_WORDS, kindOfFile } from "../../lib/fileMentions";
-import { KindIcon } from "../artifacts/artifactIcons";
+import { KindIcon } from "../artifacts";
 import { ThreadIdContext } from "../threadContext";
 import { openMentioned, ViewFile } from "./contexts";
 import { useShownFile } from "./useShownFile";

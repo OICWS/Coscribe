@@ -1,7 +1,7 @@
 import { lazy, Suspense, useRef, useState } from "react";
 import { quoteOf, type PlanComment } from "../lib/planComments";
 import type { ProgressItem } from "../lib/workflowProgress";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 import { MessageCircleIcon } from "./icons";
 import { CommentBox, CommentList } from "./PlanComments";
 import { PlanTaskEditor } from "./PlanTaskEditor";

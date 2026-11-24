@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { declineConnectorOffer, getMcpServers } from "../../lib/rest";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import type { ConnectorOfferEntry } from "../../lib/transcriptGrouping";
-import { ConnectorIcon } from "../settings/ConnectorIcon";
+import { ConnectorIcon } from "../settings";
 import { CheckCircleIcon } from "../icons";
 import { ThreadIdContext } from "../threadContext";
 import { OpenConnector } from "./contexts";

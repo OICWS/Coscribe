@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { filesByName } from "../../lib/fileMentions";
 import { type LogItem } from "../../state/reducer";
-import { DraftCardsContext, type DraftCards } from "../workflow/draftCards";
+import { DraftCardsContext, type DraftCards } from "../workflow";
 import { FolderActionsContext, type FolderActions } from "../folderActions";
 import { ConnectorTools, FileCheckRevision, ThreadFiles } from "./contexts";
 

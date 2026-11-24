@@ -5,7 +5,7 @@ import { getTaskMemory, setTaskMemory } from "../lib/rest";
 import { formatRunTime } from "../lib/runLabels";
 import type { ScheduledTask } from "../types/settings";
 import type { MemoryEntry, TaskMemoryValues } from "../types/workflow";
-import { AutoTextarea } from "./workflow/fields";
+import { AutoTextarea } from "./workflow";
 
 // What a task remembers from its last finished run (decision 0034), on its page: what the next run
 // will read, which a person may correct or clear (the next run then reads the starting value).

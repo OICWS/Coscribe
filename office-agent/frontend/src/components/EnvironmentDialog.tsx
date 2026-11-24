@@ -3,22 +3,22 @@ import { createPortal } from "react-dom";
 import { folderName } from "../lib/folderName";
 import { DIALOG_BACKDROP_CLASS } from "../lib/titleBar";
 import { createEnvironment, deleteEnvironment, getConfig, getEnvironments, getSecrets, updateEnvironment } from "../lib/rest";
-import { ALLOWED_FOLDERS_CHANGED, buildDirEntries, type DirEntry } from "./settings/fields";
+import { ALLOWED_FOLDERS_CHANGED, buildDirEntries, type DirEntry } from "./settings";
 import type { Environment, EnvironmentFields, SecretInfo } from "../types/settings";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { EnvironmentRow, VariablesPage } from "./environment/EnvironmentPages";
-import { FoldersSection, SecretsSection, SitesSection } from "./environment/WorkspaceSections";
+import { EnvironmentRow, VariablesPage } from "./environment";
+import { FoldersSection, SecretsSection, SitesSection } from "./environment";
 import {
   runSummary,
   useMachineLimits,
   useNetworkDraft,
   type MachineLimits,
   type RunSwitches,
-} from "./environment/drafts";
-import { formatEnvText, parseEnvText } from "./environment/envText";
+} from "./environment";
+import { formatEnvText, parseEnvText } from "./environment";
 import { ArrowLeftIcon, CloseIcon } from "./icons";
-import { ScriptsPage } from "./environment/ScriptsPage";
-import { fieldClass, primaryButtonClass, secondaryButtonClass } from "./settings/SettingRow";
+import { ScriptsPage } from "./environment";
+import { fieldClass, primaryButtonClass, secondaryButtonClass } from "./settings";
 
 type Page = "main" | "folders" | "sites" | "secrets" | "scripts" | "variables";
 

@@ -7,7 +7,7 @@ import {
 } from "../../lib/rest";
 import type { FoundPython, ScriptEnvInterpreterInfo, ScriptIsolation } from "../../types/settings";
 import { filePickerNative } from "../../lib/desktop";
-import { CHECK_WORDS } from "../environment/checkWords";
+import { CHECK_WORDS } from "./checkWords";
 import { SettingsDialog } from "./SettingsDialog";
 import { fieldClass, secondaryButtonClass } from "./SettingRow";
 

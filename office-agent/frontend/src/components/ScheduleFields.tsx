@@ -5,7 +5,7 @@ import type { ScheduleKind } from "../types/settings";
 import type { Workflow } from "../types/workflow";
 import { ConnectorTriggerFields } from "./ConnectorTriggerFields";
 import { SelectMenu } from "./SelectMenu";
-import { DirBrowserModal } from "./settings/DirBrowserModal";
+import { DirBrowserModal } from "./settings";
 import { WebhookTriggerFields } from "./WebhookTriggerFields";
 
 // When a task runs: the Frequency row of the create/edit form. Besides the clock, a workflow task

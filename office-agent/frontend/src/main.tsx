@@ -7,7 +7,7 @@ import { startAppearance } from './lib/appearance.ts'
 import { sendTokenWithWrites } from './lib/launchToken.ts'
 import { PANEL_WINDOW } from './lib/panelWindows.ts'
 import { moveOldAllowedSites } from './lib/oldAllowedSites.ts'
-import { PanelWindow } from './components/dock/PanelWindow.tsx'
+import { PanelWindow } from './components/dock'
 import { FirstWorkspaceDialog } from './components/FirstWorkspaceDialog.tsx'
 
 startAppearance()

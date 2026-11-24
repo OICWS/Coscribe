@@ -5,8 +5,8 @@ import type { Notice } from "./NoticeStack";
 import { useOutputNotices } from "./outputNotices";
 import { saveOfferNotice } from "./saveOffer";
 import { useWaitingNotice } from "./waitingNotice";
-import type { DraftCards } from "./workflow/draftCards";
-import { useDraftNotices } from "./workflow/draftNotices";
+import type { DraftCards } from "./workflow";
+import { useDraftNotices } from "./workflow";
 
 interface ChatNoticeActions {
   saveDraft: (draft: WorkflowDraftEntry) => Promise<string | null>;

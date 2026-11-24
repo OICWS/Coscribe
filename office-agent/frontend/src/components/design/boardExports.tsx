@@ -1,7 +1,7 @@
 import { exportBoard, type BoardExport } from "../../lib/designExport";
 import type { CanvasBoard } from "../../lib/designCanvas";
 import { DownloadIcon } from "../icons";
-import type { MenuEntry } from "../slides/SlideMenu";
+import type { MenuEntry } from "../slides";
 
 const tile = (text: string) => (
   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[10px] font-bold text-[var(--muted)]">

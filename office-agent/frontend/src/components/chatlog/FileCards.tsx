@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { KINDS } from "../../lib/artifacts";
 import { baseName, KIND_WORDS, kindOfFile, madeFiles } from "../../lib/fileMentions";
 import { ChevronRightIcon } from "../icons";
-import { KindIcon } from "../artifacts/artifactIcons";
+import { KindIcon } from "../artifacts";
 import { ThreadIdContext } from "../threadContext";
 import { openMentioned, ViewFile } from "./contexts";
 import { useShownFile } from "./useShownFile";

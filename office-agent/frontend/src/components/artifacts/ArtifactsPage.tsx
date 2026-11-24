@@ -15,7 +15,7 @@ import {
   type PageKind,
 } from "../../lib/artifacts";
 import { FilterIcon, SearchIcon } from "../icons";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
+import { SlideMenu, type MenuEntry } from "../slides";
 import { ArtifactCard, ArtifactRow } from "./ArtifactItems";
 import { ArtifactMenu } from "./ArtifactMenu";
 import { DesignSystemMenu } from "./DesignSystemMenu";

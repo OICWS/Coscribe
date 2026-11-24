@@ -12,7 +12,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { EnvironmentDialog } from "./EnvironmentDialog";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ThreadList } from "./ThreadList";
-import { ArtifactsIcon } from "./artifacts/artifactIcons";
+import { ArtifactsIcon } from "./artifacts";
 import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../lib/titleBar";
 import { AppMenuButton, HistoryButtons } from "./WindowControls";
 import {
