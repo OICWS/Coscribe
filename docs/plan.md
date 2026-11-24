@@ -78,10 +78,10 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
-- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
-  `docs/log/2026-11-23-test-selection.md`) and the gate on loosening a limit
-  (`docs/log/2026-11-23-loosening-gate.md`) shipped; still open: the gates on what tests prove,
-  weekly numbers.
+- **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
+  the checks on what tests prove, the frontend features and the weekly numbers
+  (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
+  Mondays: a card far behind its code or a component near its budget is the next piece of work.
 
 - **Frontend features through their index** (#1051, `docs/log/2026-11-23-frontend-features.md`):
   106 imports reach into another feature's files; give each feature an `index.ts` and move its
