@@ -482,9 +482,12 @@ def _plugin_services(plugin_dir: Path) -> list[str]:
         return []
     services: list[str] = []
     for name, config in servers.items():
-        host = urlparse(config.get("url", "")).hostname if isinstance(config, dict) else None
-        label = f"{name} ({host})" if isinstance(host, str) and _SERVICE_WORD.fullmatch(host) else name
-        if isinstance(name, str) and _SERVICE_WORD.fullmatch(name) and label not in services:
+        if not (isinstance(name, str) and _SERVICE_WORD.fullmatch(name)):
+            continue
+        url = config.get("url") if isinstance(config, dict) else None
+        host = urlparse(url).hostname if isinstance(url, str) else None
+        label = f"{name} ({host})" if host and _SERVICE_WORD.fullmatch(host) else name
+        if label not in services:
             services.append(label)
     return services[:_MAX_SERVICES]
 
