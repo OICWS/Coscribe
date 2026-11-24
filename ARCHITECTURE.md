@@ -281,6 +281,9 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`. A folder there may also be
   a plugin in the Claude and Codex format (`plugin.json`, `skills/`), whose skills load as any
   other ([decision 0058](docs/decisions/0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md)).
+  Only a built-in plugin can bring a tool of the app (PPTX Pages brings its build tool); switched
+  off, that tool is left out of what the model can search for, or refuses where every tool is
+  bound, so the tool list keeps its shape (`conversation/capability_guard.py`).
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
   every conversation. The model cannot write to it: it can offer a line (`remember`), and only
