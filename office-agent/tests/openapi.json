@@ -6467,6 +6467,53 @@
         "summary": "Update Skill Enabled"
       }
     },
+    "/api/skills/{name}/export": {
+      "get": {
+        "operationId": "export_skill_api_skills__name__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plugin",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Plugin",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Skill"
+      }
+    },
     "/api/skills/{name}/files": {
       "get": {
         "operationId": "get_skill_files_api_skills__name__files_get",
