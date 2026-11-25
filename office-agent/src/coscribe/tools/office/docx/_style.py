@@ -180,7 +180,10 @@ def _set_theme_east_asian_font(document: Any, face: str, script_code: str) -> No
             for script in font.iter(f"{drawing}font"):
                 if script.get("script") == script_code:
                     script.set("typeface", face)
-    theme._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)  # noqa: SLF001
+    # A plain Part has no blob setter; its bytes live in this attribute.
+    vars(theme)["_blob"] = etree.tostring(
+        root, xml_declaration=True, encoding="UTF-8", standalone=True
+    )
 
 
 def _style_heading(

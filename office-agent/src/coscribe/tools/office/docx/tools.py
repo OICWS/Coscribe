@@ -35,11 +35,9 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         `| cell | cell |` rows for tables. Plain lines become paragraphs.
         Two extra markers on top of that subset:
 
-        - A line that is exactly `[TOC]` inserts a real Word table-of-
-          contents field at that position, built from the document's own
-          headings (levels 1-3, wherever they are in the content). It lists
-          the headings in every viewer; Word adds the page numbers itself
-          the first time the file is opened -- no manual "Update Field".
+        - A line that is exactly `[TOC]` inserts a real Word table of
+          contents there, from the document's headings (levels 1-3); Word
+          adds the page numbers itself when the file is opened.
         - A trailing `{{comment: your comment text}}` on a heading,
           paragraph, bullet, or numbered-item line attaches a real Word
           comment (visible in Word's Comments pane) anchored to that whole
@@ -72,9 +70,7 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         instead of writing it as already-final content -- use this when the
         document should go to a human as a reviewable redline they can
         accept/reject in Word, rather than a silent rewrite. Tables are
-        always written as final content, not tracked, even with
-        `track_changes=True` (documented scope limit -- table-level tracked
-        changes need row/cell markup this tool doesn't generate).
+        always written as final content, not tracked.
 
         Args:
             path: file to write, relative to the workspace root
@@ -94,11 +90,9 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
                 when track_changes is True
             comment_author: author name recorded on `{{comment: ...}}`
                 markers
-            language: the document's language tag, e.g. "zh-CN", "zh-TW",
-                "ja-JP", "ko-KR", "en-US": the language the person wants the
-                document in, which is usually the language they write to you
-                in. It sets the fonts, punctuation and spell checking. Empty
-                guesses it from the text. Ignored with template_path.
+            language: tag of the language the person wants the document in
+                (usually theirs with you), e.g. "zh-CN", "zh-TW", "ja-JP",
+                "en-US"; sets fonts and punctuation. Empty guesses from the text
         """
         return toolkit.write_docx(
             path=path,
