@@ -138,13 +138,11 @@ test("Allowed folders: a folder can be set to read, write and delete, and remove
   }
 });
 
-test("Skills tab: a skill switched off from its menu shows Off, and back on", async ({ page }) => {
+test("Plugins tab: a skill switched off from its menu shows Off, and back on", async ({ page }) => {
   await page.goto(freshThreadPath("settings-skills"));
   await waitForConnected(page);
   await page.getByRole("button", { name: "Settings" }).click();
-  const skillsLoaded = page.waitForResponse((r) => r.url().endsWith("/api/skills") && r.status() === 200);
-  await page.getByRole("button", { name: "Skills", exact: true }).click();
-  await skillsLoaded;
+  await page.getByRole("button", { name: "Plugins", exact: true }).click();
 
   const row = page.getByRole("button", { name: "Open Word Documents" });
   const options = page.getByRole("button", { name: "Options for Word Documents", exact: true });
