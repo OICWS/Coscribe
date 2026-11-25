@@ -197,6 +197,9 @@ def _fit_title(title: str) -> str:
 QUESTION_ANSWER_PREFIX = "[Answers to your question card]"
 ASK_TOOL = "ask_user_question"
 ANSWER_TOOL = "answer_question_card"
+# How ask_user_question's result starts; a conversation from before cards stopped waiting has the
+# person's answer there instead, and that card is answered.
+SHOWN_PREFIX = "The questions are on a card"
 
 OPEN_QUESTION_NOTE = (
     "[Open question card]\n"
@@ -212,9 +215,12 @@ def open_question(messages: Sequence[Any]) -> list[str]:
     """The questions of the card still waiting for an answer, or [] when none is. A call that
     failed drew no card and closed none, as on the page."""
     failed: set[str] = set()
+    results: dict[str, str] = {}
     for message in reversed(messages):
-        if getattr(message, "type", None) == "tool" and getattr(message, "status", "") == "error":
-            failed.add(message.tool_call_id)
+        if getattr(message, "type", None) == "tool":
+            if getattr(message, "status", "") == "error":
+                failed.add(message.tool_call_id)
+            results[message.tool_call_id] = extract_text(message.content)
         human = getattr(message, "type", None) == "human" and not is_steer(message)
         if human and is_question_answer(extract_text(message.content)):
             return []
@@ -226,7 +232,8 @@ def open_question(messages: Sequence[Any]) -> list[str]:
                 return []
             if name == ASK_TOOL:
                 questions = args.get("questions")
-                if not isinstance(questions, list):
+                shown = results.get(call.get("id", ""), "").startswith(SHOWN_PREFIX)
+                if not shown or not isinstance(questions, list):
                     return []
                 return [str(q.get("question", "")) for q in questions if isinstance(q, dict)]
     return []

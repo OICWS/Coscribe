@@ -36,6 +36,7 @@ DELIVERY_CHECK = (
 _PLAN_TOOLS = frozenset({"task_create", "task_update"})
 _ASK_TOOL = "ask_user_question"
 _ANSWER_TOOL = "answer_question_card"
+_SHOWN = "The questions are on a card"
 REPEAT_NOTE = (
     "\n\n[You already made this same call earlier in this turn. If nothing it reads has "
     "changed, use that result rather than calling again; if it didn't give you what you need, "
@@ -179,14 +180,20 @@ _WATCHED_CATEGORIES = frozenset({"filesystem", "documents", "web"})
 def _card_size(messages: Sequence[Any]) -> int:
     """How many questions the latest card the person was shown asks; 0 when there was none."""
     failed: set[str] = set()
+    shown: set[str] = set()
     for message in reversed(messages):
         if isinstance(message, ToolMessage) and message.status == "error":
             failed.add(message.tool_call_id)
+        elif isinstance(message, ToolMessage) and str(message.content).startswith(_SHOWN):
+            shown.add(message.tool_call_id)
         for call in reversed(getattr(message, "tool_calls", None) or []):
             name, args = unwrap_use_tool_call(call["name"], call.get("args") or {})
             if name == _ASK_TOOL and call.get("id") not in failed:
                 questions = args.get("questions")
-                return len(questions) if isinstance(questions, list) else 0
+                # A conversation from before cards stopped waiting has the answer as the result.
+                if call.get("id") not in shown or not isinstance(questions, list):
+                    return 0
+                return len(questions)
     return 0
 
 

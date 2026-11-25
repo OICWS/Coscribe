@@ -162,7 +162,9 @@ def test_a_click_behind_a_note_about_edits_in_the_app_still_answers_the_card() -
     from coscribe.runtime_lg import strip_mode_note
 
     ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
-    shown = ToolMessage(content="shown", tool_call_id="call_1", name="ask_user_question")
+    shown = ToolMessage(
+        content="The questions are on a card", tool_call_id="call_1", name="ask_user_question"
+    )
     edits = "The user edited slide 2 of deck.pptx since your last turn.\n\n"
     click = edits + "[Answers to your question card]\n1. Who is the deck for? -> Team"
     note = OPEN_QUESTION_NOTE.format(questions="- Who is the deck for?")
@@ -170,6 +172,15 @@ def test_a_click_behind_a_note_about_edits_in_the_app_still_answers_the_card() -
     assert open_question([ask, shown]) == ["Who is the deck for?"]
     assert open_question([ask, shown, HumanMessage(content=click)]) == []
     assert strip_mode_note(note + edits + "hello") == edits + "hello"
+
+
+def test_a_card_answered_before_cards_stopped_waiting_is_not_open() -> None:
+    from coscribe.conversation.turn_text import open_question
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    answered = ToolMessage(content="Team", tool_call_id="call_1", name="ask_user_question")
+
+    assert open_question([ask, answered]) == []
 
 
 def test_a_failed_question_call_opens_no_card() -> None:
