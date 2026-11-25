@@ -2,7 +2,6 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type RefObject,
@@ -40,13 +39,6 @@ export function SideChatPanel({ threadId }: { threadId: string }) {
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [messages, waiting, error]);
-
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [draft]);
 
   const send = async () => {
     const text = draft.trim();
@@ -174,7 +166,7 @@ function SideComposer({
           rows={1}
           value={draft}
           aria-label="Side question"
-          className="max-h-40 min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-[14.5px] leading-6 outline-none"
+          className="field-sizing-content max-h-40 min-h-8 min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-[14.5px] leading-6 outline-none"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing)

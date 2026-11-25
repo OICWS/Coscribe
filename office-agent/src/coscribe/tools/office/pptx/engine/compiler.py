@@ -29,6 +29,7 @@ from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properties, utils
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ...._native_svg.svg_to_pptx.drawingml.styles import build_effect_xml, get_element_opacity
+from ..theme import apply_cjk_font_fix
 from . import native
 from .icons import expand_icons
 from .template import Example, canvas, layout, open_template, renumber, start_from
@@ -134,7 +135,11 @@ def compile_pages(
     The deck is written even when pages have errors (their failing elements are left out), so
     a preview can show what the repair has to fix.
     """
-    prs, examples = open_template(template) if template is not None else (Presentation(), [])
+    if template is not None:
+        prs, examples = open_template(template)
+    else:
+        prs, examples = Presentation(), []
+        apply_cjk_font_fix(prs)
     reports: list[PageReport] = []
     size: tuple[int, int] | None = canvas(prs) if template is not None else None
     for name, svg_text in pages:

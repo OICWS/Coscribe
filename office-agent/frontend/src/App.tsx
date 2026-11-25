@@ -267,13 +267,13 @@ function App() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // coscribe's AI started using the browser: show it, so the user watches
-  // each step happen.
+  // Automation can keep running after the user switches conversations.
+  // An unscoped request comes from a link the user opened in the app.
   useEffect(
     () =>
       onBrowserAgent((payload) => {
-        if (!payload.open) return;
-        setPanelOpen("browser", true);
+        if (!payload.open || (payload.threadId && payload.threadId !== threadIdRef.current)) return;
+        setPanelOpen("browser", true, payload.threadId);
       }),
     [],
   );

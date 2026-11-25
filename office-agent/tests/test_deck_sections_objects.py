@@ -3,12 +3,20 @@ folder of sections the way a folder of SVG pages is built (decision 0015)."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import pytest
 from pptx import Presentation
 
-from coscribe.tools.office.pptx.engine import DeckChangedError, build_deck, compile_sections
+from coscribe.tools.office.pptx.engine import (
+    DeckChangedError,
+    build_deck,
+    compile_sections,
+    section_objects,
+)
+from coscribe.tools.office.pptx.engine.section_format import Style
 
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
@@ -153,3 +161,31 @@ def test_a_deck_with_sections_is_not_built_on_a_template(tmp_path: Path) -> None
     (tmp_path / "02.svg").write_text("<svg/>", encoding="utf-8")
     with pytest.raises(ValueError, match="not built on a template"):
         build_deck(tmp_path, tmp_path / "deck.pptx", template=tmp_path / "brand.pptx")
+
+
+def test_a_table_takes_the_pages_font_and_the_theme_has_a_chinese_face(tmp_path: Path) -> None:
+    page = TABLE.replace("<section>", '<section style="font-family:SimHei, Segoe UI">')
+    report, prs = _compile(tmp_path, page)
+    assert report.ok, report.errors()
+    cell = _shape(prs.slides[0], "regions").table.cell(1, 1)
+    r_pr = cell.text_frame.paragraphs[0].runs[0]._r.find(f"{_A}rPr")  # noqa: SLF001
+    faces = {tag: r_pr.find(f"{_A}{tag}").get("typeface") for tag in ("latin", "ea")}
+    assert faces == {"latin": "Segoe UI", "ea": "SimHei"}
+    theme = prs.slide_masters[0].part.part_related_by(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    )
+    assert b'<a:ea typeface="Microsoft YaHei"/>' in theme.blob
+
+
+@pytest.mark.parametrize(
+    ("own", "expected"), [("", "SimHei, Segoe UI"), ("font-family:Georgia;", "Georgia")]
+)
+def test_a_tables_spec_carries_its_own_face_else_the_pages(own: str, expected: str) -> None:
+    elem = ET.fromstring("<table><tr><td>1</td></tr></table>")
+    values = {"left": "0px", "top": "0px", "width": "90px", "height": "30px"}
+    if own:
+        values["font-family"] = expected
+    group = section_objects.table(elem, Style(values, "<table>"), 1.0, "SimHei, Segoe UI")
+
+    spec = json.loads(next(iter(group)).text or "")
+    assert spec["style"]["font_family"] == expected

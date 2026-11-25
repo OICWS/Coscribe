@@ -868,12 +868,16 @@ Clicking a plugin opens its page: its author, version and description, its
 skills as chips, and the parts Coscribe reads but does not use (commands,
 agents, hooks, MCP servers, apps, LSP servers). No connector is listed on a
 plugin: when a skill needs an outside service, the model offers one of
-Coscribe's own connectors in the conversation. On/off and Remove act on the
-whole plugin. Clicking a skill opens it: **Overview** (description, the
+Coscribe's own connectors in the conversation. A plugin's MCP servers are never added or
+started; loading one of its skills tells the model their names and hosts and points it to
+`find_connector` and `offer_connector`. On/off, Remove and Export act on
+the whole plugin. Clicking a skill opens it: **Overview** (description, the
 Coscribe tools it mentions) and **Contents** (its file tree; Markdown
 renders with a preview/source toggle, other text files show with line
 numbers); a plugin's skill goes back to its plugin and is removed only with
-it. The ⋮ menu turns a skill off or removes it.
+it. The ⋮ menu turns a skill off, exports it or removes it. **Export as .zip** gives the
+plugin's or skill's folder as it is (links and Coscribe's own source note left out), which
+Add → Upload takes back. PPTX Pages exports its skill only: its build tool is part of Coscribe.
 
 **On/off is global**: a switched-off skill isn't offered in any
 conversation, and the change applies from the next message, including in

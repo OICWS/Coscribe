@@ -241,6 +241,14 @@ export const removeSkill = (name: string, plugin = false) =>
     undefined,
   );
 
+/** A skill, or with `plugin` the plugin called `name`, as a .zip that Upload takes back. */
+export async function exportSkill(name: string, plugin = false): Promise<{ blob: Blob; name: string }> {
+  const res = await fetch(`/api/skills/${encodeURIComponent(name)}/export${plugin ? "?plugin=true" : ""}`);
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
+  const file = /filename\*=UTF-8''([^;]+)/.exec(res.headers.get("content-disposition") ?? "")?.[1];
+  return { blob: await res.blob(), name: file ? decodeURIComponent(file) : `${name}.zip` };
+}
+
 export const getSkillPlugins = () => getJson<SkillPlugin[]>("/api/skills/plugins");
 
 export const getSkillPlugin = (id: string) =>

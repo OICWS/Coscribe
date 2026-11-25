@@ -37,7 +37,7 @@ export function InstalledPluginView({
           </div>
         </div>
         <ToggleSwitch on={entry.enabled} onClick={onToggle} label={entry.enabled ? "Turn off" : "Turn on"} />
-        <SkillMenu label={info.name} enabled={entry.enabled} removable={entry.source !== "builtin"} onToggle={onToggle} onRemove={onRemove} />
+        <SkillMenu label={info.name} enabled={entry.enabled} removable={entry.source !== "builtin"} plugin onToggle={onToggle} onRemove={onRemove} />
       </div>
       {info.description && <p className="text-[15px] leading-relaxed">{info.description}</p>}
       <div>

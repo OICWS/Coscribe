@@ -223,21 +223,56 @@
 ===== word/numbering.xml
 <same as _shared.txt>
 ===== word/settings.xml
-<same as _shared.txt>
+<_shared.txt with this diff>
+@@ -37,5 +37,5 @@
+     <m:naryLim m:val="undOvr"/>
+   </m:mathPr>
+-  <w:themeFontLang w:eastAsia="ja-JP" w:val="en-US"/>
++  <w:themeFontLang w:eastAsia="zh-CN" w:val="en-US"/>
+   <w:clrSchemeMapping w:accent1="accent1" w:accent2="accent2" w:accent3="accent3" w:accent4="accent4" w:accent5="accent5" w:accent6="accent6" w:bg1="light1" w:bg2="light2" w:followedHyperlink="followedHyperlink" w:hyperlink="hyperlink" w:t1="dark1" w:t2="dark2"/>
+   <w:doNotAutoCompressPictures/>
 ===== word/styles.xml
 <_shared.txt with this diff>
-@@ -4,6 +4,6 @@
+@@ -3,8 +3,8 @@
+     <w:rPrDefault>
        <w:rPr>
-         <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+-        <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
 -        <w:sz w:val="22"/>
 -        <w:szCs w:val="22"/>
+-        <w:lang w:bidi="ar-SA" w:eastAsia="en-US" w:val="en-US"/>
++        <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri" w:hint="eastAsia"/>
 +        <w:sz w:val="21"/>
 +        <w:szCs w:val="21"/>
-         <w:lang w:bidi="ar-SA" w:eastAsia="en-US" w:val="en-US"/>
++        <w:lang w:bidi="ar-SA" w:eastAsia="zh-CN" w:val="en-US"/>
        </w:rPr>
+     </w:rPrDefault>
 ===== word/stylesWithEffects.xml
 <same as _shared.txt>
 ===== word/theme/theme1.xml
-<same as _shared.txt>
+<_shared.txt with this diff>
+@@ -42,9 +42,9 @@
+       <a:majorFont>
+         <a:latin typeface="Calibri"/>
+-        <a:ea typeface=""/>
++        <a:ea typeface="微软雅黑"/>
+         <a:cs typeface=""/>
+         <a:font script="Jpan" typeface="ＭＳ ゴシック"/>
+         <a:font script="Hang" typeface="맑은 고딕"/>
+-        <a:font script="Hans" typeface="宋体"/>
++        <a:font script="Hans" typeface="微软雅黑"/>
+         <a:font script="Hant" typeface="新細明體"/>
+         <a:font script="Arab" typeface="Times New Roman"/>
+@@ -77,9 +77,9 @@
+       <a:minorFont>
+         <a:latin typeface="Cambria"/>
+-        <a:ea typeface=""/>
++        <a:ea typeface="微软雅黑"/>
+         <a:cs typeface=""/>
+         <a:font script="Jpan" typeface="ＭＳ 明朝"/>
+         <a:font script="Hang" typeface="맑은 고딕"/>
+-        <a:font script="Hans" typeface="宋体"/>
++        <a:font script="Hans" typeface="微软雅黑"/>
+         <a:font script="Hant" typeface="新細明體"/>
+         <a:font script="Arab" typeface="Arial"/>
 ===== word/webSettings.xml
 <same as _shared.txt>

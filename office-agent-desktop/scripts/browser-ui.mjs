@@ -41,10 +41,18 @@ export async function checkBrowserOverlay(app, window, until) {
     host.setBounds(screen.getPrimaryDisplay().workArea);
     host.show(); host.focus();
   });
+  const area = window.getByTestId("browser-page-area");
+  const activeThread = threadId;
+  assert.ok(activeThread, "the chat socket identifies the active conversation");
+  // Late messages from a workflow in another chat reach this same app window.
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].webContents.send("browser-panel:agent", { open: true, threadId: "scheduled-background-fixture" });
+  });
+  await window.waitForTimeout(250);
+  assert.equal(await area.count(), 0, "background automation must leave this chat's Browser panel closed");
   await app.evaluate(({ BrowserWindow }, id) => {
     BrowserWindow.getAllWindows()[0].webContents.send("browser-panel:agent", { open: true, threadId: id });
-  }, threadId);
-  const area = window.getByTestId("browser-page-area");
+  }, activeThread);
   await area.waitFor();
   const html = '<title>Browser form check</title><style>body{font:16px system-ui;margin:0;background:#f1f5f9;color:#16324f}header{background:#164e80;color:white;padding:24px}main{margin:24px;padding:24px;background:white;border-radius:12px}label{display:block;margin:16px 0}input{display:block;margin-top:6px;padding:10px;border:1px solid #b7c5d3;border-radius:6px}</style><header>Browser form check</header><main><h2>The page remains visible</h2><p>Open Context usage beside this form.</p><label>Company code<input value="1000"></label><label>Posting date<input value="2026-11-17"></label><p>Page updates: <span id="ticks">0</span></p></main><script>let n=0;setInterval(()=>ticks.textContent=++n,100)</script>';
   await window.evaluate(url => window.coscribeDesktop.browserPanelNavigate(url), `data:text/html,${encodeURIComponent(html)}`);

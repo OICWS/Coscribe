@@ -220,6 +220,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/script-isolation",
     "/api/skills/plugins/{plugin_id}",
     "/api/skills/plugins/{plugin_id}/files/{path}",
+    "/api/skills/{name}/export",
     "/api/skills/{name}/files",
     "/api/skills/{name}/files/{path}",
     "/api/subagents/{task_id}/transcript",
