@@ -64,22 +64,30 @@ Last reviewed: 2026-11-22.
    A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
    `docs/log/2026-11-19-allowed-folders-per-workspace.md`, the dialog's picker in
    `docs/log/2026-11-19-workspace-folder-picker.md`. `settings.json`'s env reaches scripts and commands in `docs/log/2026-11-21-workspace-settings-env.md`.
-5. **Plugins in the Claude and Codex format** (#1036, decision 0058, proposed). A plugin is a
-   folder (`plugin.json`, `skills/`, `.mcp.json`); a lone `SKILL.md` is a one-skill plugin.
-   Steps, one PR each: read the format and uploads; Settings › Plugins; sources from a
-   repository's `marketplace.json`; built-in plugins installed by default, PPTX Pages first;
-   `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record;
-   reading the format and uploads (`docs/log/2026-11-22-plugin-folders.md`); Settings › Plugins
-   (`docs/log/2026-11-23-plugins-page.md`); sources the person adds by address
-   (`docs/log/2026-11-23-plugin-sources.md`); built-in plugins, PPTX Pages bringing its build
-   tool (`docs/log/2026-11-24-builtin-plugins.md`); `load_skill` naming a plugin's services and
-   pointing to the connector tools (`docs/log/2026-11-24-plugin-connector-hint.md`); export as
-   a `.zip` (`docs/log/2026-11-25-plugin-export.md`). Open: PPTX Pages exported with a converter
-   that runs outside Coscribe, which needs the deck engine split into a package of its own
-   (its build imports most of `coscribe.tools`); decided 2026-11-25 to do it as its own item. Open in step 4: Discover's own catalog still adds
-   a plugin's skills one by one and is built by hand; building it from the curated repositories'
-   `marketplace.json` and adding its plugins whole, and following an entry that points to
-   another GitHub repository (`github`, `git-subdir`).
+5. **Plugins in the Claude and Codex format** (#1036, decision 0058). All seven steps shipped
+   (logs `2026-11-22-plugin-folders` to `2026-11-25-plugin-export` in `docs/log/`). Open from
+   step 4: Discover's own catalog still adds a plugin's skills one by one and is built by hand;
+   building it from the curated repositories' `marketplace.json` and adding its plugins whole,
+   and following an entry that points to another GitHub repository (`github`, `git-subdir`).
+6. **Coscribe's best office work as plugins for any agent** (direction set by the maintainer
+   2026-11-25). Coscribe's value is its office quality, measured against public benchmarks
+   (#1072), more than the app around it; people look for plugins first, so the strongest
+   capabilities also ship as standalone plugins that install in Claude, Codex or another agent
+   and name what Coscribe adds (live preview, slide-by-slide editing, render checks). A
+   capability qualifies when those agents have nothing as good, its output is a plain file, and
+   its engine can be split out. Order, one at a time, judging the response before the next:
+   1. **PPTX Pages**: the deck engine (`tools/office/pptx/engine/`, with `_native_svg` and
+      `_native_formula` from ppt-master, MIT) as a package of its own with a command line,
+      needing only python-pptx and lxml, which Coscribe itself then uses so the two never
+      drift; its build imports most of `coscribe.tools` today.
+   2. **Dashboard**: a filterable one-page HTML of real data where every figure shows its
+      source; the output is one file, the cheapest to split.
+   3. **Editing an existing deck** (PPTX Editing): slides, SmartArt, tables, formulas and
+      animation on a person's own template without breaking it; the largest split.
+   Not now: Word and Excel (Claude's own skills cover most of it; the tracked-change core is
+   docx-mcp's). Not split: Design and Doc, which need Coscribe's canvas and editor.
+   Published from a GitHub repository with a `marketplace.json`, which Claude and Codex add
+   directly and Coscribe's Discover reads as a source (step 4 of #1036).
 
 ## Open, smaller
 
