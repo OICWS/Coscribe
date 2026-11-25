@@ -21,6 +21,7 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         track_changes: bool = False,
         change_author: str = "Coscribe",
         comment_author: str = "Coscribe",
+        language: str = "",
     ) -> dict[str, object]:
         """Create a Word (.docx) file under the workspace from structured text.
 
@@ -93,6 +94,11 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
                 when track_changes is True
             comment_author: author name recorded on `{{comment: ...}}`
                 markers
+            language: the document's language tag, e.g. "zh-CN", "zh-TW",
+                "ja-JP", "ko-KR", "en-US": the language the person wants the
+                document in, which is usually the language they write to you
+                in. It sets the fonts, punctuation and spell checking. Empty
+                guesses it from the text. Ignored with template_path.
         """
         return toolkit.write_docx(
             path=path,
@@ -104,6 +110,7 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
             track_changes=track_changes,
             change_author=change_author,
             comment_author=comment_author,
+            language=language,
         )
 
     return [

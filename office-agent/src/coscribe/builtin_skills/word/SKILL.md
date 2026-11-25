@@ -9,9 +9,11 @@ rewrite the whole content and overwrite=True" rule).
 ## A new document
 
 Without `template_path`, `write_docx` lays the document out itself: fonts
-(including Chinese), heading styles, A4, page numbers, and tables with a
-shaded header row; a last row whose first cell is "Total" or "合计" is set
-bold. Spend the effort on content and structure instead:
+for the document's language, heading styles, A4, page numbers, and tables
+with a shaded header row; a last row whose first cell is "Total" or "合计" is
+set bold. Pass `language` as the language the person wants the document in
+(usually the one they write to you in). Spend the effort on content and
+structure instead:
 
 - Decide who reads it and what they must see first. The opening says what
   the document is, for whom, and its point in two lines.

@@ -10,9 +10,28 @@ _HEADING_GREY = "262626"
 _BORDER_GREY = "BFBFBF"
 LATIN_FONT = "Calibri"
 EAST_ASIAN_FONT = "Microsoft YaHei"
-# Word (16, Windows) ignores the English name in the document defaults and falls back to SimSun,
-# while it resolves the face's own Chinese name everywhere.
-_WORD_EAST_ASIAN_FONT = "微软雅黑"
+# The East Asian face, and the theme's script code, for each language a document can be marked.
+# The faces are written by their own local names: Word (16, Windows) ignored "Microsoft YaHei" in
+# the document defaults and fell back to SimSun, while it resolves the local name everywhere.
+_EAST_ASIAN = {
+    "zh-CN": ("微软雅黑", "Hans"),
+    "zh-TW": ("微軟正黑體", "Hant"),
+    "ja-JP": ("游ゴシック", "Jpan"),
+    "ko-KR": ("맑은 고딕", "Hang"),
+}
+_LANGUAGE_ALIASES = {
+    "zh": "zh-CN",
+    "zh-hans": "zh-CN",
+    "zh-sg": "zh-CN",
+    "zh-hant": "zh-TW",
+    "zh-hk": "zh-TW",
+    "zh-mo": "zh-TW",
+    "ja": "ja-JP",
+    "ko": "ko-KR",
+}
+_LANGUAGE_TAG = re.compile(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*")
+_KANA = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff]")
+_HANGUL = re.compile(r"[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]")
 TABLE_STYLE_ID = "ReportTable"
 _TABLE_STYLE_NAME = "Report Table"
 
@@ -40,11 +59,32 @@ def has_cjk(text: str) -> bool:
     return bool(_CJK.search(text))
 
 
+def document_language(language: str, text: str) -> str:
+    """The language a new document is marked in: `language` as the model gave it (a tag such as
+    "zh-CN", "ja", "en-GB"), else the script of `text`, else US English."""
+    language = language.strip()
+    if language:
+        if not _LANGUAGE_TAG.fullmatch(language):
+            raise ValueError(
+                f'language is a language tag such as "zh-CN" or "en-US", got {language!r}'
+            )
+        canonical = _LANGUAGE_ALIASES.get(language.lower())
+        if canonical:
+            return canonical
+        main, _, region = language.partition("-")
+        return f"{main.lower()}-{region.upper()}" if region else main.lower()
+    if _KANA.search(text):
+        return "ja-JP"
+    if _HANGUL.search(text):
+        return "ko-KR"
+    return "zh-CN" if has_cjk(text) else "en-US"
+
+
 def is_total_row(row: list[str]) -> bool:
     return bool(row) and bool(_TOTAL_LABEL.match(row[0]))
 
 
-def apply_house_style(document: Any, *, cjk: bool) -> None:
+def apply_house_style(document: Any, *, language: str) -> None:
     """Restyle a blank python-docx document: fonts, spacing, headings, a
     table style, A4 paper and a page-number footer. Spacing and fonts go into the
     document defaults rather than Normal, because a table style overrides
@@ -55,10 +95,11 @@ def apply_house_style(document: Any, *, cjk: bool) -> None:
     styles_element = document.styles.element
     defaults = styles_element.find(qn("w:docDefaults"))
     run_defaults = defaults.find(qn("w:rPrDefault")).find(qn("w:rPr"))
-    _set_fonts(run_defaults)
-    if cjk:
-        _set_chinese(document, run_defaults)
-    size = "21" if cjk else "22"
+    east_asian = _EAST_ASIAN.get(language)
+    face = east_asian[0] if east_asian else _EAST_ASIAN["zh-CN"][0]
+    _set_fonts(run_defaults, face)
+    _set_language(document, run_defaults, language)
+    size = "21" if east_asian else "22"
     for tag in ("w:sz", "w:szCs"):
         run_defaults.find(qn(tag)).set(qn("w:val"), size)
     spacing = defaults.find(qn("w:pPrDefault")).find(qn("w:pPr")).find(qn("w:spacing"))
@@ -68,8 +109,8 @@ def apply_house_style(document: Any, *, cjk: bool) -> None:
     spacing.set(qn("w:lineRule"), "auto")
 
     for level, size_pt, before_pt, colour in _HEADINGS:
-        _style_heading(document.styles[f"Heading {level}"], size_pt, before_pt, colour)
-    _style_heading(document.styles["Title"], 22.0, 0.0, ACCENT)
+        _style_heading(document.styles[f"Heading {level}"], size_pt, before_pt, colour, face)
+    _style_heading(document.styles["Title"], 22.0, 0.0, ACCENT, face)
     styles_element.append(_table_style_element())
     for section in document.sections:
         # python-docx's blank document is US Letter; A4 is the paper nearly everywhere else.
@@ -77,7 +118,7 @@ def apply_house_style(document: Any, *, cjk: bool) -> None:
     _add_page_number_footer(document)
 
 
-def _set_fonts(r_pr: Any) -> None:
+def _set_fonts(r_pr: Any, east_asian_face: str) -> None:
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
@@ -91,30 +132,37 @@ def _set_fonts(r_pr: Any) -> None:
     fonts.set(qn("w:ascii"), LATIN_FONT)
     fonts.set(qn("w:hAnsi"), LATIN_FONT)
     fonts.set(qn("w:cs"), LATIN_FONT)
-    fonts.set(qn("w:eastAsia"), _WORD_EAST_ASIAN_FONT)
+    fonts.set(qn("w:eastAsia"), east_asian_face)
 
 
-def _set_chinese(document: Any, run_defaults: Any) -> None:
-    """Mark the text Chinese. With an English East Asian language Word draws the shared
-    punctuation (curly quotes, dashes, ellipses) in the Latin face, narrow and breakable from its
-    character; python-docx's template also carries a Japanese theme language, which sends every
-    theme-font style (Heading 4 and below, captions, tables) to MS Mincho and MS Gothic."""
+def _set_language(document: Any, run_defaults: Any, language: str) -> None:
+    """Mark the document's language. With an English East Asian language Word draws the shared
+    punctuation (curly quotes, dashes, ellipses) of Chinese, Japanese or Korean text in the Latin
+    face, narrow and breakable from its character; python-docx's template also carries a Japanese
+    theme language, which sends every theme-font style (Heading 4 and below, captions, tables) to
+    MS Mincho and MS Gothic."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
-    run_defaults.find(qn("w:rFonts")).set(qn("w:hint"), "eastAsia")
     lang = run_defaults.find(qn("w:lang"))
     if lang is None:
         lang = OxmlElement("w:lang")
         run_defaults.append(lang)
-    lang.set(qn("w:eastAsia"), "zh-CN")
     theme_lang = document.settings.element.find(qn("w:themeFontLang"))
+    east_asian = _EAST_ASIAN.get(language)
+    if east_asian is None:
+        lang.set(qn("w:val"), language)
+        if theme_lang is not None:
+            theme_lang.set(qn("w:val"), language)
+        return
+    run_defaults.find(qn("w:rFonts")).set(qn("w:hint"), "eastAsia")
+    lang.set(qn("w:eastAsia"), language)
     if theme_lang is not None:
-        theme_lang.set(qn("w:eastAsia"), "zh-CN")
-    _set_theme_east_asian_font(document)
+        theme_lang.set(qn("w:eastAsia"), language)
+    _set_theme_east_asian_font(document, *east_asian)
 
 
-def _set_theme_east_asian_font(document: Any) -> None:
+def _set_theme_east_asian_font(document: Any, face: str, script_code: str) -> None:
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
     from lxml import etree
 
@@ -128,18 +176,20 @@ def _set_theme_east_asian_font(document: Any) -> None:
         for font in root.iter(f"{drawing}{role}"):
             ea = font.find(f"{drawing}ea")
             if ea is not None:
-                ea.set("typeface", _WORD_EAST_ASIAN_FONT)
+                ea.set("typeface", face)
             for script in font.iter(f"{drawing}font"):
-                if script.get("script") == "Hans":
-                    script.set("typeface", _WORD_EAST_ASIAN_FONT)
+                if script.get("script") == script_code:
+                    script.set("typeface", face)
     theme._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)  # noqa: SLF001
 
 
-def _style_heading(style: Any, size_pt: float, before_pt: float, colour: str) -> None:
+def _style_heading(
+    style: Any, size_pt: float, before_pt: float, colour: str, east_asian_face: str
+) -> None:
     from docx.oxml.ns import qn
     from docx.shared import Pt, RGBColor
 
-    _set_fonts(style.element.get_or_add_rPr())
+    _set_fonts(style.element.get_or_add_rPr(), east_asian_face)
     style.font.size = Pt(size_pt)
     style.font.bold = True
     style.font.color.rgb = RGBColor.from_string(colour)
