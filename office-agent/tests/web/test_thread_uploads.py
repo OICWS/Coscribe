@@ -341,22 +341,33 @@ def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
         params = {"path": uploaded["path"], "thread_id": "chat"}
         outside = tmp_path / "outside.docx"
         outside.write_bytes(original)
-        assert client.get(url, params={**params, "path": str(outside)}).status_code == 403
+        assert client.post(url, params={**params, "path": str(outside)}).status_code == 403
+        assert client.get(url, params=params).status_code == 405
         assert client.head(url, params=params).status_code == 200
         assert opened == []
-        first = client.get(url, params=params)
+        first = client.post(url, params=params)
         assert first.status_code == 200
         assert first.content.startswith(b"%PDF")
         assert first.headers["cache-control"] == "no-store"
-        assert client.get(url, params=params).content == first.content
+        assert client.post(url, params=params).content == first.content
         assert len(opened) == 1
         assert opened[0] != source and not opened[0].exists()
         assert source.read_bytes() == original
         source.write_bytes(docx("A different saved version"))
         assert client.head(url, params=params).headers["etag"] != first.headers["etag"]
-        assert client.get(url, params=params).content != first.content
+        assert client.post(url, params=params).content != first.content
         assert len(opened) == 2
         source.write_bytes(b"Not a Word package")
-        assert client.get(url, params=params).status_code == 422
+        assert "damaged or password-protected" in client.post(url, params=params).json()["error"]
         assert len(opened) == 2
         assert not list(source.parent.glob("*.pdf"))
+
+        def cannot_convert(*args, **kwargs) -> None:
+            raise ValueError("Office error in /local/private/temp/preview.pdf")
+
+        monkeypatch.setattr(ConvertToolkit, "convert_office_file", cannot_convert)
+        source.write_bytes(docx("A version the engine refuses"))
+        failed = client.post(url, params=params)
+        assert failed.status_code == 422
+        assert "Couldn't prepare a Word preview" in failed.json()["error"]
+        assert "/local/private" not in failed.text

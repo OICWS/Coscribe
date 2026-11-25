@@ -2011,8 +2011,8 @@
       }
     },
     "/api/attachment/docx": {
-      "get": {
-        "operationId": "get_word_preview_api_attachment_docx_get",
+      "post": {
+        "operationId": "get_word_preview_api_attachment_docx_post",
         "parameters": [
           {
             "in": "query",

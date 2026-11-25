@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import shutil
 import tempfile
 from collections import OrderedDict
 from collections.abc import Callable
+from enum import Enum
 from pathlib import Path
 from threading import Lock
 from zipfile import BadZipFile, ZipFile
@@ -22,12 +24,32 @@ _MAX_CACHE_BYTES = 48 * 1024 * 1024
 _WORD_DOCUMENT_TYPE = (
     b"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
 )
+logger = logging.getLogger(__name__)
+
+
+class _PreviewProblem(Enum):
+    TOO_LARGE = "This document is too large to preview. Open it in its own app."
+    INVALID = "This file is not a standard Word DOCX document."
+    MACROS = "Word preview is unavailable for documents containing macros."
+    DAMAGED = "This Word document is damaged or password-protected."
+    CHANGED = "The document changed while the preview was starting. Try again."
+    OUTPUT_TOO_LARGE = "The generated preview is too large to display. Open it in its own app."
+    CONVERSION_FAILED = (
+        "Couldn't prepare a Word preview. Check that Word, WPS, or LibreOffice is available, "
+        "or open the original."
+    )
+
+
+class _WordPreviewError(ValueError):
+    def __init__(self, problem: _PreviewProblem) -> None:
+        super().__init__(problem.value)
+        self.problem = problem
 
 
 def word_preview_version(path: Path) -> str:
     stat = path.stat()
     if stat.st_size > _MAX_DOCX_BYTES:
-        raise ValueError("This document is too large to preview. Open it in its own app.")
+        raise _WordPreviewError(_PreviewProblem.TOO_LARGE)
     return f'"{stat.st_size:x}-{stat.st_mtime_ns:x}-{stat.st_ctime_ns:x}-{stat.st_ino:x}"'
 
 
@@ -39,11 +61,11 @@ def _check_document(path: Path) -> None:
             with archive.open(types) as content:
                 manifest = content.read(512 * 1024).replace(b"\0", b"")
             if _WORD_DOCUMENT_TYPE not in manifest or b"macroEnabled" in manifest:
-                raise ValueError("This file is not a standard Word DOCX document.")
+                raise _WordPreviewError(_PreviewProblem.INVALID)
             if any(part.filename.lower().endswith("vbaproject.bin") for part in archive.infolist()):
-                raise ValueError("Word preview is unavailable for documents containing macros.")
+                raise _WordPreviewError(_PreviewProblem.MACROS)
     except (BadZipFile, KeyError, RuntimeError):
-        raise ValueError("This Word document is damaged or password-protected.") from None
+        raise _WordPreviewError(_PreviewProblem.DAMAGED) from None
 
 
 class WordPreviews:
@@ -74,15 +96,17 @@ class WordPreviews:
             snapshot = folder / "document.docx"
             shutil.copyfile(source, snapshot)
             if word_preview_version(source) != version:
-                raise ValueError("The document changed while the preview was starting. Try again.")
+                raise _WordPreviewError(_PreviewProblem.CHANGED)
             _check_document(snapshot)
             target = folder / "preview.pdf"
             (convert,) = build_convert_tools(folder, state_dir=self._state_dir)
-            convert("document.docx", "pdf", "preview.pdf")
-            if target.stat().st_size > _MAX_PDF_BYTES:
-                raise ValueError(
-                    "The generated preview is too large to display. Open it in its own app."
-                )
+            try:
+                convert("document.docx", "pdf", "preview.pdf")
+                size = target.stat().st_size
+            except (OSError, ValueError) as exc:
+                raise _WordPreviewError(_PreviewProblem.CONVERSION_FAILED) from exc
+            if size > _MAX_PDF_BYTES:
+                raise _WordPreviewError(_PreviewProblem.OUTPUT_TOO_LARGE)
             return target.read_bytes()
 
 
@@ -91,7 +115,7 @@ def add_word_preview_routes(
 ) -> None:
     word_previews = WordPreviews(state_dir)
 
-    @router.get("/api/attachment/docx", response_class=Response)
+    @router.post("/api/attachment/docx", response_class=Response)
     async def get_word_preview(request: Request, path: str, thread_id: str) -> Response:
         try:
             file_path = _scope(thread_id).resolve(path)
@@ -109,9 +133,17 @@ def add_word_preview_routes(
             )
         except FileNotFoundError:
             return JSONResponse({"error": "No such Word document."}, status_code=404)
-        except (OSError, ValueError) as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
+        except _WordPreviewError as exc:
+            if exc.problem is _PreviewProblem.CONVERSION_FAILED:
+                logger.warning("Word preview conversion failed", exc_info=True)
+            return JSONResponse({"error": exc.problem.value}, status_code=422)
+        except (OSError, ValueError):
+            logger.warning("Word preview could not read the document", exc_info=True)
+            return JSONResponse(
+                {"error": "Couldn't read the Word document for preview."}, status_code=422
+            )
 
+    # HEAD polls the source version only. Preview generation uses the launch-token-guarded POST.
     router.add_api_route(
         "/api/attachment/docx", get_word_preview, methods=["HEAD"], include_in_schema=False
     )

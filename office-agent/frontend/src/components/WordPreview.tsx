@@ -23,7 +23,7 @@ function useWordPreview(url: string) {
       if (!abort.signal.aborted) setLoaded({ url, revision, preview });
     };
     const load = async () => {
-      const response = await fetch(url, { signal: abort.signal });
+      const response = await fetch(url, { method: "POST", signal: abort.signal });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(body?.error ?? "Couldn't prepare this Word preview.");
