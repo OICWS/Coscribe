@@ -1802,7 +1802,7 @@ def _build_native_table(elem: ET.Element, ctx: ConvertContext, payload: dict[str
         inherited = getattr(ctx, "inherited_styles", None) or {}
         font_face = _most_common_value(
             _fallback_text_attr_values(elem, "font-family", inherited.get("font-family"))
-        )
+        ) or inherited.get("font-family")
     body_font_size = _font_size_hpt(style.get("font_size"), 18)
     band_rows_enabled = _table_bool(
         style.get("band_row"),

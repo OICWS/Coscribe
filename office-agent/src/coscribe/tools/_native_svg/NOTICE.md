@@ -47,7 +47,10 @@ coscribe's own code that walks an SVG page and packages the slides lives in
    (`native_objects/__init__.py`, `formula.py`, `inline_formula.py`,
    `formula_run_properties.py`, and `drawingml/elements.py`) import `..._native_formula`
    instead, so `native_objects/__init__.py` now differs from upstream by that one line.
-7. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
+7. `svg_to_pptx/native_objects/table.py`'s `_build_native_table` falls back to the page's
+   inherited `font-family` when the table's own text gives no face: a table marker holds its
+   cells as JSON, so there is no text to read, and the table fell to the theme's Calibri: 1 line.
+8. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
 
 The upstream project checks its own attribution (SKILL.md metadata, LICENSE, SPONSORS) at its
 script entry points; none of those entry points is in this copy. The MIT licence below is kept

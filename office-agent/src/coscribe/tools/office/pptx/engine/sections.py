@@ -23,6 +23,7 @@ from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, utils
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ..animation import add_animation_step
+from ..theme import apply_cjk_font_fix
 from ..transitions import set_slide_transition
 from . import section_objects
 from .checker import check_deck
@@ -92,6 +93,7 @@ def compile_sections(
     first edited), compiled as `compile_pages` does. The deck is written even when sections
     have errors, so a preview can show what the repair has to fix."""
     prs = Presentation()
+    apply_cjk_font_fix(prs)
     prs.slide_width, prs.slide_height = (Emu(v * EMU_PER_PX) for v in CANVAS)
     folder = sections_dir or resource_root
     reports = []
@@ -181,7 +183,7 @@ def _plan(
     elif tag == "img":
         svg = _picture(elem, style, drawing)
     elif tag == "table":
-        svg = section_objects.table(elem, style, _SCALE)
+        svg = section_objects.table(elem, style, _SCALE, section.font)
     elif tag == "x-chart":
         svg = section_objects.chart(elem, style, _SCALE)
     elif tag == "x-icon":
