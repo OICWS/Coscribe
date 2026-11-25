@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from datetime import date, time, timedelta
+import re
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any, BinaryIO
 from zipfile import ZipFile
@@ -83,8 +84,98 @@ def _style(cell: Any) -> dict[str, Any]:
     }
 
 
+_DATE_TOKEN = re.compile(
+    r'"[^"]*"|\\.|\[[^\]]*\]|yyyy|yy|mmmmm|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s|am/pm|a/p|.',
+    re.IGNORECASE,
+)
+_MONTHS = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
+def _date_display(value: date | time, fmt: str) -> str:
+    moment = (
+        value
+        if isinstance(value, datetime)
+        else datetime.combine(value, time())
+        if isinstance(value, date)
+        else datetime.combine(date(1900, 1, 1), value)
+    )
+    tokens = _DATE_TOKEN.findall(fmt.split(";")[0])
+    codes = [t.lower() for t in tokens if t[0].lower() in "ymdhs"]
+    if not codes:
+        # General or a number format: a date cell still reads as a date.
+        if isinstance(value, time):
+            return value.isoformat(timespec="seconds")
+        midnight = moment.time() == time()
+        return moment.strftime("%Y-%m-%d" if midnight else "%Y-%m-%d %H:%M:%S")
+    twelve = any(t.lower() in ("am/pm", "a/p") for t in tokens)
+    hour = moment.hour % 12 or 12 if twelve else moment.hour
+    out: list[str] = []
+    seen: list[str] = []
+    for i, token in enumerate(tokens):
+        low = token.lower()
+        if low[0] in "ymdhs":
+            # Excel reads m as minutes right after an hour code or right before a seconds code.
+            later = [t.lower() for t in tokens[i + 1 :] if t[0].lower() in "ymdhs"]
+            minutes = low in ("m", "mm") and (
+                (seen and seen[-1][0] == "h") or (later and later[0][0] == "s")
+            )
+            seen.append(low)
+            if minutes:
+                out.append(f"{moment.minute:02d}" if low == "mm" else str(moment.minute))
+            elif low[0] == "y":
+                out.append(f"{moment.year % 100:02d}" if len(low) == 2 else str(moment.year))
+            elif low[0] == "m":
+                name = _MONTHS[moment.month - 1]
+                out.append(
+                    {
+                        "m": str(moment.month),
+                        "mm": f"{moment.month:02d}",
+                        "mmm": name[:3],
+                        "mmmm": name,
+                        "mmmmm": name[0],
+                    }[low]
+                )
+            elif low[0] == "d":
+                day = _DAYS[moment.weekday()]
+                out.append(
+                    {"d": str(moment.day), "dd": f"{moment.day:02d}", "ddd": day[:3], "dddd": day}[
+                        low
+                    ]
+                )
+            elif low[0] == "h":
+                out.append(f"{hour:02d}" if low == "hh" else str(hour))
+            else:
+                out.append(f"{moment.second:02d}" if low == "ss" else str(moment.second))
+        elif low in ("am/pm", "a/p"):
+            mark = "AM" if moment.hour < 12 else "PM"
+            out.append(mark if low == "am/pm" else mark[0])
+        elif token.startswith('"'):
+            out.append(token[1:-1])
+        elif token.startswith("\\"):
+            out.append(token[1:])
+        elif not token.startswith("["):
+            out.append(token)
+    return "".join(out)
+
+
 def _display(value: Any, fmt: str) -> str:
-    if isinstance(value, date | time | timedelta):
+    if isinstance(value, date | time):
+        return _date_display(value, fmt[:200])
+    if isinstance(value, timedelta):
         return str(value)
     if isinstance(value, int | float) and not isinstance(value, bool):
         # An invalid or enormous custom format shouldn't hide the worksheet.

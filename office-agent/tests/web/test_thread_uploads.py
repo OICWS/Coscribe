@@ -400,3 +400,46 @@ def test_xlsx_preview_rejects_oversized_merged_ranges(
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         response = client.post("/api/attachment/xlsx", params={"path": "merges.xlsx"})
     assert response.status_code == 413
+
+
+def test_xlsx_preview_shows_dates_in_their_number_format(tmp_path: Path) -> None:
+    from datetime import date, datetime
+
+    from openpyxl import Workbook
+    from openpyxl.chart import LineChart, Reference
+
+    from coscribe.web import spreadsheet_drawings, spreadsheet_preview
+
+    path = tmp_path / "dates.xlsx"
+    book = Workbook()
+    sheet = book.active
+    assert sheet is not None
+    shown_as = [
+        (datetime(2026, 11, 5, 14, 7, 9), "yyyy-mm-dd"),
+        (datetime(2026, 11, 5, 14, 7, 9), "h:mm AM/PM"),
+        (date(2026, 3, 1), "mmm d, yyyy"),
+        (datetime(2026, 1, 2), 'yyyy"年"m"月"d"日"'),
+        (datetime(2026, 1, 2, 9, 30), "General"),
+    ]
+    for row, (value, fmt) in enumerate(shown_as, start=1):
+        sheet.cell(row, 1, value).number_format = fmt
+        sheet.cell(row, 2, row * 10)
+    chart = LineChart()
+    chart.add_data(Reference(sheet, min_col=2, min_row=1, max_row=5))
+    sheet.add_chart(chart, "D2")
+    book.save(path)
+
+    preview = spreadsheet_preview.read_spreadsheet(path, None)
+
+    shown = {cell[0]: cell[2] for cell in preview["sheet"]["cells"] if cell[1] == 1}
+    assert shown == {
+        1: "2026-11-05",
+        2: "2:07 PM",
+        3: "Mar 1, 2026",
+        4: "2026年1月2日",
+        5: "46024.39583",  # Excel too shows a General date as its serial number
+    }
+    assert spreadsheet_drawings.chart_references(sheet) == {"Sheet"}
+    (line,) = preview["sheet"]["drawings"]
+    assert line["plot"] == "line"
+    assert line["series"] == [[10.0, 20.0, 30.0, 40.0, 50.0]]
