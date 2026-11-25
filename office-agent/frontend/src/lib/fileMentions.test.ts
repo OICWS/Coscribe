@@ -4,7 +4,7 @@ import { canvasOfPage, FILE_LINK, fileLinkPath, filesByName, madeFiles, remarkFi
 const call = (toolName: string, path: string, extra: object = {}) => ({ toolName, arguments: { path }, result: "ok", ...extra });
 
 describe("touchedFiles", () => {
-  it("lists the documents and decks a finished call made or changed, once each, and not reads or failures", () => {
+  it("lists the documents, workbooks and decks a finished call made or changed, once each, and not reads or failures", () => {
     const calls = [
       call("write_docx", "a.docx"),
       call("read_docx", "b.docx"),
@@ -14,7 +14,7 @@ describe("touchedFiles", () => {
       call("write_xlsx", "e.xlsx"),
       call("build_pptx", "deck.pptx"),
     ];
-    expect(touchedFiles(calls)).toEqual(["a.docx", "deck.pptx"]);
+    expect(touchedFiles(calls)).toEqual(["a.docx", "e.xlsx", "deck.pptx"]);
   });
 
   it("does not count a call that only looks at a file, and counts what a script wrote", () => {

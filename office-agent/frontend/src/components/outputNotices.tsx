@@ -6,7 +6,7 @@ import { KIND_WORDS } from "../lib/fileMentions";
 import { changedWhen, closeKey, folderOf, isImageFile, madeOutputs, titleOf, type MadeOutput } from "../lib/madeOutputs";
 import { getThreadActivity, openThreadFile, setThreadMeta, threadFileDownloadUrl } from "../lib/rest";
 import { readStored, writeStored } from "../lib/storage";
-import { isDocMarkdown } from "../lib/viewers";
+import { isDocMarkdown, isXlsx } from "../lib/viewers";
 import type { ActivityFile } from "../types/session";
 import { KindIcon } from "./artifacts";
 import { FolderIcon } from "./icons";
@@ -123,9 +123,7 @@ export function useOutputNotices(
   const [gallery, setGallery] = useState<{ files: ActivityFile[]; index: number } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const open = (file: ActivityFile) => {
-    if (!on.view(file.path)) void openThreadFile(threadId, file.path, false);
-  };
+  const open = (file: ActivityFile) => { if (!on.view(file.path)) void openThreadFile(threadId, file.path, false); };
   const copy = (file: ActivityFile) => {
     copyImage(imageSrc(threadId, file)).then(
       () => {
@@ -188,6 +186,8 @@ export function useOutputNotices(
           ? <FileSheetIcon className="h-4 w-4" style={{ color: EXTERNAL_COLOURS[type] }} />
           : <FileIcon className="h-4 w-4" style={{ color: EXTERNAL_COLOURS[type] }} />,
         title: file.name,
+        onOpen: isXlsx(file.path) ? () => open(file) : undefined,
+        openTitle: `Preview ${file.name}`,
         detail: [type, folder].filter(Boolean).join(" · "),
         plainDetail: true,
         actions: [

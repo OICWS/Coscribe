@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnnotateEntry } from "./ImageAnnotator";
 import { CloseIcon } from "./icons";
@@ -6,6 +6,8 @@ import { CloseIcon } from "./icons";
 import { type AttachmentView } from "../lib/attachments";
 import { copyImage } from "../lib/copyImage";
 import { DIALOG_INSET_CLASS } from "../lib/titleBar";
+
+const SpreadsheetPreview = lazy(() => import("./SpreadsheetPreview"));
 
 function pdfPageUrl(path: string, threadId: string, page: number, width: number): string {
   const query = new URLSearchParams({ path, page: String(page), width: String(width) });
@@ -216,7 +218,7 @@ export function AttachmentDialog({
         role="dialog"
         aria-label={view.name}
         className={`flex max-h-full flex-col overflow-hidden rounded-3xl bg-[var(--panel-bg)] shadow-[var(--shadow)] ${
-          showable ? "w-full max-w-[34rem]" : "min-h-[26rem] w-full max-w-[40rem]"
+          view.kind === "xlsx" ? "h-full w-full max-w-6xl" : showable ? "w-full max-w-[34rem]" : "min-h-[26rem] w-full max-w-[40rem]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -234,9 +236,7 @@ export function AttachmentDialog({
           </button>
         </div>
         <div className={`min-h-0 flex-1 overflow-y-auto px-7 pb-7 ${showable ? "" : "flex items-center justify-center"}`}>
-          {view.kind === "image" && (
-            <img {...imageProps(view.src, view.name)} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />
-          )}
+          {view.kind === "image" && <img {...imageProps(view.src, view.name)} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />}
           {view.kind === "pdf" && (
             <>
               {error && <p className="py-10 text-center text-sm text-[var(--muted)]">{error}</p>}
@@ -259,6 +259,7 @@ export function AttachmentDialog({
               )}
             </>
           )}
+          {view.kind === "xlsx" && <Suspense fallback={null}><SpreadsheetPreview key={view.path} path={view.path} threadId={threadId} /></Suspense>}
           {view.kind === "file" && (
             <p className="text-[15px]">File previews are not supported for this file type</p>
           )}

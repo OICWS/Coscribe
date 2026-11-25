@@ -20,7 +20,7 @@ const join = (folder: string, name: string) => (folder ? `${folder}/${name}` : n
 function KindIcon({ name }: { name: string }) {
   const kind = fileKind(name);
   const icon = "h-4 w-4 shrink-0";
-  if (kind === "markdown" || kind === "office" || kind === "pdf") return <FileTextIcon className={icon} />;
+  if (kind === "markdown" || kind === "office" || kind === "xlsx" || kind === "pdf") return <FileTextIcon className={icon} />;
   if (kind === "image" || kind === "svg") return <FileImageIcon className={icon} />;
   if (kind === "html") return <FileCodeIcon className={icon} />;
   if (kind === "text" && /^[^.].*\.[a-z0-9]+$/i.test(baseName(name)) && !/\.(txt|log)$/i.test(name)) return <FileCodeIcon className={icon} />;

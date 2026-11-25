@@ -297,3 +297,106 @@ def test_an_attached_pdf_can_be_previewed_page_by_page_and_nothing_else_can(
     assert past_end.status_code == 404
     assert not_pdf.status_code == 404
     assert outside.status_code in (400, 404)
+
+
+def test_xlsx_preview_reads_cells_drawings_and_scopes_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import base64
+    from io import BytesIO
+
+    from openpyxl import Workbook
+    from openpyxl.chart import BarChart, Reference
+    from openpyxl.drawing.image import Image
+    from openpyxl.styles import PatternFill
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    path = workspace / "quotes.xlsx"
+    book = Workbook()
+    main = book.active
+    assert main is not None
+    main.title = "报价明细"
+    main.append(["Vendor", "Price", "Total"])
+    main.append(["Pine", 12, "=B2*2"])
+    main["B2"].number_format = "0.00"
+    main["B2"].fill = PatternFill("solid", fgColor="DCEBFA")
+    main.merge_cells("A4:C4")
+    main.freeze_panes = "B2"
+    main.row_dimensions[3].hidden = True
+    summary = book.create_sheet("Summary")
+    summary["A1"] = "Yearly"
+    book.create_sheet("Hidden").sheet_state = "hidden"
+    chart = BarChart()
+    chart.title = "Prices"
+    chart.add_data(Reference(main, min_col=2, min_row=2))
+    chart.set_categories(Reference(main, min_col=1, min_row=2))
+    summary.add_chart(chart, "D3")
+    pixel = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yWQ0AAAAASUVORK5CYII="
+    )
+    summary.add_image(Image(BytesIO(pixel)), "B10")
+    book.save(path)
+    original = path.read_bytes()
+    stamp = path.stat().st_mtime_ns
+    (tmp_path / "outside.xlsx").write_bytes(original)
+    (workspace / "broken.xlsx").write_bytes(b"not a workbook")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        preview = client.post("/api/attachment/xlsx", params={"path": path.name})
+        chart_sheet = client.post(
+            "/api/attachment/xlsx", params={"path": path.name, "sheet": "Summary"}
+        )
+        hidden = client.post("/api/attachment/xlsx", params={"path": path.name, "sheet": "Hidden"})
+        denied = client.post("/api/attachment/xlsx", params={"path": "../outside.xlsx"})
+        corrupt = client.post("/api/attachment/xlsx", params={"path": "broken.xlsx"})
+
+    assert preview.status_code == chart_sheet.status_code == 200
+    assert preview.json()["sheets"] == ["报价明细", "Summary"]
+    sheet = preview.json()["sheet"]
+    assert sheet["freeze"] == [1, 1]
+    assert sheet["rows"] == [[3, 3, 0]]
+    assert sheet["merges"] == [[4, 1, 4, 3]]
+    price, formula = [item for item in sheet["cells"] if item[0] == 2 and item[1] >= 2]
+    assert price[2:4] == ["12.00", "12"]
+    assert sheet["styles"][str(price[4])]["background"] == "#DCEBFA"
+    assert formula[2:4] == ["", "=B2*2"]
+    plot, image = chart_sheet.json()["sheet"]["drawings"]
+    assert plot["labels"] == ["Pine"]
+    assert plot["series"] == [[12.0]]
+    assert plot["origin"] == [3, 4, 0, 0]
+    assert image["src"] == "data:image/png;base64," + base64.b64encode(pixel).decode()
+    assert hidden.json()["sheet"] is None
+    assert denied.status_code == 403
+    assert corrupt.status_code == 422
+    assert path.read_bytes() == original
+    assert path.stat().st_mtime_ns == stamp
+
+
+def test_xlsx_preview_rejects_oversized_merged_ranges(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from io import BytesIO
+    from zipfile import ZipFile
+
+    from openpyxl import Workbook
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    packed = BytesIO()
+    book = Workbook()
+    sheet = book.active
+    assert sheet is not None
+    sheet.merge_cells("A1:B2")
+    book.save(packed)
+    with (
+        ZipFile(packed) as source,
+        ZipFile(workspace / "merges.xlsx", "w") as output,
+    ):
+        for member in source.namelist():
+            xml = source.read(member).replace(
+                b'<mergeCell ref="A1:B2"', b'<mergeCell ref="A1:XFD1048576"'
+            )
+            output.writestr(member, xml)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        response = client.post("/api/attachment/xlsx", params={"path": "merges.xlsx"})
+    assert response.status_code == 413

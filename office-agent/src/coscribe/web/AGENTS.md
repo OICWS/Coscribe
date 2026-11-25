@@ -12,6 +12,8 @@ wakes and scheduled tasks (`scheduler.py`) and the listener a webhook task's eve
 the browser panel (`browser_panel.py`, `browser_detect.py`) and the `Host`/`Origin` guard on every request and socket (`local_guard.py`). Does not own a conversation's turns
 or approvals (`conversation/`), the agent (`runtime_lg/`) or the UI (`frontend/`, built into `static/`).
 
+`spreadsheet_preview.py` and `spreadsheet_drawings.py` read a worksheet in the conversation's scope.
+
 ## Public interface
 None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` in `app.py`
 (`coscribe-web`), `create_setup_app` (the setup page's app) in `app.py`. Route modules are reached through

@@ -1,0 +1,201 @@
+.spreadsheet-preview {
+  --sheet-grid: #e0e5e9;
+  --sheet-label: #f1f4f6;
+  --sheet-active: #2368a7;
+  --sheet-active-label: #dae8f6;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.spreadsheet-formula, .spreadsheet-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-width: 0;
+  background: var(--panel-bg);
+  font-size: 13px;
+}
+
+.spreadsheet-formula {
+  border-bottom: 1px solid var(--border);
+  min-height: 38px;
+}
+
+.spreadsheet-formula span {
+  display: grid;
+  flex: none;
+  min-width: 64px;
+  min-height: 30px;
+  place-items: center;
+  border-right: 1px solid var(--border);
+  padding-inline: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spreadsheet-formula span + span {
+  min-width: 36px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.spreadsheet-formula input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  color: var(--fg);
+  background: transparent;
+}
+
+.spreadsheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: scroll;
+  background: white;
+  color: #1d252d;
+  overscroll-behavior: contain;
+  color-scheme: light;
+}
+
+.spreadsheet-scroll:focus-visible {
+  outline: 2px solid var(--sheet-active);
+  outline-offset: -2px;
+}
+
+.spreadsheet-canvas {
+  position: relative;
+  overflow: clip;
+}
+
+.spreadsheet-cell, .spreadsheet-header {
+  position: absolute;
+  border: 0 solid var(--sheet-grid);
+  border-width: 0 1px 1px 0;
+  overflow: hidden;
+}
+
+.spreadsheet-cell {
+  display: flex;
+  flex-direction: row;
+  background: white;
+  font: 14px/1.25 Arial, sans-serif;
+  cursor: cell;
+  user-select: none;
+  overflow-wrap: anywhere;
+}
+
+.spreadsheet-cell span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1px 4px;
+  text-overflow: ellipsis;
+}
+
+.spreadsheet-selected {
+  box-shadow: inset 0 0 0 2px var(--sheet-active);
+}
+
+.spreadsheet-header {
+  display: grid;
+  place-items: center;
+  color: #465361;
+  background: var(--sheet-label);
+  font-size: 12px;
+  user-select: none;
+}
+
+.spreadsheet-header[data-selected="true"] {
+  background: var(--sheet-active-label);
+  color: #164b7e;
+}
+
+.spreadsheet-corner { z-index: 12; }
+
+.spreadsheet-freeze-row, .spreadsheet-freeze-col {
+  position: absolute;
+  z-index: 9;
+  pointer-events: none;
+  background: #a1adbb;
+}
+
+.spreadsheet-freeze-row { height: 1px; }
+.spreadsheet-freeze-col { width: 1px; }
+
+.spreadsheet-drawing {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.spreadsheet-chart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  border: 1px solid #d2dae2;
+  background: white;
+  color: #253140;
+}
+
+.spreadsheet-chart figcaption {
+  overflow: hidden;
+  flex: none;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.spreadsheet-chart svg text {
+  fill: #465361;
+  font: 11px system-ui, sans-serif;
+}
+
+.spreadsheet-footer {
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+}
+
+.spreadsheet-tabs {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 4px 8px;
+}
+
+.spreadsheet-tabs button {
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--muted);
+}
+
+.spreadsheet-tabs button:hover, .spreadsheet-tabs button[aria-pressed="true"] {
+  border-color: var(--border);
+  background: var(--card-bg);
+  color: var(--fg);
+}
+
+.spreadsheet-note {
+  flex: none;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.spreadsheet-status {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
