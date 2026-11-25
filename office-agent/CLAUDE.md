@@ -198,7 +198,13 @@ code under `src/` changes a test, and one of its changed test files fails on the
 `test` job); a change to an invariant path links the GitHub review posted on it (`PR text`). A
 line in the description says why a rule does not apply: `Fails before: <why>` (a pure move, a
 Windows-only branch) or `Changed-line coverage: <why>` (the `test` job reads it when it starts,
-so run the job again after editing); the review has no such line.
+so run the job again after editing); the review has no such line. A fourth reports only:
+`Mutation of the changes` mutates the functions the pull request changed and lists the
+mutants its tests did not notice; add a check for each, or say in the description why it
+can't matter (a Windows-only branch, a mutant that changes nothing visible).
+A component card 20 or more commits behind its code (`scripts/card_freshness.py`) fails the
+`test` job of the next pull request that changes that component until the card is read against
+the code and its `## Reviewed` section updated.
 
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before

@@ -84,6 +84,12 @@ Last reviewed: 2026-11-22.
   (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
   Mondays: a card far behind its code or a component near its budget is the next piece of work.
 
+- **Remaining 0009 gaps** (#1051 follow-up, `docs/log/2026-11-24-mutation-and-cards.md`):
+  mutation of each pull request's changed functions (report only) and the check that a card 20
+  commits behind its code is updated shipped; the features' `index.ts` shipped in #1064. Still
+  open: splitting `conversation/session.py` (held for now; the ratchet keeps it from growing) and
+  a second model family's review on every PR (Codex reviews on an `@codex review` comment today).
+
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
