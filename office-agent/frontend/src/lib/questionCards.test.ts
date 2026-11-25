@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LogItem } from "../state/reducer";
-import { answerMessage, questionCardStates, questionsOf, QUESTION_ANSWER_PREFIX } from "./questionCards";
+import { answerMessage, isAnswerMessage, questionCardStates, questionsOf, splitChoices } from "./questionCards";
 import { groupToolRuns } from "./transcriptGrouping";
 
 const SHOWN = "The questions are on a card in the conversation; the person answers when they choose.";
@@ -59,7 +59,7 @@ describe("questionCardStates", () => {
     const questions = questionsOf(card as Extract<LogItem, { kind: "tool" }>);
     expect(questionCardStates([card]).get("a")).toEqual({ status: "open" });
     const click = user(answerMessage(questions, ["Management", "Brand -> dark"]));
-    expect(click.kind === "user" && click.text.startsWith(QUESTION_ANSWER_PREFIX)).toBe(true);
+    expect(click.kind === "user" && isAnswerMessage(click.text)).toBe(true);
     expect(questionCardStates([card, click]).get("a")).toEqual({
       status: "answered",
       answers: ["Management", "Brand -> dark"],
@@ -77,6 +77,17 @@ describe("questionCardStates", () => {
     });
   });
 
+  it("knows a click's message behind a note about edits in the app", () => {
+    const card = ask("a", [audience]);
+    const click = user(`The user edited slide 2 of deck.pptx.\n\n${answerMessage(questionsOf(card as Extract<LogItem, { kind: "tool" }>), ["Team"])}`);
+    expect(questionCardStates([card, click]).get("a")).toEqual({ status: "answered", answers: ["Team"], inChat: false });
+  });
+
+  it("keeps a card open when the model's record of an answer was refused", () => {
+    const refused = { ...recorded(["Management"]), isError: true } as LogItem;
+    expect(questionCardStates([ask("a", [audience, colors]), refused]).get("a")).toEqual({ status: "open" });
+  });
+
   it("marks an open card replaced when a newer one is asked", () => {
     const states = questionCardStates([ask("a", [audience]), ask("b", [colors])]);
     expect(states.get("a")).toEqual({ status: "replaced" });
@@ -90,6 +101,12 @@ describe("questionCardStates", () => {
   it("has no card for a call still running or failed", () => {
     const running = { ...ask("a", [audience]), result: undefined } as LogItem;
     expect(questionCardStates([running]).has("a")).toBe(false);
+  });
+});
+
+describe("splitChoices", () => {
+  it("keeps a label that holds a comma whole and the person's own words apart", () => {
+    expect(splitChoices("Sales, by region, Plain, dark blue", ["Plain", "Sales, by region"])).toEqual(["Sales, by region", "Plain", "dark blue"]);
   });
 });
 

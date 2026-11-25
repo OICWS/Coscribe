@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CardAnswers, CardState } from "../lib/questionCards";
+import { splitChoices, type CardAnswers, type CardState } from "../lib/questionCards";
 import type { QuestionSpec } from "../types/wire";
 import { CheckIcon, ChevronRightIcon, PencilIcon } from "./icons";
 
@@ -234,7 +234,7 @@ function AnsweredCard({ questions, answers, inChat }: { questions: QuestionSpec[
   if (questions.length === 1) {
     const question = questions[0];
     const answer = answers[0] ?? null;
-    const parts = answer === null ? [] : question.multi_select ? answer.split(", ") : [answer];
+    const parts = answer === null ? [] : question.multi_select ? splitChoices(answer, question.options.map((o) => o.label)) : [answer];
     const note = inChat ? "Answered in chat" : undefined;
     return (
       <div className="w-full rounded-[20px] bg-[var(--card-bg)] px-4 pb-4 pt-4">

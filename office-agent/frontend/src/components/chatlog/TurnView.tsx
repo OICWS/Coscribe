@@ -10,7 +10,7 @@ import { CopyButton } from "../CopyButton";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
 import { PlanCard, type PlanChoice, type PlanItem } from "../PlanCard";
 import { AskCard, PendingQuestionCard } from "./QuestionCards";
-import { QUESTION_ANSWER_PREFIX } from "../../lib/questionCards";
+import { isAnswerMessage } from "../../lib/questionCards";
 import {
   INVESTIGATION_PREFIX,
   InvestigationCard,
@@ -156,11 +156,10 @@ const CARD_PREFIXES = [
   BACKGROUND_REPORT_PREFIX,
   CONNECTED_NOTE_PREFIX,
   CONVERSATION_MESSAGE_PREFIX,
-  QUESTION_ANSWER_PREFIX,
 ];
 
 function isCardMessage(text: string): boolean {
-  return CARD_PREFIXES.some((prefix) => text.startsWith(prefix));
+  return CARD_PREFIXES.some((prefix) => text.startsWith(prefix)) || isAnswerMessage(text);
 }
 
 export function LogItemView({
@@ -180,7 +179,7 @@ export function LogItemView({
     if (item.text.startsWith(CONNECTED_NOTE_PREFIX)) return <ConnectorConnectedNote text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
     // The card it answers shows the answer.
-    if (item.text.startsWith(QUESTION_ANSWER_PREFIX)) return null;
+    if (isAnswerMessage(item.text)) return null;
     return <UserMessageView item={item} reaction={reaction} />;
   }
 

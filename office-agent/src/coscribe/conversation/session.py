@@ -1164,9 +1164,9 @@ class ChatSessionLG:
             + mode_note
             + artifact_note(artifact, design_system)
             + language_note(text)
+            + open_question_note(history, text)
             + deck_note
             + ("" if told else context_note(context))
-            + open_question_note(history, text)
             + user_input
         )
 

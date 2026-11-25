@@ -197,3 +197,48 @@ def test_a_use_tool_call_is_compared_by_the_tool_it_runs() -> None:
     }
 
     assert repeats_earlier_call(wrapped, messages, set())
+
+
+def test_an_answer_in_words_closes_the_card_only_with_an_answer_for_every_question() -> None:
+    from coscribe.tools.bookkeeping import build_interaction_tools
+
+    tools = [
+        t
+        for t in build_interaction_tools()
+        if t.__name__ in ("ask_user_question", "answer_question_card")
+    ]
+    options = [{"label": "A"}, {"label": "B"}]
+    two = {
+        "questions": [
+            {"question": "Who for?", "options": options},
+            {"question": "Which colors?", "options": options},
+        ]
+    }
+    model = _Model(
+        responses=[
+            _call("c1", "ask_user_question", **two),
+            _call("c2", "answer_question_card", answers=["Management"]),
+            _call("c3", "answer_question_card", answers=["Management", "Brand"]),
+            AIMessage(content="done"),
+        ]
+    )
+
+    result = _run(model, tools)
+
+    replies = {m.tool_call_id: m for m in result["messages"] if isinstance(m, ToolMessage)}
+    assert replies["c2"].status == "error"
+    assert "asks 2 question(s) and this gives 1" in str(replies["c2"].content)
+    assert replies["c3"].status != "error"
+
+
+def test_an_answer_with_no_card_shown_is_refused() -> None:
+    from coscribe.tools.bookkeeping import build_interaction_tools
+
+    tools = [t for t in build_interaction_tools() if t.__name__ == "answer_question_card"]
+    model = _Model(
+        responses=[_call("c1", "answer_question_card", answers=["x"]), AIMessage(content="ok")]
+    )
+
+    reply = next(m for m in _run(model, tools)["messages"] if isinstance(m, ToolMessage))
+
+    assert reply.status == "error"

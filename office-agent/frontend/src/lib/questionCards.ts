@@ -7,7 +7,7 @@ import type { QuestionSpec } from "../types/wire";
  * Both strings are the backend's (tools/bookkeeping/interaction.py). */
 const ASK_TOOL = "ask_user_question";
 const ANSWER_TOOL = "answer_question_card";
-export const QUESTION_ANSWER_PREFIX = "[Answers to your question card]";
+const QUESTION_ANSWER_PREFIX = "[Answers to your question card]";
 const SHOWN_PREFIX = "The questions are on a card";
 const SKIPPED = "(skipped)";
 
@@ -34,6 +34,27 @@ export function isAskCall(item: LogItem): item is ToolItem {
 
 export function isAnswerCall(item: LogItem): item is ToolItem {
   return item.kind === "tool" && item.toolName === ANSWER_TOOL;
+}
+
+/** Whether a person's message is a click's answers. Notes about the app (edits to a deck, a Doc or
+ * a design) can come before them. */
+export function isAnswerMessage(message: string): boolean {
+  return message.startsWith(QUESTION_ANSWER_PREFIX) || message.includes(`\n${QUESTION_ANSWER_PREFIX}`);
+}
+
+/** A multi-select answer split back into its choices: labels may hold ", " themselves, so known
+ * labels are matched first and anything else is the person's own words. */
+export function splitChoices(answer: string, labels: string[]): string[] {
+  const byLength = [...labels].sort((a, b) => b.length - a.length);
+  const parts: string[] = [];
+  let rest = answer;
+  while (rest) {
+    const label = byLength.find((l) => rest === l || rest.startsWith(`${l}, `));
+    const part = label ?? rest.split(", ")[0];
+    parts.push(part);
+    rest = rest.slice(part.length).replace(/^, /, "");
+  }
+  return parts;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -84,6 +105,8 @@ function legacyAnswers(result: unknown, questions: QuestionSpec[]): CardAnswers 
   return answersFromLines(body, questions);
 }
 
+const succeeded = (item: LogItem) => item.kind === "tool" && item.result !== undefined && !item.isError;
+
 /** Every question card's state, from the whole conversation: a card is open from its call until a
  * click's message or the model's record of an answer in words, and a newer card replaces it. */
 export function questionCardStates(items: LogItem[]): Map<string, CardState> {
@@ -100,10 +123,10 @@ export function questionCardStates(items: LogItem[]): Map<string, CardState> {
       if (open) states.set(open.id, { status: "replaced" });
       states.set(item.id, { status: "open" });
       open = { id: item.id, questions };
-    } else if (open && item.kind === "user" && item.text.startsWith(QUESTION_ANSWER_PREFIX)) {
+    } else if (open && item.kind === "user" && isAnswerMessage(item.text)) {
       states.set(open.id, { status: "answered", answers: answersFromLines(item.text, open.questions), inChat: false });
       open = null;
-    } else if (open && isAnswerCall(item)) {
+    } else if (open && isAnswerCall(item) && succeeded(item)) {
       states.set(open.id, { status: "answered", answers: answersOfChat(item, open.questions.length), inChat: true });
       open = null;
     }

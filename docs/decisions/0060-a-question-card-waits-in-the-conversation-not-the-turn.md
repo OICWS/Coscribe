@@ -24,8 +24,9 @@ box, though the message box below does the same.
   the page draws as the answered card rather than a bubble.
 - **An answer in words** gets a note on the person's message naming the open card
   (`conversation/turn_text.py`). When their words answer every question the model records them
-  with `answer_question_card` (a core tool), which closes the card and shows the answers; it
-  refuses a partial answer, so the model asks about the rest. An unrelated message leaves the
+  with `answer_question_card` (a core tool), which closes the card and shows the answers. A list
+  shorter than the card's questions is refused (`runtime_lg/turn_checks.py` counts them), so the
+  model asks about the rest. An unrelated message leaves the
   card open.
 - **A newer card replaces an open one**, which shows "No longer needed".
 - `remember` keeps the blocking question card (it saves only on the person's click), drawn the
@@ -35,6 +36,10 @@ box, though the message box below does the same.
 - A card's state is rebuilt from the history on every load: the call, then a click's message or
   the model's record. A conversation saved before this shows the old answer from the call's result.
 - The tool list grows by `answer_question_card` (fixed and cached, 0001).
+- The card tools are not given to sub-agents or workflow agent steps: no one sees their cards.
+- A failed `ask_user_question` call draws no card and leaves an open one open.
+- After `/compact` the ask call can leave the model's history: the page still shows the card
+  open, but the next message carries no note, and an answer in words is then a plain message.
 - A scheduled or unattended turn that asks leaves the card for the person to answer later.
 
 Retired wording: "This call always pauses for a real person to answer"

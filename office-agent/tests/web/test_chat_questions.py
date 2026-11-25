@@ -155,6 +155,34 @@ def test_answer_question_card_needs_every_answer() -> None:
             answer_question_card(partial)
 
 
+def test_a_click_behind_a_note_about_edits_in_the_app_still_answers_the_card() -> None:
+    from langchain_core.messages import HumanMessage
+
+    from coscribe.conversation.turn_text import OPEN_QUESTION_NOTE, open_question
+    from coscribe.runtime_lg import strip_mode_note
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    shown = ToolMessage(content="shown", tool_call_id="call_1", name="ask_user_question")
+    edits = "The user edited slide 2 of deck.pptx since your last turn.\n\n"
+    click = edits + "[Answers to your question card]\n1. Who is the deck for? -> Team"
+    note = OPEN_QUESTION_NOTE.format(questions="- Who is the deck for?")
+
+    assert open_question([ask, shown]) == ["Who is the deck for?"]
+    assert open_question([ask, shown, HumanMessage(content=click)]) == []
+    assert strip_mode_note(note + edits + "hello") == edits + "hello"
+
+
+def test_a_failed_question_call_opens_no_card() -> None:
+    from coscribe.conversation.turn_text import open_question
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    failed = ToolMessage(
+        content="bad arguments", tool_call_id="call_1", name="ask_user_question", status="error"
+    )
+
+    assert open_question([ask, failed]) == []
+
+
 def test_pending_approval_is_redelivered_on_reconnect(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

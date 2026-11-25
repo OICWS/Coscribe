@@ -6,7 +6,7 @@ click is faster than a sentence. It doesn't wait: the card stays in the conversa
 goes on with what doesn't depend on the answer or ends its turn, and a person who is reading or
 busy isn't held up; they answer whenever, by a click or in their own words (decision 0060). A
 click comes back as their next message; a reply in their own words gets a note naming the open
-card (conversation/question_cards.py), and answer_question_card records how it answered.
+card (conversation/turn_text.py), and answer_question_card records how it answered.
 
 The rest (exit_plan_mode, remember, request_folder_access, install_package) never run their own
 body: they're routed through LangGraph's HumanInTheLoopMiddleware with

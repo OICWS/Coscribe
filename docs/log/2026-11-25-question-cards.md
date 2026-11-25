@@ -15,7 +15,7 @@ Decision [0060](../decisions/0060-a-question-card-waits-in-the-conversation-not-
 - A click goes out as the person's next message (`[Answers to your question card]`), drawn as
   the card. A message while a card is open carries a note naming it (`conversation/turn_text.py`);
   the model closes the card with the new core tool `answer_question_card` once every question is
-  answered in words.
+  answered in words; a short list is refused. Neither card tool reaches sub-agents or workflows.
 - `remember`'s card, which still waits, is drawn the same way in the conversation; the docked
   panel is gone.
 - Checked on DeepSeek V4 Pro in the real app: a single question answered by a click; three

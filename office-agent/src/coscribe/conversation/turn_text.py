@@ -209,12 +209,18 @@ OPEN_QUESTION_NOTE = (
 
 
 def open_question(messages: Sequence[Any]) -> list[str]:
-    """The questions of the card still waiting for an answer, or [] when none is."""
+    """The questions of the card still waiting for an answer, or [] when none is. A call that
+    failed drew no card and closed none, as on the page."""
+    failed: set[str] = set()
     for message in reversed(messages):
+        if getattr(message, "type", None) == "tool" and getattr(message, "status", "") == "error":
+            failed.add(message.tool_call_id)
         human = getattr(message, "type", None) == "human" and not is_steer(message)
         if human and is_question_answer(extract_text(message.content)):
             return []
         for call in reversed(getattr(message, "tool_calls", None) or []):
+            if call.get("id") in failed:
+                continue
             name, args = unwrap_use_tool_call(call["name"], call.get("args") or {})
             if name == ANSWER_TOOL:
                 return []
@@ -226,8 +232,12 @@ def open_question(messages: Sequence[Any]) -> list[str]:
     return []
 
 
+# Notes about the app (edits to a deck, a Doc or a design) can come before a click's message.
+_ANSWER_RE = re.compile(r"^" + re.escape(QUESTION_ANSWER_PREFIX), re.MULTILINE)
+
+
 def is_question_answer(text: str) -> bool:
-    return strip_mode_note(text).startswith(QUESTION_ANSWER_PREFIX)
+    return _ANSWER_RE.search(strip_mode_note(text)) is not None
 
 
 def open_question_note(messages: Sequence[Any], text: str) -> str:
