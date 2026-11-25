@@ -307,18 +307,22 @@ def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
     from docx import Document
     from reportlab.pdfgen import canvas
 
-    from coscribe.tools.convert import ConvertToolkit
+    from coscribe.web import word_preview
 
     opened: list[Path] = []
 
-    def convert(_toolkit, path: str, to_format: str, output_path: str) -> None:
-        assert to_format == "pdf"
-        snapshot = _toolkit._scope.resolve(path)
-        opened.append(snapshot)
-        dest = snapshot.with_name(output_path)
-        result = canvas.Canvas(str(dest))
-        result.drawString(50, 50, Document(snapshot).paragraphs[0].text)
-        result.save()
+    def build_preview_converter(folder: Path, *, state_dir: Path):
+        assert state_dir == tmp_path / "state"
+
+        def convert(path: str, to_format: str, output_path: str) -> None:
+            assert to_format == "pdf"
+            snapshot = folder / path
+            opened.append(snapshot)
+            result = canvas.Canvas(str(folder / output_path))
+            result.drawString(50, 50, Document(snapshot).paragraphs[0].text)
+            result.save()
+
+        return [convert]
 
     def docx(text: str) -> bytes:
         data = io.BytesIO()
@@ -327,7 +331,7 @@ def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
         document.save(data)
         return data.getvalue()
 
-    monkeypatch.setattr(ConvertToolkit, "convert_office_file", convert)
+    monkeypatch.setattr(word_preview, "build_convert_tools", build_preview_converter)
     original = docx("First version")
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -365,7 +369,9 @@ def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
         def cannot_convert(*args, **kwargs) -> None:
             raise ValueError("Office error in /local/private/temp/preview.pdf")
 
-        monkeypatch.setattr(ConvertToolkit, "convert_office_file", cannot_convert)
+        monkeypatch.setattr(
+            word_preview, "build_convert_tools", lambda *args, **kwargs: [cannot_convert]
+        )
         source.write_bytes(docx("A version the engine refuses"))
         failed = client.post(url, params=params)
         assert failed.status_code == 422
