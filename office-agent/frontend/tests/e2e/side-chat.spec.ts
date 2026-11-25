@@ -13,7 +13,19 @@ test("a side chat answers beside the conversation, adds nothing to it and starts
   await page.getByTitle("Side chat", { exact: true }).click();
   const panel = page.getByRole("region", { name: "Side chat", exact: true });
   await expect(panel.getByText("Coscribe sees this session. Nothing here is added to it.")).toBeVisible();
-  await panel.getByLabel("Side question").fill("What did I ask?");
+  const question = panel.getByLabel("Side question");
+  await question.click();
+  await expect(question).toBeFocused();
+  await expect(question).toHaveValue("");
+  const empty = await question.evaluate((el) => ({
+    height: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+  }));
+  expect(empty.height).toBeGreaterThanOrEqual(32);
+  expect(empty.scrollHeight).toBe(empty.height);
+  await question.fill("First line\nSecond line");
+  expect(await question.evaluate((el) => el.clientHeight)).toBeGreaterThan(empty.height);
+  await question.fill("What did I ask?");
   await page.keyboard.press("Enter");
   await expect(panel.getByText("OK", { exact: true })).toBeVisible();
   await expect(page.getByText("What did I ask?")).toHaveCount(1);

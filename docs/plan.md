@@ -290,6 +290,8 @@ Last reviewed: 2026-11-22.
 - Notion showed no tools for the maintainer; cause not found.
 - The built-in browser panel opened during a connector's first connection
   (sign-in pages should open in the system browser); not reproduced.
+- Verify on Windows that browser automation continues in its original conversation without
+  reopening the Browser panel in the conversation the user switches to (#1068).
 - A Hugging Face connector call once hung a turn; a 120 s limit and an automatic
   reconnect were added, the cause is unknown.
 - Connector Retry and automatic reconnect can overlap. Each path disconnects before awaiting
