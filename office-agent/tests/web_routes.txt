@@ -72,6 +72,7 @@ GET /api/skills/plugins
 GET /api/skills/plugins/{plugin_id}
 GET /api/skills/plugins/{plugin_id}/files/{path:path}
 GET /api/skills/sources
+GET /api/skills/{name}/export
 GET /api/skills/{name}/files
 GET /api/skills/{name}/files/{path:path}
 GET /api/subagents/{task_id}/transcript

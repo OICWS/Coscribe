@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import io
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import (
     APIRouter,
     UploadFile,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from ...tools import (
     SKILL_SOURCE_MARKER,
@@ -111,6 +114,43 @@ def _source_routes(router: APIRouter, state: AppState) -> None:
     router.add_api_route("/api/skills/sources", list_sources, methods=["GET"])
     router.add_api_route("/api/skills/sources", add_source, methods=["POST"])
     router.add_api_route("/api/skills/sources/{repo:path}", remove_source, methods=["DELETE"])
+
+
+def _archive(folder: Path) -> bytes:
+    """`folder` as a .zip holding that one folder, which Add -> Upload takes back as it is."""
+    root = folder.resolve()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(folder.rglob("*")):
+            relative = path.relative_to(folder)
+            # A link can point anywhere on the computer; the zip goes to whoever it is sent to.
+            if path.is_symlink() or not path.resolve().is_relative_to(root) or not path.is_file():
+                continue
+            if path.name == SKILL_SOURCE_MARKER or "__pycache__" in relative.parts:
+                continue
+            archive.write(path, (Path(folder.name) / relative).as_posix())
+    return buffer.getvalue()
+
+
+def _export_routes(router: APIRouter, state: AppState) -> None:
+    """A skill, or with `plugin` the plugin of that name, as a .zip to keep or share."""
+
+    async def export_skill(name: str, plugin: bool = False) -> Response:
+        skills = all_skills(state.settings.skills_dir)
+        match = next((s for s in skills if (s.plugin if plugin else s.name) == name), None)
+        folder = None if match is None else (match.plugin_dir if plugin else match.dir)
+        if folder is None:
+            kind = "plugin" if plugin else "skill"
+            return JSONResponse({"error": f"No {kind} named {name!r}."}, status_code=404)
+        data = await asyncio.to_thread(_archive, folder)
+        name = f"{folder.name}.zip"
+        return Response(
+            data,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"},
+        )
+
+    router.add_api_route("/api/skills/{name}/export", export_skill, methods=["GET"])
 
 
 def _source_row(source: dict[str, Any]) -> dict[str, Any]:
@@ -301,4 +341,5 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(_skill_row(skill, "custom", True))
 
+    _export_routes(router, state)
     return router

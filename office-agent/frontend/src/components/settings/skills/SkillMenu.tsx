@@ -1,18 +1,23 @@
 import { useRef, useState } from "react";
+import { exportSkill } from "../../../lib/rest";
+import { saveBlob } from "../../../lib/slides";
 import { useClickOutside } from "../../../lib/useClickOutside";
 import { MoreIcon } from "../../icons";
 
-/** "Off"/"On" for a skill or a plugin and, unless it ships with coscribe, Remove. */
+/** "Off"/"On" for a skill or a plugin, Export as a .zip and, unless it ships with coscribe, Remove. */
 export function SkillMenu({
   label,
   enabled,
   removable,
+  plugin = false,
   onToggle,
   onRemove,
 }: {
   label: string;
   enabled: boolean;
   removable: boolean;
+  /** `label` names a plugin, and Export takes its whole folder. */
+  plugin?: boolean;
   onToggle: () => void;
   onRemove: () => void;
 }) {
@@ -47,6 +52,19 @@ export function SkillMenu({
             }}
           >
             {enabled ? "Turn off" : "Turn on"}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              exportSkill(label, plugin)
+                .then(({ blob, name }) => saveBlob(blob, name))
+                .catch((error: unknown) => console.error("Export failed", error));
+            }}
+          >
+            Export as .zip
           </button>
           {removable && (
             <button

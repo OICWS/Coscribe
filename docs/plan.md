@@ -73,7 +73,10 @@ Last reviewed: 2026-11-22.
    (`docs/log/2026-11-23-plugins-page.md`); sources the person adds by address
    (`docs/log/2026-11-23-plugin-sources.md`); built-in plugins, PPTX Pages bringing its build
    tool (`docs/log/2026-11-24-builtin-plugins.md`); `load_skill` naming a plugin's services and
-   pointing to the connector tools (`docs/log/2026-11-24-plugin-connector-hint.md`). Open in step 4: Discover's own catalog still adds
+   pointing to the connector tools (`docs/log/2026-11-24-plugin-connector-hint.md`); export as
+   a `.zip` (`docs/log/2026-11-25-plugin-export.md`). Open: PPTX Pages exported with a converter
+   that runs outside Coscribe, which needs the deck engine split into a package of its own
+   (its build imports most of `coscribe.tools`); decided 2026-11-25 to do it as its own item. Open in step 4: Discover's own catalog still adds
    a plugin's skills one by one and is built by hand; building it from the curated repositories'
    `marketplace.json` and adding its plugins whole, and following an entry that points to
    another GitHub repository (`github`, `git-subdir`).
