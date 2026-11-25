@@ -203,8 +203,9 @@ def test_write_docx_gives_a_new_document_the_house_style(tmp_path: Path) -> None
 
     document = Document(str(tmp_path / "r.docx"))
     fonts = document.styles.element.find(f"{_W}docDefaults").find(f".//{_W}rFonts")
-    assert fonts.get(f"{_W}eastAsia") == "Microsoft YaHei"
+    assert fonts.get(f"{_W}eastAsia") == "微软雅黑"
     assert fonts.get(f"{_W}eastAsiaTheme") is None
+    assert fonts.get(f"{_W}hint") == "eastAsia"
     assert document.styles["Heading 1"].font.color.rgb == RGBColor.from_string("1F4E79")
     assert round(document.sections[0].page_width.mm) == 210
 
@@ -215,6 +216,41 @@ def test_write_docx_gives_a_new_document_the_house_style(tmp_path: Path) -> None
 
     footer = document.sections[0].footer._element  # noqa: SLF001
     assert any(" PAGE " == (node.text or "") for node in footer.iter(f"{_W}instrText"))
+
+
+def _language(path: Path) -> tuple[str | None, str | None, str | None]:
+    document = Document(str(path))
+    defaults = document.styles.element.find(f"{_W}docDefaults")
+    lang = defaults.find(f".//{_W}lang")
+    face = defaults.find(f".//{_W}rFonts").get(f"{_W}eastAsia")
+    return lang.get(f"{_W}val"), lang.get(f"{_W}eastAsia"), face
+
+
+@pytest.mark.parametrize(
+    ("language", "content", "expected"),
+    [
+        ("", "# 报告\n\n正文。", ("en-US", "zh-CN", "微软雅黑")),
+        ("", "# 報告\n\nこれはテストです。", ("en-US", "ja-JP", "游ゴシック")),
+        ("", "# 보고서\n\n본문입니다.", ("en-US", "ko-KR", "맑은 고딕")),
+        ("zh-Hant", "# 報告\n\n正文。", ("en-US", "zh-TW", "微軟正黑體")),
+        ("en-gb", "# Report\n\nPlain text.", ("en-GB", None, "微软雅黑")),
+    ],
+)
+def test_write_docx_marks_the_document_in_its_language(
+    tmp_path: Path, language: str, content: str, expected: tuple[str, str | None, str]
+) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="d.docx", content=content, language=language)
+
+    val, east_asian, face = _language(tmp_path / "d.docx")
+    assert (val, east_asian if expected[1] else None, face) == expected
+
+
+def test_write_docx_refuses_a_language_that_is_not_a_tag(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    with pytest.raises(ValueError, match="language tag"):
+        tools["write_docx"](path="d.docx", content="x", language="Chinese please")
+    assert not (tmp_path / "d.docx").exists()
 
 
 def test_write_docx_restarts_each_numbered_list_and_titles_the_first_heading(

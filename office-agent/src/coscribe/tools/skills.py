@@ -452,6 +452,59 @@ def _extract(zf: Any, prefix: str, target: Path) -> None:
             dest.write_bytes(zf.read(member))
 
 
+# A server's name and host come from someone else's file and reach the model: only one short
+# word each passes, so the file cannot add sentences of its own to a tool result.
+_SERVICE_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,39}")
+_MAX_SERVICES = 8
+
+
+def _plugin_services(plugin_dir: Path) -> list[str]:
+    """The services a plugin's MCP servers reach, by name and host, read from its `.mcp.json`
+    or its manifest's `mcpServers`. A hint only: no server in it is added or started (decision
+    0058)."""
+    import json
+    from urllib.parse import urlparse
+
+    servers: Any = (plugin_manifest(plugin_dir) or {}).get("mcpServers")
+    if not isinstance(servers, dict):
+        servers = None
+        for relative in (".mcp.json", "mcp.json"):
+            path = plugin_dir / relative
+            if path.is_file():
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    return []
+                if isinstance(data, dict):
+                    servers = data.get("mcpServers", data)
+                break
+    if not isinstance(servers, dict):
+        return []
+    services: list[str] = []
+    for name, config in servers.items():
+        if not (isinstance(name, str) and _SERVICE_WORD.fullmatch(name)):
+            continue
+        url = config.get("url") if isinstance(config, dict) else None
+        host = urlparse(url).hostname if isinstance(url, str) else None
+        label = f"{name} ({host})" if host and _SERVICE_WORD.fullmatch(host) else name
+        if label not in services:
+            services.append(label)
+    return services[:_MAX_SERVICES]
+
+
+def _connector_hint(plugin_dir: Path) -> str:
+    services = _plugin_services(plugin_dir)
+    if not services:
+        return ""
+    return (
+        f"\n(This skill's plugin was written for these services: {', '.join(services)}. "
+        "Coscribe does not start a plugin's servers. If the work needs one of them and no tool "
+        "you have reaches it (look with search_tools), call find_connector with the service's "
+        "name and offer what it finds with offer_connector; never ask the user to set up the "
+        "plugin's server.)"
+    )
+
+
 def format_skill_listing(skills: list[SkillInfo]) -> str:
     """Render the always-visible "name: description" block for the system
     instructions -- level 1 of progressive disclosure."""
@@ -481,10 +534,11 @@ def build_skill_tools(skills: list[SkillInfo]) -> list[Callable[..., Any]]:
         if skill.plugin_dir is not None:
             # Claude's plugins name their own scripts by this variable.
             body = body.replace("${CLAUDE_PLUGIN_ROOT}", str(skill.plugin_dir.resolve()))
+        hint = _connector_hint(skill.plugin_dir) if skill.plugin_dir is not None else ""
         return (
             f"(This skill's folder is {skill.dir.resolve()} -- read its files with "
             f"read_skill_file; a bundled script can be run with run_python_script, "
-            f"e.g. runpy.run_path on its absolute path.)\n\n{body}"
+            f"e.g. runpy.run_path on its absolute path.){hint}\n\n{body}"
         )
 
     def read_skill_file(name: str, path: str) -> str:

@@ -130,12 +130,18 @@ def _prepare_module(work: Path, module: str, pytest_args: list[str]) -> None:
             shutil.copytree(
                 ROOT / folder, work / folder, ignore=shutil.ignore_patterns("__pycache__")
             )
+    # Some tests read the frontend's sources (a connector's icon, a slide's script).
+    if (ROOT / "frontend" / "src").is_dir():
+        shutil.copytree(ROOT / "frontend" / "src", work / "frontend" / "src")
     # Tests that build the app need web/static/, a build output this job does not make.
     static = work / PACKAGE / "web" / "static"
     if not static.exists():
         static.mkdir(parents=True)
         (static / "index.html").write_text("<!doctype html>\n", encoding="utf-8")
-    copied = ["src", *(folder for folder in ("evals", "scripts") if (work / folder).is_dir())]
+    copied = [
+        "src",
+        *(folder for folder in ("evals", "scripts", "frontend") if (work / folder).is_dir()),
+    ]
     config = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     # `also_copy = ["src"]` puts the whole package next to the mutated file; without it the
     # package would hold only that file and every other import would fail.

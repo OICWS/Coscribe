@@ -564,3 +564,47 @@ def test_an_uploaded_plugin_lists_its_skills_and_is_removed_whole_lg(
     assert alone.status_code == 400
     assert removed.json() == {"removed": "kit", "skills": ["one"]}
     assert "one" not in after
+
+
+def test_a_plugin_exported_as_a_zip_uploads_back_whole_and_leaves_out_links_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+    import zipfile
+
+    plugin = tmp_path / "skills" / "kit-folder"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text('{"name": "kit"}', encoding="utf-8")
+    (plugin / "skills" / "one").mkdir(parents=True)
+    (plugin / "skills" / "one" / "SKILL.md").write_text(
+        "---\nname: one\ndescription: d\n---\nbody", encoding="utf-8"
+    )
+    (plugin / "scripts").mkdir()
+    (plugin / "scripts" / "run.py").write_text("print(1)", encoding="utf-8")
+    (plugin / ".coscribe-source.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "secret.txt").write_text("not yours", encoding="utf-8")
+    try:
+        (plugin / "scripts" / "secret.txt").symlink_to(tmp_path / "secret.txt")
+    except OSError:  # Windows without the right to make links
+        pass
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        exported = client.get("/api/skills/kit/export?plugin=true")
+        builtin = client.get("/api/skills/pptx-pages/export?plugin=true")
+        missing = client.get("/api/skills/nope/export?plugin=true")
+        client.delete("/api/skills/kit?plugin=true")
+        upload = client.post(
+            "/api/skills/upload",
+            files={"file": ("kit-folder.zip", exported.content, "application/zip")},
+        )
+
+    names = zipfile.ZipFile(io.BytesIO(exported.content)).namelist()
+    assert sorted(names) == [
+        "kit-folder/.claude-plugin/plugin.json",
+        "kit-folder/scripts/run.py",
+        "kit-folder/skills/one/SKILL.md",
+    ]
+    assert "kit-folder.zip" in exported.headers["content-disposition"]
+    assert "pptx-pages/SKILL.md" in zipfile.ZipFile(io.BytesIO(builtin.content)).namelist()
+    assert missing.status_code == 404
+    assert upload.json()["plugin"] == "kit"

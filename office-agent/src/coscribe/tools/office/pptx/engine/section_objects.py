@@ -45,7 +45,7 @@ def chart(elem: ET.Element, style: Style, scale: float) -> ET.Element:
     return _native(elem, "chart", spec)
 
 
-def table(elem: ET.Element, style: Style, scale: float) -> ET.Element:
+def table(elem: ET.Element, style: Style, scale: float, font: str) -> ET.Element:
     rows = _rows(elem)
     grid = _grid(elem, rows)
     header_rows = 0
@@ -55,7 +55,7 @@ def table(elem: ET.Element, style: Style, scale: float) -> ET.Element:
         "schema": "ppt-master.semantic-table.v2",
         "rows": grid,
         "header_rows": header_rows,
-        "style": _table_style(style, scale, rows[0] if header_rows else []),
+        "style": _table_style(style, scale, rows[0] if header_rows else [], font),
     }
     widths = _column_widths(elem, scale)
     if widths:
@@ -208,11 +208,11 @@ def _span(cell: ET.Element, name: str, table_elem: ET.Element) -> int:
     return int(raw)
 
 
-def _table_style(style: Style, scale: float, header: list[ET.Element]) -> dict[str, Any]:
+def _table_style(style: Style, scale: float, header: list[ET.Element], font: str) -> dict[str, Any]:
     out: dict[str, Any] = {"band_row": False}
     out["font_size"] = round(style.px("font-size", 24.0) * scale, 2)
-    if "font-family" in style.values:
-        out["font_family"] = style.values["font-family"]
+    # Without a face of its own a native table falls to the theme's, not the page's.
+    out["font_family"] = style.values.get("font-family", font)
     if "color" in style.values:
         out["body_text"] = f"#{style.colour('color')}"
     if "background" in style.values:

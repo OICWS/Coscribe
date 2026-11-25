@@ -18,7 +18,7 @@ from ._structure import (
     finish_tocs,
     summary,
 )
-from ._style import EAST_ASIAN_FONT, LATIN_FONT, TITLE_STYLE, apply_house_style, has_cjk
+from ._style import EAST_ASIAN_FONT, LATIN_FONT, TITLE_STYLE, apply_house_style, document_language
 from ._xml import (
     _apply_page_setup,
     _build_comments_xml,
@@ -55,7 +55,7 @@ def docx_from_markdown(content: str) -> bytes:
     from docx import Document
 
     document = Document()
-    apply_house_style(document, cjk=has_cjk(content))
+    apply_house_style(document, language=document_language("", content))
     change_ids = _ChangeIdCounter()
     written = add_blocks(document, content, None, change_ids)
     _title_first_heading(document, written)
@@ -100,10 +100,12 @@ class DocxToolkit(WorkspaceToolkit):
         track_changes: bool = False,
         change_author: str = "Coscribe",
         comment_author: str = "Coscribe",
+        language: str = "",
     ) -> dict[str, object]:
         from docx import Document
 
         file_path = self._check_writable(path, overwrite)
+        doc_language = document_language(language, content)
         change_ids = _ChangeIdCounter()
         if template_path:
             template_file = self._check_readable(template_path)
@@ -114,7 +116,7 @@ class DocxToolkit(WorkspaceToolkit):
                 _clear_body(document)
         else:
             document = Document()
-            apply_house_style(document, cjk=has_cjk(content))
+            apply_house_style(document, language=doc_language)
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
