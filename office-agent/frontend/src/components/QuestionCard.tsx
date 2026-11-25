@@ -1,319 +1,292 @@
 import { useState } from "react";
-import type { LogItem } from "../state/reducer";
+import type { CardAnswers, CardState } from "../lib/questionCards";
 import type { QuestionSpec } from "../types/wire";
-import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CloseIcon, PencilIcon } from "./icons";
+import { CheckIcon, ChevronRightIcon, PencilIcon } from "./icons";
 
-type QuestionItem = Extract<LogItem, { kind: "question" }>;
-/** undefined: not answered yet; null: skipped. */
-type Answer = string | null | undefined;
-
-/** ask_user_question's questions, docked above the composer at its width.
- * A single-choice question answers on the click and moves on; a
- * multi-choice one collects ticks until its arrow. Each can be skipped or
- * answered in the user's own words, the pager steps between them, and
- * the answers go back together once every question has one. The close
- * button answers none of them. */
-export function QuestionPanel({
-  item,
+/** A question card in the conversation (decision 0060). It never covers the conversation and
+ * never holds the turn: the person answers by a click whenever they like, or in the message box
+ * ("Or just reply in chat"), or not at all. One question answers on the click; several page
+ * through, each with a line for an answer of the person's own, and go back together on Submit,
+ * which shows once every question has an answer.
+ * Answered, the card folds to the answer with a check. */
+export function QuestionCardView({
+  questions,
+  state,
   onAnswer,
 }: {
-  item: QuestionItem;
-  onAnswer: (id: string, answers: (string | null)[] | null) => void;
+  questions: QuestionSpec[];
+  state: CardState;
+  onAnswer: (answers: CardAnswers) => void;
 }) {
-  const questions = item.questions;
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Answer[]>(() => questions.map(() => undefined));
-  const question = questions[index];
+  if (questions.length === 0) return null;
+  if (state.status === "answered") return <AnsweredCard questions={questions} answers={state.answers} inChat={state.inChat} />;
+  if (state.status === "replaced") return <ReplacedCard questions={questions} />;
+  return questions.length === 1 && !questions[0].multi_select ? (
+    <SingleQuestion question={questions[0]} onAnswer={onAnswer} />
+  ) : (
+    <PagedQuestions questions={questions} onAnswer={onAnswer} />
+  );
+}
 
-  const answer = (value: string | null) => {
-    const next = answers.map((a, i) => (i === index ? value : a));
-    setAnswers(next);
-    const after = [...next.keys()].slice(index + 1).concat([...next.keys()].slice(0, index + 1));
-    const open = after.find((i) => next[i] === undefined);
-    if (open === undefined) onAnswer(item.id, next.map((a) => a ?? null));
-    else setIndex(open);
-  };
+const CARD = "w-full rounded-[20px] border border-[var(--border)] bg-[var(--bg)] px-4 pb-3 pt-4";
+const ROW = "flex w-full items-start gap-3.5 rounded-xl px-2.5 py-2.5 text-left";
+const ROW_WRAP = "border-b border-[var(--border)] last:border-b-0 hover:border-transparent has-[:hover]:border-transparent";
 
-  if (!question) return null;
+const letter = (i: number) => String.fromCharCode(65 + i);
+
+function focusComposer() {
+  document.querySelector<HTMLTextAreaElement>('[data-testid="composer"] textarea')?.focus();
+}
+
+function ReplyInChat() {
   return (
-    <div className="mx-auto w-full max-w-[880px] px-4 pb-2">
-      <div className="rounded-3xl border border-[var(--border)] bg-[var(--bg)] shadow-sm">
-        <div className="flex items-start justify-between gap-3 px-5 pb-1.5 pt-4">
-          <div className="min-w-0 text-[16px]">{question.question}</div>
-          <div className="flex shrink-0 items-center gap-1 text-sm text-[var(--muted)]">
-            {questions.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Previous question"
-                  className="rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent"
-                  disabled={index === 0}
-                  onClick={() => setIndex(index - 1)}
-                >
-                  <ChevronRightIcon className="h-4 w-4 rotate-180" />
-                </button>
-                <span className="tabular-nums">
-                  {index + 1} of {questions.length}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Next question"
-                  className="rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent"
-                  disabled={index === questions.length - 1}
-                  onClick={() => setIndex(index + 1)}
-                >
-                  <ChevronRightIcon className="h-4 w-4" />
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              aria-label="Close the questions"
-              className="ml-2 rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              onClick={() => onAnswer(item.id, null)}
-            >
-              <CloseIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        {question.multi_select ? (
-          <MultiChoice key={index} question={question} previous={answers[index]} onAnswer={answer} />
-        ) : (
-          <SingleChoice key={index} question={question} previous={answers[index]} onAnswer={answer} />
-        )}
-      </div>
+    <div className="px-2.5 pt-2 text-[13px] text-[var(--muted)]">
+      Or just{" "}
+      <button type="button" className="text-[var(--fg)] underline underline-offset-2 hover:text-[var(--accent)]" onClick={focusComposer}>
+        reply in chat
+      </button>
+      .
     </div>
   );
 }
 
-function OptionText({ label, description }: { label: string; description: string }) {
+function Badge({ mark, active = false }: { mark: React.ReactNode; active?: boolean }) {
   return (
-    <span className="min-w-0">
-      <span className="block text-[15px]">{label}</span>
-      {description && <span className="block text-[13px] text-[var(--muted)]">{description}</span>}
+    <span
+      className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg text-[14px] ${
+        active ? "bg-[var(--border)] text-[var(--fg)]" : "bg-[var(--card-bg)] text-[var(--muted)] group-hover:bg-[var(--border)] group-hover:text-[var(--fg)]"
+      }`}
+    >
+      {mark}
     </span>
   );
 }
 
-const ROW = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left";
-const ROW_WRAP = "border-b border-[var(--border)] hover:border-transparent has-[:hover]:border-transparent";
+/** `note` replaces the description on an answered card, which shows no Recommended badge. */
+function OptionText({ option, answered = false, note }: { option: QuestionSpec["options"][number]; answered?: boolean; note?: string }) {
+  return (
+    <span className="min-w-0 pt-[3px]">
+      <span className="block text-[15px] leading-snug">
+        {option.label}
+        {option.recommended && !answered && (
+          <span className="ml-2 whitespace-nowrap rounded-full bg-[var(--accent-soft)] px-2 py-px align-[1px] text-[12px] text-[var(--accent)]">
+            Recommended
+          </span>
+        )}
+      </span>
+      {(note ?? option.description) && <span className="mt-0.5 block text-[13px] text-[var(--muted)]">{note ?? option.description}</span>}
+    </span>
+  );
+}
 
-function SingleChoice({
+function OptionRows({
   question,
-  previous,
-  onAnswer,
+  picked,
+  onPick,
 }: {
   question: QuestionSpec;
-  previous: Answer;
-  onAnswer: (value: string | null) => void;
+  picked: ReadonlySet<string>;
+  onPick: (label: string) => void;
 }) {
-  const labels = question.options.map((o) => o.label);
-  const typedBefore = typeof previous === "string" && !labels.includes(previous) ? previous : "";
-  const [typing, setTyping] = useState(typedBefore !== "");
-  const [text, setText] = useState(typedBefore);
-  const send = () => text.trim() && onAnswer(text.trim());
-
   return (
-    <div className="px-3 pb-3">
+    <>
       {question.options.map((option, i) => {
-        const chosen = previous === option.label;
+        const chosen = picked.has(option.label);
         return (
           <div key={option.label} className={ROW_WRAP}>
             <button
               type="button"
+              aria-pressed={question.multi_select ? chosen : undefined}
               className={`${ROW} group hover:bg-[var(--card-bg)] ${chosen ? "bg-[var(--card-bg)]" : ""}`}
-              onClick={() => onAnswer(option.label)}
+              onClick={() => onPick(option.label)}
             >
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[15px] text-[var(--muted)] group-hover:bg-[var(--border)] ${
-                  chosen ? "bg-[var(--border)]" : "bg-[var(--card-bg)]"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <OptionText label={option.label} description={option.description} />
+              <Badge mark={question.multi_select && chosen ? <CheckIcon className="h-3.5 w-3.5" /> : letter(i)} active={chosen} />
+              <OptionText option={option} />
             </button>
           </div>
         );
       })}
-      <div className="flex items-center gap-3 px-3 pt-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--card-bg)] text-[var(--muted)]">
-          <PencilIcon className="h-3.5 w-3.5" />
-        </span>
-        {typing ? (
-          <input
-            autoFocus
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
-            placeholder="Type your own answer"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) send();
-              if (e.key === "Escape") setTyping(false);
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="min-w-0 flex-1 text-left text-sm text-[var(--muted)] hover:text-[var(--fg)]"
-            onClick={() => setTyping(true)}
-          >
-            Something else
-          </button>
-        )}
-        {typing && text.trim() ? (
-          <SendButton onClick={send} />
-        ) : (
-          <SkipButton onClick={() => onAnswer(null)} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MultiChoice({
-  question,
-  previous,
-  onAnswer,
-}: {
-  question: QuestionSpec;
-  previous: Answer;
-  onAnswer: (value: string | null) => void;
-}) {
-  const labels = question.options.map((o) => o.label);
-  const before = typeof previous === "string" ? previous.split(", ") : [];
-  const [picked, setPicked] = useState(() => new Set(before.filter((p) => labels.includes(p))));
-  const typedBefore = before.filter((p) => !labels.includes(p)).join(", ");
-  const [typing, setTyping] = useState(typedBefore !== "");
-  const [text, setText] = useState(typedBefore);
-  const own = typing && text.trim() ? [text.trim()] : [];
-  const count = picked.size + own.length;
-  const submit = () => count > 0 && onAnswer([...labels.filter((l) => picked.has(l)), ...own].join(", "));
-  const toggle = (label: string) =>
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-
-  return (
-    <>
-      <div className="px-3 pb-3">
-        {question.options.map((option) => (
-          <div key={option.label} className={ROW_WRAP}>
-            <button type="button" className={`${ROW} hover:bg-[var(--card-bg)]`} onClick={() => toggle(option.label)}>
-              <Checkbox checked={picked.has(option.label)} />
-              <OptionText label={option.label} description={option.description} />
-            </button>
-          </div>
-        ))}
-        <div className="flex items-center gap-3 px-3 pt-2.5">
-          <button type="button" aria-label="Something else" onClick={() => setTyping(!typing)}>
-            <Checkbox checked={typing} />
-          </button>
-          {typing ? (
-            <input
-              autoFocus
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
-              placeholder="Type your own answer"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) submit();
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left text-sm text-[var(--muted)] hover:text-[var(--fg)]"
-              onClick={() => setTyping(true)}
-            >
-              Something else
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between border-t border-[var(--border)] px-5 py-3">
-        <span className="text-sm text-[var(--muted)]">{count} selected</span>
-        <div className="flex items-center gap-2">
-          <SkipButton onClick={() => onAnswer(null)} />
-          <SendButton onClick={submit} disabled={count === 0} />
-        </div>
-      </div>
     </>
   );
 }
 
-function Checkbox({ checked }: { checked: boolean }) {
+function SingleQuestion({ question, onAnswer }: { question: QuestionSpec; onAnswer: (answers: CardAnswers) => void }) {
   return (
-    <span
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-        checked ? "border-[var(--muted)] bg-[var(--border)] text-[var(--fg)]" : "border-[var(--border)]"
-      }`}
-    >
-      {checked && <CheckIcon className="h-3 w-3" />}
-    </span>
+    <div className={CARD}>
+      <div className="px-1 pb-2 text-[15.5px]">{question.question}</div>
+      <OptionRows question={question} picked={new Set()} onPick={(label) => onAnswer([label])} />
+      <ReplyInChat />
+    </div>
   );
 }
 
-function SkipButton({ onClick }: { onClick: () => void }) {
+/** One page per question; a single question that takes several choices pages too, since its
+ * ticks need a Submit. */
+function PagedQuestions({ questions, onAnswer }: { questions: QuestionSpec[]; onAnswer: (answers: CardAnswers) => void }) {
+  const [index, setIndex] = useState(0);
+  const [picked, setPicked] = useState<Set<string>[]>(() => questions.map(() => new Set()));
+  const [own, setOwn] = useState<string[]>(() => questions.map(() => ""));
+  const answerOf = (i: number): string | null => {
+    const labels = questions[i].options.map((o) => o.label).filter((l) => picked[i].has(l));
+    const typed = own[i].trim();
+    if (!questions[i].multi_select) return typed || labels[0] || null;
+    const all = typed ? [...labels, typed] : labels;
+    return all.length > 0 ? all.join(", ") : null;
+  };
+  const answers = questions.map((_, i) => answerOf(i));
+  const question = questions[index];
+  const paged = questions.length > 1;
+
+  const pick = (label: string) => {
+    const next = picked.map((set, i) => {
+      if (i !== index) return set;
+      if (!question.multi_select) return new Set([label]);
+      const toggled = new Set(set);
+      if (toggled.has(label)) toggled.delete(label);
+      else toggled.add(label);
+      return toggled;
+    });
+    setPicked(next);
+    if (!question.multi_select) {
+      setOwn(own.map((t, i) => (i === index ? "" : t)));
+      const after = [...questions.keys()].slice(index + 1).find((i) => answerOf(i) === null);
+      if (after !== undefined) setIndex(after);
+    }
+  };
+  const type = (value: string) => {
+    setOwn(own.map((t, i) => (i === index ? value : t)));
+    if (!question.multi_select && value.trim()) setPicked(picked.map((set, i) => (i === index ? new Set() : set)));
+  };
+
   return (
-    <button
-      type="button"
-      className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1 text-sm hover:bg-[var(--card-bg)]"
-      onClick={onClick}
-    >
-      Skip
-    </button>
+    <div className={CARD}>
+      <div className="flex items-start justify-between gap-3 px-1 pb-2">
+        <div className="min-w-0 text-[15.5px]">{question.question}</div>
+        {paged && <Pager index={index} total={questions.length} onGo={setIndex} />}
+      </div>
+      <OptionRows key={index} question={question} picked={picked[index]} onPick={pick} />
+      <div className="flex items-center gap-3.5 px-2.5 pt-2.5">
+        <Badge mark={<PencilIcon className="h-3.5 w-3.5" />} active={own[index].trim() !== ""} />
+        <input
+          key={index}
+          aria-label="Your own answer"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-hover)]"
+          placeholder="Other: type your own answer"
+          value={own[index]}
+          onChange={(e) => type(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.nativeEvent.isComposing || !own[index].trim()) return;
+            const after = [...questions.keys()].find((i) => i !== index && answers[i] === null);
+            if (after !== undefined) setIndex(after);
+          }}
+        />
+      </div>
+      <Progress answers={answers} paged={paged} selected={picked[0].size + (own[0].trim() ? 1 : 0)} onSubmit={() => onAnswer(answers)} />
+      <ReplyInChat />
+    </div>
   );
 }
 
-function SendButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
+function Pager({ index, total, onGo }: { index: number; total: number; onGo: (index: number) => void }) {
+  const arrow = "rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent";
   return (
-    <button
-      type="button"
-      aria-label="Answer"
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-fg)] disabled:bg-[var(--muted)] disabled:opacity-60"
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <ArrowRightIcon className="h-4 w-4" />
-    </button>
+    <div className="flex shrink-0 items-center gap-1 text-[13px] tabular-nums text-[var(--muted)]">
+      <button type="button" aria-label="Previous question" className={arrow} disabled={index === 0} onClick={() => onGo(index - 1)}>
+        <ChevronRightIcon className="h-4 w-4 rotate-180" />
+      </button>
+      {index + 1} / {total}
+      <button type="button" aria-label="Next question" className={arrow} disabled={index === total - 1} onClick={() => onGo(index + 1)}>
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
-/** An answered ask_user_question in the conversation: each question with
- * the answer it got. */
-export function QuestionRecord({ item }: { item: QuestionItem }) {
+/** How far the answers have got, and Submit once every question has one. */
+function Progress({ answers, paged, selected, onSubmit }: { answers: CardAnswers; paged: boolean; selected: number; onSubmit: () => void }) {
+  const count = answers.filter((a) => a !== null).length;
   return (
-    <div className="w-full max-w-[560px] self-start rounded-3xl border border-[var(--border)] bg-[var(--bg)] px-5 py-4 text-[15px]">
-      {item.reply !== undefined ? (
-        <>
-          {item.questions.map((q, i) => (
-            <div key={i} className="text-[var(--muted)]">
-              {q.question}
-            </div>
-          ))}
-          <div className="mt-1 whitespace-pre-wrap">{item.reply}</div>
-        </>
-      ) : item.answers === null ? (
-        <>
-          {item.questions.map((q, i) => (
-            <div key={i} className="text-[var(--muted)]">
-              {q.question}
-            </div>
-          ))}
-          <div className="mt-1.5 text-[var(--muted)]">Closed without answering</div>
-        </>
-      ) : (
-        item.questions.map((q, i) => (
-          <div key={i} className={i > 0 ? "mt-3.5" : ""}>
-            <div className="text-[var(--muted)]">{q.question}</div>
-            <div className="mt-1">{item.answers?.[i] ?? <span className="text-[var(--muted)]">(skipped)</span>}</div>
-          </div>
-        ))
+    <div className="mt-3 flex min-h-[44px] items-center justify-between gap-3 border-t border-[var(--border)] px-2.5 pt-3">
+      <span className="flex items-center gap-2 text-[13px] text-[var(--muted)]">
+        {paged && (
+          <span className="flex gap-1.5" aria-hidden>
+            {answers.map((a, i) => (
+              <span key={i} className={`h-[7px] w-[7px] rounded-full ${a !== null ? "bg-[var(--accent)]" : "bg-[var(--border)]"}`} />
+            ))}
+          </span>
+        )}
+        {paged ? `${count} of ${answers.length} answered` : `${selected} selected`}
+      </span>
+      {count === answers.length && (
+        <button
+          type="button"
+          className="rounded-lg bg-[var(--accent)] px-4 py-1.5 text-sm text-[var(--accent-fg)] hover:bg-[var(--accent-hover)]"
+          onClick={onSubmit}
+        >
+          Submit
+        </button>
       )}
+    </div>
+  );
+}
+
+function AnsweredCard({ questions, answers, inChat }: { questions: QuestionSpec[]; answers: CardAnswers; inChat: boolean }) {
+  if (questions.length === 1) {
+    const question = questions[0];
+    const answer = answers[0] ?? null;
+    const parts = answer === null ? [] : question.multi_select ? answer.split(", ") : [answer];
+    const note = inChat ? "Answered in chat" : undefined;
+    return (
+      <div className="w-full rounded-[20px] bg-[var(--card-bg)] px-4 pb-4 pt-4">
+        <div className="px-1 pb-2 text-[15.5px]">{question.question}</div>
+        {answer === null ? (
+          <div className="px-1 text-sm text-[var(--muted)]">Not answered</div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {parts.map((part) => {
+              const i = question.options.findIndex((o) => o.label === part);
+              return (
+                <div key={part} className="flex items-center gap-3.5 rounded-xl bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] px-2.5 py-2.5">
+                  <Badge mark={i >= 0 ? letter(i) : <PencilIcon className="h-3.5 w-3.5" />} />
+                  <OptionText option={i >= 0 ? question.options[i] : { label: part, description: "", recommended: false }} answered note={note} />
+                  <CheckIcon className="ml-auto h-4 w-4 shrink-0 text-[var(--muted)]" aria-label="Answered" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="flex w-full flex-col gap-2.5 rounded-[20px] bg-[var(--card-bg)] px-5 py-4">
+      {questions.map((q, i) => (
+        <div key={i}>
+          <div className="text-[13.5px] text-[var(--muted)]">{q.question}</div>
+          {answers[i] ? (
+            <div className="flex items-start gap-2 text-[15px]">
+              <CheckIcon className="mt-[5px] h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
+              <span className="min-w-0">{answers[i]}</span>
+            </div>
+          ) : (
+            <div className="text-[15px] text-[var(--muted)]">Skipped</div>
+          )}
+        </div>
+      ))}
+      {inChat && <div className="text-[12.5px] text-[var(--muted)]">Answered in chat</div>}
+    </div>
+  );
+}
+
+function ReplacedCard({ questions }: { questions: QuestionSpec[] }) {
+  return (
+    <div className="w-full rounded-[20px] border border-dashed border-[var(--border)] px-5 py-3 text-[var(--muted)]">
+      {questions.map((q, i) => (
+        <div key={i} className="text-[14px]">
+          {q.question}
+        </div>
+      ))}
+      <div className="mt-1 text-[12.5px]">No longer needed: a newer question replaced it</div>
     </div>
   );
 }

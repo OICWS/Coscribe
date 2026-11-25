@@ -115,6 +115,7 @@ from .turn_text import (
     TITLE_INSTRUCTIONS,
     clean_title,
     design_system_for_start,
+    open_question_note,
     turn_mode_note,
     usage_event,
 )
@@ -1165,6 +1166,7 @@ class ChatSessionLG:
             + language_note(text)
             + deck_note
             + ("" if told else context_note(context))
+            + open_question_note(history, text)
             + user_input
         )
 
@@ -1177,9 +1179,8 @@ class ChatSessionLG:
         # Reset for this turn (see _stream_turn's docstring): a stale entry from a previous
         # turn would pop for the wrong call.
         self._pending_tool_args = defaultdict(list)
-        # Fresh start for /stop each turn: a stop requested during a previous turn (or
-        # left over from one that already finished) must not immediately
-        # halt this new one.
+        # Fresh start for /stop each turn: a stop requested during a previous turn (or left over
+        # from one that already finished) must not immediately halt this new one.
         self._stop_requested = False
         if not history and self._wants_title():
             self._title_task = asyncio.create_task(self._name_thread(websocket, text))

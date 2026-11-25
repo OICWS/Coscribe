@@ -9,7 +9,8 @@ import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
 import { PlanCard, type PlanChoice, type PlanItem } from "../PlanCard";
-import { QuestionRecord } from "../QuestionCard";
+import { AskCard, PendingQuestionCard } from "./QuestionCards";
+import { QUESTION_ANSWER_PREFIX } from "../../lib/questionCards";
 import {
   INVESTIGATION_PREFIX,
   InvestigationCard,
@@ -108,7 +109,9 @@ export function TurnView({
         ) : entry.kind === "task_card" ? (
           <TaskCard key={entry.id} entry={entry} live={live} waiting={waiting} />
         ) : entry.kind === "question" ? (
-          entry.status === "answered" ? <QuestionRecord key={entry.id} item={entry} /> : null
+          <PendingQuestionCard key={entry.id} item={entry} />
+        ) : entry.kind === "ask_card" ? (
+          <AskCard key={entry.id} item={entry.item} />
         ) : entry.kind === "plan" ? (
           <PlanCard key={entry.id} item={entry} onAnswer={onAnswerPlan} onOpenPlan={onOpenPlan} />
         ) : entry.kind === "task_draft" ? (
@@ -153,6 +156,7 @@ const CARD_PREFIXES = [
   BACKGROUND_REPORT_PREFIX,
   CONNECTED_NOTE_PREFIX,
   CONVERSATION_MESSAGE_PREFIX,
+  QUESTION_ANSWER_PREFIX,
 ];
 
 function isCardMessage(text: string): boolean {
@@ -175,6 +179,8 @@ export function LogItemView({
     if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
     if (item.text.startsWith(CONNECTED_NOTE_PREFIX)) return <ConnectorConnectedNote text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
+    // The card it answers shows the answer.
+    if (item.text.startsWith(QUESTION_ANSWER_PREFIX)) return null;
     return <UserMessageView item={item} reaction={reaction} />;
   }
 
