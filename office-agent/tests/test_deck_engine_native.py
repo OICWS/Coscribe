@@ -13,6 +13,7 @@ from pptx import Presentation
 
 from coscribe.tools.office.pptx.engine import check_deck, compile_pages
 
+_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _SVG = (
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
 )
@@ -74,6 +75,17 @@ def test_a_table_marker_becomes_a_table(tmp_path: Path) -> None:
         ["区域", "同比"],
         ["华东", "+12.2%"],
     ]
+
+
+def test_a_table_without_a_face_of_its_own_takes_the_pages(tmp_path: Path) -> None:
+    out = tmp_path / "deck.pptx"
+
+    compile_pages([("p1", _page(_TABLE))], out)
+
+    table = _shapes(out)["regions"].table  # type: ignore[attr-defined]
+    r_pr = table.cell(1, 1).text_frame.paragraphs[0].runs[0]._r.find(f"{_A}rPr")  # noqa: SLF001
+    faces = {tag: r_pr.find(f"{_A}{tag}").get("typeface") for tag in ("latin", "ea")}
+    assert faces == {"latin": "Arial", "ea": "Microsoft YaHei"}
 
 
 def test_a_broken_marker_is_an_error_naming_it_and_the_rest_is_built(tmp_path: Path) -> None:
