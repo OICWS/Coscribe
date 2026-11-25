@@ -347,3 +347,29 @@ python -m evals.agentic.candidate failed-turn-20261118103000.json
 
 prints an `AgenticTask` with the turn's numbers as comments, to paste into `agentic/tasks.py`. Its
 setup and checks are left to write by hand, and its turn too when the person wrote nothing.
+
+## Public benchmarks (`external.py`, #1072)
+
+Our own tasks are written by us; two public sets measure the same agent against tasks and
+checkers someone else wrote. Neither the data nor the checker is copied here: download them and
+point the runner at them.
+
+```bash
+python -m evals.external --bench officeval --data <OfficeVal download> \
+    --grader <OmegaUse-OfficeVal checkout> --tasks 003,033 --out evals/runs/ov
+python -m evals.external --bench spreadsheetbench --data <spreadsheetbench_verified_400> \
+    --grader <SpreadsheetBench checkout> --tasks 45738,41-47 --out evals/runs/sb
+```
+
+- **OmegaUse-OfficeVal**: 100 Word, Excel and PowerPoint tasks. The Office files the agent made
+  or changed go to the benchmark's submission layout and its own verifier scores them; the score
+  is its completion rate (nothing when the structural check fails). Six verifiers need Word
+  through COM and are skipped off Windows.
+- **SpreadsheetBench Verified**: 400 spreadsheet tasks. The agent saves `output.xlsx`;
+  LibreOffice recalculates it as the benchmark does, and its `compare_workbooks` checks the
+  answer range against the golden file (1 or 0).
+
+`--grader-python` names the Python with each checker's dependencies (openpyxl, python-docx,
+python-pptx), which coscribe's own environment may not have. Run on `deepseek-flash` off-peak:
+a task costs about one to five cents. Only the deterministic parts are tested
+(`tests/test_evals_external.py`).

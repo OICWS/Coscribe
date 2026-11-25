@@ -134,7 +134,9 @@ def officeval_fraction(report: dict[str, Any]) -> float | None:
 def spreadsheet_tasks(
     data: Path, grader: Path, wanted: list[str], python: str
 ) -> list[ExternalTask]:
-    entries = {str(e["id"]): e for e in json.loads((data / "dataset.json").read_text(encoding="utf-8"))}
+    entries = {
+        str(e["id"]): e for e in json.loads((data / "dataset.json").read_text(encoding="utf-8"))
+    }
     tasks = []
     for task_id in wanted:
         entry = entries[task_id]

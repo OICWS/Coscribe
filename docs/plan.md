@@ -83,6 +83,9 @@ Last reviewed: 2026-11-22.
 
 ## Open, smaller
 
+- **Public office benchmarks** (#1072): `office-agent/evals/external.py` runs OmegaUse-OfficeVal
+  and SpreadsheetBench Verified; batch 0 ran (`docs/log/2026-11-25-external-benchmarks.md`). Next:
+  the rest in batches on `deepseek-flash`, each approved first, then fix the lowest-scoring areas.
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
   the checks on what tests prove, the frontend features and the weekly numbers
   (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
