@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnnotateEntry } from "./ImageAnnotator";
 import { CloseIcon } from "./icons";
@@ -6,6 +6,8 @@ import { CloseIcon } from "./icons";
 import { type AttachmentView } from "../lib/attachments";
 import { copyImage } from "../lib/copyImage";
 import { DIALOG_INSET_CLASS } from "../lib/titleBar";
+
+const WordPreview = lazy(() => import("./WordPreview"));
 
 function pdfPageUrl(path: string, threadId: string, page: number, width: number): string {
   const query = new URLSearchParams({ path, page: String(page), width: String(width) });
@@ -157,6 +159,9 @@ export function AttachmentCard({
   );
 }
 
+const attachmentFrame = (kind: AttachmentView["kind"]) =>
+  kind === "docx" ? "h-full w-full max-w-5xl" : kind === "file" ? "min-h-[26rem] w-full max-w-[40rem]" : "w-full max-w-[34rem]";
+
 /** A file shown on its own: the picture or the pages when it has them, and a
  * plain line when it can't be shown here. */
 export function AttachmentDialog({
@@ -215,9 +220,7 @@ export function AttachmentDialog({
       <div
         role="dialog"
         aria-label={view.name}
-        className={`flex max-h-full flex-col overflow-hidden rounded-3xl bg-[var(--panel-bg)] shadow-[var(--shadow)] ${
-          showable ? "w-full max-w-[34rem]" : "min-h-[26rem] w-full max-w-[40rem]"
-        }`}
+        className={`flex max-h-full flex-col overflow-hidden rounded-3xl bg-[var(--panel-bg)] shadow-[var(--shadow)] ${attachmentFrame(view.kind)}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 px-7 pb-3 pt-6">
@@ -233,7 +236,8 @@ export function AttachmentDialog({
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className={`min-h-0 flex-1 overflow-y-auto px-7 pb-7 ${showable ? "" : "flex items-center justify-center"}`}>
+        <div className={`min-h-0 flex-1 ${view.kind === "docx" ? "overflow-hidden" : "overflow-y-auto px-7 pb-7"} ${showable ? "" : "flex items-center justify-center"}`}>
+          {view.kind === "docx" && <Suspense fallback={<p className="p-6 text-sm">Loading preview…</p>}><WordPreview key={view.path} threadId={threadId} path={view.path} /></Suspense>}
           {view.kind === "image" && (
             <img {...imageProps(view.src, view.name)} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />
           )}

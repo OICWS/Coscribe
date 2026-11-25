@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
@@ -53,7 +54,7 @@ test("a sent PDF and a sent file stay in the conversation as cards, also after a
   await expect(page.getByRole("dialog").getByText("2 pages")).toBeVisible();
 });
 
-test("a PDF shows its first page, opens with all pages, and a file that can't be shown says so", async ({ page }) => {
+test("a PDF opens with all pages and a Word document opens its paginated preview", async ({ page }) => {
   await page.goto(freshThreadPath("attach-view"));
   await waitForConnected(page);
 
@@ -76,12 +77,22 @@ test("a PDF shows its first page, opens with all pages, and a file that can't be
   await page.keyboard.press("Escape");
 
   await page.locator("input[type=file]").setInputFiles([path.join(fixtures, "sample.docx")]);
+  // CI tests the viewer on a rendered two-page PDF without requiring an installed Office engine.
+  await page.route("**/api/attachment/docx?*", (route) => route.fulfill({
+    body: readFileSync(path.join(fixtures, "sample.pdf")),
+    contentType: "application/pdf",
+    headers: { etag: '"sample"' },
+  }));
   const docx = page.getByRole("button", { name: "Open sample.docx" });
   await expect(docx.getByText("DOCX", { exact: true })).toBeVisible();
   await docx.click({ button: "right" });
   await expect(page.getByRole("menuitem")).toHaveCount(0);
   await docx.click();
-  await expect(page.getByText("File previews are not supported for this file type")).toBeVisible();
+  const word = page.getByRole("dialog", { name: "sample.docx" });
+  await expect(word.getByText("Page 1 of 2", { exact: true })).toBeVisible();
+  await word.getByRole("button", { name: "Next page" }).click();
+  await expect(word.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+  await word.getByRole("combobox", { name: "Zoom" }).selectOption("125");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });

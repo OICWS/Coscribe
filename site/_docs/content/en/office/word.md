@@ -9,6 +9,10 @@ Coscribe writes real `.docx` files: headings, tables, pictures, native charts, a
 
 For writing you mainly want to read and edit in Coscribe, it makes a **Doc**, its own editable document shown beside the conversation (see [Docs, designs and dashboards](artifacts.md)). Ask for **Word** or a **.docx** when you need a Word file: to send it, to use your template, or to track changes.
 
+## Preview a Word file
+
+Open a `.docx` attachment or select one in **Files** to read the saved document page by page. Use **Fit width** or a zoom level, and **Open in Word** to edit the original. Coscribe creates the preview locally using Microsoft Word, WPS, or LibreOffice. The first preview may take a moment. Saved changes refresh the preview.
+
 ## Revise with tracked changes
 
 Ask Coscribe to revise a document "with tracked changes" and each insertion and deletion is marked as in Word's Track Changes, with your comments where it explains a change. Your colleagues can then accept or reject each one in Word.

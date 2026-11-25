@@ -297,3 +297,66 @@ def test_an_attached_pdf_can_be_previewed_page_by_page_and_nothing_else_can(
     assert past_end.status_code == 404
     assert not_pdf.status_code == 404
     assert outside.status_code in (400, 404)
+
+
+def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    from docx import Document
+    from reportlab.pdfgen import canvas
+
+    from coscribe.tools.convert import ConvertToolkit
+
+    opened: list[Path] = []
+
+    def convert(_toolkit, path: str, to_format: str, output_path: str) -> None:
+        assert to_format == "pdf"
+        snapshot = _toolkit._scope.resolve(path)
+        opened.append(snapshot)
+        dest = snapshot.with_name(output_path)
+        result = canvas.Canvas(str(dest))
+        result.drawString(50, 50, Document(snapshot).paragraphs[0].text)
+        result.save()
+
+    def docx(text: str) -> bytes:
+        data = io.BytesIO()
+        document = Document()
+        document.add_paragraph(text)
+        document.save(data)
+        return data.getvalue()
+
+    monkeypatch.setattr(ConvertToolkit, "convert_office_file", convert)
+    original = docx("First version")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        uploaded = client.post(
+            "/api/upload",
+            data={"thread_id": "chat"},
+            files={"file": ("review.docx", original)},
+        ).json()
+        source = tmp_path / "workspace" / uploaded["path"]
+        url = "/api/attachment/docx"
+        params = {"path": uploaded["path"], "thread_id": "chat"}
+        outside = tmp_path / "outside.docx"
+        outside.write_bytes(original)
+        assert client.get(url, params={**params, "path": str(outside)}).status_code == 403
+        assert client.head(url, params=params).status_code == 200
+        assert opened == []
+        first = client.get(url, params=params)
+        assert first.status_code == 200
+        assert first.content.startswith(b"%PDF")
+        assert first.headers["cache-control"] == "no-store"
+        assert client.get(url, params=params).content == first.content
+        assert len(opened) == 1
+        assert opened[0] != source and not opened[0].exists()
+        assert source.read_bytes() == original
+        source.write_bytes(docx("A different saved version"))
+        assert client.head(url, params=params).headers["etag"] != first.headers["etag"]
+        assert client.get(url, params=params).content != first.content
+        assert len(opened) == 2
+        source.write_bytes(b"Not a Word package")
+        assert client.get(url, params=params).status_code == 422
+        assert len(opened) == 2
+        assert not list(source.parent.glob("*.pdf"))

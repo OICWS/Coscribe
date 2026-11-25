@@ -2010,6 +2010,47 @@
         "summary": "Thumbnail"
       }
     },
+    "/api/attachment/docx": {
+      "get": {
+        "operationId": "get_word_preview_api_attachment_docx_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Word Preview"
+      }
+    },
     "/api/attachment/pdf": {
       "get": {
         "description": "How many pages an attached PDF has, for the preview dialog.",
