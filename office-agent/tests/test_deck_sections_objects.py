@@ -153,3 +153,17 @@ def test_a_deck_with_sections_is_not_built_on_a_template(tmp_path: Path) -> None
     (tmp_path / "02.svg").write_text("<svg/>", encoding="utf-8")
     with pytest.raises(ValueError, match="not built on a template"):
         build_deck(tmp_path, tmp_path / "deck.pptx", template=tmp_path / "brand.pptx")
+
+
+def test_a_table_takes_the_pages_font_and_the_theme_has_a_chinese_face(tmp_path: Path) -> None:
+    page = TABLE.replace("<section>", '<section style="font-family:SimHei, Segoe UI">')
+    report, prs = _compile(tmp_path, page)
+    assert report.ok, report.errors()
+    cell = _shape(prs.slides[0], "regions").table.cell(1, 1)
+    r_pr = cell.text_frame.paragraphs[0].runs[0]._r.find(f"{_A}rPr")  # noqa: SLF001
+    faces = {tag: r_pr.find(f"{_A}{tag}").get("typeface") for tag in ("latin", "ea")}
+    assert faces == {"latin": "Segoe UI", "ea": "SimHei"}
+    theme = prs.slide_masters[0].part.part_related_by(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    )
+    assert b'<a:ea typeface="Microsoft YaHei"/>' in theme.blob

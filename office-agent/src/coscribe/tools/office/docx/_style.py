@@ -10,6 +10,9 @@ _HEADING_GREY = "262626"
 _BORDER_GREY = "BFBFBF"
 LATIN_FONT = "Calibri"
 EAST_ASIAN_FONT = "Microsoft YaHei"
+# Word (16, Windows) ignores the English name in the document defaults and falls back to SimSun,
+# while it resolves the face's own Chinese name everywhere.
+_WORD_EAST_ASIAN_FONT = "微软雅黑"
 TABLE_STYLE_ID = "ReportTable"
 _TABLE_STYLE_NAME = "Report Table"
 
@@ -53,6 +56,8 @@ def apply_house_style(document: Any, *, cjk: bool) -> None:
     defaults = styles_element.find(qn("w:docDefaults"))
     run_defaults = defaults.find(qn("w:rPrDefault")).find(qn("w:rPr"))
     _set_fonts(run_defaults)
+    if cjk:
+        _set_chinese(document, run_defaults)
     size = "21" if cjk else "22"
     for tag in ("w:sz", "w:szCs"):
         run_defaults.find(qn(tag)).set(qn("w:val"), size)
@@ -86,7 +91,48 @@ def _set_fonts(r_pr: Any) -> None:
     fonts.set(qn("w:ascii"), LATIN_FONT)
     fonts.set(qn("w:hAnsi"), LATIN_FONT)
     fonts.set(qn("w:cs"), LATIN_FONT)
-    fonts.set(qn("w:eastAsia"), EAST_ASIAN_FONT)
+    fonts.set(qn("w:eastAsia"), _WORD_EAST_ASIAN_FONT)
+
+
+def _set_chinese(document: Any, run_defaults: Any) -> None:
+    """Mark the text Chinese. With an English East Asian language Word draws the shared
+    punctuation (curly quotes, dashes, ellipses) in the Latin face, narrow and breakable from its
+    character; python-docx's template also carries a Japanese theme language, which sends every
+    theme-font style (Heading 4 and below, captions, tables) to MS Mincho and MS Gothic."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    run_defaults.find(qn("w:rFonts")).set(qn("w:hint"), "eastAsia")
+    lang = run_defaults.find(qn("w:lang"))
+    if lang is None:
+        lang = OxmlElement("w:lang")
+        run_defaults.append(lang)
+    lang.set(qn("w:eastAsia"), "zh-CN")
+    theme_lang = document.settings.element.find(qn("w:themeFontLang"))
+    if theme_lang is not None:
+        theme_lang.set(qn("w:eastAsia"), "zh-CN")
+    _set_theme_east_asian_font(document)
+
+
+def _set_theme_east_asian_font(document: Any) -> None:
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from lxml import etree
+
+    try:
+        theme = document.part.part_related_by(RT.THEME)
+    except KeyError:
+        return
+    drawing = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+    root = etree.fromstring(theme.blob)
+    for role in ("majorFont", "minorFont"):
+        for font in root.iter(f"{drawing}{role}"):
+            ea = font.find(f"{drawing}ea")
+            if ea is not None:
+                ea.set("typeface", _WORD_EAST_ASIAN_FONT)
+            for script in font.iter(f"{drawing}font"):
+                if script.get("script") == "Hans":
+                    script.set("typeface", _WORD_EAST_ASIAN_FONT)
+    theme._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)  # noqa: SLF001
 
 
 def _style_heading(style: Any, size_pt: float, before_pt: float, colour: str) -> None:

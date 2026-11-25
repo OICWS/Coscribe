@@ -375,7 +375,7 @@
   <w:docDefaults>
     <w:rPrDefault>
       <w:rPr>
-        <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+        <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
         <w:sz w:val="22"/>
         <w:szCs w:val="22"/>
         <w:lang w:bidi="ar-SA" w:eastAsia="en-US" w:val="en-US"/>
@@ -590,7 +590,7 @@
       <w:outlineLvl w:val="0"/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
       <w:b/>
       <w:bCs/>
       <w:color w:val="1F4E79"/>
@@ -614,7 +614,7 @@
       <w:outlineLvl w:val="1"/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
       <w:b/>
       <w:bCs/>
       <w:color w:val="1F4E79"/>
@@ -638,7 +638,7 @@
       <w:outlineLvl w:val="2"/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
       <w:b/>
       <w:bCs/>
       <w:color w:val="262626"/>
@@ -880,7 +880,7 @@
       <w:contextualSpacing/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/>
       <w:b/>
       <w:color w:val="1F4E79"/>
       <w:spacing w:val="5"/>
