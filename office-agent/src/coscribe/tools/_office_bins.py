@@ -20,13 +20,7 @@ def run_killable(
     only the launcher: a launcher (`soffice`, PowerShell) starts the real
     program, and a plain timeout leaves that running. A string is the command line as
     Windows takes it, for a program like msiexec that reads a quoted `NAME="a b"` itself."""
-    with subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        **_new_group(),  # type: ignore[call-overload]
-    ) as process:
+    with _start_in_group(command, subprocess.PIPE, env) as process:
         try:
             stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -38,10 +32,20 @@ def run_killable(
     return subprocess.CompletedProcess(command, 0, stdout, stderr)
 
 
-def _new_group() -> dict[str, int | bool]:
+def _start_in_group(
+    command: list[str] | str, stderr: int, env: dict[str, str] | None
+) -> subprocess.Popen[bytes]:
     if sys.platform == "win32":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-    return {"start_new_session": True}
+        return subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            env=env,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+    return subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=stderr, env=env, start_new_session=True
+    )
 
 
 def kill_tree(process: subprocess.Popen[bytes]) -> None:
@@ -61,13 +65,7 @@ def run_until_marker(
     blocks on a full pipe; the caller waits for it or kills its tree. None when the program ended
     first, successfully. Output and errors share one pipe, so a failure's message is the first
     line the program printed."""
-    process: subprocess.Popen[bytes] = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        **_new_group(),  # type: ignore[call-overload]
-    )
+    process = _start_in_group(command, subprocess.STDOUT, env)
     lines: list[bytes] = []
     settled = threading.Event()
     saw_marker = False
