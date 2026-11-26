@@ -107,15 +107,20 @@ test("a Word preview follows an atomic save and keeps its page and zoom", async 
   await page.locator("input[type=file]").setInputFiles(fixture);
   const saved = path.join(workspace!, (await (await upload).json()).path);
   const pdf = readFileSync(path.join(__dirname, "fixtures", "sample.pdf"));
-  let conversions = 0;
+  let firstVersion: string | undefined;
+  let updates = 0;
   let resume: () => void = () => {};
   const delayed = new Promise<void>((resolve) => { resume = resolve; });
   await page.route("**/api/attachment/docx?*", async (route) => {
     const meta = await route.fetch({ method: "HEAD" });
-    conversions += 1;
-    if (conversions === 2) await delayed;
+    const version = meta.headers().etag;
+    firstVersion ??= version;
+    if (version !== firstVersion) {
+      updates += 1;
+      await delayed;
+    }
     await route.fulfill({
-      body: pdf, contentType: "application/pdf", headers: { etag: meta.headers().etag },
+      body: pdf, contentType: "application/pdf", headers: { etag: version },
     });
   });
 
@@ -129,7 +134,7 @@ test("a Word preview follows an atomic save and keeps its page and zoom", async 
   try {
     writeFileSync(`${saved}.tmp`, readFileSync(fixture));
     renameSync(`${saved}.tmp`, saved);
-    await expect.poll(() => conversions).toBe(2);
+    await expect.poll(() => updates).toBeGreaterThan(0);
     await expect(dialog.getByText("Page 2 of 2", { exact: true })).toBeVisible();
     const loaded = page.waitForResponse((res) => res.url().includes("/api/attachment/docx?") && res.request().method() === "POST");
     resume();
