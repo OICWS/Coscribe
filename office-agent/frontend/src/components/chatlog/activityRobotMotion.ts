@@ -89,10 +89,10 @@ export function poseAt(activity: ConversationActivity, phase: number, time: numb
 }
 
 const RADIUS = 19.7;
-const eyeOutline = [Math.PI, 0].flatMap((start, end) =>
+const eyeOutline = [Math.PI, 0].flatMap((start, half) =>
   Array.from({ length: 9 }, (_, index) => {
     const angle = start + index * Math.PI / 8;
-    return [Math.cos(angle) * 0.096, (end === 0 ? -0.099 : 0.099) + Math.sin(angle) * 0.087];
+    return [Math.cos(angle) * 0.096, (half === 0 ? -0.099 : 0.099) + Math.sin(angle) * 0.087];
   }),
 );
 

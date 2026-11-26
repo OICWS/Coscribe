@@ -111,22 +111,22 @@ export function ActivityRobot({ activity }: { activity: ConversationActivity }) 
       className="h-5 w-[22px] flex-none self-center text-[var(--muted)]">
       <defs>
         <radialGradient id={id + "-shell"} cx="31%" cy="24%" r="78%">
-          <stop offset="0" stopColor="#adbeba" />
-          <stop offset=".28" stopColor="#748c8c" />
-          <stop offset=".56" stopColor="#4b636a" />
-          <stop offset=".79" stopColor="#26383f" />
-          <stop offset=".93" stopColor="#283b42" />
-          <stop offset="1" stopColor="#192529" />
+          <stop offset="0" stopColor="#b3c8e2" />
+          <stop offset=".28" stopColor="#7a96bb" />
+          <stop offset=".56" stopColor="#4d6e9a" />
+          <stop offset=".79" stopColor="#2a4060" />
+          <stop offset=".93" stopColor="#30486a" />
+          <stop offset="1" stopColor="#192941" className="dark:[stop-color:#384f70]" />
         </radialGradient>
         <radialGradient id={id + "-glint"} cx="33%" cy="26%" r="46%">
-          <stop stopColor="#eafcf3" stopOpacity=".52" />
-          <stop offset=".42" stopColor="#d1ece7" stopOpacity=".15" />
-          <stop offset="1" stopColor="#d1ece7" stopOpacity="0" />
+          <stop stopColor="#edf6ff" stopOpacity=".52" />
+          <stop offset=".42" stopColor="#d3e8ff" stopOpacity=".15" />
+          <stop offset="1" stopColor="#d3e8ff" stopOpacity="0" />
         </radialGradient>
         <radialGradient id={id + "-reflected-light"} cx="79%" cy="83%" r="60%">
-          <stop stopColor="#82b3ba" stopOpacity=".32" />
-          <stop offset=".45" stopColor="#6d9bac" stopOpacity=".11" />
-          <stop offset="1" stopColor="#6d9bac" stopOpacity="0" />
+          <stop stopColor="#8cb9f2" stopOpacity=".32" />
+          <stop offset=".45" stopColor="#77a8e8" stopOpacity=".11" />
+          <stop offset="1" stopColor="#77a8e8" stopOpacity="0" />
         </radialGradient>
         <radialGradient id={id + "-shadow"}>
           <stop stopColor="currentColor" stopOpacity=".46" />
@@ -142,7 +142,7 @@ export function ActivityRobot({ activity }: { activity: ConversationActivity }) 
         <circle r="19.7" fill={`url(#${id}-shell)`} />
         <circle r="19.7" fill={`url(#${id}-reflected-light)`} />
         <circle r="19.7" fill={`url(#${id}-glint)`} />
-        <circle r="19.4" fill="none" stroke="#263739" strokeOpacity=".24" strokeWidth=".55" />
+        <circle r="19.4" fill="none" stroke="#26394f" strokeOpacity=".24" strokeWidth=".55" />
         <g clipPath={`url(#${id}-face)`} fill="#fffef7"><path /><path /></g>
       </g>
     </svg>
