@@ -120,6 +120,7 @@ POST /api/artifacts/{artifact}/duplicate
 POST /api/artifacts/{artifact}/open
 POST /api/artifacts/{artifact}/rename
 POST /api/artifacts/{artifact}/show
+POST /api/attachment/docx
 POST /api/attachment/xlsx
 POST /api/background-tasks/{task_id}/stop
 POST /api/code/install

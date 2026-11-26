@@ -23,6 +23,7 @@ from ...tools import (
 )
 from ...tools.web import SCREENSHOT_FOLDER
 from ..state import AppState
+from ..word_preview import add_word_preview_routes
 from .shared import MAX_UPLOAD_BYTES
 
 _PREVIEW_NAME_RE = re.compile(r"[0-9a-f]{32}\.png")  # tools/_thumbnail.py's uuid4().hex naming
@@ -126,6 +127,8 @@ def router(state: AppState) -> APIRouter:
         if thread_id:
             return _get_session(thread_id).workspace_scope()
         return WorkspaceScope(settings.workspace_root)
+
+    add_word_preview_routes(router, _scope, settings.state_dir)
 
     @router.post("/api/upload")
     async def upload_file(

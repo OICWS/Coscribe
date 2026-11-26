@@ -3,7 +3,7 @@ import { isXlsx } from "./viewers";
 /** The preview available for an attached file. */
 export type AttachmentView =
   | { kind: "image"; name: string; src: string }
-  | { kind: "pdf" | "xlsx"; name: string; path: string }
+  | { kind: "pdf" | "xlsx" | "docx"; name: string; path: string }
   | { kind: "file"; name: string; path: string };
 
 /** The line that tells the model which workspace files a message came with. The server takes it back
@@ -30,7 +30,8 @@ export function fileCards(files: string[], images: string[]): string[] {
   return images.length > 0 ? files.filter((path) => !SAVED_PICTURE.test(path)) : files;
 }
 
-export function attachmentKind(name: string): "pdf" | "xlsx" | "file" {
+export function attachmentKind(name: string): "pdf" | "xlsx" | "docx" | "file" {
+  if (/\.docx$/i.test(name)) return "docx";
   if (isXlsx(name)) return "xlsx";
   return name.toLowerCase().endsWith(".pdf") ? "pdf" : "file";
 }

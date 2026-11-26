@@ -62,7 +62,7 @@ export const refKey = (ref: FileRef) => `${ref.root}:${ref.path}`;
 export const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 /** How a file is shown. `rendered` kinds also have their source a click away. */
-export type FileKind = "markdown" | "html" | "svg" | "csv" | "image" | "pdf" | "office" | "xlsx" | "text" | "binary";
+export type FileKind = "markdown" | "html" | "svg" | "csv" | "image" | "pdf" | "office" | "xlsx" | "docx" | "text" | "binary";
 
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|ico|avif)$/i;
 const OFFICE = /\.(docx?|xlsx?|xlsm|pptx?|odt|ods|odp)$/i;
@@ -76,6 +76,7 @@ export function fileKind(path: string): FileKind {
   if (IMAGE.test(path)) return "image";
   if (/\.pdf$/i.test(path)) return "pdf";
   if (/\.xlsx$/i.test(path)) return "xlsx";
+  if (/\.docx$/i.test(path)) return "docx";
   if (OFFICE.test(path)) return "office";
   if (BINARY.test(path)) return "binary";
   return "text";
