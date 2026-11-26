@@ -147,6 +147,8 @@ export function FilesPanel({ threadId, refreshKey, onView }: { threadId: string;
               threadId={threadId}
               file={active}
               kind={kind}
+              workbookPath={kind === "xlsx" && roots ? appPath(roots, active) : undefined}
+              wordPath={roots ? appPath(roots, active) : undefined}
               source={source}
               wrap={view.wrap}
               refreshKey={refreshKey}

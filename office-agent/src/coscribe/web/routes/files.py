@@ -23,6 +23,7 @@ from ...tools import (
 )
 from ...tools.web import SCREENSHOT_FOLDER
 from ..state import AppState
+from ..word_preview import add_word_preview_routes
 from .shared import MAX_UPLOAD_BYTES
 
 _PREVIEW_NAME_RE = re.compile(r"[0-9a-f]{32}\.png")  # tools/_thumbnail.py's uuid4().hex naming
@@ -82,6 +83,41 @@ def _png_in(folder: Path, name: str) -> Response:
     return FileResponse(path, media_type="image/png")
 
 
+async def _spreadsheet_response(
+    scope: WorkspaceScope, path: str, sheet: str | None
+) -> JSONResponse:
+    """Read one worksheet without evaluating formulas or updating the workbook."""
+    from zipfile import BadZipFile
+
+    from openpyxl.utils.exceptions import InvalidFileException
+
+    from ..spreadsheet_preview import WorkbookTooLarge, read_spreadsheet
+
+    try:
+        found = scope.resolve(path)
+        if found.suffix.lower() != ".xlsx" or not found.is_file():
+            return JSONResponse({"error": "This workbook could not be found."}, status_code=404)
+        preview = await asyncio.to_thread(read_spreadsheet, found, sheet)
+    except PermissionError:
+        return JSONResponse({"error": "This workbook cannot be accessed."}, status_code=403)
+    except WorkbookTooLarge:
+        return JSONResponse(
+            {"error": "This workbook is too large to preview here."}, status_code=413
+        )
+    except (
+        BadZipFile,
+        InvalidFileException,
+        KeyError,
+        IndexError,
+        TypeError,
+        ValueError,
+        OSError,
+        SyntaxError,
+    ):
+        return JSONResponse({"error": "This workbook could not be opened."}, status_code=422)
+    return JSONResponse(preview, headers={"Cache-Control": "no-store"})
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
@@ -91,6 +127,8 @@ def router(state: AppState) -> APIRouter:
         if thread_id:
             return _get_session(thread_id).workspace_scope()
         return WorkspaceScope(settings.workspace_root)
+
+    add_word_preview_routes(router, _scope, settings.state_dir)
 
     @router.post("/api/upload")
     async def upload_file(
@@ -134,6 +172,11 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"pages": await asyncio.to_thread(pdf_page_count, found)})
         except Exception:  # noqa: BLE001 -- a PDF PDFium can't open is shown as such
             return JSONResponse({"error": "This PDF can't be opened."}, status_code=422)
+
+    async def spreadsheet(path: str, thread_id: str = "", sheet: str | None = None) -> JSONResponse:
+        return await _spreadsheet_response(_scope(thread_id), path, sheet)
+
+    router.add_api_route("/api/attachment/xlsx", spreadsheet, methods=["POST"])
 
     @router.get("/api/attachment/pdf/page")
     async def get_attachment_pdf_page(

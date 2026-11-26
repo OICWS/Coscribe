@@ -3,7 +3,7 @@ import { isDesignCanvas, readCanvas } from "../../lib/designCanvas";
 import { getDoc } from "../../lib/docFile";
 import { threadFileDownloadUrl } from "../../lib/rest";
 import { isPptx } from "../../lib/slides";
-import { isDocMarkdown } from "../../lib/viewers";
+import { isDocMarkdown, isXlsx } from "../../lib/viewers";
 import { FileCheckRevision } from "./contexts";
 
 /** Whether a file a conversation touched is one the app can show: any of its kinds, but a Markdown
@@ -13,8 +13,8 @@ import { FileCheckRevision } from "./contexts";
 export function useShownFile(threadId: string, path: string, calls = 0): boolean {
   const asDoc = isDocMarkdown(path);
   const asCanvas = isDesignCanvas(path);
-  const asDeck = isPptx(path);
-  const needsCheck = asDoc || asCanvas || asDeck;
+  const asWorkspaceFile = isPptx(path) || isXlsx(path);
+  const needsCheck = asDoc || asCanvas || asWorkspaceFile;
   const revision = useContext(FileCheckRevision);
   const [readable, setReadable] = useState(false);
   useEffect(() => {
@@ -22,9 +22,9 @@ export function useShownFile(threadId: string, path: string, calls = 0): boolean
     let live = true;
     // The read the Doc panel opens it with: it answers "not a Doc" for any other Markdown file, and
     // does not wait for the conversation's files to be registered, which happens as a turn ends.
-    const read: Promise<unknown> = asDeck
+    const read: Promise<unknown> = asWorkspaceFile
       ? fetch(threadFileDownloadUrl(threadId, path), { method: "HEAD", cache: "no-store" }).then((response) => {
-          if (!response.ok) throw new Error("Presentation unavailable");
+          if (!response.ok) throw new Error("File unavailable");
         })
       : asCanvas ? readCanvas(threadId, path) : getDoc(threadId, path);
     read.then(
@@ -34,6 +34,6 @@ export function useShownFile(threadId: string, path: string, calls = 0): boolean
     return () => {
       live = false;
     };
-  }, [threadId, path, needsCheck, asCanvas, asDeck, calls, revision]);
+  }, [threadId, path, needsCheck, asCanvas, asWorkspaceFile, calls, revision]);
   return needsCheck ? readable : true;
 }
