@@ -6,5 +6,6 @@ export { FileChip } from "./FileChip";
 export { Disclosure } from "./SummaryLabel";
 export { ToolRunGroupView } from "./ToolRuns";
 export { LogItemView, TurnView } from "./TurnView";
-export { BackgroundTasks, DetachScript, MessageActionsContext, NO_CONNECTOR_TOOLS, OpenConnector, OpenDesignSystem, SteerActionsContext, ThreadFiles, ViewFile } from "./contexts";
+export { BackgroundTasks, DetachScript, MessageActionsContext, NO_CONNECTOR_TOOLS, OpenConnector, OpenDesignSystem, QuestionActionsContext, SteerActionsContext, ThreadFiles, ViewFile } from "./contexts";
 export { type TaskDraftItem } from "./types";
+export { questionActions } from "./QuestionCards";

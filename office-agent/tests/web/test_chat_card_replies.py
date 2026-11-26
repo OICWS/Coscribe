@@ -17,11 +17,7 @@ from .helpers import FakeToolCallingChatModel, _client_lg, _receive_until, _tool
 def test_a_reply_written_instead_of_choosing_is_the_answer(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {"questions": [{"question": "Which one?", "options": [{"label": "A"}, {"label": "B"}]}]},
-    )
+    call = _tool_call("call_1", "remember", {"line": "Use the brand template."})
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
     )
@@ -36,8 +32,7 @@ def test_a_reply_written_instead_of_choosing_is_the_answer(
             _receive_until(ws, "tasks_changed")
 
     result = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)][-1]
-    assert "didn't pick an option" in str(result.content)
-    assert str(result.content).endswith("neither, use C")
+    assert "didn't save it" in str(result.content)
 
 
 def test_a_reply_written_instead_of_approving_denies_the_call_with_those_words(
