@@ -531,3 +531,18 @@ def test_a_sub_agents_tokens_are_counted_with_the_call_that_started_it() -> None
 
     assert tokens_used([report, AIMessage("", usage_metadata={
         "input_tokens": 90, "output_tokens": 10, "total_tokens": 100})]) == 700  # fmt: skip
+
+
+def test_a_question_card_is_never_given_to_a_sub_agent_or_an_agent_step() -> None:
+    from coscribe.runtime_lg.subagents import for_subagents
+    from coscribe.tools.bookkeeping import build_interaction_tools
+
+    tools = build_interaction_tools()
+    cards = [t for t in tools if t.__name__ in ("ask_user_question", "answer_question_card")]
+
+    assert len(cards) == 2
+    assert not any(for_subagents(t) for t in cards)
+    assert not {t.__name__ for t in workflow_agent_tools(tools)} & {
+        "ask_user_question",
+        "answer_question_card",
+    }

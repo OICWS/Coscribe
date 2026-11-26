@@ -53,7 +53,7 @@ import { useDoctor } from "./components/DoctorCard";
 import { ArtifactsPage } from "./components/artifacts";
 import { SessionsPage } from "./components/sessions";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
-import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/index";
+import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, QuestionActionsContext, questionActions, SteerActionsContext, ViewFile } from "./components/chatlog/index";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow";
 import { WorkflowRunView, type WorkflowAnswer } from "./components/workflow";
@@ -91,7 +91,6 @@ import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowPro
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
 import { cardAnswers } from "./components/folderActions";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
-import { QuestionPanel } from "./components/QuestionCard";
 import type { ThreadSummary } from "./types/session";
 import type { ScheduledRun, ScheduledTask } from "./types/settings";
 import type { StepRecord, Workflow } from "./types/workflow";
@@ -693,6 +692,7 @@ function App() {
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
   };
+  const cardActions = questionActions((text) => onSend({ displayText: text, outgoingText: text, isInstant: false }), onAnswerQuestion);
   const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
@@ -953,7 +953,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
+                <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><QuestionActionsContext.Provider value={cardActions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -985,12 +985,9 @@ function App() {
                   {state.error && (
                     <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
                   )}
-                  {pendingQuestion && (
-                    <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
-                  )}
-                  {!pendingQuestion && <NoticeStack notices={notices} />}{noticeOverlay}
+                  <NoticeStack notices={notices} />{noticeOverlay}
                   {composer}
-                </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
+                </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></QuestionActionsContext.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}

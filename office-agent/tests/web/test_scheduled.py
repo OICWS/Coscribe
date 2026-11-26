@@ -757,16 +757,13 @@ def test_a_question_the_investigation_asks_reaches_a_tab_opened_after_it_lg(
     # leave it waiting on an answer nobody can give.
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace" / "notes.txt").write_text("one two", encoding="utf-8")
-    ask = _tool_call(
-        "q1",
-        "ask_user_question",
-        {"questions": [{"question": "Which file?", "options": [{"label": "a"}, {"label": "b"}]}]},
-    )
+    # remember waits for its answer; ask_user_question no longer does (decision 0060).
+    ask = _tool_call("q1", "remember", {"line": "Count words in notes.txt only."})
     fake_model = FakeToolCallingChatModel(
         responses=[
             _structured({"words": 0}),
             AIMessage(content="", tool_calls=[ask]),
-            AIMessage(content="Thanks, looking at a."),
+            AIMessage(content="Fine, not saved."),
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -788,13 +785,15 @@ def test_a_question_the_investigation_asks_reaches_a_tab_opened_after_it_lg(
                 question = _receive_until(ws, "question_required")[-1]
         with client.websocket_connect(f"/ws/{thread_id}") as ws:
             _receive_until(ws, "question_required")
-            ws.send_json({"type": "question_response", "id": question["id"], "answers": ["a"]})
+            ws.send_json(
+                {"type": "question_response", "id": question["id"], "answers": ["Don't save"]}
+            )
             deadline = time.time() + 5
             while len(fake_model.received) < 3 and time.time() < deadline:
                 time.sleep(0.05)
 
-    assert question["questions"][0]["question"] == "Which file?"
-    assert "a" in str(fake_model.received[2][-1].content)
+    assert "Count words in notes.txt only." in json.dumps(question)
+    assert "didn't save" in str(fake_model.received[2][-1].content)
 
 
 def test_a_failed_run_of_a_task_set_to_is_looked_into_and_announced_lg(
