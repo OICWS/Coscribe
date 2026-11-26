@@ -1,7 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { type FileKind, type FileRef, looksBinary, MAX_TEXT_BYTES, rawUrl, readsText, splitCsv } from "../../lib/workspaceFiles";
 
-const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Markdown })));
+type MarkdownModule = typeof import("../Markdown");
+// Held once loaded so a later file renders it directly: React.lazy suspends on every new mount,
+// and React holds a revealed fallback for about 300 ms, which showed as a flash before the page.
+let markdownModule: MarkdownModule | undefined;
+const loadMarkdown = () => import("../Markdown").then((m) => (markdownModule = m));
+const Markdown = lazy(() => loadMarkdown().then((m) => ({ default: m.Markdown })));
 // CodeMirror and its languages load with the first file shown as code, not with the app.
 const SpreadsheetPreview = lazy(() => import("../SpreadsheetPreview"));
 const CodeView = lazy(() => import("./CodeView"));
@@ -53,14 +58,16 @@ export function FilePreview({
 
   useEffect(() => {
     if (!needsText) return;
+    // The renderer's chunk loads beside the text, so the page appears once, already rendered.
+    const renderer = kind === "markdown" && !source && !markdownModule ? loadMarkdown().catch(() => undefined) : undefined;
     let cancelled = false;
-    void loadText(url)
+    void Promise.all([loadText(url), renderer]).then(([text]) => text)
       .catch(() => ({ error: "Couldn't read this file." }))
       .then((result) => !cancelled && setLoaded(result));
     return () => {
       cancelled = true;
     };
-  }, [url, needsText, refreshKey]);
+  }, [url, needsText, refreshKey, kind, source]);
 
   // The key makes a changed file load again instead of keeping the browser's copy of the page.
   const fresh = `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(refreshKey)}`;
@@ -89,9 +96,9 @@ export function FilePreview({
   if ("binary" in loaded) return <div className={note}>{fallback}</div>;
   if (!source && kind === "markdown") {
     const markdown = <div className="h-full overflow-auto px-8 py-6">
-      <Suspense fallback={<p className="whitespace-pre-wrap text-sm">{loaded.text}</p>}>
+      {markdownModule ? <div className="plan-doc"><markdownModule.Markdown text={loaded.text} /></div> : <Suspense fallback={null}>
         <div className="plan-doc"><Markdown text={loaded.text} /></div>
-      </Suspense>
+      </Suspense>}
     </div>;
     return path && /^\uFEFF?[ \t]*---[ \t]*\r?\n/.test(loaded.text)
       ? <Suspense fallback={loading}><DocFileReading threadId={threadId} path={path} revision={refreshKey} markdown={markdown} /></Suspense>

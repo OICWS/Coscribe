@@ -8,7 +8,7 @@ import { useWordPreview } from "./useWordPreview";
 GlobalWorkerOptions.workerSrc = workerUrl;
 
 const pointsToPixels = 96 / 72;
-const control = "h-8 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 text-sm hover:bg-[var(--card-bg)] disabled:opacity-40";
+const control = "h-7 rounded-md bg-transparent px-2 text-sm hover:bg-[var(--card-bg)] disabled:opacity-40";
 
 function WordPage({ pdf, number, zoom, fitWidth }: { pdf: PDFDocumentProxy; number: number; zoom: string; fitWidth: number }) {
   const surface = useRef<HTMLDivElement>(null);
@@ -119,9 +119,6 @@ export default function WordPreview({ threadId, path }: { threadId: string; path
     setActive(number);
   }, [pdf]);
 
-  const goTo = (page: number) => {
-    scroll.current?.querySelector(`[data-word-page="${page}"]`)?.scrollIntoView({ block: "start", inline: "nearest" });
-  };
   const pageAtTop = () => {
     const root = scroll.current;
     if (!root) return;
@@ -135,32 +132,29 @@ export default function WordPreview({ threadId, path }: { threadId: string; path
   const openOriginal = () => void openThreadFile(threadId, path, false)
     .then(setOpenError).catch(() => setOpenError("Couldn't open the original Word file."));
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Previous page" className={control} disabled={current <= 1} onClick={() => goTo(current - 1)}>‹</button>
-          <span aria-live="polite" className="whitespace-nowrap text-sm tabular-nums">{pages ? `Page ${current} of ${pages}` : "Word preview"}</span>
-          <button type="button" aria-label="Next page" className={control} disabled={current >= pages} onClick={() => goTo(current + 1)}>›</button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Zoom" className={control} value={zoom} onChange={(event) => setZoom(event.target.value)}>
-            <option value="fit">Fit width</option>
-            {[75, 100, 125, 150, 200].map((level) => <option key={level} value={level}>{level}%</option>)}
-          </select>
-          <button type="button" className={control} onClick={openOriginal}>Open in Word</button>
-        </div>
-      </div>
+    <div className="relative flex h-full min-h-0 flex-col">
       {openError && <p role="alert" className="px-4 py-2 text-sm text-[var(--danger)]">{openError}</p>}
       <div ref={scroll} onScroll={pageAtTop} className="min-h-0 flex-1 overflow-auto bg-[var(--card-bg)]">
         {!pdf && !error && <p role="status" className="p-6 text-center text-sm text-[var(--muted)]">Preparing Word preview…</p>}
         {error && <div role="alert" className="flex items-center justify-center gap-3 p-4 text-sm text-[var(--muted)]">
-          <span>{error}</span><button type="button" className={control} onClick={retry}>Retry</button>
+          <span>{error}</span><button type="button" className={`${control} border border-[var(--border)]`} onClick={retry}>Retry</button>
         </div>}
         {pdf && (
           <div className="flex w-max min-w-full flex-col items-center gap-5 p-6" key={pdf.fingerprints.join(":")}>
             {Array.from({ length: pages }, (_, i) => <WordPage key={i} pdf={pdf} number={i + 1} zoom={zoom} fitWidth={fitWidth} />)}
           </div>
         )}
+      </div>
+      {/* Pages turn by scrolling; the controls float over the corner instead of taking a row. */}
+      <div className="absolute bottom-4 right-6 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
+        {pages > 0 && <span aria-live="polite" className="px-2 tabular-nums text-[var(--muted)]">
+          <span aria-hidden="true">{current} / {pages}</span><span className="sr-only">Page {current} of {pages}</span>
+        </span>}
+        <select aria-label="Zoom" className={control} value={zoom} onChange={(event) => setZoom(event.target.value)}>
+          <option value="fit">Fit width</option>
+          {[75, 100, 125, 150, 200].map((level) => <option key={level} value={level}>{level}%</option>)}
+        </select>
+        <button type="button" className={control} onClick={openOriginal}>Open in Word</button>
       </div>
     </div>
   );

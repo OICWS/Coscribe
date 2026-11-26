@@ -71,10 +71,10 @@ export function edge(data: Axis, index: number): number {
   return data.offsets[index] ?? data.total;
 }
 
-export function visible(data: Axis, scroll: number, size: number): number[] {
+export function visible(data: Axis, scroll: number, size: number, overscan = 0): number[] {
   const indexes = [];
-  const start = Math.max(data.frozen + 1, indexAt(data, scroll + edge(data, data.frozen + 1)));
-  const end = Math.min(data.sizes.length - 1, indexAt(data, scroll + size) + 1);
+  const start = Math.max(data.frozen + 1, indexAt(data, scroll + edge(data, data.frozen + 1)) - overscan);
+  const end = Math.min(data.sizes.length - 1, indexAt(data, scroll + size) + 1 + overscan);
   for (let i = 1; i <= data.frozen && edge(data, i) < size; i++) {
     if (data.sizes[i]) indexes.push(i);
   }
