@@ -74,3 +74,5 @@ restarts.
 
 ## Reviewed
 2026-10-17 (first card).
+2026-11-26: read against the code with the unified file previews (#1083); the paths, the wire
+contract, the launch-token rule and the feature-index rule still hold.
