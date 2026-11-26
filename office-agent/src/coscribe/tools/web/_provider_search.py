@@ -59,7 +59,13 @@ class DeepSeekSearch:
             except (ValueError, KeyError, TypeError):
                 detail = response.reason_phrase
             raise ProviderSearchError(f"{self.name} answered {response.status_code}: {detail}")
-        data: dict[str, Any] = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            data = None
+        if not isinstance(data, dict):
+            # A captive portal or a gateway answers 200 with a page of its own.
+            raise ProviderSearchError(f"{self.name} answered with something that isn't a result.")
         return data
 
     def search(self, query: str, max_results: int) -> list[dict[str, str]]:
@@ -67,13 +73,17 @@ class DeepSeekSearch:
             self.search_path,
             {"query": query[:_MAX_QUERY_CHARS], "count": max(1, min(max_results, 50))},
         )
+        items = data.get("results") or []
+        if not isinstance(items, list):
+            raise ProviderSearchError(f"{self.name} answered with something that isn't a result.")
         return [
             {
                 "title": str(item.get("title") or ""),
                 "url": str(item.get("url") or ""),
                 "snippet": str(item.get("snippet") or item.get("summary") or ""),
             }
-            for item in data.get("results") or []
+            for item in items
+            if isinstance(item, dict)
         ]
 
     def fetch(self, url: str) -> tuple[str, str]:
@@ -90,13 +100,16 @@ _SEARCH_APIS = {"deepseek": DeepSeekSearch}
 
 def provider_search(custom_providers: CustomProviders | None) -> ProviderSearch | None:
     """The search of the first configured provider that has one (`runtime.models`), or None.
-    Read at each call: the person may add a provider mid-conversation."""
+    Read at each call: the person may add a provider mid-conversation. ProviderSearchError when
+    the provider settings can't be read, so a failed search says why it had no fallback."""
     if custom_providers is None:
         return None
     try:
         providers = custom_providers()
-    except (OSError, ValueError, RuntimeError):
-        return None
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ProviderSearchError(
+            f"Coscribe couldn't read the model provider settings ({exc})."
+        ) from exc
     for name, config in providers.items():
         base_url = config.get("base_url", "")
         info = provider_web_search(name, base_url)

@@ -505,3 +505,67 @@ def test_read_web_page_keeps_a_limited_conversation_off_the_provider(
     with pytest.raises(ConnectionError, match="connect to example.com"):
         read("https://example.com/a")
     assert seen == []
+
+
+def test_web_search_reads_the_providers_only_once_the_free_engines_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def text(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        return [{"title": "T", "href": "https://example.com", "body": "B"}]
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", text)
+    reads: list[int] = []
+
+    def providers() -> dict[str, dict[str, str]]:
+        reads.append(1)
+        return _DEEPSEEK
+
+    build_websearch_tools(None, providers)[0]("anything")
+    assert reads == []
+
+
+def test_web_search_explains_a_provider_answer_that_isnt_a_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import httpx
+
+    _engines_blocked(monkeypatch)
+    _deepseek(
+        monkeypatch, lambda request: httpx.Response(200, html="<html>Sign in to Wi-Fi</html>")
+    )
+
+    with pytest.raises(_search.SearchUnreachableError, match="isn't a result") as raised:
+        _search_tool(_DEEPSEEK)("anything")
+    assert "from this network" in str(raised.value)
+
+
+def test_web_search_says_the_provider_settings_could_not_be_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _engines_blocked(monkeypatch)
+
+    def broken() -> dict[str, dict[str, str]]:
+        raise ValueError("provider 'kimi' has no api_key")
+
+    with pytest.raises(_search.SearchUnreachableError, match="couldn't read the model provider"):
+        build_websearch_tools(None, broken)[0]("anything")
+
+
+def test_read_web_page_falls_back_when_a_proxy_never_answers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import httpx
+
+    def silent_proxy(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: "http://127.0.0.1:10808")
+    _deepseek(
+        monkeypatch,
+        lambda request: httpx.Response(200, json={"title": "Page", "content": "Hello"}),
+        silent_proxy,
+    )
+
+    page = build_websearch_tools(None, lambda: _DEEPSEEK)[1]("https://example.com/a")
+
+    assert page["content"] == "Hello"

@@ -26,10 +26,6 @@ from ._network import online_only, request_hooks
 from ._provider_search import CustomProviders, ProviderSearchError, provider_search
 
 DEFAULT_MAX_RESULTS = 5
-# The free engines turn a query away now and then and answer it on a second try moments later;
-# handed back, the model spends a whole step rewording a query that was fine. A network that
-# reaches no engine is not retried: a second try fails the same way.
-_SEARCH_ATTEMPTS = 2
 _SEARCH_RETRY_SECONDS = 1.5
 
 
@@ -50,22 +46,33 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[
 def _web_search(
     query: str, max_results: int, custom_providers: CustomProviders | None
 ) -> list[dict[str, str]]:
-    provider = provider_search(custom_providers)
     try:
-        # With a provider to fall back on, a query the engines turned away goes there at once.
-        results = _free_search(query, max_results, 1 if provider else _SEARCH_ATTEMPTS)
+        results = _free_search(query, max_results)
     except (_search.SearchUnreachableError, _search.SearchEmptyError) as exc:
-        if provider is None:
-            raise
+        # Looked up only now: the settings and the keychain aren't read while the engines answer.
         try:
-            found = provider.search(query, max_results)
+            provider = provider_search(custom_providers)
         except ProviderSearchError as failure:
-            raise type(exc)(f"{exc} Searching through {provider.name} failed too: {failure}") from (
-                failure
-            )
-        if not found:
-            raise type(exc)(f"{exc} {provider.name} found nothing either.") from exc
-        return found[:max_results]
+            raise type(exc)(f"{exc} {failure}") from failure
+        if provider is None:
+            if isinstance(exc, _search.SearchEmptyError):
+                # Engines turn a query away now and then and answer it moments later.
+                time.sleep(_SEARCH_RETRY_SECONDS)
+                results = _free_search(query, max_results)
+            else:
+                raise
+        else:
+            # A query the engines turned away goes to the provider at once: Collins's rule is the
+            # provider whenever the free engines fail, and a retry would cost the person seconds.
+            try:
+                found = provider.search(query, max_results)
+            except ProviderSearchError as failure:
+                raise type(exc)(
+                    f"{exc} Searching through {provider.name} failed too: {failure}"
+                ) from failure
+            if not found:
+                raise type(exc)(f"{exc} {provider.name} found nothing either.") from exc
+            return found[:max_results]
     return [
         {
             "title": str(result.get("title", "")),
@@ -76,18 +83,10 @@ def _web_search(
     ]
 
 
-def _free_search(query: str, max_results: int, attempts: int) -> list[dict[str, Any]]:
+def _free_search(query: str, max_results: int) -> list[dict[str, Any]]:
     # ddgs reads only its own proxy= argument (or DDGS_PROXY), not HTTP(S)_PROXY or Windows'
     # setting, so the proxy is looked up here.
-    proxy = configured_proxy()
-    for attempt in range(attempts):
-        try:
-            return _search.search(query, max_results, proxy)
-        except _search.SearchEmptyError:
-            if attempt == attempts - 1:
-                raise
-            time.sleep(_SEARCH_RETRY_SECONDS)
-    return []
+    return _search.search(query, max_results, configured_proxy())
 
 
 DEFAULT_PAGE_CHARS = 20_000
@@ -157,10 +156,15 @@ def _read_web_page(
     try:
         response_url, title, text = _fetch_directly(url, network)
     except ConnectionError as exc:
-        provider = provider_search(custom_providers)
         # The provider fetches on its own servers, where a redirect can't be checked against a
         # conversation's site list, so a limited conversation doesn't use it.
-        if provider is None or (network is not None and network.sites() is not None):
+        if network is not None and network.sites() is not None:
+            raise
+        try:
+            provider = provider_search(custom_providers)
+        except ProviderSearchError as failure:
+            raise ConnectionError(f"{exc} {failure}") from failure
+        if provider is None:
             raise
         try:
             title, text = provider.fetch(url)
@@ -192,7 +196,9 @@ def _fetch_directly(url: str, network: NetworkGuard | None) -> tuple[str, str, s
     ) as client:
         try:
             response = client.get(url)
-        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ProxyError) as exc:
+        # A proxy that takes the connection and never answers its CONNECT ends in a read
+        # timeout, so every timeout counts as the page being out of reach.
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.ProxyError) as exc:
             raise ConnectionError(_unreachable_page(url, proxy, exc)) from exc
     response.raise_for_status()
     content_type = response.headers.get("content-type", "").lower()
