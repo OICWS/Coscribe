@@ -131,6 +131,27 @@ export interface AgentDeltaEvent {
   text: string;
 }
 
+export interface DocDraftBlock {
+  index: number;
+  kind: string;
+  text: string;
+}
+
+export interface DocDraftEvent {
+  type: "doc_draft";
+  id: string;
+  path: string;
+  new: boolean;
+  blocks: DocDraftBlock[];
+}
+
+export interface DocDraftFinishedEvent {
+  type: "doc_draft_finished";
+  id: string;
+  path: string;
+  committed: boolean;
+}
+
 /**
  * A call about to run; its tool_result follows. Not sent for a call waiting on approval
  * (approval_required shows that one).
@@ -533,6 +554,8 @@ export type ServerEvent =
   | HistoryEvent
   | OlderMessagesEvent
   | AgentDeltaEvent
+  | DocDraftEvent
+  | DocDraftFinishedEvent
   | ToolStartedEvent
   | ToolResultEvent
   | ApprovalRequiredEvent

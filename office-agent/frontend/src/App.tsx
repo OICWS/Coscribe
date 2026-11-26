@@ -43,6 +43,7 @@ import { useChatNotices } from "./components/chatNotices";
 import { draftCardsFrom } from "./components/workflow";
 import { usePinnedItems } from "./lib/toolbarItems";
 import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
+import { docDraftNotices } from "./components/docDraftNotices";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
@@ -741,7 +742,7 @@ function App() {
       task: { panel: "task", ...taskProps, busy: state.turnInFlight, canSaveAsWorkflow: !threadTask },
       browser: { panel: "browser", threadId },
       background: { panel: "background", ...backgroundProps },
-      viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
+      viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey, draft: state.docDrafts[viewerFiles[threadId] ?? ""] },
       plan: { panel: "plan", threadId, ...plans.panelState, busy: state.turnInFlight },
       files: { panel: "files", threadId, refreshKey },
       side: { panel: "side", threadId },
@@ -852,7 +853,7 @@ function App() {
       );
     }
     if (panel === "viewer" && viewerFile) {
-      return <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} busy={state.turnInFlight} items={state.items} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />;
+      return <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} draft={state.docDrafts[viewerFile]} busy={state.turnInFlight} items={state.items} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />;
     }
     if (panel === "browser") {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
@@ -985,7 +986,7 @@ function App() {
                   {state.error && (
                     <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
                   )}
-                  <NoticeStack notices={notices} />{noticeOverlay}
+                  <NoticeStack notices={[...docDraftNotices(state.docDrafts, viewFile), ...notices]} />{noticeOverlay}
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></QuestionActionsContext.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (

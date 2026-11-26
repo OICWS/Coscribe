@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
+import type { LiveDoc } from "../lib/docDrafts";
 import { DraftPages, draftPages, type DraftPage } from "../lib/draftPages";
 import type { CommentLink } from "../lib/slideComments";
 import { isPptx } from "../lib/slides";
 import { isDesignCanvas } from "../lib/designCanvas";
-import { isDesign, isDocMarkdown, isXlsx } from "../lib/viewers";
+import { isDesign, isDocMarkdown, isDocx, isXlsx } from "../lib/viewers";
 import { baseName } from "../lib/fileMentions";
 import { openThreadFile, threadFileDownloadUrl } from "../lib/rest";
 import { DesignPanel } from "./DesignPanel";
@@ -12,6 +13,7 @@ import { SlidesPanel } from "./slides";
 // The editor and the canvas load when a document or a canvas is first opened, not with the app.
 const DesignCanvasPanel = lazy(() => import("./design").then((m) => ({ default: m.DesignCanvasPanel })));
 const SpreadsheetPreview = lazy(() => import("./SpreadsheetPreview"));
+const WordPreview = lazy(() => import("./WordPreview"));
 const DocPanel = lazy(() => import("./doc").then((m) => ({ default: m.DocPanel })));
 
 const NO_DRAFTS: DraftPage[] = [];
@@ -21,6 +23,7 @@ export function ViewerPanel({
   threadId,
   path,
   refreshKey,
+  draft,
   onSendComment,
   onFileChanged,
   busy = false,
@@ -29,6 +32,7 @@ export function ViewerPanel({
   threadId: string;
   path: string;
   refreshKey: string;
+  draft?: LiveDoc;
   onSendComment?: (text: string, link?: CommentLink) => void;
   /** The file was renamed (its new path) or deleted (null) from the menu under its name. */
   onFileChanged?: (path: string | null) => void;
@@ -37,6 +41,14 @@ export function ViewerPanel({
   /** The conversation's log: the slide pages written so far show until the deck is built from them. */
   items?: Parameters<typeof draftPages>[0];
 }) {
+  if (isDocx(path)) {
+    return <Suspense fallback={null}>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="truncate border-b border-[var(--border)] px-3 py-2 text-sm" title={path}>{baseName(path)}</div>
+        <div className="min-h-0 flex-1"><WordPreview key={path} threadId={threadId} path={path} /></div>
+      </div>
+    </Suspense>;
+  }
   if (isXlsx(path)) {
     return <div className="flex h-full min-h-0 min-w-0 flex-col">
       <div className="flex min-w-0 items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-sm">
@@ -65,7 +77,7 @@ export function ViewerPanel({
   if (isDocMarkdown(path)) {
     return (
       <Suspense fallback={null}>
-        <DocPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onAsk={onSendComment} />
+        <DocPanel threadId={threadId} path={path} refreshKey={refreshKey} draft={draft} onFileChanged={onFileChanged} onAsk={onSendComment} />
       </Suspense>
     );
   }

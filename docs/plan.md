@@ -12,6 +12,9 @@ Last reviewed: 2026-11-22.
 The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
 preview while Microsoft Excel has the workbook open.
 
+Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
+Office conversion engines and reading during writes.
+
 The Simple conversation activity robot (#1085) is in review. Desktop verification covers
 the indicator at normal Windows display scaling.
 

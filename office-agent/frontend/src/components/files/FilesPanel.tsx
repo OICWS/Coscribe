@@ -14,6 +14,7 @@ import {
   keepTab,
   NO_TABS,
   openTab,
+  previewAvailability,
   refKey,
   sameRef,
   type Tabs,
@@ -93,6 +94,7 @@ export function FilesPanel({ threadId, refreshKey, onView }: { threadId: string;
 
   const active = tabs.active;
   const kind = active ? fileKind(active.path) : null;
+  const availability = kind ? previewAvailability(kind, active?.size) : "inline";
   const source = !!active && kind !== null && hasSource(kind) && sourceOf.has(refKey(active));
   const toggleSource = () => {
     if (!active) return;
@@ -137,18 +139,21 @@ export function FilesPanel({ threadId, refreshKey, onView }: { threadId: string;
         <button type="button" title={treeOpen ? "Hide file tree" : "Show file tree"} aria-pressed={treeOpen} className={iconButton(treeOpen)} onClick={() => showTree(!treeOpen)}>
           <TreeToggleIcon className="h-[18px] w-[18px]" />
         </button>
-        <FileMenu threadId={threadId} path={active && roots ? appPath(roots, active) : null} onView={onView} view={view} onCollapse={() => setExpanded(new Set())} />
+        <FileMenu threadId={threadId} path={active && roots ? appPath(roots, active) : null} previewAllowed={availability !== "too-large"} onView={onView} view={view} onCollapse={() => setExpanded(new Set())} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="min-h-0 min-w-0 flex-1">
-          {active && kind ? (
+          {active && kind && roots && availability !== "inline" ? (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--muted)]">
+              <NoPreview threadId={threadId} path={appPath(roots, active)} onView={onView} availability={availability} />
+            </div>
+          ) : active && kind ? (
             <FilePreview
               key={refKey(active)}
               threadId={threadId}
               file={active}
               kind={kind}
-              workbookPath={kind === "xlsx" && roots ? appPath(roots, active) : undefined}
-              wordPath={roots ? appPath(roots, active) : undefined}
+              path={roots ? appPath(roots, active) : undefined}
               source={source}
               wrap={view.wrap}
               refreshKey={refreshKey}
@@ -235,8 +240,8 @@ function Breadcrumb({ roots, file }: { roots: WorkspaceRoot[] | null; file: File
   );
 }
 
-function FileMenu(props: { threadId: string; path: string | null; onView: (path: string) => boolean; view: ViewSettings; onCollapse: () => void }) {
-  const { threadId, path, onView, view, onCollapse } = props;
+function FileMenu(props: { threadId: string; path: string | null; previewAllowed: boolean; onView: (path: string) => boolean; view: ViewSettings; onCollapse: () => void }) {
+  const { threadId, path, previewAllowed, onView, view, onCollapse } = props;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false), open);
@@ -265,7 +270,7 @@ function FileMenu(props: { threadId: string; path: string | null; onView: (path:
           {path && (
             <>
               {line}
-              {isViewable(path) && item("Open in Viewer", () => onView(path))}
+              {previewAllowed && isViewable(path) && item("Open in Viewer", () => onView(path))}
               {item("Open in its app", () => void openThreadFile(threadId, path, false))}
               {item("Show in folder", () => void openThreadFile(threadId, path, true))}
               {item("Copy path", () => void navigator.clipboard.writeText(path))}
@@ -278,13 +283,16 @@ function FileMenu(props: { threadId: string; path: string | null; onView: (path:
   );
 }
 
-function NoPreview({ threadId, path, onView }: { threadId: string; path: string; onView: (path: string) => boolean }) {
+function NoPreview({ threadId, path, onView, availability = "inline" }: {
+  threadId: string; path: string; onView: (path: string) => boolean; availability?: ReturnType<typeof previewAvailability>;
+}) {
   const link = "rounded-lg border border-[var(--border)] px-3 py-1.5 text-[var(--fg)] hover:bg-[var(--card-bg)]";
   return (
     <span className="flex flex-col items-center gap-3">
-      <span>No preview for this file here.</span>
+      <span>{availability === "defer" ? "This file may take a while to preview." :
+        availability === "too-large" ? "This file exceeds the preview size limit." : "No preview for this file here."}</span>
       <span className="flex gap-2">
-        {isViewable(path) && <button type="button" className={link} onClick={() => onView(path)}>Open in Viewer</button>}
+        {availability !== "too-large" && isViewable(path) && <button type="button" className={link} onClick={() => onView(path)}>Open in Viewer</button>}
         <button type="button" className={link} onClick={() => void openThreadFile(threadId, path, false)}>Open in its app</button>
       </span>
     </span>

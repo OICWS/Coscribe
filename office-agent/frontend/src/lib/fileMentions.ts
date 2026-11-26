@@ -3,10 +3,8 @@ import { isPptx } from "./slides";
 import { isDesignCanvas } from "./designCanvas";
 import { isDesign, isViewable } from "./viewers";
 
-const isDocx = (path: string) => /\.docx$/i.test(path);
-
 /** What a message can mention: a file the app opens, or a Word file, which the person still names. */
-const isMentionable = (path: string) => isViewable(path) || isDocx(path);
+const isMentionable = (path: string) => isViewable(path);
 
 interface Call {
   toolName: string;

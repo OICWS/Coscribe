@@ -523,3 +523,32 @@ def test_word_preview_uses_a_scoped_copy_and_reuses_the_saved_version(
         assert failed.status_code == 422
         assert "Couldn't prepare a Word preview" in failed.json()["error"]
         assert "/local/private" not in failed.text
+
+
+def test_word_version_subscription_sees_atomic_saves_without_converting(tmp_path: Path) -> None:
+    import asyncio
+    import json
+
+    from coscribe.web import word_preview
+
+    source = tmp_path / "review.docx"
+    source.write_bytes(b"first")
+
+    async def observe() -> None:
+        async with asyncio.timeout(8):
+            events = word_preview._word_versions(source, lambda: source)
+            try:
+                initial = await anext(events)
+                first_version = word_preview.word_preview_version(source)
+                assert initial == f"data: {json.dumps(first_version)}\n\n"
+                saved = tmp_path / "replacement.docx"
+                saved.write_bytes(b"latest version")
+                saved.replace(source)
+                updated = await anext(events)
+                assert updated != initial
+                latest = word_preview.word_preview_version(source)
+                assert updated == f"data: {json.dumps(latest)}\n\n"
+            finally:
+                await events.aclose()
+
+    asyncio.run(observe())

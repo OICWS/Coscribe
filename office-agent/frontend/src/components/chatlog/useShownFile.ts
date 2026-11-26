@@ -3,7 +3,7 @@ import { isDesignCanvas, readCanvas } from "../../lib/designCanvas";
 import { getDoc } from "../../lib/docFile";
 import { threadFileDownloadUrl } from "../../lib/rest";
 import { isPptx } from "../../lib/slides";
-import { isDocMarkdown, isXlsx } from "../../lib/viewers";
+import { isDocMarkdown, isDocx, isXlsx } from "../../lib/viewers";
 import { FileCheckRevision } from "./contexts";
 
 /** Whether a file a conversation touched is one the app can show: any of its kinds, but a Markdown
@@ -13,7 +13,7 @@ import { FileCheckRevision } from "./contexts";
 export function useShownFile(threadId: string, path: string, calls = 0): boolean {
   const asDoc = isDocMarkdown(path);
   const asCanvas = isDesignCanvas(path);
-  const asWorkspaceFile = isPptx(path) || isXlsx(path);
+  const asWorkspaceFile = isPptx(path) || isXlsx(path) || isDocx(path);
   const needsCheck = asDoc || asCanvas || asWorkspaceFile;
   const revision = useContext(FileCheckRevision);
   const [readable, setReadable] = useState(false);
