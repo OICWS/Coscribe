@@ -106,6 +106,32 @@ function gridTiles({ sheet, selected, cells, rows, columns, visibleRows, visible
   return tiles;
 }
 
+function GridHeaders({ rows, columns, visibleRows, visibleColumns, selected }: {
+  rows: Axis;
+  columns: Axis;
+  visibleRows: number[];
+  visibleColumns: number[];
+  selected: Position;
+}) {
+  const columnHeader = (column: number) => <div key={column} role="columnheader"
+    className="spreadsheet-header" data-selected={column === selected.column} style={{
+      top: 0, left: HEADER_WIDTH + edge(columns, column), width: columns.sizes[column], height: HEADER_HEIGHT,
+    }}>{columnName(column)}</div>;
+  const rowHeader = (row: number) => <div key={row} role="rowheader"
+    className="spreadsheet-header" data-selected={row === selected.row} style={{
+      top: HEADER_HEIGHT + edge(rows, row), left: 0, width: HEADER_WIDTH, height: rows.sizes[row],
+    }}>{row}</div>;
+  return <>
+    <Sticky top z={8}>{visibleColumns.filter((column) => column > columns.frozen).map(columnHeader)}</Sticky>
+    <Sticky left z={9}>{visibleRows.filter((row) => row > rows.frozen).map(rowHeader)}</Sticky>
+    <Sticky top left z={10}>
+      {visibleColumns.filter((column) => column <= columns.frozen).map(columnHeader)}
+      {visibleRows.filter((row) => row <= rows.frozen).map(rowHeader)}
+      <div aria-hidden="true" className="spreadsheet-header spreadsheet-corner" style={{ top: 0, left: 0, width: HEADER_WIDTH, height: HEADER_HEIGHT }} />
+    </Sticky>
+  </>;
+}
+
 export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0, x: 0, y: 0 });
@@ -185,29 +211,7 @@ export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
             style={{ top: 0, left: HEADER_WIDTH + edge(columns, columns.frozen + 1), height: rows.total + HEADER_HEIGHT }} />}
         </Sticky>
         <Sticky top left z={7}>{tiles.corner}</Sticky>
-        <Sticky top z={8}>
-          {visibleColumns.filter((column) => column > columns.frozen).map((column) => <div key={column} role="columnheader"
-            className="spreadsheet-header" data-selected={column === selected.column} style={{
-              top: 0, left: HEADER_WIDTH + edge(columns, column), width: columns.sizes[column], height: HEADER_HEIGHT,
-            }}>{columnName(column)}</div>)}
-        </Sticky>
-        <Sticky left z={9}>
-          {visibleRows.filter((row) => row > rows.frozen).map((row) => <div key={row} role="rowheader"
-            className="spreadsheet-header" data-selected={row === selected.row} style={{
-              top: HEADER_HEIGHT + edge(rows, row), left: 0, width: HEADER_WIDTH, height: rows.sizes[row],
-            }}>{row}</div>)}
-        </Sticky>
-        <Sticky top left z={10}>
-          {visibleColumns.filter((column) => column <= columns.frozen).map((column) => <div key={column} role="columnheader"
-            className="spreadsheet-header" data-selected={column === selected.column} style={{
-              top: 0, left: HEADER_WIDTH + edge(columns, column), width: columns.sizes[column], height: HEADER_HEIGHT,
-            }}>{columnName(column)}</div>)}
-          {visibleRows.filter((row) => row <= rows.frozen).map((row) => <div key={row} role="rowheader"
-            className="spreadsheet-header" data-selected={row === selected.row} style={{
-              top: HEADER_HEIGHT + edge(rows, row), left: 0, width: HEADER_WIDTH, height: rows.sizes[row],
-            }}>{row}</div>)}
-          <div aria-hidden="true" className="spreadsheet-header spreadsheet-corner" style={{ top: 0, left: 0, width: HEADER_WIDTH, height: HEADER_HEIGHT }} />
-        </Sticky>
+        <GridHeaders {...{ rows, columns, visibleRows, visibleColumns, selected }} />
       </div>
     </div>
     {tail && <div className="spreadsheet-note">This workbook has more rows or columns than the preview can show.</div>}
