@@ -8,7 +8,8 @@ decks, designs and dashboards you edit beside the conversation, uses the web
 in a browser of its own and your tools, and can repeat work on a schedule. It
 runs on your computer and needs only a model API key.
 
-Website: https://oicws.github.io/Coscribe/
+Website: https://oicws.github.io/Coscribe/ · User docs, in nine languages:
+https://oicws.github.io/Coscribe/docs/
 
 ## Use the desktop app (Windows)
 
@@ -63,10 +64,11 @@ To build it yourself, see [`office-agent-desktop/`](office-agent-desktop/).
   API, with presets for DeepSeek, Kimi, GLM, Qwen, Doubao, OpenRouter, Mistral, Groq,
   local runners (Ollama, LM Studio) and more. Prompt caching is tuned per provider,
   and the tokens each turn used are shown.
-- **Connectors, skills and memory.** Hosted services you sign in to once in your own
-  browser (no app to register), skills (folders of instructions and files) you can
-  read before adding, and global instructions plus notes a workspace folder keeps for
-  itself. A workspace folder can also name its own connectors in `.coscribe/mcp.json`,
+- **Connectors, plugins and memory.** Hosted services you sign in to once in your own
+  browser (no app to register), and files a connector hands back saved whole into the
+  workspace. Skills and plugins in the Claude and Codex format, which you can read before
+  adding, add from a GitHub repository's marketplace, and export as a `.zip`. Global
+  instructions plus notes a workspace folder keeps for itself. A workspace folder can also name its own connectors in `.coscribe/mcp.json`,
   used once you accepted them.
 - **Code when you need it.** Programming tasks can be handed to Codex, an optional
   module downloaded on first use.
