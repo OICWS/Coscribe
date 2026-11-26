@@ -65,6 +65,20 @@ def test_a_preview_a_render_tool_returned_opens_by_its_name(tmp_path: Path):
     assert _picture(picture).mode == "RGBA"
 
 
+def test_a_palette_picture_keeps_its_transparency(tmp_path: Path):
+    logo = Image.new("P", (8, 8), 0)
+    logo.putpalette([255, 255, 255, 0, 0, 0])
+    logo.putpixel((0, 0), 1)
+    logo.save(tmp_path / "logo.png", transparency=0)
+
+    _, picture = _tools(tmp_path)["look_at_image"]("logo.png")
+
+    shown = _picture(picture)
+    assert shown.mode == "RGBA"
+    assert shown.getpixel((4, 4))[3] == 0
+    assert shown.getpixel((0, 0))[3] == 255
+
+
 def test_what_is_not_a_picture_is_refused(tmp_path: Path):
     (tmp_path / "notes.txt").write_text("hello", encoding="utf-8")
     (tmp_path / "fake.png").write_bytes(b"not a picture")

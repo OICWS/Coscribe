@@ -35,7 +35,9 @@ def image_blocks(file: Path, shown_as: str) -> list[dict[str, Any]]:
                 raise ValueError(f"{shown_as} is {width}x{height} pixels, too large to look at.")
             # A phone photo's pixels are stored sideways with a note to turn them.
             picture = ImageOps.exif_transpose(opened)
-            picture = picture.convert("RGBA" if "A" in picture.getbands() else "RGB")
+            # A palette PNG or GIF keeps its transparency in `info`, not in a band.
+            clear = "A" in picture.getbands() or "transparency" in picture.info
+            picture = picture.convert("RGBA" if clear else "RGB")
             picture.thumbnail((_MAX_SIDE, _MAX_SIDE))
             out = BytesIO()
             picture.save(out, format="PNG", optimize=True)
