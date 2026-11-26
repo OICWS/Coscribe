@@ -4,23 +4,9 @@ from search_files/search_pdf (which search *local* workspace content) and
 not a RAG/document-retrieval system: this queries the open web directly
 through a search engine, no local index or embedding store involved.
 
-Uses the standalone ``ddgs`` package (not langchain_community's
-DuckDuckGoSearchRun, which is now considered legacy in favor of this
-library) directly, the same "write our own thin tool function" pattern
-every other built-in tool in this package already follows rather than
-pulling in a prebuilt LangChain community tool wrapper wholesale.
-
-Uses ddgs's own "auto" backend selection (the default -- not pinned to a
-single engine) rather than forcing DuckDuckGo specifically: "auto" queries
-several free, no-API-key engines in parallel (duckduckgo, brave, google,
-mojeek, startpage, wikipedia, yahoo, yandex -- confirmed via
-`ddgs.engines.ENGINES["text"]`, none need a key) and returns whichever
-results come back, so one engine's own anti-bot response doesn't fail the
-whole call. Live-reported, not hypothetical: a real run returned DuckDuckGo's
-`html.duckduckgo.com/html/` responding HTTP 202 (a soft anti-bot block, not
-a real result page) -- previously pinning `backend="duckduckgo"` meant that
-single soft-block emptied the whole search; "auto" is the documented
-escape hatch for exactly this, not a fallback that needs building later.
+Uses the standalone ``ddgs`` package's free, no-key engines, each asked on its own and all at
+once (`_search.py`), rather than its "auto" mode, which asks them two at a time and waits out each
+unreachable one's timeout in turn.
 """
 
 from __future__ import annotations
@@ -30,29 +16,19 @@ import re
 import time
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
-from ddgs import DDGS
-from ddgs.exceptions import DDGSException
 
-from ...runtime import NetworkGuard, configured_proxy, tool_metadata
+from ...runtime import NetworkGuard, configured_proxy, tool_metadata, without_credentials
+from . import _search
 from ._network import online_only, request_hooks
 
-# `from ddgs import DDGS` above is actually `ddgs`'s own `_DDGSProxy` (a
-# lazy-loading metaclass-based stand-in, see ddgs/__init__.py) -- calling
-# it dispatches to the real `ddgs.ddgs.DDGS` class, imported on first use.
-# Harmless for real calls, but means tests/test_websearch_tool.py has to
-# monkeypatch "ddgs.ddgs.DDGS.text" (the real class), not
-# "coscribe.tools.websearch.DDGS.text" (the proxy) -- confirmed the
-# hard way when the "obvious" patch target silently made a real network
-# call instead of using the fake.
-
 DEFAULT_MAX_RESULTS = 5
-# The free engines fail a query now and then ("No results found." when
-# every engine they tried came back empty or blocked) and answer it on a
-# second try moments later. Retried here, a failure costs a second or two;
-# handed back, the model spends a whole step rewording a query that was fine.
-_SEARCH_ATTEMPTS = 3
+# The free engines turn a query away now and then and answer it on a second try moments later;
+# handed back, the model spends a whole step rewording a query that was fine. A network that
+# reaches no engine is not retried: a second try fails the same way.
+_SEARCH_ATTEMPTS = 2
 _SEARCH_RETRY_SECONDS = 1.5
 
 
@@ -67,15 +43,14 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[
         query: what to search for
         max_results: how many results to return (default 5)
     """
-    # DDGS's constructor takes its own proxy= kwarg -- separate from the
-    # DDGS_PROXY env var its docs mention, which a typical corporate
-    # .env/HTTP_PROXY setup won't have. configured_proxy() forwards the
-    # standard HTTP_PROXY/HTTPS_PROXY instead (see runtime/proxy.py).
+    # ddgs reads only its own proxy= argument (or DDGS_PROXY), not HTTP(S)_PROXY or Windows'
+    # setting, so the proxy is looked up here.
+    proxy = configured_proxy()
     for attempt in range(_SEARCH_ATTEMPTS):
         try:
-            results = DDGS(proxy=configured_proxy()).text(query, max_results=max_results)
+            results = _search.search(query, max_results, proxy)
             break
-        except DDGSException:
+        except _search.SearchEmptyError:
             if attempt == _SEARCH_ATTEMPTS - 1:
                 raise
             time.sleep(_SEARCH_RETRY_SECONDS)
@@ -90,7 +65,8 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[
 
 
 DEFAULT_PAGE_CHARS = 20_000
-_PAGE_TIMEOUT_SECONDS = 20.0
+# A site that answers at all connects within seconds; the longer read timeout is for slow pages.
+_PAGE_TIMEOUT = httpx.Timeout(20.0, connect=6.0)
 # Page chrome that isn't the content, dropped before converting.
 _CHROME_TAGS = ("script", "style", "noscript", "svg", "nav", "footer", "header", "aside", "form")
 _USER_AGENT = "Mozilla/5.0 (compatible; coscribe)"
@@ -110,6 +86,22 @@ def _page_text(html: str) -> tuple[str, str]:
     root = soup.find("main") or soup.find("article") or soup.body or soup
     text = markdownify(str(root), heading_style="ATX")
     return title, re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def _unreachable_page(url: str, proxy: str | None, exc: Exception) -> str:
+    host = urlsplit(url).hostname or url
+    reason = "timed out" if isinstance(exc, httpx.TimeoutException) else f"failed ({exc})"
+    if proxy:
+        return (
+            f"Couldn't connect to {host} through the proxy {without_credentials(proxy)}: the "
+            f"connection {reason}. The proxy may be down or unable to reach this site; the "
+            "browser may still open it, if one is connected."
+        )
+    return (
+        f"Couldn't connect to {host}: the connection {reason}. This network may block the site; "
+        "the browser may still open it, if one is connected. A proxy goes in Settings > General "
+        "> Proxy."
+    )
 
 
 def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS) -> dict[str, Any]:
@@ -132,14 +124,18 @@ def _read_web_page(
 ) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         raise ValueError(f"{url!r} isn't an http(s) address")
+    proxy = configured_proxy(url)
     with httpx.Client(
-        proxy=configured_proxy(url),
+        proxy=proxy,
         follow_redirects=True,
-        timeout=_PAGE_TIMEOUT_SECONDS,
+        timeout=_PAGE_TIMEOUT,
         headers={"User-Agent": _USER_AGENT},
         event_hooks=request_hooks(network),
     ) as client:
-        response = client.get(url)
+        try:
+            response = client.get(url)
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ProxyError) as exc:
+            raise ConnectionError(_unreachable_page(url, proxy, exc)) from exc
     response.raise_for_status()
     content_type = response.headers.get("content-type", "").lower()
     if "html" in content_type or not content_type:

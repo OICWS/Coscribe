@@ -1,10 +1,22 @@
+import threading
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.web import websearch
+from coscribe.tools.web import _search, websearch
 from coscribe.tools.web.websearch import build_websearch_tools, web_search
+
+# `ddgs.DDGS` is a lazy stand-in that dispatches to `ddgs.ddgs.DDGS`, so the real class is what
+# the tests patch.
+
+
+@pytest.fixture(autouse=True)
+def _fresh_search_memory() -> Iterator[None]:
+    _search.forget_unreachable()
+    yield
+    _search.forget_unreachable()
 
 
 def test_web_search_normalizes_ddgs_result_shape(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -27,7 +39,7 @@ def test_web_search_normalizes_ddgs_result_shape(monkeypatch: pytest.MonkeyPatch
     results = web_search("capital of France")
 
     assert captured["query"] == "capital of France"
-    assert "backend" not in captured["kwargs"]  # "auto" (ddgs's own default) -- see websearch.py
+    assert captured["kwargs"]["backend"] in _search.engine_names()
     assert captured["kwargs"]["max_results"] == 5
     assert results == [
         {
@@ -44,7 +56,7 @@ def test_web_search_respects_max_results(monkeypatch: pytest.MonkeyPatch) -> Non
 
     def _fake_text(self: Any, query: str, **kwargs: Any) -> list[dict[str, Any]]:
         captured["kwargs"] = kwargs
-        return []
+        return [{"title": "T", "href": "https://example.com", "body": "B"}]
 
     monkeypatch.setattr("ddgs.ddgs.DDGS.text", _fake_text)
 
@@ -73,7 +85,7 @@ def test_web_search_forwards_https_proxy_to_ddgs(
         captured["proxy"] = proxy
 
     def _fake_text(self: Any, query: str, **kwargs: Any) -> list[dict[str, Any]]:
-        return []
+        return [{"title": "T", "href": "https://example.com", "body": "B"}]
 
     monkeypatch.setattr("ddgs.ddgs.DDGS.__init__", _fake_init)
     monkeypatch.setattr("ddgs.ddgs.DDGS.text", _fake_text)
@@ -95,7 +107,7 @@ def test_web_search_passes_no_proxy_when_unconfigured(
         captured["proxy"] = proxy
 
     def _fake_text(self: Any, query: str, **kwargs: Any) -> list[dict[str, Any]]:
-        return []
+        return [{"title": "T", "href": "https://example.com", "body": "B"}]
 
     monkeypatch.setattr("ddgs.ddgs.DDGS.__init__", _fake_init)
     monkeypatch.setattr("ddgs.ddgs.DDGS.text", _fake_text)
@@ -168,16 +180,37 @@ def test_read_web_page_refuses_what_isnt_a_page(monkeypatch: pytest.MonkeyPatch)
         read_web_page("file:///etc/passwd")
 
 
-def test_web_search_retries_a_query_the_engines_briefly_failed(
+def test_web_search_asks_each_engine_on_its_own(monkeypatch: pytest.MonkeyPatch) -> None:
+    backends: list[str] = []
+    lock = threading.Lock()
+
+    def _fake_text(self: Any, query: str, **kwargs: Any) -> list[dict[str, Any]]:
+        with lock:
+            backends.append(kwargs["backend"])
+        return []
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", _fake_text)
+    monkeypatch.setattr(websearch, "_SEARCH_RETRY_SECONDS", 0)
+
+    with pytest.raises(_search.SearchEmptyError):
+        web_search("anything")
+
+    assert sorted(backends) == sorted(_search.engine_names() * 2)
+    assert _search.engine_names()[-2:] == ["wikipedia", "grokipedia"]
+
+
+def test_web_search_retries_a_query_the_engines_briefly_turned_away(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from ddgs.exceptions import DDGSException
 
-    calls: list[str] = []
+    rounds = {"brave": 0}
 
-    def flaky_text(self: object, query: str, max_results: int = 5) -> list[dict[str, str]]:
-        calls.append(query)
-        if len(calls) < 3:
+    def flaky_text(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        if kwargs["backend"] != "brave":
+            raise DDGSException("No results found.")
+        rounds["brave"] += 1
+        if rounds["brave"] < 2:
             raise DDGSException("No results found.")
         return [{"title": "T", "href": "https://example.com", "body": "B"}]
 
@@ -185,17 +218,132 @@ def test_web_search_retries_a_query_the_engines_briefly_failed(
     monkeypatch.setattr(websearch, "_SEARCH_RETRY_SECONDS", 0)
 
     assert web_search("ai news") == [{"title": "T", "url": "https://example.com", "snippet": "B"}]
-    assert len(calls) == 3
+    assert rounds["brave"] == 2
 
 
-def test_web_search_gives_up_after_its_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
-    from ddgs.exceptions import DDGSException
+def test_web_search_says_the_engines_answered_with_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ddgs.exceptions import DDGSException, TimeoutException
 
-    def always_fails(self: object, query: str, max_results: int = 5) -> list[dict[str, str]]:
-        raise DDGSException("No results found.")
+    def some_reached(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        if kwargs["backend"] == "mojeek":
+            raise DDGSException("No results found.")
+        raise TimeoutException("operation timed out")
 
-    monkeypatch.setattr("ddgs.ddgs.DDGS.text", always_fails)
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", some_reached)
     monkeypatch.setattr(websearch, "_SEARCH_RETRY_SECONDS", 0)
 
-    with pytest.raises(DDGSException, match="No results found"):
+    with pytest.raises(_search.SearchEmptyError, match="1 search engine"):
         web_search("nothing")
+
+
+def _unreachable_engines(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    from ddgs.exceptions import DDGSException, TimeoutException
+
+    calls: list[str] = []
+    lock = threading.Lock()
+
+    def fails(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        with lock:
+            calls.append(kwargs["backend"])
+        if kwargs["backend"] == "yahoo":
+            raise DDGSException("RequestError: error sending request for url")
+        raise TimeoutException("operation timed out")
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", fails)
+    return calls
+
+
+def test_web_search_says_no_engine_could_be_reached_and_remembers_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _unreachable_engines(monkeypatch)
+    for var in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: None)
+
+    with pytest.raises(_search.SearchUnreachableError, match="from this network") as first:
+        web_search("anything")
+    assert "Settings > General > Proxy" in str(first.value)
+    assert len(calls) == len(_search.engine_names())  # not retried
+
+    with pytest.raises(_search.SearchUnreachableError):
+        web_search("other words")
+    assert len(calls) == len(_search.engine_names())  # answered from memory
+
+
+def test_web_search_names_a_proxy_that_reaches_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _unreachable_engines(monkeypatch)
+    monkeypatch.setattr(
+        websearch, "configured_proxy", lambda url=None: "http://user:secret@127.0.0.1:10808"
+    )
+
+    with pytest.raises(_search.SearchUnreachableError, match="through the proxy") as raised:
+        web_search("anything")
+    assert "http://127.0.0.1:10808" in str(raised.value)
+    assert "secret" not in str(raised.value)
+
+    # A different proxy is a different network: it is asked, not answered from memory.
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: "http://127.0.0.1:7890")
+    with pytest.raises(_search.SearchUnreachableError):
+        web_search("anything")
+    assert len(calls) == 2 * len(_search.engine_names())
+
+
+def test_web_search_does_not_wait_for_an_engine_that_hangs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    release = threading.Event()
+
+    def text(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        if kwargs["backend"] == "brave":
+            return [{"title": "T", "href": "https://example.com", "body": "B"}]
+        release.wait(10)
+        return []
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", text)
+    monkeypatch.setattr(_search, "GRACE_SECONDS", 0.05)
+    try:
+        assert web_search("anything") == [
+            {"title": "T", "url": "https://example.com", "snippet": "B"}
+        ]
+        assert not release.is_set()
+    finally:
+        release.set()
+
+
+def test_web_search_gives_up_at_its_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    release = threading.Event()
+
+    def hangs(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        release.wait(10)
+        return []
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", hangs)
+    monkeypatch.setattr(_search, "DEADLINE_SECONDS", 0.05)
+    try:
+        with pytest.raises(_search.SearchUnreachableError):
+            web_search("anything")
+    finally:
+        release.set()
+
+
+def test_read_web_page_says_why_it_could_not_connect(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    from coscribe.tools.web.websearch import read_web_page
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("handshake operation timed out", request=request)
+
+    _serve(monkeypatch, refuse)
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: None)
+    with pytest.raises(ConnectionError, match="connect to example.com: the connection timed out"):
+        read_web_page("https://example.com/a")
+
+    monkeypatch.setattr(
+        websearch, "configured_proxy", lambda url=None: "http://u:p@127.0.0.1:10808"
+    )
+    with pytest.raises(ConnectionError, match=r"through the proxy http://127\.0\.0\.1:10808"):
+        read_web_page("https://example.com/a")

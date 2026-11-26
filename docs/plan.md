@@ -97,6 +97,12 @@ the indicator at normal Windows display scaling.
 
 ## Open, smaller
 
+- **Search that needs no setup** (`docs/log/2026-11-26-web-search-fail-fast.md`): the free
+  engines are all one kind of site, and a network that blocks them gets no search at all. Next:
+  search through the model provider the person already set up, where it has its own web search,
+  with a keyed search service only as an advanced option (Collins, 2026-11-26: office users won't
+  get a separate search key).
+
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
   the checks on what tests prove, the frontend features and the weekly numbers
   (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
