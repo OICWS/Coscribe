@@ -2,6 +2,8 @@ import { openThreadFile } from "../../lib/rest";
 import { createContext } from "react";
 import type { MessageActions } from "../../lib/messageActions";
 import type { SteerActions } from "../../lib/steerNotes";
+import type { CardAnswers, CardState } from "../../lib/questionCards";
+import type { QuestionSpec } from "../../types/wire";
 
 export const NO_CONNECTOR_TOOLS: ReadonlySet<string> = new Set();
 
@@ -39,3 +41,14 @@ export const BackgroundTasks = createContext<{ statuses: Readonly<Record<string,
 export function openMentioned(view: (path: string) => boolean, threadId: string, path: string): void {
   if (!view(path)) void openThreadFile(threadId, path, false);
 }
+
+/** Every ask_user_question card's state in this conversation, by its call's id. */
+export const QuestionCardStates = createContext<ReadonlyMap<string, CardState>>(new Map());
+
+/** Answering a card: an ask_user_question card's click goes out as the person's message; a
+ * remember card's answer goes to the turn waiting on it. null where nothing can be answered. */
+export interface QuestionActions {
+  answer: (questions: QuestionSpec[], answers: CardAnswers) => void;
+  answerPending: (id: string, answers: CardAnswers) => void;
+}
+export const QuestionActionsContext = createContext<QuestionActions | null>(null);

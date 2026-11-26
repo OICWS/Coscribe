@@ -30,6 +30,7 @@ KEPT_TOOLS = frozenset(
         "task_list",
         "task_update",
         "ask_user_question",
+        "answer_question_card",
         "remember",
         "load_skill",
         "read_skill_file",
