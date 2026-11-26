@@ -271,6 +271,9 @@ Last reviewed: 2026-11-22.
 
 ## Needs the maintainer's testing (could not be verified here)
 
+- DOCX preview with Microsoft Word on Windows, including a document open in Word and a
+  mixed-orientation file compared with Word's print layout (#1070).
+
 - Settings > Providers in the desktop app, and a key for one of the 12 new presets added end to
   end (no account for them here).
 

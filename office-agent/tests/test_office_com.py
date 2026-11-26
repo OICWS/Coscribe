@@ -185,3 +185,11 @@ def test_every_office_program_has_its_process_name() -> None:
     assert {p for names in _office_com._PROGRAMS.values() for p in names} == set(
         _office_com._IMAGES
     )
+
+
+def test_a_word_pdf_is_the_final_text_without_the_comment_pane() -> None:
+    script = _office_com._OPEN_AND_SAVE["word"]
+
+    assert "RevisionsFilter.Markup = 0" in script
+    assert "ExportAsFixedFormat($env:COSCRIBE_TARGET, 17, $false, 0, 0, 1, 1, 0)" in script
+    assert "catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }" in script
