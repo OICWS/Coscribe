@@ -15,10 +15,11 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ._office_bins import run_killable
+from ._office_bins import kill_tree, run_killable, run_until_marker
 
 # The program that opens each type, Microsoft's name first, then WPS's.
 _PROGRAMS: dict[str, tuple[str, ...]] = {
@@ -45,6 +46,8 @@ _FORMATS = {
 # it, only when no file of the user's is open in it: PowerPoint has one instance per user, and
 # closing or hiding the one the user works in would take their presentations with it. The close
 # sits in a `finally` so that a file the program cannot open does not leave it running hidden.
+# The script prints `_SAVED` once the file is written and closed: the program takes another 2-3 s
+# to exit after Quit (Word 16, measured 2026-11), and the caller need not wait for that.
 # A Word PDF is the final text without markup: the default export follows the screen's markup
 # view, which shrinks every page beside a grey comment pane. WPS may lack the view filter or the
 # export call, so it keeps its own save.
@@ -63,6 +66,7 @@ try {
       } catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }
     } else { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
   } finally { $doc.Close($false) }
+  [Console]::Out.WriteLine('coscribe-saved'); [Console]::Out.Flush()
 } finally { if ($open -eq 0) { $app.Quit() } }
 """,
     "excel": """
@@ -74,6 +78,7 @@ try {
     if ($env:COSCRIBE_FORMAT -eq 'pdf') { $book.ExportAsFixedFormat(0, $env:COSCRIBE_TARGET) }
     else { $book.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
   } finally { $book.Close($false) }
+  [Console]::Out.WriteLine('coscribe-saved'); [Console]::Out.Flush()
 } finally { if ($open -eq 0) { $app.Quit() } }
 """,
     "powerpoint": """
@@ -81,6 +86,7 @@ $open = $app.Presentations.Count
 try {
   $deck = $app.Presentations.Open($env:COSCRIBE_SOURCE, -1, 0, 0)
   try { $deck.SaveAs($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) } finally { $deck.Close() }
+  [Console]::Out.WriteLine('coscribe-saved'); [Console]::Out.Flush()
 } finally { if ($open -eq 0) { $app.Quit() } }
 """,
 }
@@ -111,6 +117,10 @@ Get-CimInstance Win32_Process -Filter "Name='$env:COSCRIBE_IMAGE'" |
 
 # Office shows one document at a time well; parallel jobs in one instance fail at random.
 _LOCK = threading.Lock()
+_SAVED = "coscribe-saved"
+# The previous job's program, still exiting after it saved; the next job waits for it, under _LOCK,
+# so two jobs never share one instance.
+_exiting: threading.Thread | None = None
 
 
 def _registered(prog_id: str) -> bool:
@@ -163,6 +173,17 @@ def _end_started_since(prog_id: str, started: datetime) -> None:
         run_killable(command, 30, env=env)
 
 
+def _let_exit(
+    process: subprocess.Popen[bytes], deadline: float, prog_id: str, started: datetime
+) -> None:
+    """Waits for a job that already saved its file to end, within the job's own time."""
+    try:
+        process.wait(max(deadline - time.monotonic(), 1.0))
+    except subprocess.TimeoutExpired:
+        kill_tree(process)
+        _end_started_since(prog_id, started)
+
+
 def convert(source: Path, target: Path, to_format: str, timeout: float) -> str | None:
     """Writes `source` as `to_format` ("pdf", "docx", "xlsx" or "pptx") to `target` with the
     installed office program. Returns the program's COM name, or None when no program can do it.
@@ -181,10 +202,15 @@ def convert(source: Path, target: Path, to_format: str, timeout: float) -> str |
         "COSCRIBE_TARGET": str(target.resolve()),
         "COSCRIBE_FORMAT": str(code),
     }
+    global _exiting
     with _LOCK:
+        if _exiting is not None:
+            _exiting.join()
+            _exiting = None
         started = datetime.now(UTC)
+        deadline = time.monotonic() + timeout
         try:
-            run_killable(command, timeout, env=env)
+            still_running = run_until_marker(command, timeout, _SAVED, env=env)
         except subprocess.TimeoutExpired:
             _end_started_since(prog_id, started)
             raise ValueError(f"{prog_id} took too long to convert this file.") from None
@@ -194,6 +220,11 @@ def convert(source: Path, target: Path, to_format: str, timeout: float) -> str |
             raise ValueError(
                 f"{prog_id} could not convert this file: {message[0] if message else error}"
             ) from None
+        if still_running is not None:
+            _exiting = threading.Thread(
+                target=_let_exit, args=(still_running, deadline, prog_id, started), daemon=True
+            )
+            _exiting.start()
     if not target.is_file():
         raise ValueError(f"{prog_id} produced no file.")
     return prog_id
