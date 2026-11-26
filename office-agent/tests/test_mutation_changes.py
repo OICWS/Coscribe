@@ -72,3 +72,16 @@ def test_a_changed_line_names_its_function_or_method_as_mutmut_does(
         "xǁBoxǁgrown__mutmut_",
     ]
     assert mutation.mutant_prefixes(SOURCE, set()) == []
+
+
+def test_a_decorated_function_is_not_asked_for_since_mutmut_leaves_it_alone(
+    mutation: ModuleType,
+) -> None:
+    source = (
+        "@cache\ndef cached():\n    return 1\n\n\n"
+        "class Box:\n"
+        "    @recorded\n    async def turn(self):\n        return 2\n\n"
+        "    @staticmethod\n    def make():\n        return 3\n"
+    )
+
+    assert mutation.mutant_prefixes(source, {3, 9, 13}) == ["xǁBoxǁmake__mutmut_"]
