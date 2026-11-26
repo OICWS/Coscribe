@@ -4,12 +4,13 @@ measuring/rendering pages with PDFium."""
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 import pytest
 from reportlab.pdfgen import canvas
 
-from coscribe.tools._office_bins import run_killable
+from coscribe.tools._office_bins import run_killable, run_until_marker
 from coscribe.tools._thumbnail import _render_pdf_pages, measure_page_words
 from evals import libreoffice
 
@@ -164,6 +165,33 @@ def test_run_killable_reports_a_failed_run() -> None:
     with pytest.raises(subprocess.CalledProcessError):
         run_killable([sys.executable, "-c", "raise SystemExit(3)"], 10)
     assert run_killable([sys.executable, "-c", "print('ok')"], 10).stdout.strip() == b"ok"
+
+
+def test_run_until_marker_returns_while_the_program_still_runs() -> None:
+    code = "import sys, time; print('saved', flush=True); time.sleep(1.5)"
+    started = time.monotonic()
+
+    process = run_until_marker([sys.executable, "-c", code], 10, "saved")
+
+    assert process is not None and time.monotonic() - started < 1.2
+    assert process.wait(10) == 0
+
+
+def test_run_until_marker_reports_a_failure_with_its_first_line() -> None:
+    import subprocess
+
+    code = "import sys; print('Exception: the file is corrupt'); sys.exit(2)"
+    with pytest.raises(subprocess.CalledProcessError) as failed:
+        run_until_marker([sys.executable, "-c", code], 10, "saved")
+    assert failed.value.stderr.startswith(b"Exception: the file is corrupt")
+    assert run_until_marker([sys.executable, "-c", "print('ok')"], 10, "saved") is None
+
+
+def test_run_until_marker_kills_a_program_that_never_saves() -> None:
+    import subprocess
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        run_until_marker([sys.executable, "-c", "import time; time.sleep(30)"], 0.5, "saved")
 
 
 def test_no_test_runs_soffice_on_the_shared_default_profile() -> None:
