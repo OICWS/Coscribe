@@ -1,4 +1,4 @@
-# Web search and page reading fail within seconds and say why (shipped)
+# Web search and page reading fail within seconds, say why, and fall back to the provider's search (shipped)
 
 Why: on a network that can't reach the free search engines (a country that blocks them, a proxy
 whose upstream is down), `web_search` spent about 20 s per attempt, three attempts, and handed
@@ -16,6 +16,16 @@ connections but reached nothing: every engine timed out, direct and through the 
   nothing, the error says that, and the search is tried once more (was three times).
 - `read_web_page`: connect timeout 6 s (read stays 20 s); a failed connection says the host,
   whether a proxy was used and that the browser may still open the page.
+- When the free engines fail, the search goes through the person's model provider with the key
+  they already gave, where the provider has a search API of its own: which ones do is a table
+  beside the model catalog (`runtime/models/web_search.json`, a source and a date per row; models.dev
+  has no such field). DeepSeek only for now (`/v1/tools/search` and `/v1/tools/fetch`, $0.75 per
+  1,000 successful requests, checked 2026-11-26). A page that can't be reached directly is read
+  through the provider's fetch, except in a conversation limited to some sites. Collins chose free
+  first and the provider only as the fallback, for every provider.
+- Checked live with a real DeepSeek key behind a dead proxy: the free engines failed at once,
+  DeepSeek answered a Chinese query with 3 results, and a page came back through its fetch, 5.8 s
+  for both.
 - In this container the new search answered 3 of 3 sample queries in 1 to 3 s; ddgs's auto mode
   answered 2 of 3.
 
@@ -24,4 +34,6 @@ connections but reached nothing: every engine timed out, direct and through the 
   before the change, not after it.
 
 ## Follow-ups
-- Search through the model provider's own web search, no extra key (`docs/plan.md`).
+- Anthropic, OpenAI and Gemini search only inside a model call (a server tool, about $10 to $14
+  per 1,000 searches plus tokens): add them to the table as a second kind, used the same way.
+- Show web search as a provider capability in Settings > Providers and the model picker.

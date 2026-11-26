@@ -5,12 +5,14 @@ Owns the model catalog of decision 0055: `catalog.json`, a trimmed copy of model
 written by `scripts/update_model_catalog.py`; `overrides.json`, the rows found wrong there, each
 with a source and a date; and `catalog.py`, which finds a coscribe provider's models.dev provider
 by its base URL or built-in name and answers a model's capabilities (input kinds such as images,
-reasoning, effort levels, tools, window, output limit, kind). Does not own the
+reasoning, effort levels, tools, window, output limit, kind); and `web_search.json` with
+`web_search.py`, which providers can search the web with the person's own key (models.dev has no
+such field), each row with a source and a date. Does not own the
 provider settings (`runtime/provider_config.py`, `web/`) or how a chat model is built
 (`runtime_lg/`).
 
 ## Public interface
-`ModelInfo`, `model_info`, `catalog_provider`. Import them from `coscribe.runtime.models`.
+`ModelInfo`, `model_info`, `catalog_provider`, `WebSearchInfo`, `provider_web_search`. Import them from `coscribe.runtime.models`.
 
 ## Depends on
 No other coscribe package.

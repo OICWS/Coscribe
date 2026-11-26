@@ -134,3 +134,21 @@ def test_the_bundled_catalog_and_overrides_load() -> None:
     assert data["source"] == model_catalog.SOURCE_URL and len(data["models"]) > 1000
     for key in json.loads(model_catalog.OVERRIDES_PATH.read_text(encoding="utf-8"))["models"]:
         assert key in data["models"], f"override for a model the catalog lacks: {key}"
+
+
+def test_the_web_search_rows_name_catalog_providers_and_their_source() -> None:
+    from coscribe.runtime.models import provider_web_search
+    from coscribe.runtime.models import web_search as web_search_table
+
+    model_catalog._catalog.cache_clear()
+    providers = json.loads(model_catalog.CATALOG_PATH.read_text(encoding="utf-8"))["providers"]
+    rows = json.loads(web_search_table.WEB_SEARCH_PATH.read_text(encoding="utf-8"))["providers"]
+    for pid, row in rows.items():
+        assert pid in providers, f"web search row for a provider the catalog lacks: {pid}"
+        assert row["source"].startswith("https://") and row["checked"]
+        assert row["kind"] == "search_api" and row["search"].startswith("/")
+
+    info = provider_web_search("my deepseek", "https://api.deepseek.com/v1")
+    assert info is not None and info.provider == "deepseek" and info.search == "/v1/tools/search"
+    assert provider_web_search("anthropic") is None
+    assert provider_web_search("local", "http://localhost:11434/v1") is None

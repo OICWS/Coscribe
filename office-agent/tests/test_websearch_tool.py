@@ -347,3 +347,161 @@ def test_read_web_page_says_why_it_could_not_connect(monkeypatch: pytest.MonkeyP
     )
     with pytest.raises(ConnectionError, match=r"through the proxy http://127\.0\.0\.1:10808"):
         read_web_page("https://example.com/a")
+
+
+_DEEPSEEK = {"ds": {"base_url": "https://api.deepseek.com/v1", "api_key": "sk-test"}}
+
+
+def _deepseek(monkeypatch: pytest.MonkeyPatch, handler: Any, site: Any = None) -> list[Any]:
+    """DeepSeek's API answered by `handler`, any other host by `site`; the requests to DeepSeek."""
+    import httpx
+
+    seen: list[Any] = []
+    real_client = httpx.Client
+
+    def route(request: httpx.Request) -> httpx.Response:
+        if request.url.host != "api.deepseek.com":
+            response: httpx.Response = site(request)
+            return response
+        seen.append(request)
+        response = handler(request)
+        return response
+
+    def client(**kwargs: Any) -> Any:
+        kwargs.pop("proxy", None)
+        return real_client(transport=httpx.MockTransport(route), **kwargs)
+
+    monkeypatch.setattr(httpx, "Client", client)
+    return seen
+
+
+def _engines_blocked(monkeypatch: pytest.MonkeyPatch) -> None:
+    from ddgs.exceptions import TimeoutException
+
+    def blocked(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        raise TimeoutException("operation timed out")
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", blocked)
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: None)
+
+
+def _search_tool(providers: dict[str, dict[str, str]]) -> Any:
+    return build_websearch_tools(None, lambda: providers)[0]
+
+
+def test_web_search_falls_back_to_the_providers_own_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import httpx
+
+    _engines_blocked(monkeypatch)
+    seen = _deepseek(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200,
+            json={
+                "results": [
+                    {"title": "Timeouts", "url": "https://www.python-httpx.org/", "snippet": "S"}
+                ]
+            },
+        ),
+    )
+
+    found = _search_tool(_DEEPSEEK)("httpx " + "timeout " * 30, max_results=3)
+
+    assert found == [{"title": "Timeouts", "url": "https://www.python-httpx.org/", "snippet": "S"}]
+    request = seen[0]
+    assert str(request.url) == "https://api.deepseek.com/v1/tools/search"
+    assert request.headers["authorization"] == "Bearer sk-test"
+    body = __import__("json").loads(request.content)
+    assert body["count"] == 3 and len(body["query"]) == 128
+
+
+def test_web_search_uses_the_free_engines_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    def text(self: object, query: str, **kwargs: Any) -> list[dict[str, str]]:
+        return [{"title": "T", "href": "https://example.com", "body": "B"}]
+
+    monkeypatch.setattr("ddgs.ddgs.DDGS.text", text)
+    seen = _deepseek(monkeypatch, lambda request: pytest.fail("the provider was asked"))
+
+    assert _search_tool(_DEEPSEEK)("anything")[0]["url"] == "https://example.com"
+    assert seen == []
+
+
+def test_web_search_says_both_ways_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    _engines_blocked(monkeypatch)
+    answers = [
+        httpx.Response(402, json={"error": {"message": "Insufficient Balance"}}),
+        httpx.Response(200, json={"results": []}),
+    ]
+    _deepseek(monkeypatch, lambda request: answers.pop(0))
+
+    with pytest.raises(_search.SearchUnreachableError, match="no balance left") as raised:
+        _search_tool(_DEEPSEEK)("anything")
+    assert "from this network" in str(raised.value) and "sk-test" not in str(raised.value)
+
+    with pytest.raises(_search.SearchUnreachableError, match="DeepSeek found nothing either"):
+        _search_tool(_DEEPSEEK)("anything")
+
+
+def test_web_search_without_a_search_provider_uses_only_the_free_engines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _engines_blocked(monkeypatch)
+    seen = _deepseek(monkeypatch, lambda request: pytest.fail("a provider was asked"))
+    others = {"kimi": {"base_url": "https://api.moonshot.ai/v1", "api_key": "sk"}}
+
+    with pytest.raises(_search.SearchUnreachableError):
+        _search_tool(others)("anything")
+    assert seen == []
+
+
+def test_read_web_page_reads_through_the_provider_when_the_site_cant_be_reached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import httpx
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection reset", request=request)
+
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: None)
+    seen = _deepseek(
+        monkeypatch,
+        lambda request: httpx.Response(200, json={"title": "Page", "content": "# Hello\n\nWorld"}),
+        refuse,
+    )
+    read = build_websearch_tools(None, lambda: _DEEPSEEK)[1]
+
+    page = read("https://example.com/a", max_chars=7)
+
+    assert page == {
+        "url": "https://example.com/a",
+        "title": "Page",
+        "content": "# Hello",
+        "total_chars": 14,
+        "next_start": 7,
+    }
+    assert str(seen[0].url) == "https://api.deepseek.com/v1/tools/fetch"
+
+
+def test_read_web_page_keeps_a_limited_conversation_off_the_provider(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    import httpx
+
+    from coscribe.runtime import NetworkGuard
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection reset", request=request)
+
+    monkeypatch.setattr(websearch, "configured_proxy", lambda url=None: None)
+    seen = _deepseek(monkeypatch, lambda request: pytest.fail("the provider was asked"), refuse)
+    network = NetworkGuard(tmp_path, "t1")
+    monkeypatch.setattr(network, "sites", lambda: ["example.com"])
+    read = build_websearch_tools(network, lambda: _DEEPSEEK)[1]
+
+    with pytest.raises(ConnectionError, match="connect to example.com"):
+        read("https://example.com/a")
+    assert seen == []

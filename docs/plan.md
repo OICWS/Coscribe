@@ -97,11 +97,12 @@ the indicator at normal Windows display scaling.
 
 ## Open, smaller
 
-- **Search that needs no setup** (`docs/log/2026-11-26-web-search-fail-fast.md`): the free
-  engines are all one kind of site, and a network that blocks them gets no search at all. Next:
-  search through the model provider the person already set up, where it has its own web search,
-  with a keyed search service only as an advanced option (Collins, 2026-11-26: office users won't
-  get a separate search key).
+- **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
+  DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
+  and Gemini, whose search runs only inside a model call, as a second kind in
+  `runtime/models/web_search.json`; and web search shown as a capability in Settings > Providers
+  and the model picker (a frontend PR). Free engines stay first for every provider (Collins,
+  2026-11-26).
 
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
   the checks on what tests prove, the frontend features and the weekly numbers
