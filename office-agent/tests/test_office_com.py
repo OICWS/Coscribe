@@ -191,5 +191,16 @@ def test_a_word_pdf_is_the_final_text_without_the_comment_pane() -> None:
     script = _office_com._OPEN_AND_SAVE["word"]
 
     assert "RevisionsFilter.Markup = 0" in script
-    assert "ExportAsFixedFormat($env:COSCRIBE_TARGET, 17, $false, 0, 0, 1, 1, 0)" in script
-    assert "catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }" in script
+    assert (
+        "Invoke-Com $doc 'ExportAsFixedFormat' @([string]$env:COSCRIBE_TARGET, [int]17, $false,\n"
+        "          [int]0, [int]0, [int]1, [int]1, [int]0)" in script
+    )
+    assert "catch { Invoke-Com $doc 'SaveAs2' @([string]$env:COSCRIBE_TARGET, [int]17) }" in script
+
+
+def test_word_saves_through_a_late_bound_call() -> None:
+    word = _office_com.script(Path("report.docx"), "Word.Application")
+
+    assert "function Invoke-Com(" in word
+    assert "$doc.ExportAsFixedFormat(" not in word
+    assert "$doc.SaveAs2(" not in word

@@ -47,7 +47,10 @@ _FORMATS = {
 # sits in a `finally` so that a file the program cannot open does not leave it running hidden.
 # A Word PDF is the final text without markup: the default export follows the screen's markup
 # view, which shrinks every page beside a grey comment pane. WPS may lack the view filter or the
-# export call, so it keeps its own save.
+# export call, so it keeps its own save. Word's save calls go through a late-bound InvokeMember
+# with typed arguments: PowerShell 5.1's own COM binding of ExportAsFixedFormat and SaveAs2 spun
+# a core and never returned on a Windows PC with Word 16 (2026-11), so every Word conversion ran
+# into the timeout, while the same late-bound call finished in about 130 ms.
 _OPEN_AND_SAVE = {
     "word": """
 $open = $app.Documents.Count
@@ -59,9 +62,10 @@ try {
       try {
         $doc.ActiveWindow.View.RevisionsFilter.Markup = 0
         $doc.ActiveWindow.View.RevisionsFilter.View = 0
-        $doc.ExportAsFixedFormat($env:COSCRIBE_TARGET, 17, $false, 0, 0, 1, 1, 0)
-      } catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }
-    } else { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
+        Invoke-Com $doc 'ExportAsFixedFormat' @([string]$env:COSCRIBE_TARGET, [int]17, $false,
+          [int]0, [int]0, [int]1, [int]1, [int]0)
+      } catch { Invoke-Com $doc 'SaveAs2' @([string]$env:COSCRIBE_TARGET, [int]17) }
+    } else { Invoke-Com $doc 'SaveAs2' @([string]$env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
   } finally { $doc.Close($false) }
 } finally { if ($open -eq 0) { $app.Quit() } }
 """,
@@ -144,13 +148,23 @@ def program_for(source: Path) -> str | None:
     return next((p for p in _PROGRAMS[kind] if _registered(p)), None)
 
 
+_INVOKE_COM = """
+function Invoke-Com($target, [string]$method, [object[]]$arguments) {
+  [System.__ComObject].InvokeMember(
+    $method, [Reflection.BindingFlags]::InvokeMethod, $null, $target, $arguments)
+}
+"""
+
+
 def script(source: Path, prog_id: str) -> str:
     """The PowerShell that opens `source` in `prog_id` and saves the target the environment
     names."""
     kind = _KIND[source.suffix.lower()]
     return (
         "$ErrorActionPreference = 'Stop'\n"
-        f"$app = New-Object -ComObject '{prog_id}'\n" + _OPEN_AND_SAVE[kind]
+        + _INVOKE_COM
+        + f"$app = New-Object -ComObject '{prog_id}'\n"
+        + _OPEN_AND_SAVE[kind]
     )
 
 
