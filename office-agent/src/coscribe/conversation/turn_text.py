@@ -205,10 +205,11 @@ OPEN_QUESTION_NOTE = (
     "[Open question card]\n"
     "Your question card is still unanswered:\n{questions}\n"
     "If this message, with what they said before, settles every question, call "
-    "answer_question_card first, before any other work. Leaving a question to you (\"anything\", "
-    "\"you decide\", \"随便\") settles it: record the choice you make. If it settles only some, "
-    "ask about the rest in your reply. If it is about something else, leave the card open, "
-    "don't ask again, and do what it asks.\n"
+    'answer_question_card first, before any other work. Leaving a question to you ("anything", '
+    '"you decide", "随便") settles it: record the choice you make. If it settles only some, '
+    "ask about the rest in a sentence of your reply, not with a new card: this card closes, "
+    "with every answer, once their later words settle the rest. If it is about something else, "
+    "leave the card open, don't ask again, and do what it asks.\n"
     "[/Open question card]\n"
 )
 

@@ -112,8 +112,10 @@ def answer_question_card(answers: list[str]) -> str:
     and, with what they said before, it settles every question on it. A
     question they leave to you ("anything", "you decide") is settled:
     record the choice you make. When some questions are still open,
-    don't call it: ask about those in your reply. When their message is
-    about something else, don't call it either.
+    don't call it yet: ask about those in a sentence of your reply, not
+    with a new card, and call it with every answer once their later
+    words settle the rest. When their message is about something else,
+    don't call it either.
 
     Args:
         answers: one per question on the card, in order: the option's

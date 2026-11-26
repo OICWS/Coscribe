@@ -197,6 +197,8 @@ def test_the_note_counts_a_question_left_to_the_model_as_answered() -> None:
 
     assert "Leaving a question to you" in note
     assert "record the choice you make" in note
+    # A partial answer is followed up in words, and the same card later closes with every answer.
+    assert "not with a new card" in note
 
 
 def test_a_failed_question_call_opens_no_card() -> None:

@@ -3,8 +3,8 @@
 
 system prompt: 26904 chars, ~6726 tokens, sha256 0633db2e3d
 
-bound to the model: 24 tools, ~5469 tokens
-  answer_question_card (answers:array) desc 803 chars sha256 7ca3a54e03
+bound to the model: 24 tools, ~5498 tokens
+  answer_question_card (answers:array) desc 920 chars sha256 986a8d060c
   ask_user_question (questions:array) desc 1343 chars sha256 f6f6eb54e8
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -29,7 +29,7 @@ bound to the model: 24 tools, ~5469 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 125 tools, ~38828 tokens (the ones not bound are found through search_tools)
+registered: 125 tools, ~38856 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -43,7 +43,7 @@ registered: 125 tools, ~38828 tokens (the ones not bound are found through searc
   add_pptx_scrim | WRITE_LOCAL | documents | deferred | sha256 f9c9889ed2
   add_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 f788d8b7e2
   add_pptx_shape_effect | WRITE_LOCAL | documents | deferred | sha256 7b217491ca
-  answer_question_card | READ | interaction | core | sha256 b12dbaaaff
+  answer_question_card | READ | interaction | core | sha256 7c2c12fd71
   ask_user_question | READ | interaction | core | sha256 c8fd125184
   build_pptx_from_pages | WRITE_LOCAL | documents | deferred | sha256 9c239d3393
   cancel_wake | WRITE_LOCAL | selfwake | deferred | sha256 ff3c53d9ec
