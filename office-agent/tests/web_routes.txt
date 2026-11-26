@@ -26,6 +26,7 @@ GET /api/artifacts
 GET /api/artifacts/lookup
 GET /api/artifacts/{artifact}/content
 GET /api/artifacts/{artifact}/thumbnail
+GET /api/attachment/docx/versions
 GET /api/attachment/pdf
 GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log
