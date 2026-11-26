@@ -183,6 +183,22 @@ def test_a_card_answered_before_cards_stopped_waiting_is_not_open() -> None:
     assert open_question([ask, answered]) == []
 
 
+def test_the_note_counts_a_question_left_to_the_model_as_answered() -> None:
+    # "随便" or "you decide" answers the card: without this the model went on working and
+    # left the card open.
+    from coscribe.conversation.turn_text import open_question_note
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    shown = ToolMessage(
+        content="The questions are on a card", tool_call_id="call_1", name="ask_user_question"
+    )
+
+    note = open_question_note([ask, shown], "随便什么内容")
+
+    assert "Leaving a question to you" in note
+    assert "record the choice you make" in note
+
+
 def test_a_failed_question_call_opens_no_card() -> None:
     from coscribe.conversation.turn_text import open_question
 

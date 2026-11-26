@@ -23,11 +23,11 @@ box, though the message box below does the same.
 - **A click is the person's next message**, starting `[Answers to your question card]`, which
   the page draws as the answered card rather than a bubble.
 - **An answer in words** gets a note on the person's message naming the open card
-  (`conversation/turn_text.py`). When their words answer every question the model records them
-  with `answer_question_card` (a core tool), which closes the card and shows the answers. A list
+  (`conversation/turn_text.py`). When their words answer every question (leaving a question to
+  the model answers it, with the model's own choice) the model records them with
+  `answer_question_card` (a core tool), which closes the card and shows the answers. A list
   shorter than the card's questions is refused (`runtime_lg/turn_checks.py` counts them), so the
-  model asks about the rest. An unrelated message leaves the
-  card open.
+  model asks about the rest. An unrelated message leaves the card open.
 - **A newer card replaces an open one**, which shows "No longer needed".
 - `remember` keeps the blocking question card (it saves only on the person's click), drawn the
   same way in the conversation.

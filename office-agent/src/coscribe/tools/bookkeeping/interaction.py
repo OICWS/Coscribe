@@ -109,14 +109,16 @@ def answer_question_card(answers: list[str]) -> str:
     """Record that the user's own words answered your open question card,
     so the card closes and shows their answers. Call it first, before
     other work, when their message carries the note that a card is open
-    and, with what they said before, it answers every question on it.
-    When some questions are still unanswered, don't call it: ask about
-    those in your reply. When their message is about something else,
-    don't call it either.
+    and, with what they said before, it settles every question on it. A
+    question they leave to you ("anything", "you decide") is settled:
+    record the choice you make. When some questions are still open,
+    don't call it: ask about those in your reply. When their message is
+    about something else, don't call it either.
 
     Args:
         answers: one per question on the card, in order: the option's
-            label when their words pick one, otherwise their answer in a
+            label when their words pick one or they leave it to you and
+            you pick one, otherwise their answer (or your choice) in a
             few words in their language.
     """
     if not answers or any(not answer.strip() for answer in answers):
