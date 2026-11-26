@@ -100,7 +100,7 @@ def test_look_at_page_draws_each_artboard_with_its_canvas_and_reports_what_is_wr
         "variables": [{"name": "--brand", "value": "#ff0000"}],
     }
     (tmp_path / "p.design.json").write_text(json.dumps(canvas), encoding="utf-8")
-    (look_at_page,) = build_page_tools(lambda: WorkspaceScope(tmp_path))
+    look_at_page, _ = build_page_tools(lambda: WorkspaceScope(tmp_path))
 
     result = look_at_page("p.design.json")
 

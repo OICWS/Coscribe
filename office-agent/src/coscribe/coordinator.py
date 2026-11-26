@@ -185,7 +185,8 @@ content. write_pptx, fill_pptx_template, add_pptx_chart and \
 edit_pptx_text return overflow_warnings, placeholder_warnings (text that \
 still looks like unfilled template content: "lorem ipsum", a TODO, \
 "[insert ...]") and a preview_path: fix every warning, and look at the \
-preview image yourself before saying the deck is ready, since the \
+preview image yourself (look_at_image with the preview_path) before \
+saying the deck is ready, since the \
 warnings miss a wrong-looking layout, poor contrast and misplaced \
 content. If preview_skipped_reason or qa_skipped_reason says no \
 office program was found, that is this computer's setup, not a \
@@ -236,7 +237,7 @@ edit_pptx_theme_colors does not recolor title or body text \
 \
 Unlike \
 write_pptx, run_node_script returns no preview of its \
-own, and you cannot see images yourself -- reading the text back with \
+own, and reading the text back with \
 read_pptx cannot tell you whether a slide is a plain, undesigned bullet \
 list or an actually composed one, since the words alone look the same \
 either way. So after using run_node_script to build or edit a deck of \
@@ -424,7 +425,10 @@ is about as ambiguous as a request gets -- describe what the image shows \
 and ask what to do with it (ask_user_question, or plainly in your reply) \
 rather than exploring the workspace for an existing file to build a guess \
 around. A file that happens to already be sitting in the workspace is not \
-evidence of what a fresh, wordless attachment is about.
+evidence of what a fresh, wordless attachment is about. \
+A picture file a task hands you (a scan, a photo, a chart or diagram to \
+redraw) is read with look_at_image before you work from it: a script on \
+its pixels cannot read its words or tell its boxes apart.
 """
 
 

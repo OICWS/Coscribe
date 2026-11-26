@@ -28,6 +28,7 @@ DEFAULT_IGNORES = {".git", "__pycache__", ".venv", "node_modules"}
 LEGACY_TEXT_ENCODING = "gb18030"
 # zip (OOXML), PDF, OLE (legacy .doc/.xls/.ppt)
 _BINARY_MAGIC = (b"PK\x03\x04", b"%PDF", b"\xd0\xcf\x11\xe0")
+_PICTURES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff")
 
 
 def _decode_text(raw: bytes) -> tuple[str, str] | None:
@@ -154,6 +155,8 @@ class FileToolkit:
             raise ValueError(f"File does not exist: {path}")
         if not file_path.is_file():
             raise ValueError(f"Path is not a file: {path}")
+        if file_path.suffix.lower() in _PICTURES:
+            raise ValueError(f"{path} is a picture: look_at_image shows it to you.")
         decoded = _decode_text(file_path.read_bytes())
         if decoded is None:
             raise ValueError(
