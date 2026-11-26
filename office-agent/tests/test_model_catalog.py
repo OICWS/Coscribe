@@ -152,3 +152,32 @@ def test_the_web_search_rows_name_catalog_providers_and_their_source() -> None:
     assert info is not None and info.provider == "deepseek" and info.search == "/v1/tools/search"
     assert provider_web_search("anthropic") is None
     assert provider_web_search("local", "http://localhost:11434/v1") is None
+
+
+def test_the_web_search_source_check_names_what_a_source_stopped_saying() -> None:
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "check_web_search_sources.py"
+    spec = importlib.util.spec_from_file_location("check_web_search_sources", path)
+    assert spec is not None and spec.loader is not None
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+
+    rows = json.loads(check.TABLE_PATH.read_text(encoding="utf-8"))["providers"]
+    assert all(row["expect"] for row in rows.values())
+    pages = {"https://a.example/doc": "POST /v1/tools/search, $0.75"}
+
+    def fetch(url: str) -> str:
+        if url not in pages:
+            raise OSError("404")
+        return pages[url]
+
+    table = {
+        "a": {"source": "https://a.example/doc", "expect": ["/v1/tools/search", "/v1/tools/fetch"]},
+        "b": {"source": "https://b.example/doc", "expect": ["x"]},
+    }
+    assert check.findings(table, fetch) == [
+        "- `a`: https://a.example/doc no longer says `/v1/tools/fetch`",
+        "- `b`: couldn't read https://b.example/doc (404)",
+    ]
+    assert check.findings({"a": table["a"] | {"expect": ["$0.75"]}}, fetch) == []

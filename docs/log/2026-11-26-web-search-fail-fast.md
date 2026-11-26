@@ -23,6 +23,10 @@ connections but reached nothing: every engine timed out, direct and through the 
   1,000 successful requests, checked 2026-11-26). A page that can't be reached directly is read
   through the provider's fetch, except in a conversation limited to some sites. Collins chose free
   first and the provider only as the fallback, for every provider.
+- The table is kept by hand; each row also lists the phrases its source must still say (the
+  endpoint paths, the price line). The model catalog's job (1st and 15th) runs
+  `scripts/check_web_search_sources.py` and opens or updates an issue when a source stopped
+  saying one, so a changed price or endpoint is noticed without anyone remembering to look.
 - Checked live with a real DeepSeek key behind a dead proxy: the free engines failed at once,
   DeepSeek answered a Chinese query with 3 results, and a page came back through its fetch, 5.8 s
   for both.

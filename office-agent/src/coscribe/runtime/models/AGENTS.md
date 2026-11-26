@@ -24,6 +24,9 @@ No other coscribe package.
 - Nothing is guessed: a provider or model the catalog doesn't list has no `ModelInfo`, and the
   caller uses the conservative default (no images, no effort setting).
 - An override names a model the catalog lists (`tests/test_model_catalog.py`).
+- A web search row names a catalog provider, its source and the phrases that source must still
+  say; the same scheduled job checks them (`scripts/check_web_search_sources.py`) and opens an
+  issue when one is gone, never changing the table itself.
 
 ## Tests
 `tests/test_model_catalog.py`.
