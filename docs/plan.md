@@ -12,6 +12,9 @@ Last reviewed: 2026-11-22.
 The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
 preview while Microsoft Excel has the workbook open.
 
+The Simple conversation activity robot (#1085) is in review. Desktop verification covers
+the indicator at normal Windows display scaling.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
