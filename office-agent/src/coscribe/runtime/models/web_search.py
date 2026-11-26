@@ -25,7 +25,6 @@ class WebSearchInfo:
     kind: str
     search: str
     fetch: str
-    price: str
     source: str
 
 
@@ -48,6 +47,5 @@ def provider_web_search(name: str = "", base_url: str = "") -> WebSearchInfo | N
         kind=row["kind"],
         search=row.get("search", ""),
         fetch=row.get("fetch", ""),
-        price=row.get("price", ""),
         source=row["source"],
     )
