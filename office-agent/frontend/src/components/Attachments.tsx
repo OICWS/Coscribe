@@ -7,6 +7,7 @@ import { type AttachmentView } from "../lib/attachments";
 import { copyImage } from "../lib/copyImage";
 import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
+const SpreadsheetPreview = lazy(() => import("./SpreadsheetPreview"));
 const WordPreview = lazy(() => import("./WordPreview"));
 
 function pdfPageUrl(path: string, threadId: string, page: number, width: number): string {
@@ -160,7 +161,7 @@ export function AttachmentCard({
 }
 
 const attachmentFrame = (kind: AttachmentView["kind"]) =>
-  kind === "docx" ? "h-full w-full max-w-5xl" : kind === "file" ? "min-h-[26rem] w-full max-w-[40rem]" : "w-full max-w-[34rem]";
+  kind === "docx" ? "h-full w-full max-w-5xl" : kind === "xlsx" ? "h-full w-full max-w-6xl" : kind === "file" ? "min-h-[26rem] w-full max-w-[40rem]" : "w-full max-w-[34rem]";
 
 /** A file shown on its own: the picture or the pages when it has them, and a
  * plain line when it can't be shown here. */
@@ -263,6 +264,7 @@ export function AttachmentDialog({
               )}
             </>
           )}
+          {view.kind === "xlsx" && <Suspense fallback={null}><SpreadsheetPreview key={view.path} path={view.path} threadId={threadId} /></Suspense>}
           {view.kind === "file" && (
             <p className="text-[15px]">File previews are not supported for this file type</p>
           )}
