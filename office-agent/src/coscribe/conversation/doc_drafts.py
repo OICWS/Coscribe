@@ -79,8 +79,6 @@ def _candidate(name: str, args: dict[str, Any], raw: str, base: str | None) -> s
     old, new = args.get("old_text"), args.get("new_text")
     if not isinstance(old, str) or not old or not isinstance(new, str):
         return None
-    if not old:
-        return None
     count = base.count(old)
     if not _complete_field(raw, "old_text") or (
         count != 1 and not (count and args.get("replace_all") is True)

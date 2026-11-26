@@ -125,3 +125,52 @@ def test_a_failing_draft_does_not_reach_the_turn(tmp_path: Path) -> None:
         assert sink.sent == []
 
     asyncio.run(run())
+
+
+_DOC = "---\ncoscribe: doc\n---\n\n# Report\n\nFirst.\n\nSecond.\n"
+
+
+def test_batch_edits_apply_only_complete_pairs_that_match_once() -> None:
+    edits = "First.\n---\nOne.\n---\nSecond.\n---\nTw"
+    shown = doc_drafts._candidate("edit_file_batch", {"edits": edits}, "", _DOC)
+    assert shown == _DOC.replace("First.", "One.").replace("Second.", "Tw")
+    assert doc_drafts._candidate("edit_file_batch", {"edits": "First."}, "", _DOC) is None
+    assert doc_drafts._candidate("edit_file_batch", {"edits": "c\n---\nx"}, "", _DOC) is None
+    assert doc_drafts._candidate("edit_file_batch", {"edits": 3}, "", _DOC) is None
+
+
+def test_a_draft_never_shows_what_the_tool_would_refuse() -> None:
+    write = {"content": "new", "overwrite": False}
+    assert doc_drafts._candidate("write_file", write, "", _DOC) is None
+    assert doc_drafts._candidate("edit_file", {"old_text": "First."}, "", None) is None
+    partial = '{"old_text":"Firs'
+    args = {"old_text": "Firs", "new_text": "x"}
+    assert doc_drafts._candidate("edit_file", args, partial, _DOC) is None
+    assert doc_drafts._candidate("edit_file", {"old_text": "", "new_text": "x"}, "", _DOC) is None
+    whole = '{"old_text":"."}'
+    many = {"old_text": ".", "new_text": "!", "replace_all": True}
+    assert doc_drafts._candidate("edit_file", many, whole, _DOC) == _DOC.replace(".", "!")
+    assert not doc_drafts._complete_field('{"path":"a', "path")
+    assert not doc_drafts._complete_field("{}", "path")
+
+
+def test_arguments_unwrap_a_string_payload_and_skip_noise() -> None:
+    inner = '{"path":"r.md","content":"x"}'
+    args = {"name": "write_file", "arguments": inner}
+    import json
+
+    name, parsed, raw = doc_drafts._arguments({"name": "use_tool", "args": json.dumps(args)})
+    assert (name, parsed["path"], raw) == ("write_file", "r.md", inner)
+    assert doc_drafts._arguments({"name": "write_file", "args": "[1"}) == ("", {}, "")
+    assert doc_drafts._arguments({"name": "x", "args": "{" * (5 * 128_000)}) == ("", {}, "")
+
+
+def test_a_half_written_chart_is_left_out_until_its_fence_closes() -> None:
+    open_chart = _DOC + "\n```chart\ntype: bar\n"
+    assert [b["kind"] for b in doc_drafts._draft_blocks(open_chart)] == [
+        "heading",
+        "paragraph",
+        "paragraph",
+    ]
+    closed = open_chart + "```\n"
+    assert doc_drafts._draft_blocks(closed)[-1]["kind"] == "chart"
