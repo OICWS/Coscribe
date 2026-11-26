@@ -218,6 +218,7 @@ export interface QuestionOption {
   label: string;
   /** "" when the option has none. */
   description: string;
+  recommended: boolean;
 }
 
 export interface QuestionSpec {
@@ -227,7 +228,10 @@ export interface QuestionSpec {
   multi_select: boolean;
 }
 
-/** ask_user_question: one or more questions, answered together with question_response. */
+/**
+ * remember's question, answered with question_response. ask_user_question doesn't send
+ * this: its card is drawn from the tool call itself (decision 0060).
+ */
 export interface QuestionRequiredEvent {
   type: "question_required";
   id: string;
@@ -655,8 +659,8 @@ export interface QuestionAnswerOut {
 }
 
 /**
- * ask_user_question's answers, one per question (a multi-select one's choices joined by ",
- * ", null for a skipped one).
+ * remember's answers, one per question (a multi-select one's choices joined by ", ", null
+ * for a skipped one).
  */
 export interface QuestionAnswersOut {
   type: "question_response";

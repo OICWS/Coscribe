@@ -407,6 +407,7 @@ def test_non_anthropic_model_is_not_tagged_and_raises_no_warning() -> None:
 
 def test_the_anthropic_sdk_is_not_imported_for_a_model_that_is_not_anthropic() -> None:
     """Importing it costs ~0.6s of every server start."""
+    import os
     import subprocess
     import sys
 
@@ -418,7 +419,10 @@ def test_the_anthropic_sdk_is_not_imported_for_a_model_that_is_not_anthropic() -
         " checkpointer=InMemorySaver())\n"
         "print('anthropic' in sys.modules)"
     )
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    # The child gets this process's import path: under the mutation runner `coscribe` is found
+    # in the mutants directory, which a fresh interpreter would not search.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(p for p in sys.path if p)}
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
     assert out.stdout.strip() == "False", out.stderr
 
 

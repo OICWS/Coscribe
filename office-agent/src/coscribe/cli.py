@@ -80,6 +80,7 @@ from .tools import (
     apply_connector_permissions,
     create_trigger,
     enabled_skill_names,
+    normalize_questions,
     update_trigger,
 )
 
@@ -127,6 +128,13 @@ def _tool_line(result: dict[str, Any]) -> str:
     # A reaction can be the model's whole answer: an emoji on the user's message.
     if result["tool_name"] == "react_to_message":
         return f"reacted {result['arguments'].get('emoji', '')}"
+    # The question waits on the card; at the terminal the next prompt is where it's answered.
+    if result["tool_name"] == "ask_user_question":
+        return "asked (answer in your next message):\n" + "\n".join(
+            f"  {q['question']}\n"
+            + "\n".join(f"    {chr(65 + i)}) {o['label']}" for i, o in enumerate(q["options"]))
+            for q in normalize_questions(result["arguments"])
+        )
     return f"ran {result['tool_name']}"
 
 

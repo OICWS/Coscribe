@@ -28,7 +28,9 @@ _FILE_REPORTING_TOOLS = _SCRIPT_TOOLS | {"save_connector_file"}
 _SKILL_TOOLS = frozenset({"load_skill", "read_skill_file"})
 # Plumbing the model uses on nearly every turn -- listing them as "tools
 # used" would bury the ones that say something about the work.
-_UNLISTED_TOOLS = frozenset({"task_create", "task_update", "task_list", "ask_user_question"})
+_UNLISTED_TOOLS = frozenset(
+    {"task_create", "task_update", "task_list", "ask_user_question", "answer_question_card"}
+)
 
 # Opening a file hands it to whatever the OS associates with it, so only
 # document/media types are offered -- a script or executable a run wrote

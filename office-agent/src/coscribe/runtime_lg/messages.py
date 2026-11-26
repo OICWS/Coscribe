@@ -291,9 +291,15 @@ def split_attached_files(text: str) -> tuple[str, list[str]]:
     return text[: found.start()], paths
 
 
+_OPEN_QUESTION_NOTE_RE = re.compile(
+    r"^\[Open question card\]\n.*?\n\[/Open question card\]\n", re.DOTALL
+)
+
+
 def strip_mode_note(text: str) -> str:
     text = text.removeprefix(STEER_NOTE)
-    return _CONTEXT_NOTE_RE.sub("", _strip_turn_notes(text), count=1)
+    text = _OPEN_QUESTION_NOTE_RE.sub("", _strip_turn_notes(text), count=1)
+    return _CONTEXT_NOTE_RE.sub("", text, count=1)
 
 
 STEER_NOTE = (
