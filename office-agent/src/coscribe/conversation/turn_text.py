@@ -1,10 +1,11 @@
-"""Small helpers of a conversation's turns: reply and title text, the usage event, and the design
-system a Slides conversation starts with."""
+"""Small helpers of a conversation's turns: reply and title text, the usage event, the design
+system a Slides conversation starts with, and the note that a question card is still open."""
 
 from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from typing import Any, Protocol
 
 from langchain_core.messages.ai import UsageMetadata
@@ -14,6 +15,10 @@ from ..runtime_lg import (
     AUTO_MODE_NOTE,
     NORMAL_MODE_NOTE,
     PLAN_MODE_NOTE,
+    extract_text,
+    is_steer,
+    strip_mode_note,
+    unwrap_use_tool_call,
 )
 from ..tools import DesignSystemStore, WorkspaceScope
 
@@ -177,3 +182,77 @@ def _fit_title(title: str) -> str:
     cut = title[:end]
     space = cut.rfind(" ")
     return (cut[:space] if space > len(cut) * 0.6 else cut).rstrip() + "…"
+
+
+# Whether the conversation has a question card still waiting, and the note that tells the model
+# so on the person's next message (decision 0060).
+#
+# ask_user_question doesn't wait for its answer: the card stays in the conversation and the person
+# answers whenever they like. A click arrives as a message starting with QUESTION_ANSWER_PREFIX;
+# words of their own arrive as an ordinary message, and only the model can tell whether those
+# words answer the card, so it is told the card is open and records an answer with
+# answer_question_card. A card is open from its call until either of those, and a newer card
+# replaces it. The page draws a click's message as the answered card, not as a bubble
+# (frontend/src/lib/questionCards.ts).
+QUESTION_ANSWER_PREFIX = "[Answers to your question card]"
+ASK_TOOL = "ask_user_question"
+ANSWER_TOOL = "answer_question_card"
+# How ask_user_question's result starts; a conversation from before cards stopped waiting has the
+# person's answer there instead, and that card is answered.
+SHOWN_PREFIX = "The questions are on a card"
+
+OPEN_QUESTION_NOTE = (
+    "[Open question card]\n"
+    "Your question card is still unanswered:\n{questions}\n"
+    "If this message (with what they said before) answers every question, call "
+    "answer_question_card first. If it answers only some, ask about the rest in your reply. If "
+    "it is about something else, leave the card open, don't ask again, and do what it asks.\n"
+    "[/Open question card]\n"
+)
+
+
+def open_question(messages: Sequence[Any]) -> list[str]:
+    """The questions of the card still waiting for an answer, or [] when none is. A call that
+    failed drew no card and closed none, as on the page."""
+    failed: set[str] = set()
+    results: dict[str, str] = {}
+    for message in reversed(messages):
+        if getattr(message, "type", None) == "tool":
+            if getattr(message, "status", "") == "error":
+                failed.add(message.tool_call_id)
+            results[message.tool_call_id] = extract_text(message.content)
+        human = getattr(message, "type", None) == "human" and not is_steer(message)
+        if human and is_question_answer(extract_text(message.content)):
+            return []
+        for call in reversed(getattr(message, "tool_calls", None) or []):
+            if call.get("id") in failed:
+                continue
+            name, args = unwrap_use_tool_call(call["name"], call.get("args") or {})
+            if name == ANSWER_TOOL:
+                return []
+            if name == ASK_TOOL:
+                questions = args.get("questions")
+                shown = results.get(call.get("id", ""), "").startswith(SHOWN_PREFIX)
+                if not shown or not isinstance(questions, list):
+                    return []
+                return [str(q.get("question", "")) for q in questions if isinstance(q, dict)]
+    return []
+
+
+# Notes about the app (edits to a deck, a Doc or a design) can come before a click's message.
+_ANSWER_RE = re.compile(r"^" + re.escape(QUESTION_ANSWER_PREFIX), re.MULTILINE)
+
+
+def is_question_answer(text: str) -> bool:
+    return _ANSWER_RE.search(strip_mode_note(text)) is not None
+
+
+def open_question_note(messages: Sequence[Any], text: str) -> str:
+    """The note for the person's new message `text`: empty unless a card is open and the message
+    isn't a click on it."""
+    if text.startswith(QUESTION_ANSWER_PREFIX):
+        return ""
+    questions = open_question(messages)
+    if not questions:
+        return ""
+    return OPEN_QUESTION_NOTE.format(questions="\n".join(f"- {q}" for q in questions))

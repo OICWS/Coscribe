@@ -90,6 +90,9 @@ _NOT_FOR_SUBAGENTS = frozenset(
         "draft_workflow",
         "revise_workflow",
         "test_workflow",
+        # The card would be drawn in no conversation the person sees.
+        "ask_user_question",
+        "answer_question_card",
         *QUESTION_TOOL_NAMES,
         *TASK_DRAFT_TOOL_NAMES,
     }

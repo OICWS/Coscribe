@@ -45,14 +45,24 @@ _FORMATS = {
 # it, only when no file of the user's is open in it: PowerPoint has one instance per user, and
 # closing or hiding the one the user works in would take their presentations with it. The close
 # sits in a `finally` so that a file the program cannot open does not leave it running hidden.
+# A Word PDF is the final text without markup: the default export follows the screen's markup
+# view, which shrinks every page beside a grey comment pane. WPS may lack the view filter or the
+# export call, so it keeps its own save.
 _OPEN_AND_SAVE = {
     "word": """
 $open = $app.Documents.Count
 if ($open -eq 0) { $app.Visible = $false; $app.DisplayAlerts = 0 }
 try {
   $doc = $app.Documents.Open($env:COSCRIBE_SOURCE, $false, $true, $false)
-  try { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
-  finally { $doc.Close($false) }
+  try {
+    if ($env:COSCRIBE_FORMAT -eq '17') {
+      try {
+        $doc.ActiveWindow.View.RevisionsFilter.Markup = 0
+        $doc.ActiveWindow.View.RevisionsFilter.View = 0
+        $doc.ExportAsFixedFormat($env:COSCRIBE_TARGET, 17, $false, 0, 0, 1, 1, 0)
+      } catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }
+    } else { $doc.SaveAs2($env:COSCRIBE_TARGET, [int]$env:COSCRIBE_FORMAT) }
+  } finally { $doc.Close($false) }
 } finally { if ($open -eq 0) { $app.Quit() } }
 """,
     "excel": """

@@ -911,8 +911,8 @@ async def test_the_decision_for_a_code_module_call(
 # The question, plan and task-draft tools answer with "respond", never "reject"
 # ---------------------------------------------------------------------------
 
-ASK, PLAN, CREATE_TASK, EDIT_TASK = (
-    "ask_user_question",
+REMEMBER, PLAN, CREATE_TASK, EDIT_TASK = (
+    "remember",
     "exit_plan_mode",
     "create_scheduled_task",
     "edit_scheduled_task",
@@ -940,42 +940,17 @@ class QuestionRow:
     exec_rule: str | None = None
 
 
-ONE_QUESTION = {"questions": [{"question": "Which file?", "options": ["a.txt", "b.txt"]}]}
+ONE_LINE = {"line": "Use the brand template."}
 
 QUESTION_ROWS: dict[str, QuestionRow] = {
-    # -- the person's answer is the tool's result
-    "a_question_is_answered": QuestionRow(
-        ASK, "b.txt", answer=["b.txt"], args=ONE_QUESTION, sent="question_required"
-    ),
-    "a_skipped_question_says_so": QuestionRow(
-        ASK, "(skipped)", answer=[None], args=ONE_QUESTION, sent="question_required"
-    ),
-    "closed_questions_say_so": QuestionRow(
-        ASK, "closed the questions", answer=None, args=ONE_QUESTION, sent="question_required"
-    ),
-    "a_question_is_not_blocked_by_plan_mode": QuestionRow(
-        ASK,
-        "a.txt",
-        plan=True,
-        answer=["a.txt"],
-        args=ONE_QUESTION,
-        sent="question_required",
-        plan_after=True,
-    ),
-    "a_question_is_not_blocked_by_an_exec_rule": QuestionRow(
-        ASK,
-        "a.txt",
-        answer=["a.txt"],
-        args=ONE_QUESTION,
-        sent="question_required",
-        exec_rule="forbidden",
-    ),
     # -- a stop, a veto and an unattended run answer instead of asking
-    "a_stop_answers_a_question": QuestionRow(ASK, "Stopped by user.", stop=True, args=ONE_QUESTION),
+    "a_stop_answers_a_question": QuestionRow(
+        REMEMBER, "Stopped by user.", stop=True, args=ONE_LINE
+    ),
     "a_stop_answers_a_plan": QuestionRow(PLAN, "Stopped by user.", stop=True),
     "a_stop_answers_a_draft": QuestionRow(CREATE_TASK, "Stopped by user.", stop=True),
     "a_hook_veto_answers_a_question": QuestionRow(
-        ASK, "no asking", reasons=["hook_veto"], veto="no asking", args=ONE_QUESTION
+        REMEMBER, "no asking", reasons=["hook_veto"], veto="no asking", args=ONE_LINE
     ),
     "a_hook_veto_answers_a_plan": QuestionRow(
         PLAN, "no plans", reasons=["hook_veto"], veto="no plans"
@@ -984,7 +959,7 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
         EDIT_TASK, "no tasks", reasons=["hook_veto"], veto="no tasks"
     ),
     "unattended_answers_a_question": QuestionRow(
-        ASK, NO_ONE_QUESTION, reasons=["unattended"], attended=False, args=ONE_QUESTION
+        REMEMBER, NO_ONE_QUESTION, reasons=["unattended"], attended=False, args=ONE_LINE
     ),
     "unattended_answers_a_plan": QuestionRow(
         PLAN, NO_ONE_QUESTION, reasons=["unattended"], attended=False, plan=True, plan_after=True

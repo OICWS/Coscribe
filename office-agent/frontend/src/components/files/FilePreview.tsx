@@ -3,7 +3,9 @@ import { type FileKind, type FileRef, looksBinary, MAX_TEXT_BYTES, rawUrl, reads
 
 const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Markdown })));
 // CodeMirror and its languages load with the first file shown as code, not with the app.
+const SpreadsheetPreview = lazy(() => import("../SpreadsheetPreview"));
 const CodeView = lazy(() => import("./CodeView"));
+const WordPreview = lazy(() => import("../WordPreview"));
 
 type Loaded = { text: string } | { error: string } | { tooBig: true } | { binary: true } | null;
 
@@ -26,20 +28,24 @@ export function FilePreview({
   threadId,
   file,
   kind,
+  workbookPath,
   source,
   wrap,
   refreshKey,
   fallback,
+  wordPath,
 }: {
   threadId: string;
   file: FileRef;
   kind: FileKind;
+  workbookPath?: string;
   source: boolean;
   /** Long lines of source wrap instead of scrolling sideways. */
   wrap: boolean;
   refreshKey: string;
   /** What to offer for a file that has no preview here. */
   fallback: React.ReactNode;
+  wordPath?: string;
 }) {
   const url = rawUrl(threadId, file);
   const [loaded, setLoaded] = useState<Loaded>(null);
@@ -68,7 +74,11 @@ export function FilePreview({
   if (!source && kind === "html") {
     return <iframe title={file.path} src={fresh} sandbox="allow-same-origin" className="h-full w-full border-0 bg-white" />;
   }
+  if (workbookPath !== undefined) return <Suspense fallback={loading}>
+    <SpreadsheetPreview threadId={threadId} path={workbookPath} refreshKey={refreshKey} />
+  </Suspense>;
   if (kind === "pdf") return <iframe title={file.path} src={fresh} className="h-full w-full border-0" />;
+  if (kind === "docx" && wordPath) return <Suspense fallback={loading}><WordPreview key={wordPath} threadId={threadId} path={wordPath} /></Suspense>;
   if (!readsText(kind)) return <div className={note}>{fallback}</div>;
   if (!loaded) return loading;
   if ("error" in loaded) return <div className={note}>{loaded.error}</div>;

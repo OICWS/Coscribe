@@ -9,6 +9,9 @@ lines.
 
 Last reviewed: 2026-11-22.
 
+The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
+preview while Microsoft Excel has the workbook open.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
@@ -270,6 +273,9 @@ Last reviewed: 2026-11-22.
   when the run ends" setting is offered, not started (`docs/log/2026-11-16-browser-self-close-crash.md`).
 
 ## Needs the maintainer's testing (could not be verified here)
+
+- DOCX preview with Microsoft Word on Windows, including a document open in Word and a
+  mixed-orientation file compared with Word's print layout (#1070).
 
 - Settings > Providers in the desktop app, and a key for one of the 12 new presets added end to
   end (no account for them here).

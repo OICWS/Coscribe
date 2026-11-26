@@ -34,6 +34,9 @@ DELIVERY_CHECK = (
     "Before you end your turn, fix or rebuild them, or tell the user what went wrong."
 )
 _PLAN_TOOLS = frozenset({"task_create", "task_update"})
+_ASK_TOOL = "ask_user_question"
+_ANSWER_TOOL = "answer_question_card"
+_SHOWN = "The questions are on a card"
 REPEAT_NOTE = (
     "\n\n[You already made this same call earlier in this turn. If nothing it reads has "
     "changed, use that result rather than calling again; if it didn't give you what you need, "
@@ -57,16 +60,24 @@ def _worked_on_plan(turn: Sequence[Any]) -> bool:
     )
 
 
+def _asked(turn: Sequence[Any]) -> bool:
+    return any(isinstance(m, ToolMessage) and m.name == _ASK_TOOL for m in turn)
+
+
 def _end_notes(
     turn: Sequence[Any],
     open_tasks: Callable[[], str] | None,
     writers: set[str],
     resolve_file: Callable[[str], Path] | None,
+    *,
+    asked: bool = False,
 ) -> list[str]:
     if any(is_plan_check(m) for m in turn):
         return []
     notes = []
-    if open_tasks is not None and _worked_on_plan(turn):
+    # After a question the model may stop on purpose: what's left waits on the answer
+    # (decision 0060).
+    if open_tasks is not None and not asked and _worked_on_plan(turn):
         tasks = open_tasks()
         if tasks:
             notes.append(PLAN_CHECK.format(tasks=tasks))
@@ -91,7 +102,8 @@ def _turn_end(
         last = messages[-1] if messages else None
         if not isinstance(last, AIMessage) or last.tool_calls:
             return None
-        notes = _end_notes(_this_turn(messages), open_tasks, writers, resolve_file)
+        turn = _this_turn(messages)
+        notes = _end_notes(turn, open_tasks, writers, resolve_file, asked=_asked(turn))
         if not notes:
             return None
         return {"messages": [plan_check_message("\n\n".join(notes))], "jump_to": "model"}
@@ -165,6 +177,42 @@ def repeats_earlier_call(call: dict[str, Any], messages: Sequence[Any], changers
 _WATCHED_CATEGORIES = frozenset({"filesystem", "documents", "web"})
 
 
+def _card_size(messages: Sequence[Any]) -> int:
+    """How many questions the latest card the person was shown asks; 0 when there was none."""
+    failed: set[str] = set()
+    shown: set[str] = set()
+    for message in reversed(messages):
+        if isinstance(message, ToolMessage) and message.status == "error":
+            failed.add(message.tool_call_id)
+        elif isinstance(message, ToolMessage) and str(message.content).startswith(_SHOWN):
+            shown.add(message.tool_call_id)
+        for call in reversed(getattr(message, "tool_calls", None) or []):
+            name, args = unwrap_use_tool_call(call["name"], call.get("args") or {})
+            if name == _ASK_TOOL and call.get("id") not in failed:
+                questions = args.get("questions")
+                # A conversation from before cards stopped waiting has the answer as the result.
+                if call.get("id") not in shown or not isinstance(questions, list):
+                    return 0
+                return len(questions)
+    return 0
+
+
+def _check_card_answer(args: dict[str, Any], messages: Sequence[Any]) -> None:
+    """answer_question_card can't see the card, so the count of answers is checked here: a short
+    list would close the card with questions the person never answered."""
+    size = _card_size(messages)
+    answers = args.get("answers")
+    given = len(answers) if isinstance(answers, list) else 0
+    if size == 0:
+        raise ValueError("No question card was shown in this conversation.")
+    if given != size:
+        raise ValueError(
+            f"The card asks {size} question(s) and this gives {given} answer(s), in the card's "
+            "order. It closes only once every question is answered: ask about the rest in your "
+            "reply instead."
+        )
+
+
 def repeat_note(tools: Sequence[Callable[..., Any] | BaseTool]) -> Callable[[Any, Any], Any]:
     """What adds the repeat note to a tool call's result, and marks the result of one that ends
     the turn (`_EndsTurnMiddleware`). It runs inside the middleware that
@@ -185,7 +233,9 @@ def repeat_note(tools: Sequence[Callable[..., Any] | BaseTool]) -> Callable[[Any
 
     def note(request: Any, result: Any) -> Any:
         call = request.tool_call
-        name, _ = unwrap_use_tool_call(call["name"], call.get("args") or {})
+        name, args = unwrap_use_tool_call(call["name"], call.get("args") or {})
+        if name == _ANSWER_TOOL and isinstance(result, ToolMessage) and result.status != "error":
+            _check_card_answer(args, request.state["messages"])
         if name in ending and isinstance(result, ToolMessage) and result.status != "error":
             marks = {**result.response_metadata, _ENDED_TURN: True}
             return result.model_copy(update={"response_metadata": marks})
