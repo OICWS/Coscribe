@@ -690,7 +690,10 @@ const CATEGORY_WORDS: Record<Exclude<Category, "other">, [past: string, present:
 };
 const FILE_CATEGORIES = new Set<Category>(["write", "edit", "read"]);
 
-const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
+type ToolActivity = "Running commands" | "Writing" | "Editing" | "Reading" | "Searching" | "Browsing" | "Working";
+export type ConversationActivity = ToolActivity | "Thinking";
+
+const ACTIVITY_WORDS: Partial<Record<Category, ToolActivity>> = {
   command: "Running commands",
   write: "Writing",
   edit: "Editing",
@@ -700,7 +703,7 @@ const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
 };
 
 /** What a call is doing in one or two words, with no object: the simple view's status line. */
-export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): string {
+export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): ToolActivity {
   // A deferred tool arrives as use_tool; its own name says what it does.
   const inner = item.toolName === "use_tool" ? item.arguments.name : undefined;
   const toolName = typeof inner === "string" ? inner : item.toolName;
