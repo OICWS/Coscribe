@@ -14,9 +14,9 @@ from coscribe.tools.web.websearch import build_websearch_tools, web_search
 
 @pytest.fixture(autouse=True)
 def _fresh_search_memory() -> Iterator[None]:
-    _search.forget_unreachable()
+    _search._unreachable.clear()
     yield
-    _search.forget_unreachable()
+    _search._unreachable.clear()
 
 
 def test_web_search_normalizes_ddgs_result_shape(monkeypatch: pytest.MonkeyPatch) -> None:

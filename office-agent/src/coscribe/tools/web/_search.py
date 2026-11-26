@@ -60,11 +60,6 @@ _memory_lock = threading.Lock()
 _unreachable: dict[str | None, tuple[float, str]] = {}
 
 
-def forget_unreachable() -> None:
-    with _memory_lock:
-        _unreachable.clear()
-
-
 def engine_names() -> list[str]:
     names = list(ENGINES["text"])
     return [n for n in names if n not in _LAST] + [n for n in _LAST if n in names]
@@ -119,10 +114,11 @@ def search(query: str, max_results: int, proxy: str | None) -> list[dict[str, An
             done, pending = wait(pending, timeout=left, return_when=FIRST_COMPLETED)
             for future in done:
                 name = futures[future]
-                try:
+                failure = future.exception()
+                if failure is None:
                     answers[name] = future.result()
-                except Exception as exc:  # noqa: BLE001 -- one engine's failure is a verdict on it
-                    failures[name] = exc
+                else:
+                    failures[name] = failure
             if any(answers.values()):
                 deadline = min(deadline, time.monotonic() + GRACE_SECONDS)
     finally:
