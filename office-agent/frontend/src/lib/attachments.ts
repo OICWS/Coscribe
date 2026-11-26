@@ -1,9 +1,11 @@
 import { isXlsx } from "./viewers";
 
-/** The preview available for an attached file. */
+/** What an attached file looks like to the person: images, PDFs, Word and Excel can be
+ * seen, anything else is a name and a type. */
 export type AttachmentView =
   | { kind: "image"; name: string; src: string }
   | { kind: "pdf" | "xlsx"; name: string; path: string }
+  | { kind: "docx"; name: string; path: string }
   | { kind: "file"; name: string; path: string };
 
 /** The line that tells the model which workspace files a message came with. The server takes it back
@@ -30,7 +32,8 @@ export function fileCards(files: string[], images: string[]): string[] {
   return images.length > 0 ? files.filter((path) => !SAVED_PICTURE.test(path)) : files;
 }
 
-export function attachmentKind(name: string): "pdf" | "xlsx" | "file" {
+export function attachmentKind(name: string): "pdf" | "docx" | "xlsx" | "file" {
+  if (/\.docx$/i.test(name)) return "docx";
   if (isXlsx(name)) return "xlsx";
   return name.toLowerCase().endsWith(".pdf") ? "pdf" : "file";
 }
