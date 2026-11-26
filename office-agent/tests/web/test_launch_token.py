@@ -174,6 +174,7 @@ AUDITED_READ_ONLY_GETS = {
     # Reads one picture of the Doc from its side folder; an <img> cannot carry the token header.
     "/api/threads/{thread_id}/doc/asset",
     "/api/artifacts/{artifact}/thumbnail",
+    "/api/attachment/docx/versions",
     "/api/attachment/pdf",
     "/api/attachment/pdf/page",
     "/api/background-tasks/{task_id}/log",

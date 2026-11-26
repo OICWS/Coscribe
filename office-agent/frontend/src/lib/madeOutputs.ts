@@ -1,7 +1,7 @@
 import type { ActivityFile } from "../types/session";
 import { editedLabel, type ArtifactKind } from "./artifacts";
 import { baseName, canvasOfPage, kindOfFile } from "./fileMentions";
-import { isDocMarkdown, isViewable, isXlsx } from "./viewers";
+import { isDocMarkdown, isDocx, isViewable, isXlsx } from "./viewers";
 
 /** What the conversation made, as the notices above the message box show it: something that
  * opens in its panel, pictures, or a file that opens in its own program. */
@@ -43,7 +43,7 @@ export function madeOutputs(outputs: ActivityFile[], docs: ReadonlySet<string>):
     if (isImageFile(path)) {
       if (imagesAt < 0) imagesAt = made.length;
       images.push(file);
-    } else if (isViewable(path) && !isXlsx(path) && (!isDocMarkdown(path) || docs.has(path))) {
+    } else if (isViewable(path) && !isXlsx(path) && !isDocx(path) && (!isDocMarkdown(path) || docs.has(path))) {
       made.push({ kind: "artifact", artifact: kindOfFile(path), file: path === file.path ? file : { ...file, path, name: baseName(path) } });
     } else {
       const type = externalType(path);

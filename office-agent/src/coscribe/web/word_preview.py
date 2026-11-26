@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import shutil
 import tempfile
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from enum import Enum
 from pathlib import Path
 from threading import Lock
 from zipfile import BadZipFile, ZipFile
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
+from watchfiles import awatch
 
 from ..tools import WorkspaceScope, build_convert_tools
 
@@ -48,8 +50,6 @@ class _WordPreviewError(ValueError):
 
 def word_preview_version(path: Path) -> str:
     stat = path.stat()
-    if stat.st_size > _MAX_DOCX_BYTES:
-        raise _WordPreviewError(_PreviewProblem.TOO_LARGE)
     return f'"{stat.st_size:x}-{stat.st_mtime_ns:x}-{stat.st_ctime_ns:x}-{stat.st_ino:x}"'
 
 
@@ -79,10 +79,14 @@ class WordPreviews:
         # The Office worker and its app instance are shared. Concurrent clicks on the same
         # document should share the results, even if an earlier HTTP request disconnected.
         with self._lock:
+            if word_preview_version(source) != version:
+                raise _WordPreviewError(_PreviewProblem.CHANGED)
             if key in self._cache:
                 self._cache.move_to_end(key)
                 return self._cache[key]
             data = self._convert(source, version)
+            if word_preview_version(source) != version:
+                raise _WordPreviewError(_PreviewProblem.CHANGED)
             self._cache[key] = data
             while len(self._cache) > 6 or sum(map(len, self._cache.values())) > _MAX_CACHE_BYTES:
                 self._cache.popitem(last=False)
@@ -110,17 +114,76 @@ class WordPreviews:
             return target.read_bytes()
 
 
+def _source(scope: WorkspaceScope, path: str) -> Path:
+    file = scope.resolve(path)
+    if file.suffix.lower() != ".docx" or not file.is_file():
+        raise FileNotFoundError
+    return file
+
+
+async def _word_versions(source: Path, current: Callable[[], Path]) -> AsyncIterator[str]:
+    # Office commonly saves by replacing the source. Watch its directory, not its old inode.
+    previous: str | None = ""
+    try:
+        async for _ in awatch(
+            source.parent,
+            recursive=False,
+            debounce=180,
+            step=55,
+            rust_timeout=2000,
+            yield_on_timeout=True,
+            watch_filter=lambda _, name: Path(name) == source,
+        ):
+            try:
+                version = await asyncio.to_thread(lambda: word_preview_version(current()))
+            except (OSError, ValueError):
+                version = None
+            if version != previous:
+                previous = version
+                yield f"data: {json.dumps(version)}\n\n"
+            else:
+                yield ": heartbeat\n\n"
+    except OSError:
+        # The directory may itself have been removed. EventSource can reconnect.
+        return
+
+
 def add_word_preview_routes(
     router: APIRouter, _scope: Callable[[str], WorkspaceScope], state_dir: Path
 ) -> None:
     word_previews = WordPreviews(state_dir)
 
+    async def word_versions(path: str, thread_id: str) -> Response:
+        def current() -> Path:
+            return _source(_scope(thread_id), path)
+
+        try:
+            source = _scope(thread_id).resolve(path)
+            if source.suffix.lower() != ".docx" or not source.parent.is_dir():
+                return Response(status_code=404)
+        except PermissionError:
+            return Response(status_code=403)
+        except (OSError, ValueError):
+            return Response(status_code=404)
+        return StreamingResponse(
+            _word_versions(source, current),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    router.add_api_route(
+        "/api/attachment/docx/versions",
+        word_versions,
+        methods=["GET"],
+        response_class=StreamingResponse,
+    )
+
     @router.post("/api/attachment/docx", response_class=Response)
     async def get_word_preview(request: Request, path: str, thread_id: str) -> Response:
         try:
-            file_path = _scope(thread_id).resolve(path)
-            if file_path.suffix.lower() != ".docx" or not file_path.is_file():
-                return JSONResponse({"error": "No such Word document."}, status_code=404)
+            file_path = _source(_scope(thread_id), path)
+            if file_path.stat().st_size > _MAX_DOCX_BYTES:
+                raise _WordPreviewError(_PreviewProblem.TOO_LARGE)
             version = word_preview_version(file_path)
             headers = {"ETag": version, "Cache-Control": "no-store"}
             if request.method == "HEAD":
@@ -134,6 +197,8 @@ def add_word_preview_routes(
         except FileNotFoundError:
             return JSONResponse({"error": "No such Word document."}, status_code=404)
         except _WordPreviewError as exc:
+            if exc.problem is _PreviewProblem.CHANGED:
+                return JSONResponse({"error": exc.problem.value}, status_code=409)
             if exc.problem is _PreviewProblem.CONVERSION_FAILED:
                 logger.warning("Word preview conversion failed", exc_info=True)
             return JSONResponse({"error": exc.problem.value}, status_code=422)
@@ -143,7 +208,7 @@ def add_word_preview_routes(
                 {"error": "Couldn't read the Word document for preview."}, status_code=422
             )
 
-    # HEAD polls the source version only. Preview generation uses the launch-token-guarded POST.
+    # HEAD exposes the source version only. Preview generation uses the launch-token-guarded POST.
     router.add_api_route(
         "/api/attachment/docx", get_word_preview, methods=["HEAD"], include_in_schema=False
     )

@@ -22,7 +22,7 @@ the note to coscribe (`conversation/docs_edits.py`), the editor, the card or the
 the server and the conversation reach them through `coscribe.tools`.
 
 ## Depends on
-`coscribe.tools._chart_data`, `coscribe.tools._file_locks`.
+`coscribe.tools._chart_data`, `coscribe.tools._doc_marker`, `coscribe.tools._file_locks`.
 
 ## Invariants
 - An edit changes only the lines of the blocks it names; every other line stays byte for byte, and a

@@ -12,8 +12,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-MARKER_KEY = "coscribe"
-MARKER_VALUE = "doc"
+from ..._doc_marker import MARKER_KEY, MARKER_VALUE, doc_front_matter
+
 CALLOUTS = ("NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION")
 
 _CALLOUT = re.compile(rf"^>\s*\[!({'|'.join(CALLOUTS)})\]\s*$", re.IGNORECASE)
@@ -78,27 +78,6 @@ class Delete:
 Edit = Replace | Insert | Delete
 
 
-def _front_matter(lines: list[str]) -> tuple[dict[str, Any], int]:
-    """The head's values and how many lines it takes; none when the file does not open with one."""
-    if not lines or lines[0].strip().lstrip("﻿") != "---":
-        return {}, 0
-    for end in range(1, len(lines)):
-        if lines[end].strip() == "---":
-            import yaml
-
-            try:
-                head = yaml.safe_load("".join(lines[1:end])) or {}
-            except yaml.YAMLError:
-                return {}, 0
-            return (head if isinstance(head, dict) else {}), end + 1
-    return {}, 0
-
-
-def is_doc(source: str) -> bool:
-    meta, _ = _front_matter(source.splitlines(keepends=True))
-    return str(meta.get(MARKER_KEY, "")).lower() == MARKER_VALUE
-
-
 def _block_text(lines: list[str], start: int, end: int) -> str:
     return "".join(lines[start:end]).rstrip("\r\n")
 
@@ -146,7 +125,7 @@ def _parse_blocks(lines: list[str], body_start: int) -> list[Block]:
 
 def read_doc(source: str, *, require_marker: bool = True) -> Doc:
     lines = source.splitlines(keepends=True)
-    meta, body_start = _front_matter(lines)
+    meta, body_start = doc_front_matter(lines)
     if require_marker and str(meta.get(MARKER_KEY, "")).lower() != MARKER_VALUE:
         raise NotADoc("This file is not a Doc")
     return Doc(meta, _parse_blocks(lines, body_start), body_start, source)

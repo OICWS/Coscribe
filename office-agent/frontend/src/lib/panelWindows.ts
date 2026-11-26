@@ -15,6 +15,8 @@ import type { PlanPanelAction } from "./planState";
 import type { DraftStep } from "./planTaskDraft";
 import type { ProgressItem } from "./workflowProgress";
 
+import type { LiveDoc } from "./docDrafts";
+
 export type PanelWindowState =
   | {
       panel: "task";
@@ -29,7 +31,7 @@ export type PanelWindowState =
     }
   | { panel: "browser"; threadId: string }
   | { panel: "background"; threadId: string; refreshKey: number; focusTaskId: string | null }
-  | { panel: "viewer"; threadId: string; path: string | null; refreshKey: string }
+  | { panel: "viewer"; threadId: string; path: string | null; refreshKey: string; draft?: LiveDoc }
   | {
       panel: "plan";
       threadId: string;

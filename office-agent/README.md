@@ -615,6 +615,10 @@ where to read more.
   person's own template (the PPTX Slides skill; the PPTX Editing skill for changing slides,
   shapes, pictures, tables and theme colors in place). They are shown, not owned: the Word panel is frozen
   and an Excel file is not an artifact (decisions 0025, 0027).
+- **Chinese, Japanese and Korean text.** A Word file coscribe writes is marked in its language
+  (`write_docx` takes it, or guesses it from the text), and Word and PowerPoint files take one
+  East Asian face for body, headings, tables and punctuation, named as Word expects it
+  (`tools/office/docx/_style.py`, `apply_cjk_font_fix`).
 - **Previews and conversion** use the Microsoft Office or WPS on the machine through COM; a PDF
   and a deck built from SVG pages need no office program, and LibreOffice is an optional engine,
   found or installed on request (decisions 0012, 0026). Without one, a preview or conversion is
@@ -1122,6 +1126,13 @@ blocking the others or crashing the process. Adding, removing, updating or
 changing permissions takes effect right away, open conversations included;
 the `coscribe` CLI reads MCP config once per invocation and doesn't apply
 the permissions.
+
+A file a connector hands back as an HTTPS link (an export, a download) never reaches the model
+as that link: the result carries a reference valid for 15 minutes instead, and
+`save_connector_file` streams the original bytes into the workspace's `downloads/` folder
+(at most 100 MB, `conversation/connector_files.py`). Each redirect is checked against the
+workspace's network rules, an existing file is never overwritten (the new one takes another name), and a failed transfer
+leaves no partial file. The saved file shows in Outputs and above the message box.
 
 Catalog entries pin an exact package version rather than `@latest` --
 an unpinned tag makes `npx` hit the npm registry on every startup just
