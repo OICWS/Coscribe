@@ -11,17 +11,11 @@ export function DocNotices({
   onDismissProblem,
   state,
   onReload,
-  step,
-  onStep,
-  onDismissStep,
 }: {
   problem: string | null;
   onDismissProblem: () => void;
   state: SaveState;
   onReload: () => void;
-  step: Step | null;
-  onStep: (taken: { kind: "undo" | "redo"; to: string }) => void;
-  onDismissStep: () => void;
 }) {
   return (
     <>
@@ -43,23 +37,19 @@ export function DocNotices({
           )}
         </div>
       )}
-      {step && (
-        <div className={`${bar} text-[var(--muted)]`} role="group" aria-label="Change to this document">
-          <span className="flex-1">
-            {step.kind === "undo" && "This document was changed by Coscribe or another program."}
-            {step.kind === "redo" && "The earlier version is back."}
-            {step.kind === "failed" && step.message}
-          </span>
-          {step.kind !== "failed" && (
-            <button type="button" className={small} onClick={() => onStep(step)}>
-              {step.kind === "undo" ? "Undo" : "Redo"}
-            </button>
-          )}
-          <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--card-bg)]" onClick={onDismissStep}>
-            Dismiss
-          </button>
-        </div>
-      )}
     </>
   );
+}
+
+export function DocStepControl({ step, onStep, onDismiss }: {
+  step: Step;
+  onStep: (taken: Extract<Step, { to: string }>) => void;
+  onDismiss: () => void;
+}) {
+  const label = step.kind === "undo" ? "Undo the last document change" : "Redo the last document change";
+  return <div className="flex min-w-0 shrink items-center gap-1 text-xs" role="group" aria-label="Change to this document">
+    {step.kind === "failed" ? <span className="truncate text-[var(--danger)]" title={step.message}>{step.message}</span> :
+      <button type="button" title={label} className={small} onClick={() => onStep(step)}>{step.kind === "undo" ? "Undo" : "Redo"}</button>}
+    <button type="button" aria-label="Dismiss document change" className="rounded px-1.5 py-1 text-[var(--muted)] hover:bg-[var(--card-bg)]" onClick={onDismiss}>×</button>
+  </div>;
 }

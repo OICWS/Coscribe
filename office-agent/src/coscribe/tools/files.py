@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ..runtime import tool_metadata
+from ._doc_marker import is_doc
+from ._file_locks import locked_by_path, write_atomically
 from ._output_truncation import cap_read_output
 from ._presentation_record import MANIFEST, deck_files, move_deck
 from ._workspace import WorkspaceScope
@@ -28,6 +30,13 @@ DEFAULT_IGNORES = {".git", "__pycache__", ".venv", "node_modules"}
 LEGACY_TEXT_ENCODING = "gb18030"
 # zip (OOXML), PDF, OLE (legacy .doc/.xls/.ppt)
 _BINARY_MAGIC = (b"PK\x03\x04", b"%PDF", b"\xd0\xcf\x11\xe0")
+
+
+def _save_text(path: Path, text: str, encoding: str, previous: str) -> None:
+    if path.suffix.lower() == ".md" and (is_doc(text) or is_doc(previous)):
+        write_atomically(path, lambda draft: draft.write_text(text, encoding=encoding))
+    else:
+        path.write_text(text, encoding=encoding)
 
 
 def _decode_text(raw: bytes) -> tuple[str, str] | None:
@@ -227,6 +236,7 @@ class FileToolkit:
                 break
         return {"matches": matches, "truncated": truncated}
 
+    @locked_by_path
     def write_file(self, path: str, content: str, overwrite: bool = True) -> dict[str, object]:
         """Write UTF-8 text content to a file under the workspace, creating parent dirs."""
         file_path = self._resolve(path, write=True)
@@ -247,7 +257,7 @@ class FileToolkit:
                 # this diff-stat feature existed.
                 pass
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
+        _save_text(file_path, content, "utf-8", old_content)
         added, removed = _line_diff_stat(old_content, content)
         return {
             "path": self._relative(file_path),
@@ -266,6 +276,7 @@ class FileToolkit:
             raise ValueError(f"{path} is not a text file, so it can't be edited as text.")
         return decoded
 
+    @locked_by_path
     def edit_file(
         self, path: str, old_text: str, new_text: str, replace_all: bool = False
     ) -> dict[str, object]:
@@ -291,7 +302,7 @@ class FileToolkit:
                 "or pass replace_all=True to replace every occurrence."
             )
         new_content = content.replace(old_text, new_text)
-        file_path.write_text(new_content, encoding=encoding)
+        _save_text(file_path, new_content, encoding, content)
         added, removed = _line_diff_stat(content, new_content)
         return {
             "path": self._relative(file_path),
@@ -300,6 +311,7 @@ class FileToolkit:
             "lines_removed": removed,
         }
 
+    @locked_by_path
     def edit_file_batch(self, path: str, edits: str) -> dict[str, object]:
         """Apply several edit_file-style (old_text, new_text) edits to one
         file in a single call -- ROADMAP.md's Phase 7 item 4. `edits` is
@@ -370,7 +382,7 @@ class FileToolkit:
                 )
             content = content.replace(old_text, new_text)
 
-        file_path.write_text(content, encoding=encoding)
+        _save_text(file_path, content, encoding, original_content)
         added, removed = _line_diff_stat(original_content, content)
         return {
             "path": self._relative(file_path),

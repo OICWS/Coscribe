@@ -11,7 +11,10 @@ For writing you mainly want to read and edit in Coscribe, it makes a **Doc**, it
 
 ## Preview a Word file
 
-Open a `.docx` attachment or select one in **Files** to read the saved document page by page. Use **Fit width** or a zoom level, and **Open in Word** to edit the original. Coscribe creates the preview locally using Microsoft Word, WPS, or LibreOffice. The first preview may take a moment. Saved changes refresh the preview.
+Open a `.docx` attachment or select one in **Files** to read the saved document page by page. Use **Fit width** or a zoom level, and **Open in Word** to edit the original. Coscribe creates the preview locally using Microsoft Word, WPS, or LibreOffice. The first preview may take a moment.
+
+The preview follows the saved file. If you save it in Word or Coscribe changes it,
+the new pages appear at your current page and zoom when they are ready.
 
 ## Revise with tracked changes
 

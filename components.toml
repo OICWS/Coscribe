@@ -97,6 +97,7 @@ protected_modules = [
     "coscribe.tools.pptx_templates",
     "coscribe.tools.presentations",
     "coscribe.tools._chart_data",
+    "coscribe.tools._doc_marker",
     "coscribe.tools._docx_chart",
     "coscribe.tools._file_locks",
     "coscribe.tools._files_written",

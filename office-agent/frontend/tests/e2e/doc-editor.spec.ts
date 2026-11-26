@@ -15,7 +15,7 @@ async function openDoc(page: import("@playwright/test").Page, name: string) {
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByTitle(`Open ${name}.md`).click();
-  await expect(page.locator(".doc-editor li").nth(1)).toBeAttached();
+  await expect(page.locator('.doc-editor[contenteditable="true"] li').nth(1)).toBeAttached();
 }
 
 test("the bar over selected words follows the page when it scrolls", async ({ page }) => {

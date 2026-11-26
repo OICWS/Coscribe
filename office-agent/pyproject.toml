@@ -152,6 +152,7 @@ web = [
     # reaching endpoints that add MCP servers or open files.
     "fastapi>=0.132.0",
     "uvicorn[standard]>=0.30.0",
+    "watchfiles>=0.13",  # Native file notifications for live Word previews.
     # Required for FastAPI's UploadFile (POST /api/upload).
     "python-multipart>=0.0.9",
     # web/browser_panel.py's hand-rolled Chrome DevTools Protocol client
@@ -374,7 +375,7 @@ broken_contract_guidance = "Import from coscribe.code_runtime (the names in its 
 [[tool.importlinter.contracts]]
 name = "coscribe.tools is entered through its package"
 type = "protected"
-protected_modules = ["coscribe.tools.files", "coscribe.tools.convert", "coscribe.tools.pdf_pages", "coscribe.tools.libreoffice", "coscribe.tools.libreoffice_install", "coscribe.tools.mcp", "coscribe.tools.connector_permissions", "coscribe.tools.design_systems", "coscribe.tools.skills", "coscribe.tools.skill_catalog", "coscribe.tools.plugin_sources", "coscribe.tools.pptx_templates", "coscribe.tools.presentations", "coscribe.tools._chart_data", "coscribe.tools._docx_chart", "coscribe.tools._file_locks", "coscribe.tools._files_written", "coscribe.tools._native_docx_tracks", "coscribe.tools._native_formula", "coscribe.tools._native_svg", "coscribe.tools._office_bins", "coscribe.tools._office_com", "coscribe.tools._ooxml_validate", "coscribe.tools._output_truncation", "coscribe.tools._page_check", "coscribe.tools._pdfium", "coscribe.tools._pptx_shapes", "coscribe.tools._pptx_text", "coscribe.tools._presentation_record", "coscribe.tools._svg_preview", "coscribe.tools._svg_slide", "coscribe.tools._thumbnail", "coscribe.tools._workspace"]
+protected_modules = ["coscribe.tools.files", "coscribe.tools.convert", "coscribe.tools.pdf_pages", "coscribe.tools.libreoffice", "coscribe.tools.libreoffice_install", "coscribe.tools.mcp", "coscribe.tools.connector_permissions", "coscribe.tools.design_systems", "coscribe.tools.skills", "coscribe.tools.skill_catalog", "coscribe.tools.plugin_sources", "coscribe.tools.pptx_templates", "coscribe.tools.presentations", "coscribe.tools._chart_data", "coscribe.tools._doc_marker", "coscribe.tools._docx_chart", "coscribe.tools._file_locks", "coscribe.tools._files_written", "coscribe.tools._native_docx_tracks", "coscribe.tools._native_formula", "coscribe.tools._native_svg", "coscribe.tools._office_bins", "coscribe.tools._office_com", "coscribe.tools._ooxml_validate", "coscribe.tools._output_truncation", "coscribe.tools._page_check", "coscribe.tools._pdfium", "coscribe.tools._pptx_shapes", "coscribe.tools._pptx_text", "coscribe.tools._presentation_record", "coscribe.tools._svg_preview", "coscribe.tools._svg_slide", "coscribe.tools._thumbnail", "coscribe.tools._workspace"]
 allowed_importers = ["coscribe.tools"]
 broken_contract_guidance = "Import from coscribe.tools (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools/__init__.py and put it on the card. Do not add an ignore line."
 

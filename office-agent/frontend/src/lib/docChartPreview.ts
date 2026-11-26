@@ -31,6 +31,7 @@ function preview(source: string, view: EditorView, at: number): HTMLElement {
 export const DocChartPreview = Extension.create({
   name: "docChartPreview",
   addProseMirrorPlugins() {
+    const editor = this.editor;
     return [
       new Plugin({
         props: {
@@ -40,7 +41,7 @@ export const DocChartPreview = Extension.create({
             state.doc.forEach((node, pos) => {
               if (node.type.name !== "rawBlock" || node.attrs.kind !== "chart") return;
               found.push(Decoration.widget(pos, (view) => preview(node.textContent, view, pos), { side: -1, key: `${pos}:${node.textContent}` }));
-              const editing = from <= pos + node.nodeSize && to >= pos;
+              const editing = editor.isEditable && from <= pos + node.nodeSize && to >= pos;
               if (!editing) found.push(Decoration.node(pos, pos + node.nodeSize, { class: "doc-chart-source-hidden" }));
             });
             return DecorationSet.create(state.doc, found);

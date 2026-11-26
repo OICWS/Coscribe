@@ -4,6 +4,7 @@ versions and what the person changed since coscribe was told."""
 
 from __future__ import annotations
 
+from ..._doc_marker import is_doc
 from .assets import DocAssetRefused, add_doc_asset, read_doc_asset
 from .blocks import (
     CALLOUTS,
@@ -16,7 +17,6 @@ from .blocks import (
     NotADoc,
     Replace,
     apply_edits,
-    is_doc,
     read_doc,
 )
 from .chart import Chart, parse_chart
