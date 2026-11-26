@@ -82,6 +82,13 @@ export function DocEditor({
   }, [state, unsaved, onDismissStep]);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => setSlot(document.getElementById("doc-save-state")), []);
+  useEffect(() => {
+    if (!scroll || !editor || previewing) return;
+    // The margin beside the page belongs to the scroll surface, which DocPanel owns.
+    const focus = (event: MouseEvent) => { if (event.target === scroll) editor.commands.focus(); };
+    scroll.addEventListener("click", focus);
+    return () => scroll.removeEventListener("click", focus);
+  }, [scroll, editor, previewing]);
 
   return (
     <>

@@ -102,6 +102,9 @@ class TurnStreamer:
         pending: AIMessageChunk | None = None
         try:
             async for mode, chunk in _shown(observed(source, self.record)):
+                if mode == "updates" and pending is not None and not self._host.plan_mode:
+                    # The model's message is complete before any of its tools run or wait.
+                    await drafts.update(pending, self._host.workspace_scope, force=True)
                 if mode == "messages":
                     message = chunk[0]
                     if isinstance(message, AIMessageChunk) and message.tool_call_chunks:

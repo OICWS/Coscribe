@@ -88,3 +88,40 @@ def test_doc_draft_shows_exact_replacement_and_respects_workspace_scope(tmp_path
         assert len(sink.sent) == before
 
     asyncio.run(run())
+
+
+def test_doc_draft_sends_the_tail_the_throttle_held_back(tmp_path: Path) -> None:
+    async def run() -> None:
+        sink = Events()
+        drafts = doc_drafts.DocDrafts(sink)
+        scope = WorkspaceScope(tmp_path)
+        prefix = (
+            '{"name":"write_file","arguments":{"path":"report.md",'
+            r'"content":"---\ncoscribe: doc\n---\n\n# Hello'
+        )
+        await drafts.update(_chunk(prefix), lambda: scope)
+        whole = _chunk(prefix + r'\n\nLast paragraph."}}')
+        await drafts.update(whole, lambda: scope)
+        assert len(sink.sent) == 1
+        await drafts.update(whole, lambda: scope, force=True)
+        assert [block["text"] for block in sink.sent[-1]["blocks"]] == [
+            "# Hello",
+            "Last paragraph.",
+        ]
+
+    asyncio.run(run())
+
+
+def test_a_failing_draft_does_not_reach_the_turn(tmp_path: Path) -> None:
+    def broken() -> WorkspaceScope:
+        raise KeyError("thread")
+
+    async def run() -> None:
+        sink = Events()
+        drafts = doc_drafts.DocDrafts(sink)
+        await drafts.update(
+            _chunk('{"name":"write_file","arguments":{"path":"report.md","content":"x'), broken
+        )
+        assert sink.sent == []
+
+    asyncio.run(run())

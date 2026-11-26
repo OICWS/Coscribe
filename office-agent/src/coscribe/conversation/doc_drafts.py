@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -17,6 +18,8 @@ from ..runtime_lg import unwrap_use_tool_call
 from ..tools import WorkspaceScope
 from ..tools.office.doc import read_doc
 from .events import EventSink
+
+logger = logging.getLogger(__name__)
 
 _MAX_SOURCE = 128_000
 _DOC_TOOLS = {"write_file", "edit_file", "edit_file_batch"}
@@ -108,9 +111,17 @@ class DocDrafts:
         self._last: dict[str, str] = {}
         self._next_update = 0.0
 
-    async def update(self, message: AIMessageChunk, scope: Callable[[], WorkspaceScope]) -> None:
+    async def update(
+        self,
+        message: AIMessageChunk,
+        scope: Callable[[], WorkspaceScope],
+        *,
+        force: bool = False,
+    ) -> None:
+        # `force` sends the arguments' last state: a chunk the throttle skipped is never resent,
+        # and a gated call would otherwise wait for approval behind an incomplete draft.
         now = monotonic()
-        if not message.tool_call_chunks or now < self._next_update:
+        if not message.tool_call_chunks or (now < self._next_update and not force):
             return
         self._next_update = now + 0.09
         for call in message.tool_call_chunks:
@@ -123,8 +134,10 @@ class DocDrafts:
                 continue
             try:
                 await self._publish(call_id, name, scope(), path, args, raw)
-            except (OSError, ValueError, RuntimeError):
-                continue
+            # A preview never ends the turn it shows: half-written arguments and Markdown fail
+            # in many ways.
+            except (OSError, ValueError, RuntimeError, LookupError, TypeError, AttributeError):
+                logger.debug("Doc draft preview skipped", exc_info=True)
 
     async def _publish(
         self,
