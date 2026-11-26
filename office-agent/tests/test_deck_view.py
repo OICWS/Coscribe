@@ -291,6 +291,7 @@ def test_a_deck_coscribe_did_not_build_is_drawn_read_only_through_the_office_pro
         foreign_slide_svg(deck, 2, state)
 
     monkeypatch.setattr(view_foreign, "convert", lambda *a: None)
+    monkeypatch.setattr(view_foreign, "convert_with_libreoffice", lambda *a: None)
     (tmp_path / "other.pptx").write_bytes(deck.read_bytes())
     with pytest.raises(NotBuiltFromPages):
         foreign_deck(tmp_path / "other.pptx", state)

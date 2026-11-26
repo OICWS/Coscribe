@@ -130,6 +130,27 @@ class AgentDeltaEvent(TypedDict):
     text: str
 
 
+class DocDraftBlock(TypedDict):
+    index: int
+    kind: str
+    text: str
+
+
+class DocDraftEvent(TypedDict):
+    type: Literal["doc_draft"]
+    id: str
+    path: str
+    new: bool
+    blocks: list[DocDraftBlock]
+
+
+class DocDraftFinishedEvent(TypedDict):
+    type: Literal["doc_draft_finished"]
+    id: str
+    path: str
+    committed: bool
+
+
 class ToolStartedEvent(TypedDict):
     """A call about to run; its tool_result follows. Not sent for a call waiting on
     approval (approval_required shows that one)."""
@@ -523,6 +544,8 @@ ServerEvent = (
     | HistoryEvent
     | OlderMessagesEvent
     | AgentDeltaEvent
+    | DocDraftEvent
+    | DocDraftFinishedEvent
     | ToolStartedEvent
     | ToolResultEvent
     | ApprovalRequiredEvent

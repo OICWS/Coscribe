@@ -12,6 +12,9 @@ Last reviewed: 2026-11-22.
 The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
 preview while Microsoft Excel has the workbook open.
 
+Unified Files previews and live Doc drafts (#1082) use Word and Excel preview changes from
+#1071 and #1074. Desktop verification covers Office conversion engines and reading during writes.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.

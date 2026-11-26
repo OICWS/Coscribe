@@ -161,7 +161,7 @@ export function AttachmentCard({
 }
 
 const attachmentFrame = (kind: AttachmentView["kind"]) =>
-  kind === "docx" ? "h-full w-full max-w-5xl" : kind === "file" ? "min-h-[26rem] w-full max-w-[40rem]" : "w-full max-w-[34rem]";
+  kind === "xlsx" ? "h-full w-full max-w-6xl" : kind === "docx" ? "h-full w-full max-w-5xl" : kind === "file" ? "min-h-[26rem] w-full max-w-[40rem]" : "w-full max-w-[34rem]";
 
 /** A file shown on its own: the picture or the pages when it has them, and a
  * plain line when it can't be shown here. */
