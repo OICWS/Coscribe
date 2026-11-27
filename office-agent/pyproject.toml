@@ -331,7 +331,6 @@ exhaustive = true
 ignore_imports = [
     "coscribe.tools.office.pptx.engine.checker -> coscribe.tools.office.pdf.text",
     "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
-    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
 ]
 broken_contract_guidance = "A format (docx, doc, pdf, pptx, xlsx) may use only the shared modules below it (table_layout, markdown_blocks, toolkit) and tools/ helpers that do not import a format. Move shared code down into one of those instead of importing a sibling format. Do not add an ignore line."
 
@@ -416,7 +415,6 @@ type = "protected"
 protected_modules = ["coscribe.tools.office.pptx.*"]
 allowed_importers = ["coscribe.tools.office.pptx"]
 ignore_imports = [
-    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
     "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
 ]
 broken_contract_guidance = "Import from coscribe.tools.office.pptx (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.pptx/__init__.py and put it on the card. Do not add an ignore line."

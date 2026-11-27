@@ -228,6 +228,15 @@ def built_pages(deck: Path) -> list[Path] | None:
     return pages
 
 
+def built_slide_svg(deck: Path, index: int) -> str:
+    """Slide `index` (from 0) of `deck` as the Slides panel draws it, its native charts and tables
+    drawn from what the build wrote: a placeholder box reads to whoever checks a preview as a
+    missing object. Its pictures keep the hrefs the page gives them."""
+    from .view import slide_svg
+
+    return slide_svg(deck, index, None)
+
+
 def _refuse_if_changed(out: Path, previous: dict[str, Any]) -> None:
     if previous.get("deck") != str(out.resolve()):
         raise DeckChangedError(

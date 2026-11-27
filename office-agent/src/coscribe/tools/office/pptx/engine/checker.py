@@ -87,6 +87,8 @@ _VALUE = re.compile(
 # spaces; PowerPoint accepts it (the part 1 deck that opened without a repair prompt on Windows
 # has it), so it is removed from the copy that is validated.
 _XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
+_OLD_STYLE_FIGURES = {"georgia"}
+_FIGURES = re.compile(r"\d.*\d")
 _SCHEMA_PREFIX = re.compile(r"^.*?ERROR:SCHEMASV:\w+: ")
 # PowerPoint's default cell margins (0.1 in left and right, 0.05 in top and bottom, in pt) and
 # the line height it gives a cell's text.
@@ -147,8 +149,26 @@ def _check(prs: Any, page: PageReport, slide: Any, known: set[str | Decimal] | N
     unreadable, faint = _contrast(texts)
     page.errors.extend(unreadable)
     page.warnings.extend(faint)
+    page.warnings.extend(_old_style_figures(slide._element))
     if known is not None:
         page.warnings.extend(_unknown_numbers(texts + _data(slide), known))
+
+
+def _old_style_figures(slide: Any) -> Iterator[str]:
+    """Figures set in a face whose digits are old-style by default: they rise above and drop
+    below the line, so amounts set in them look misaligned."""
+    for element in slide.iter(*_DRAWN, f"{_P}graphicFrame"):
+        for run in element.iter(f"{_A}r"):
+            latin = run.find(f"{_A}rPr/{_A}latin")
+            face = latin.get("typeface", "") if latin is not None else ""
+            words = "".join(t.text or "" for t in run.iter(f"{_A}t"))
+            if face.lower() in _OLD_STYLE_FIGURES and _FIGURES.search(words):
+                yield (
+                    f"{_quote(words.strip())} sets its figures in {face}, whose digits rise and "
+                    "drop (old-style figures), so the numbers look misaligned: set figures in "
+                    "Cambria, Times New Roman or a sans face"
+                )
+                break
 
 
 def _schema(slide: Any) -> Iterator[str]:
