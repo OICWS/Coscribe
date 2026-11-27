@@ -441,3 +441,43 @@ def test_a_deck_as_a_source_gives_its_charts_numbers(tmp_path: Path) -> None:
     deck.save(str(tmp_path / "draft.pptx"))
 
     assert "Q1 1180, Q2 1320" in source_text(tmp_path / "draft.pptx")
+
+
+def test_figures_in_georgia_are_a_warning_naming_the_text(tmp_path: Path) -> None:
+    errors, warnings = _findings(
+        tmp_path,
+        '<text x="64" y="300" font-size="40" font-family="Georgia" fill="#1E2A36">'
+        "营收 1,284.6 亿</text>"
+        '<text x="64" y="500" font-size="40" font-family="Georgia" fill="#1E2A36">Q3 Outlook</text>'
+        '<text x="640" y="500" font-size="40" font-family="Cambria" fill="#1E2A36">9,876</text>',
+    )
+
+    assert errors == []
+    assert warnings == [
+        '"营收 1,284.6 亿" sets its figures in Georgia, whose digits rise and drop (old-style '
+        "figures), so the numbers look misaligned: set figures in Cambria, Times New Roman or a "
+        "sans face"
+    ]
+
+
+def test_figures_in_georgia_are_one_warning_per_text_and_found_in_tables(tmp_path: Path) -> None:
+    table = {
+        "x": 64,
+        "y": 400,
+        "width": 600,
+        "height": 120,
+        "schema": "ppt-master.semantic-table.v2",
+        "columns": ["区域", "营收"],
+        "rows": [["华东", "5,410"], ["华北", "2,120"]],
+        "style": {"font_size": 18, "font_family": "Georgia"},
+    }
+    _, warnings = _findings(
+        tmp_path,
+        '<text x="64" y="300" font-size="40" font-family="Georgia" fill="#1E2A36">'
+        '12.5<tspan fill="#C2410C"> 亿，增长 38%</tspan></text>'
+        '<g id="regions" data-pptx-replace-with="table"><metadata type="application/json">'
+        f"{json.dumps(table, ensure_ascii=False)}</metadata></g>",
+    )
+
+    assert len(warnings) == 2, warnings
+    assert warnings[0].startswith('"12.5"') and warnings[1].startswith('"5,410"')

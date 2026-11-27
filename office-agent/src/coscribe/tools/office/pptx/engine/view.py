@@ -71,10 +71,12 @@ def read_deck(deck: Path) -> dict[str, Any]:
     return {"title": deck.stem, "folder": folder.name, "changed": changed, "slides": slides}
 
 
-def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
+def slide_svg(deck: Path, index: int, resource_root: Path | None) -> str:
     """Slide `index` (from 0) as one SVG with nothing outside it: icons drawn, pictures inlined,
-    native charts and tables drawn from the built deck. Raises IndexError for no such slide,
-    NotBuiltFromPages, and SectionError for a section that cannot be read."""
+    native charts and tables drawn from the built deck. With `resource_root` None the pictures
+    keep their hrefs, for a renderer that reads them from the pages folder itself. Raises
+    IndexError for no such slide, NotBuiltFromPages, and SectionError for a section that cannot
+    be read."""
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
@@ -89,7 +91,8 @@ def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     root = section_drawing(text) if section else ET.fromstring(text)
     _make_safe(root)
     expand_icons(root)
-    _inline_images(root, page.parent, resource_root.resolve())
+    if resource_root is not None:
+        _inline_images(root, page.parent, resource_root.resolve())
     slides = Presentation(str(deck)).slides
     if index < len(slides):
         scale = SECTION_EMU_PER_PX if section else EMU_PER_PX
