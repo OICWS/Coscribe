@@ -114,3 +114,24 @@ def test_a_picture_too_large_in_pixels_is_refused(tmp_path: Path, monkeypatch):
 
     with pytest.raises(ValueError, match="too large"):
         look_image.image_blocks(tmp_path / "big.png", "big.png")
+
+
+def test_a_region_is_cut_out_before_shrinking(tmp_path: Path):
+    scan = Image.new("RGB", (4000, 2000), "white")
+    scan.paste((255, 0, 0), (3000, 0, 4000, 1000))
+    scan.save(tmp_path / "scan.png")
+
+    note, picture = _tools(tmp_path)["look_at_image"]("scan.png", region="0.75,0,1,0.5")
+
+    assert json.loads(note["text"])["region"] == "3000,0,4000,1000"
+    shown = _picture(picture)
+    assert shown.size == (1000, 1000)
+    assert shown.convert("RGB").getpixel((500, 500)) == (255, 0, 0)
+
+
+@pytest.mark.parametrize("region", ["0.5,0.5", "a,b,c,d", "0.6,0,0.4,1", "0,0,1.5,1"])
+def test_a_region_that_is_not_a_box_inside_the_picture_is_refused(tmp_path: Path, region):
+    Image.new("RGB", (10, 10)).save(tmp_path / "chart.png")
+
+    with pytest.raises(ValueError, match="region"):
+        _tools(tmp_path)["look_at_image"]("chart.png", region=region)

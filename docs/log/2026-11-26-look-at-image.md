@@ -13,6 +13,11 @@ in the message box was already seen; one in the folder was not.
   agent can check its own deck or document instead of only the reviewer seeing it.
 - `read_file` on a picture points to it, and the prompt says to look at a picture a task hands
   over before working from it; the line that said the agent cannot see images is gone.
+- `region` ("left,top,right,bottom" as fractions) cuts out part of the picture before it is
+  shrunk, so small print and one corner can be read without a cropping script.
+- The prompt asks for one whole check of a finished file (a single script that reads back every
+  requirement and prints what fails) instead of many small ones: on OfficeVal about 60% of tool
+  calls were such scripts, and each call resends the whole conversation.
 - Checked live: DeepSeek Flash reads a picture sent this way.
 
 ## Not verified
