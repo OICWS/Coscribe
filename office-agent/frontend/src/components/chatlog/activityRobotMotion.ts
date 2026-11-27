@@ -3,7 +3,6 @@ import type { ConversationActivity } from "../../lib/transcriptGrouping";
 type Pose = readonly [yaw: number, pitch: number, roll: number, eyeHeight: number, eyeWidth: number];
 type Keyframe = readonly [at: number, ...Pose];
 
-export const CYCLE = 3.56;
 export const GATHER = 0.58;
 export const DEPARTED = 3.28;
 
@@ -37,11 +36,8 @@ const GESTURES = {
     [2.35, 0.54, 0.08, 0.08, 1.23, 1],
   ],
   Searching: [
-    [1.22, 0.72, -0.14, 0.13, 1.19, 1],
-    [1.58, -0.80, -0.14, -0.13, 1.19, 1],
-    [1.95, 0.62, -0.22, 0.10, 1.18, 1],
-    [2.25, 0.70, -0.26, 0.13, 1.36, 1.10],
-    [2.67, 0.70, -0.26, 0.13, 1.23, 1.05],
+    [1.23, -0.43, 0.31, -0.025, 1, 1],
+    [2.68, 0.43, 0.31, 0.025, 1, 1],
   ],
   Browsing: [
     [1.28, 0.11, -0.34, 0.02, 1.06, 1],
@@ -76,7 +72,7 @@ export function poseAt(activity: ConversationActivity, phase: number, time: numb
   const after: Keyframe = keyframes[next] ?? [3.13, ...REST];
   const mix = smooth(before[0], after[0], moment);
   const envelope = smooth(0.88, 1.25, phase) * (1 - smooth(2.71, 3.15, phase));
-  const direction = (activity === "Reading" || activity === "Searching") && wave(time - phase, 11.9, 1.7) < 0 ? -1 : 1;
+  const direction = activity === "Reading" && wave(time - phase, 11.9, 1.7) < 0 ? -1 : 1;
   const blend = (axis: 1 | 2 | 3 | 4 | 5) => before[axis] + (after[axis] - before[axis]) * mix;
 
   return [
