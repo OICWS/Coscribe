@@ -7,7 +7,9 @@ what results say about pages in `_browser_pages.py`; forms, several actions in o
 waiting for one of several texts in `_browser_forms.py`; dragging and the AI's own clipboard in
 `_browser_moves.py`; a table or list to a CSV and the page to a PDF in `_browser_data.py`; the
 page as a picture, a click by position and the text by a label in `_browser_look.py`),
-`web_search` and `read_web_page` (`websearch.py`), `http_request` with secret substitution
+`web_search` and `read_web_page` (`websearch.py`; the free engines asked at once under one
+deadline, and what a failed search says, in `_search.py`; the fallback through the person's
+model provider's own search and fetch API in `_provider_search.py`), `http_request` with secret substitution
 (`http_request.py`) and licensed image search and download (`images.py`,
 `_licensed_image_search.py`). Does not own the browser panel or its routes (`web/`), the proxy
 setting (`runtime/proxy.py`) or secret storage (`runtime/`).
@@ -26,6 +28,13 @@ setting (`runtime/proxy.py`) or secret storage (`runtime/`).
 - Browser commands go to the desktop app's own browser through the internal route; there is no
   remote-debugging port.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
+- A search or page read that can't connect fails within seconds and says why (no proxy, a proxy
+  that reaches nothing, a site the network blocks); a search that reached no engine is not
+  retried, and its verdict is reused for 30 s per proxy (`_search.py`).
+- The free engines come first; a provider whose search `runtime.models` lists is asked only when
+  they fail, and for a page that can't be reached directly only in a conversation without a site
+  list, since the provider follows redirects where they can't be checked. Its key never appears
+  in a result or an error.
 - A conversation's network setting (`runtime.NetworkGuard`, Edit workspace > Sites) is checked
   at each call, and on every request of `read_web_page`, `download_image` and `http_request`, so a
   redirect can't leave the allowed domains; the browser's steps are checked by the desktop app

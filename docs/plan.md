@@ -9,6 +9,15 @@ lines.
 
 Last reviewed: 2026-11-22.
 
+The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
+preview while Microsoft Excel has the workbook open.
+
+Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
+Office conversion engines and reading during writes.
+
+The Simple conversation activity robot (#1085) is in review. Desktop verification covers
+the indicator at normal Windows display scaling.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
@@ -64,25 +73,66 @@ Last reviewed: 2026-11-22.
    A workspace reaches only the Allowed folders it picks (decision 0053); the server is in
    `docs/log/2026-11-19-allowed-folders-per-workspace.md`, the dialog's picker in
    `docs/log/2026-11-19-workspace-folder-picker.md`. `settings.json`'s env reaches scripts and commands in `docs/log/2026-11-21-workspace-settings-env.md`.
-5. **Plugins in the Claude and Codex format** (#1036, decision 0058, proposed). A plugin is a
-   folder (`plugin.json`, `skills/`, `.mcp.json`); a lone `SKILL.md` is a one-skill plugin.
-   Steps, one PR each: read the format and uploads; Settings › Plugins; sources from a
-   repository's `marketplace.json`; built-in plugins installed by default, PPTX Pages first;
-   `load_skill` pointing to the connector tools; export as a `.zip`. Done: the decision record;
-   reading the format and uploads (`docs/log/2026-11-22-plugin-folders.md`); Settings › Plugins
-   (`docs/log/2026-11-23-plugins-page.md`).
+5. **Plugins in the Claude and Codex format** (#1036, decision 0058). All seven steps shipped
+   (logs `2026-11-22-plugin-folders` to `2026-11-25-plugin-export` in `docs/log/`). Open from
+   step 4: Discover's own catalog still adds a plugin's skills one by one and is built by hand;
+   building it from the curated repositories' `marketplace.json` and adding its plugins whole,
+   and following an entry that points to another GitHub repository (`github`, `git-subdir`).
+6. **Coscribe's best office work as plugins for any agent** (direction set by the maintainer
+   2026-11-25). Coscribe's value is its office quality, measured against public benchmarks
+   (#1072), more than the app around it; people look for plugins first, so the strongest
+   capabilities also ship as standalone plugins that install in Claude, Codex or another agent
+   and name what Coscribe adds (live preview, slide-by-slide editing, render checks). A
+   capability qualifies when those agents have nothing as good, its output is a plain file, and
+   its engine can be split out. Order, one at a time, judging the response before the next:
+   1. **PPTX Pages**: the deck engine (`tools/office/pptx/engine/`, with `_native_svg` and
+      `_native_formula` from ppt-master, MIT) as a package of its own with a command line,
+      needing only python-pptx and lxml, which Coscribe itself then uses so the two never
+      drift; its build imports most of `coscribe.tools` today.
+   2. **Dashboard**: a filterable one-page HTML of real data where every figure shows its
+      source; the output is one file, the cheapest to split.
+   3. **Editing an existing deck** (PPTX Editing): slides, SmartArt, tables, formulas and
+      animation on a person's own template without breaking it; the largest split.
+   Not now: Word and Excel (Claude's own skills cover most of it; the tracked-change core is
+   docx-mcp's). Not split: Design and Doc, which need Coscribe's canvas and editor.
+   Published from a GitHub repository with a `marketplace.json`, which Claude and Codex add
+   directly and Coscribe's Discover reads as a source (step 4 of #1036).
 
 ## Open, smaller
 
-- **Growth to 1M lines** (#1051, decision 0009): test selection on pull requests (decision 0059,
-  `docs/log/2026-11-23-test-selection.md`); still open: the gate on loosening a limit, the gates
-  on what tests prove, weekly numbers, frontend boundaries.
+- **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
+  DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
+  and Gemini, whose search runs only inside a model call, as a second kind in
+  `runtime/models/web_search.json`; and web search shown as a capability in Settings > Providers
+  and the model picker (a frontend PR). Free engines stay first for every provider (Collins,
+  2026-11-26).
+
+- **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
+  the checks on what tests prove, the frontend features and the weekly numbers
+  (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on
+  Mondays: a card far behind its code or a component near its budget is the next piece of work.
+
+- **Remaining 0009 gaps** (#1051 follow-up, `docs/log/2026-11-24-mutation-and-cards.md`):
+  mutation of each pull request's changed functions (report only) and the check that a card 20
+  commits behind its code is updated shipped; the features' `index.ts` shipped in #1064. Still
+  open: splitting `conversation/session.py` (held for now; the ratchet keeps it from growing) and
+  a second model family's review on every PR (Codex reviews on an `@codex review` comment today).
 
 - **User docs: a way in from the app** (`docs/log/2026-11-23-user-docs-site.md`): every page
   is in all nine languages. Still to do: a Help entry in the app with "Learn more" links next to
   settings. A UI change that renames a label
   the docs name changes the page in the same PR (`site/_docs/README.md`).
-- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`): the name and the paper-plane
+- **Some steps read as tool names in the conversation** (`docs/log/2026-11-24-promo-page-refresh.md`):
+  the detailed view labels `browser_*` calls, `build_pptx_from_pages`, `render_pptx_preview`,
+  `replace_docx_text`, `insert_docx_text`, `edit_docx_review`, `copy_file` and `move_file` by
+  their raw names (`frontend/src/lib/transcriptGrouping.ts` has no entry for them); the task
+  page's words in `lib/plainSteps.ts` could be reused. The homepage demo words them itself
+  (`site/demo/demo.js`, `WORDS`) until then.
+- **Seen in the real runs behind the promo demo** (`docs/log/2026-11-24-promo-page-refresh.md`,
+  desktop app on Windows): two dollar amounts in a reply are drawn as maths (`$13,375,000 revenue,
+  $4,798,139` turns into italic run-together text), and clicking a .docx output card opened no
+  panel, where a .pptx and a .md card did.
+- **Website layout polish** (`docs/log/2026-11-23-site-polish.md`, `docs/log/2026-11-24-promo-page-refresh.md`): the name and the paper-plane
   logo are done; the English pages get more polish with the maintainer first, then the other
   eight languages follow.
 - **No CI job runs Windows on Python 3.13+** (`docs/log/2026-11-22-scratch-dir-acl.md`): every
@@ -217,8 +267,9 @@ Last reviewed: 2026-11-22.
 
 ## For the maintainer (settings and decisions)
 
-- Required checks for #1051: `loosened` (PR text). Create the `loosening-approved` label; only
-  the maintainer adds it (`docs/log/2026-11-23-loosening-gate.md`).
+- Required checks for #1051: `PR text / loosened`, `PR text / independent-review` and
+  `PR tests / fails-before`. Create the `loosening-approved` label; only the maintainer adds it
+  (`docs/log/2026-11-23-loosening-gate.md`, `docs/log/2026-11-23-pr-test-gates.md`).
 
 - Slash commands (#1003, `docs/log/2026-11-20-slash-menu.md`, `docs/log/2026-11-21-doctor-checks.md`):
   `/doctor` shipped in the web UI; the CLI has none. `/changes` is not needed for now
@@ -229,7 +280,6 @@ Last reviewed: 2026-11-22.
   shipped (`docs/log/2026-11-21-side-chat.md`).
 
 - Read the CodeQL alerts and the first `audit.yml` run.
-- Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Moving `script-env` and `node-env` off the system drive (a "Change location…" in Settings,
   suggested on #1002) is not wanted (decided 2026-11-21); they stay under the state directory.
 - A workflow run's pages stay open when it ends, so the person can check them (decided
@@ -237,6 +287,9 @@ Last reviewed: 2026-11-22.
   when the run ends" setting is offered, not started (`docs/log/2026-11-16-browser-self-close-crash.md`).
 
 ## Needs the maintainer's testing (could not be verified here)
+
+- DOCX preview with Microsoft Word on Windows, including a document open in Word and a
+  mixed-orientation file compared with Word's print layout (#1070).
 
 - Settings > Providers in the desktop app, and a key for one of the 12 new presets added end to
   end (no account for them here).
@@ -268,8 +321,17 @@ Last reviewed: 2026-11-22.
 - Notion showed no tools for the maintainer; cause not found.
 - The built-in browser panel opened during a connector's first connection
   (sign-in pages should open in the system browser); not reproduced.
+- Verify on Windows that browser automation continues in its original conversation without
+  reopening the Browser panel in the conversation the user switches to (#1068).
 - A Hugging Face connector call once hung a turn; a 120 s limit and an automatic
   reconnect were added, the cause is unknown.
+- Connector Retry and automatic reconnect can overlap. Each path disconnects before awaiting
+  a new connection, and both can then register tools for the same name. Serialize connector
+  changes and test Retry or Remove while a reconnect is in flight (#1058).
+- Validate direct connector exports with a signed-in Canva account and check deployments that
+  require an HTTP proxy. Chat delivery currently accepts public HTTPS file links and downloads
+  directly. MCP resources without direct links and fixed workflow steps need their own delivery
+  checks (#1058).
 - Slack is not offered: its MCP is said to be limited to Marketplace or internal
   apps (third-party source, not checked against Slack's docs).
 - A sent message does not keep its attached files as cards; the file picker takes

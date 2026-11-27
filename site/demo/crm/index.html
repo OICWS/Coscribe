@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Northwind CRM · Accounts</title>
+<style>
+body{font:14px system-ui,sans-serif;margin:0;background:#f6f7f9;color:#1c2330}
+header{background:#1f3a5f;color:#fff;padding:12px 24px;font-weight:600}
+main{padding:20px 24px} table{border-collapse:collapse;width:100%;background:#fff}
+th,td{padding:8px 10px;border-bottom:1px solid #e3e6ea;text-align:left} th{background:#eef1f5}
+.bar{display:flex;gap:10px;margin-bottom:12px;align-items:center} .pager{margin-top:12px;display:flex;gap:8px}
+button,select{font:inherit;padding:5px 10px}
+</style></head><body><header>Northwind CRM</header><main>
+<h2>Accounts</h2>
+<div class="bar"><label>Renewal quarter <select id="q"><option value="">All</option><option value="Q4">Q4 2026</option><option value="Q1">Q1 2027</option></select></label>
+<span id="count"></span></div>
+<table><thead><tr><th>ID</th><th>Account</th><th>Owner</th><th>ARR (USD)</th><th>Renewal date</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table>
+<div class="pager"><button id="prev">Previous</button><span id="pg"></span><button id="next">Next</button></div>
+</main><script>
+let all=[],page=0;const per=10;
+const inQ=(r,q)=>!q||(q==="Q4"?r.renewal<"2027-01":r.renewal>="2027-01");
+function draw(){const q=document.getElementById('q').value;const list=all.filter(r=>inQ(r,q));
+const pages=Math.max(1,Math.ceil(list.length/per));page=Math.min(page,pages-1);
+document.getElementById('rows').innerHTML=list.slice(page*per,page*per+per).map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.owner}</td><td>${r.arr.toLocaleString('en-US')}</td><td>${r.renewal}</td><td>${r.stage}</td></tr>`).join('');
+document.getElementById('count').textContent=list.length+' accounts';document.getElementById('pg').textContent='Page '+(page+1)+' of '+pages;}
+document.getElementById('q').onchange=()=>{page=0;draw()};
+document.getElementById('prev').onclick=()=>{page=Math.max(0,page-1);draw()};
+document.getElementById('next').onclick=()=>{page++;draw()};
+fetch('accounts.json').then(r=>r.json()).then(d=>{all=d;draw()});
+</script></body></html>

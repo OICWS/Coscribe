@@ -58,7 +58,9 @@ def _changed_lines(filled: Any) -> list[str]:
 
 def form_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
     def browser_fill_form(
-        fields: list[dict[str, str]], tab_id: int | str = 0, timeout: float = DEFAULT_WAIT,
+        fields: list[dict[str, str]],
+        tab_id: int | str = 0,
+        timeout: float = DEFAULT_WAIT,
         mode: Literal["batch", "type"] = "batch",
     ) -> str:
         """Fill multiple fields together in one page execution (mode="batch", default).

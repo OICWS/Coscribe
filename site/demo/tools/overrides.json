@@ -1,0 +1,9 @@
+{
+  "//": "Replies replaced before the capture, by scene and history index: the English runs answered partly in Chinese and Spanish, so these are the same words in English.",
+  "en-4": {
+    "8": "The export is done and saved as `renewals.csv` in the workspace root.\n\nI opened the CRM, set \"Renewal quarter\" to Q4 2026 (13 accounts over two pages), took all of them and wrote the CSV sorted by ARR from largest to smallest, keeping the CRM's own columns: ID, Account, Owner, ARR (USD), Renewal date, Status.\n\nThe largest ones:\n\n| Account | ARR (USD) | Renewal date |\n| --- | --- | --- |\n| Atlas Freight | 255,000 | 2026-11-02 |\n| Lighthouse Travel | 244,000 | 2026-12-01 |\n| Meridian Insurance | 236,000 | 2026-11-20 |\n| Pioneer Media | 234,000 | 2026-10-22 |\n| Falcon Security | 222,000 | 2026-10-16 |\n\nTotal ARR is USD 2,136,000. Granite Health (135,000, 2026-10-21) is marked At risk and the rest are Active, so that one may need a call first.\n\nOne more thing: the filter is by renewal quarter, so it covers dates from early October to the end of December. If you want only the renewals still ahead of today, several of these dates, such as Atlas Freight, Pioneer Media and Falcon Security, have already passed; I can filter by date again if you need that."
+  },
+  "en-5": {
+    "6": "Figures ready. Now writing the review document."
+  }
+}

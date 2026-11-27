@@ -45,6 +45,12 @@ describe("madeOutputs", () => {
   it("leaves out a gone file and one the computer can't open", () => {
     expect(madeOutputs([file("gone.pdf", { exists: false }), file("odd.csv", { openable: false })], new Set())).toEqual([]);
   });
+
+  it("offers connector downloads even when they can only be downloaded or revealed", () => {
+    const archive = file("downloads/archive.zip", { connector_download: true, openable: false });
+    const gone = file("downloads/gone.zip", { connector_download: true, exists: false });
+    expect(madeOutputs([archive, gone], new Set())).toEqual([{ kind: "external", type: "File", file: archive }]);
+  });
 });
 
 describe("notice words", () => {

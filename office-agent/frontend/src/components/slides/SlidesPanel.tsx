@@ -12,7 +12,7 @@ import {
   type SlideExport,
   type SlideInfo,
 } from "../../lib/slides";
-import { useDockPanel } from "../dock/dockContext";
+import { useDockPanel } from "../dock";
 import { ExternalLinkIcon } from "../icons";
 import { DraftPages } from "../../lib/draftPages";
 import type { CommentLink } from "../../lib/slideComments";
@@ -24,9 +24,9 @@ import { NewSlideDialog } from "./NewSlideDialog";
 import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
 import { deckEntries, downloadEntries, presentEntries, zoomEntries } from "./slideMenus";
-import { PanelFileMenu } from "../artifacts/PanelFileMenu";
-import { PanelCommentButton } from "../artifacts/PanelCommentButton";
-import { PanelTitleButton } from "../artifacts/PanelTitleButton";
+import { PanelFileMenu } from "../artifacts";
+import { PanelCommentButton } from "../artifacts";
+import { PanelTitleButton } from "../artifacts";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";

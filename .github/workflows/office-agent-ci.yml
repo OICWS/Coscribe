@@ -54,6 +54,13 @@ jobs:
             echo "Test files: $(grep '^tests=' "$GITHUB_OUTPUT" | cut -d= -f2- | wc -w) selected (0 means all)."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # A pull request that changes a component whose card fell LIMIT commits behind its code
+      # updates the card too (scripts/card_freshness.py). Before the dependencies: it needs
+      # only git and the standard library.
+      - name: Component cards keep up with their code
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/card_freshness.py --changed < "$RUNNER_TEMP/changed.txt"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -103,16 +110,21 @@ jobs:
         if: steps.scope.outputs.scope == 'docs'
         run: python -m pytest -q ${{ steps.scope.outputs.tests }}
 
-      # Report only for now: what the lines this pull request changed lack in
-      # coverage. It becomes a failing check after a week of numbers.
+      # The lines this pull request changed are at least 80% covered when it changed 5 or more
+      # that coverage can measure; a `Changed-line coverage: <why>` line in the description
+      # waives it (scripts/pr_gates.py). The description is read when the job starts.
       - name: Coverage of the changed lines
+        # A selected run still covers the changed lines: the tests it picks are the ones that
+        # import the changed modules.
         if: github.event_name == 'pull_request' && steps.scope.outputs.scope != 'docs'
-        continue-on-error: true
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          pip install diff-cover
+          pip install diff-cover==10.6.0
           diff-cover coverage.xml --compare-branch=origin/main \
-            --format markdown:diff-coverage.md
+            --format markdown:diff-coverage.md,json:diff-coverage.json
           cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
+          python scripts/pr_gates.py coverage diff-coverage.json
 
   # Typechecks the Electron shell, which had no check at all. Not a required
   # check until it has passed once.

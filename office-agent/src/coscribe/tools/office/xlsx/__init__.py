@@ -14,7 +14,8 @@ does it for a workbook written some other way.
 
 from __future__ import annotations
 
+from .column_widths import displayed_text
 from .toolkit import SpreadsheetToolkit
 from .tools import build_spreadsheet_tools
 
-__all__ = ["SpreadsheetToolkit", "build_spreadsheet_tools"]
+__all__ = ["SpreadsheetToolkit", "build_spreadsheet_tools", "displayed_text"]

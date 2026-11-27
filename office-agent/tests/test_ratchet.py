@@ -431,6 +431,34 @@ def test_an_export_nothing_imports_is_listed_per_file(ratchet: ModuleType, tmp_p
     assert found == {"office-agent/frontend/src/lib.ts": 2}
 
 
+def test_an_import_into_another_frontend_features_files_is_counted_unless_through_its_index(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    files = {
+        "components/slides/index.ts": "export { Deck } from './Deck';\n",
+        "components/slides/Deck.tsx": "export const Deck = 1;\n",
+        "components/slides/Notes.tsx": "import { Deck } from './Deck';\n",
+        "components/doc/Doc.tsx": (
+            "import { Deck } from '../slides/Deck';\n"
+            "import { Notes } from '../slides/Notes.tsx';\n"
+            "import { Deck as D } from '../slides';\n"
+            "const lazy = import('../slides/Deck');\n"
+        ),
+        "components/Shell.tsx": "import { Doc } from './doc/Doc';\nimport React from 'react';\n",
+        "lib/util.ts": "export * from '../components/doc/Doc';\n",
+        "components/doc/Doc.test.tsx": "import { Deck } from '../slides/Deck';\n",
+    }
+    for rel, text in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding="utf-8")
+
+    assert ratchet.frontend_feature_imports(tmp_path) == {
+        "components/doc -> components/slides": 3,
+        "components -> components/doc": 1,
+        "lib -> components/doc": 1,
+    }
+
+
 def test_the_core_and_each_component_must_stay_inside_their_budgets(ratchet: ModuleType) -> None:
     budgets = {"core_lines": 100, "component_lines": 60}
     sizes = {"web": 50, "conversation": 55, "tools": 61}
@@ -441,6 +469,19 @@ def test_the_core_and_each_component_must_stay_inside_their_budgets(ratchet: Mod
     assert ratchet.budget_problems(budgets, {"web": 60}, frozenset({"web"})) == []
 
 
+def test_the_frontend_frame_has_its_own_budget_and_its_features_the_component_one(
+    ratchet: ModuleType,
+) -> None:
+    budgets = {"core_lines": 100, "component_lines": 60, "frontend_shell_lines": 80}
+    sizes = {"frontend": 80, "frontend.slides": 61}
+    assert ratchet.budget_problems(budgets, sizes, frozenset()) == [
+        "component_lines: frontend.slides has 61, over the budget of 60"
+    ]
+    assert ratchet.budget_problems(budgets, {"frontend": 81}, frozenset()) == [
+        "frontend_shell_lines: 81 over the budget of 80"
+    ]
+
+
 def test_a_components_lines_leave_out_the_components_nested_in_it(
     ratchet: ModuleType, tmp_path: Path
 ) -> None:
@@ -449,16 +490,30 @@ def test_a_components_lines_leave_out_the_components_nested_in_it(
     (src / "tools" / "a.py").write_text("x = 1\ny = 2\n", encoding="utf-8")
     (src / "tools" / "office" / "pptx" / "b.py").write_text("z = 3\n", encoding="utf-8")
     (src / "cli.py").write_text("print()\n", encoding="utf-8")
+    front = tmp_path / "office-agent" / "frontend"
+    (front / "src" / "components" / "slides").mkdir(parents=True)
+    (front / "src" / "App.tsx").write_text("a\nb\n", encoding="utf-8")
+    (front / "src" / "App.test.tsx").write_text("t\n", encoding="utf-8")
+    (front / "src" / "components" / "slides" / "Deck.ts").write_text("d\n", encoding="utf-8")
+    (front / "vite.config.ts").write_text("v\n", encoding="utf-8")
     toml = tmp_path / "components.toml"
     toml.write_text(
         '[[component]]\nname = "tools"\npath = "office-agent/src/coscribe/tools"\n'
         '[[component]]\nname = "tools.office.pptx"\n'
         'path = "office-agent/src/coscribe/tools/office/pptx"\n'
         '[[component]]\nname = "cli"\npath = "office-agent/src/coscribe/cli.py"\ncore = true\n'
-        '[[component]]\nname = "frontend"\npath = "office-agent/frontend"\n',
+        '[[component]]\nname = "frontend"\npath = "office-agent/frontend"\n'
+        '[[component]]\nname = "frontend.slides"\n'
+        'path = "office-agent/frontend/src/components/slides"\n',
         encoding="utf-8",
     )
-    assert ratchet.component_lines(toml) == {"tools": 2, "tools.office.pptx": 1, "cli": 1}
+    assert ratchet.component_lines(toml) == {
+        "tools": 2,
+        "tools.office.pptx": 1,
+        "cli": 1,
+        "frontend": 2,
+        "frontend.slides": 1,
+    }
     assert ratchet.core_components(toml) == frozenset({"cli"})
 
 

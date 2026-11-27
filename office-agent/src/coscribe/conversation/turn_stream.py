@@ -14,7 +14,8 @@ from langgraph.types import Command
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import tool_result_value as _tool_result_value
 from ..runtime_lg import unwrap_use_tool_call
-from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
+from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES, WorkspaceScope
+from .doc_drafts import DocDrafts
 from .events import EventSink
 from .history import close_orphaned_tool_calls
 from .stopped_turn import keep_stopped_turn
@@ -54,11 +55,14 @@ class TurnStreamHost(Protocol):
     thread_id: str
     settings: Any
     _turn_websocket: Any
+    plan_mode: bool
     _stop_requested: bool
     _gated_tool_risks: dict[str, str]
     # Per tool name: (call id, arguments) of each call whose result hasn't come back yet.
     _pending_tool_args: dict[str, list[tuple[str, dict[str, Any]]]]
     _last_usage_metadata: UsageMetadata | None
+
+    def workspace_scope(self) -> WorkspaceScope: ...
 
     async def _run_post_tool_use_hooks(
         self, name: str, args: dict[str, Any], result: Any
@@ -78,6 +82,7 @@ class TurnStreamer:
         self.keep_stopped_work = True
         # Set for the turn that is running (`recorded_turn`); None counts nothing.
         self.record: TurnRecorder | None = None
+        self.doc_drafts: DocDrafts | None = None
         # The turn ended at the result of a tool that ends it (an emoji on the user's message),
         # which runtime_lg's turn_checks marks "ends_turn" in the result's response_metadata.
         self.ended_at_tool = False
@@ -92,6 +97,28 @@ class TurnStreamer:
         history. `text` is the finished reply; a hard stop passes none and keeps what streamed."""
         said = "".join(self.streamed) if text is None else text
         return await keep_stopped_turn(self._host, said, keep=self.keep_stopped_work)
+
+    async def _turn_events(self, source: Any, drafts: DocDrafts) -> Any:
+        pending: AIMessageChunk | None = None
+        try:
+            async for mode, chunk in _shown(observed(source, self.record)):
+                if mode == "updates" and pending is not None and not self._host.plan_mode:
+                    # The model's message is complete before any of its tools run or wait.
+                    await drafts.update(pending, self._host.workspace_scope, force=True)
+                if mode == "messages":
+                    message = chunk[0]
+                    if isinstance(message, AIMessageChunk) and message.tool_call_chunks:
+                        pending = message if pending is None else pending + message
+                        if not self._host.plan_mode:
+                            await drafts.update(pending, self._host.workspace_scope)
+                    elif isinstance(message, ToolMessage):
+                        pending = None
+                        await drafts.finish(message.tool_call_id, message.status != "error")
+                yield mode, chunk
+        finally:
+            await source.aclose()
+            if self.doc_drafts is None:
+                await drafts.close()
 
     async def stream_turn(self, turn_input: Any, websocket: EventSink) -> str:
         """Run one `astream()` call and return only the last model response's narration.
@@ -151,9 +178,10 @@ class TurnStreamer:
 
         # "updates" is only for the model node's finished message: it lands before any of
         # its tool calls run, which "messages" has no event for.
-        stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
+        source = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
+        stream = self._turn_events(source, self.doc_drafts or DocDrafts(websocket))
         try:
-            async for mode, chunk in _shown(observed(stream, self.record)):
+            async for mode, chunk in stream:
                 if mode == "updates":
                     await self.announce_started_tools(chunk, websocket)
                     continue
@@ -256,7 +284,9 @@ def recorded_turn(run: _Turn) -> _Turn:
     """Wrap the session method that runs one turn so the turn leaves its line, however it ends."""
 
     @functools.wraps(run)
-    async def wrapper(session: Any, *args: Any, **kwargs: Any) -> None:
+    async def wrapper(
+        session: Any, text: str, websocket: EventSink, *args: Any, **kwargs: Any
+    ) -> None:
         mode = (
             "plan"
             if session.plan_mode
@@ -276,12 +306,15 @@ def recorded_turn(run: _Turn) -> _Turn:
             # A sub-agent's or a background task's report runs as a turn nobody typed.
             notice=bool(kwargs.get("notice", False)),
         )
+        drafts = session._turn_streamer.doc_drafts = DocDrafts(websocket)
         try:
-            await run(session, *args, **kwargs)
+            await run(session, text, websocket, *args, **kwargs)
         except Exception as error:
             recorder.failed(error)
             raise
         finally:
             recorder.finish(stopped=session._stop_requested)
+            session._turn_streamer.doc_drafts = None
+            await drafts.close()
 
     return cast(_Turn, wrapper)

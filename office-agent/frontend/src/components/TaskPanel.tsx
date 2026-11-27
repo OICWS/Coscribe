@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 import {
   acceptWorkspaceNotes,
   getThreadActivity,

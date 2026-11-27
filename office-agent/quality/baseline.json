@@ -229,6 +229,7 @@
   "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948
  },
+ "frontend_feature_imports": {},
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 928,
   "office-agent/frontend/src/App.tsx": 1084,

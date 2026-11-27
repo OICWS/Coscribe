@@ -5,10 +5,14 @@
     python scripts/weekly_metrics.py --week 2026-W42 --write
 
 Lead time and size of merged pull requests, reverts, how long `main` was red, runs that needed a
-second attempt, how the ratchet baseline moved and how many "Not verified" items the log holds.
-It reads GitHub through `gh api` (REST) and the checkout through `git` (a shallow clone has no
-baseline from the week's start, and the ratchet table then says n/a); it changes nothing but the
-page it writes.
+second attempt, how much of the suite the week's pull requests ran (decision 0059) and whether
+the nightly selection audit stayed green, the core and component size budgets, the component
+cards that the most commits have passed since they were last changed, how the ratchet baseline
+moved and how many "Not verified" items the log holds. It reads GitHub through `gh api` (REST)
+and the checkout through `git` (a shallow clone has no baseline from the week's start, and the
+ratchet table then says n/a); it changes nothing but the page it writes.
+`.github/workflows/weekly-numbers.yml` runs it every Monday for the week before and keeps the
+body of the "Weekly numbers" issue current.
 """
 
 from __future__ import annotations
@@ -18,6 +22,9 @@ import json
 import re
 import statistics
 import subprocess
+import sys
+import tomllib
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -27,6 +34,9 @@ LOG = ROOT / "docs" / "log"
 LEDGER_FROM = "2026-10-08"
 CI_WORKFLOW = ".github/workflows/office-agent-ci.yml"
 BASELINE = "office-agent/quality/baseline.json"
+AUDIT_WORKFLOW = ".github/workflows/test-selection-audit.yml"
+BUDGET_WARN = 0.8  # a share of a budget worth naming before it fails
+CARDS_LISTED = 5
 
 
 def week_bounds(week: str) -> tuple[datetime, datetime]:
@@ -96,6 +106,63 @@ def ratchet_trend(
     return lines
 
 
+def selection(
+    changes: Iterable[list[str]], plan: Callable[[list[str]], tuple[str, list[str]]], total: int
+) -> list[str]:
+    """How much of the suite each pull request's change selects, by test files.
+
+    `plan` is `ci_scope.plan`: a `full` scope runs every test file, `docs` a handful."""
+    scopes = {"docs": 0, "selected": 0, "full": 0}
+    shares = []
+    for files in changes:
+        scope, tests = plan(files)
+        scopes[scope] += 1
+        shares.append(1.0 if scope == "full" else len(tests) / total)
+    if not shares:
+        return ["- no merged pull request this week"]
+    return [
+        f"- scope of the {len(shares)} merged pull requests: {scopes['selected']} selected, "
+        f"{scopes['full']} full, {scopes['docs']} docs only",
+        f"- share of the {total} test files they ran: mean {statistics.mean(shares):.0%}, "
+        f"median {statistics.median(shares):.0%}",
+    ]
+
+
+def audit_line(runs: list[dict[str, Any]]) -> str:
+    done = [r for r in runs if r["conclusion"] in ("success", "failure")]
+    failed = sum(1 for r in done if r["conclusion"] == "failure")
+    if not done:
+        return "- nightly selection audit: no run this week"
+    verdict = "a test that fails was not selected" if failed else "no miss"
+    return f"- nightly selection audit: {len(done)} runs, {failed} failed ({verdict})"
+
+
+def budget_lines(budgets: dict[str, int], sizes: dict[str, int], core: frozenset[str]) -> list[str]:
+    sizes = dict(sizes)
+    shell = sizes.pop("frontend", None)  # the frontend's frame, budgeted on its own
+    total = sum(size for name, size in sizes.items() if name in core)
+    largest = max(sizes, key=lambda name: sizes[name])
+    limit = budgets["component_lines"]
+    lines = [
+        f"- core: {total} of {budgets['core_lines']} lines ({total / budgets['core_lines']:.0%})",
+        f"- largest component: {largest}, {sizes[largest]} of {limit} lines",
+    ]
+    if shell is not None and "frontend_shell_lines" in budgets:
+        lines.append(f"- frontend frame: {shell} of {budgets['frontend_shell_lines']} lines")
+    near = sorted((n for n, s in sizes.items() if s >= BUDGET_WARN * limit), key=lambda n: sizes[n])
+    for name in reversed(near):
+        lines.append(f"- near its budget: {name} ({sizes[name]} lines, {sizes[name] / limit:.0%})")
+    return lines
+
+
+def card_lines(behind: dict[str, int], listed: int = CARDS_LISTED) -> list[str]:
+    """`behind`: component -> commits to its code since its card last changed."""
+    ranked = sorted(behind.items(), key=lambda item: (-item[1], item[0]))[:listed]
+    if not ranked or ranked[0][1] == 0:
+        return ["- every card changed with its code's latest commit"]
+    return [f"- {name}: {count} commits since its card changed" for name, count in ranked if count]
+
+
 def render(
     week: str,
     merged: list[dict[str, Any]],
@@ -103,6 +170,7 @@ def render(
     reruns: int,
     trend: list[str],
     notes: dict[str, int],
+    scale: list[str] | None = None,
 ) -> str:
     lead = [hours(parse_time(p["merged_at"]) - parse_time(p["created_at"])) for p in merged]
     size = [p["additions"] + p["deletions"] for p in merged]
@@ -123,7 +191,8 @@ def render(
             f"largest {max(size)}",
         ]
     out += [f"- reverts: {len(reverts)}", "", "## CI", f"- `main` was red for {hours(red)} h"]
-    out += [f"- runs that needed a second attempt: {reruns}", "", "## Ratchet", ""]
+    out += [f"- runs that needed a second attempt: {reruns}", ""]
+    out += [*(scale or []), "## Ratchet", ""]
     out += ["| metric | names at week start | at week end | change |", "|---|---|---|---|"]
     out += trend or ["| (no baseline) | | | |"]
     out += [
@@ -168,6 +237,50 @@ def _baseline_at(moment: datetime) -> dict[str, dict[str, int]] | None:
     return loaded
 
 
+def scale_sections(
+    repo: str, merged: list[dict[str, Any]], audit_runs: list[dict[str, Any]]
+) -> list[str]:
+    """Selection, budgets and cards: the numbers that say whether the tree can keep growing."""
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import card_freshness
+    import ci_scope
+    import ratchet
+
+    graph = ci_scope.Graph.build(ci_scope.ROOT)
+    changes = []
+    for pull in merged:
+        files: list[str] = []
+        for page in range(1, 31):
+            batch = _api(f"repos/{repo}/pulls/{pull['number']}/files?per_page=100&page={page}")
+            files += [f["filename"] for f in batch]
+            if len(batch) < 100:
+                break
+        changes.append(files)
+    budgets = json.loads(ratchet.BUDGETS.read_text(encoding="utf-8"))
+    components = tomllib.loads(ratchet.COMPONENTS.read_text("utf-8")).get("component", [])
+    return [
+        "## Test selection",
+        *selection(changes, lambda files: ci_scope.plan(files, graph), len(graph.tests())),
+        audit_line(audit_runs),
+        "- measured on the graph of the tree at the week's end, not of each pull request",
+        "",
+        "## Size budgets (`quality/budgets.json`)",
+        *budget_lines(budgets, ratchet.component_lines(), ratchet.core_components()),
+        "",
+        "## Component cards behind their code",
+        *card_lines(
+            {
+                c["name"]: card_freshness.behind(c, components, "origin/main")
+                for c in components
+                if c.get("card")
+            }
+        ),
+        "",
+    ]
+
+
 def gather(week: str) -> str:
     repo = _repo()
     start, end = week_bounds(week)
@@ -207,7 +320,9 @@ def gather(week: str) -> str:
     ]
     reruns = sum(1 for r in all_runs if r["run_attempt"] > 1)
     trend = ratchet_trend(_baseline_at(start), _baseline_at(min(end, datetime.now(UTC))) or {})
-    return render(week, merged, red_time(ci_main, start, end), reruns, trend, ledger())
+    audits = [r for r in all_runs if r["path"] == AUDIT_WORKFLOW and r["event"] == "schedule"]
+    scale = scale_sections(repo, merged, audits)
+    return render(week, merged, red_time(ci_main, start, end), reruns, trend, ledger(), scale)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -215,7 +330,11 @@ def main(argv: list[str] | None = None) -> int:
     today = datetime.now(UTC).isocalendar()
     parser.add_argument("--week", default=f"{today.year}-W{today.week:02d}")
     parser.add_argument("--write", action="store_true", help="write docs/metrics/<week>.md")
+    parser.add_argument("--last", action="store_true", help="the ISO week before this one")
     args = parser.parse_args(argv)
+    if args.last:
+        prior = (datetime.now(UTC) - timedelta(days=7)).isocalendar()
+        args.week = f"{prior.year}-W{prior.week:02d}"
     page = gather(args.week)
     if args.write:
         target = ROOT / "docs" / "metrics" / f"{args.week}.md"

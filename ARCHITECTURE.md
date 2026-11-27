@@ -34,7 +34,9 @@ tools, and repeat work on a schedule. It needs only a model API key.
 - **Server.** FastAPI; a WebSocket per conversation carries the turn
   (streamed text, tool calls, approvals, questions, usage).
 - **Frontend.** React + TypeScript (`office-agent/frontend/`), built into
-  `src/coscribe/web/static/`.
+  `src/coscribe/web/static/`. Each folder of `src/components/` is a feature, a component in
+  `components.toml`, and the rest of the app uses it only through its `index.ts`
+  (`scripts/ratchet.py` counts any other import).
 - **Runtime.** `coscribe.runtime_lg`, on LangChain/LangGraph: one
   coordinator agent per conversation with ~100 built-in tools, plus
   middleware for approvals, tool deferral, auto-compaction (with older
@@ -277,11 +279,17 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   A conversation that needs a service it can't reach offers a catalog connector on a card in
   the chat; the card opens that connector's page in Settings, and once it is connected the
   conversation carries on ([decision 0046](docs/decisions/0046-a-conversation-offers-a-connector-the-person-connects.md)).
-- **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
+- **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides, PPTX Pages,
   PowerPoint editing, Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`. A folder there may also be
   a plugin in the Claude and Codex format (`plugin.json`, `skills/`), whose skills load as any
   other ([decision 0058](docs/decisions/0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md)).
+  A plugin also comes whole from a GitHub repository's `marketplace.json` added as a source
+  (`tools/plugin_sources.py`), and goes out as a `.zip`. Its MCP servers are never started:
+  loading its skill names them and points the model to Coscribe's own connectors.
+  Only a built-in plugin can bring a tool of the app (PPTX Pages brings its build tool); switched
+  off, that tool is left out of what the model can search for, or refuses where every tool is
+  bound, so the tool list keeps its shape (`conversation/capability_guard.py`).
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
   every conversation. The model cannot write to it: it can offer a line (`remember`), and only

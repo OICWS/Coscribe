@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ALWAYS_PINNED, TOOLBAR_ITEMS, type ToolbarItem } from "../../lib/toolbarItems";
-import { DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../../lib/titleBar";
+import { DRAWS_TITLE_BAR, TITLE_BAR_ICON, DIALOG_INSET_CLASS } from "../../lib/titleBar";
 import { useClickOutside } from "../../lib/useClickOutside";
 import { CheckIcon, ChevronDownIcon, PencilIcon } from "../icons";
 
@@ -101,7 +101,7 @@ export function ToolbarDialog({
   }, [onClose]);
   const toggle = (id: ToolbarItem) => onChange(TOOLBAR_ITEMS.filter((item) => (item === id ? !pinned.includes(id) : pinned.includes(item))));
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
         role="dialog"
         aria-label="Edit toolbar"

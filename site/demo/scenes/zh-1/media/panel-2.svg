@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial">
+  <g><rect x="0" y="0" width="1280.00" height="720.00" fill="#FFFFFF" /></g><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" />
+
+  <text x="64" y="62" font-size="17" fill="#6B7280">Q3 2026 经营分析 · 趋势</text>
+  <text id="title" x="64" y="118" font-family="SimSun, Cambria" font-size="36" fill="#1E293B">8 月收入失速 13.1%，9 月毛利率 40.79% 撑起毛利额</text>
+  <rect x="64" y="136" width="96" height="3" fill="#2B6CB0" />
+
+  <text x="64" y="176" font-size="17" fill="#5A6B7B">月度销售额（万元）· 柱高即收入，8 月为三个月最低</text>
+
+  <g id="month-chart"><g><g data-native="chart"><line x1="104.83" y1="554.00" x2="673.20" y2="554.00" stroke="#D9D9D9" stroke-width="1" /><text x="97.63" y="560.30" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="end">0</text><line x1="104.83" y1="436.27" x2="673.20" y2="436.27" stroke="#D9D9D9" stroke-width="1" /><text x="97.63" y="442.57" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="end">200</text><line x1="104.83" y1="318.53" x2="673.20" y2="318.53" stroke="#D9D9D9" stroke-width="1" /><text x="97.63" y="324.83" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="end">400</text><line x1="104.83" y1="200.80" x2="673.20" y2="200.80" stroke="#D9D9D9" stroke-width="1" /><text x="97.63" y="207.10" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="end">600</text><text x="199.56" y="579.20" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="middle">7 月</text><text x="389.02" y="579.20" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="middle">8 月</text><text x="578.47" y="579.20" font-family="Microsoft YaHei, Arial" font-size="18.00" fill="#374151" text-anchor="middle">9 月</text><rect x="161.67" y="231.59" width="75.78" height="322.41" fill="#94A3B8" /><rect x="351.13" y="273.74" width="75.78" height="280.26" fill="#B4342C" /><rect x="540.58" y="240.06" width="75.78" height="313.94" fill="#2B6CB0" /><line x1="104.83" y1="554.00" x2="673.20" y2="554.00" stroke="#BFBFBF" stroke-width="1" /></g></g></g>
+
+  <rect x="744" y="190" width="1" height="400" fill="#D6DDE4" />
+
+  <text x="792" y="196" font-size="17" fill="#6B7280">毛利与毛利率</text>
+
+  <g id="margin-7">
+    <text x="792" y="252" font-family="Cambria" font-size="46" fill="#5A6B7B">36.74%</text>
+    <text x="1000" y="240" font-size="20" fill="#1E293B">7 月</text>
+    <text x="1000" y="266" font-size="17" fill="#5A6B7B">毛利 201.2 万元</text>
+  </g>
+  <rect x="792" y="284" width="424" height="1" fill="#E8EDF2" />
+
+  <g id="margin-8">
+    <text x="792" y="342" font-family="Cambria" font-size="46" fill="#B4342C">37.21%</text>
+    <text x="1000" y="330" font-size="20" fill="#1E293B">8 月</text>
+    <text x="1000" y="356" font-size="17" fill="#5A6B7B">毛利 177.2 万元</text>
+    <text x="792" y="374" font-size="17" fill="#B4342C">收入环比 −13.1%</text>
+  </g>
+  <rect x="792" y="392" width="424" height="1" fill="#E8EDF2" />
+
+  <g id="margin-9">
+    <text x="792" y="450" font-family="Cambria" font-size="46" fill="#2E7D5B">40.79%</text>
+    <text x="1000" y="438" font-size="20" fill="#1E293B">9 月</text>
+    <text x="1000" y="464" font-size="17" fill="#5A6B7B">毛利 217.5 万元（三个月最高）</text>
+    <text x="792" y="482" font-size="17" fill="#2E7D5B">收入环比 +12.0%</text>
+  </g>
+
+  <rect x="64" y="620" width="1152" height="1" fill="#D6DDE4" />
+  <text x="64" y="656" font-size="20" fill="#1E293B">8 月是「量」的问题，9 月是「价」的修复：收入仍比 7 月低 14.4 万元，毛利率已高出 4.05 个百分点。</text>
+  <text x="64" y="684" font-size="13" fill="#6B7280">数据来源：Q3销售数据.xlsx 明细页，按月份汇总</text>
+
+  <text id="pagenum" x="1196" y="692" font-family="Cambria" font-size="13" fill="#6B7280">3</text>
+  <desc id="notes">三个月看走势：7 月 547.7 万元，8 月掉到 476.1 万元、环比 −13.1%，9 月回到 533.3 万元、环比 +12.0%。毛利率是一路向上的：36.74%、37.21%、40.79%。请注意 8 月的毛利率其实是略升的，所以 8 月的问题出在量上，不是降价。9 月毛利额 217.5 万元是三个月最高，但收入比 7 月还低 14.4 万元——拐点是毛利拐点，不是收入拐点。</desc>
+</svg>

@@ -8,7 +8,7 @@ content (`guard.py`), the findings checks (`findings.py`) and formula recalculat
 (`calc.py`). Does not own Word, PDF or PowerPoint, or how the viewer draws a workbook.
 
 ## Public interface
-`SpreadsheetToolkit`, `build_spreadsheet_tools`. Import them from `coscribe.tools.office.xlsx`.
+`SpreadsheetToolkit`, `build_spreadsheet_tools`, `displayed_text` for common numeric formats. Import them from `coscribe.tools.office.xlsx`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._file_locks`, `coscribe.tools._output_truncation`,

@@ -45,7 +45,7 @@ const approvalItem = (id: string, status: Of<"approval">["status"], rest: Partia
 const question: QuestionSpec = {
   question: "Which?",
   header: "Pick",
-  options: [{ label: "A", description: "" }],
+  options: [{ label: "A", description: "", recommended: false }],
   multi_select: false,
 };
 

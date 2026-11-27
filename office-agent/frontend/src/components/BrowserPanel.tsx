@@ -3,7 +3,7 @@ import { CloseIcon } from "./icons";
 import { isElectron } from "../lib/electron";
 import { socketUrl } from "../lib/launchToken";
 import { DesktopBrowserPanel } from "./DesktopBrowserPanel";
-import { useDockPanel } from "./dock/dockContext";
+import { useDockPanel } from "./dock";
 
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
 

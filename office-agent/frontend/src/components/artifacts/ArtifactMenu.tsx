@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { deleteArtifact, duplicateArtifact, editedLabel, renameArtifact, type ArtifactSummary } from "../../lib/artifacts";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { CopyIcon, ExternalLinkIcon, FolderIcon, LinkIcon, PencilIcon, TrashIcon } from "../icons";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
+import { SlideMenu, type MenuEntry } from "../slides";
 import { PinIcon } from "./artifactIcons";
 import { RenameDialog } from "./RenameDialog";
 

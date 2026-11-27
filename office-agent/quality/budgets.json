@@ -1,4 +1,5 @@
 {
  "component_lines": 20000,
- "core_lines": 100000
+ "core_lines": 100000,
+ "frontend_shell_lines": 33000
 }

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
@@ -53,7 +54,7 @@ test("a sent PDF and a sent file stay in the conversation as cards, also after a
   await expect(page.getByRole("dialog").getByText("2 pages")).toBeVisible();
 });
 
-test("a PDF shows its first page, opens with all pages, and a file that can't be shown says so", async ({ page }) => {
+test("a PDF opens with all pages and a Word document opens its paginated preview", async ({ page }) => {
   await page.goto(freshThreadPath("attach-view"));
   await waitForConnected(page);
 
@@ -76,14 +77,73 @@ test("a PDF shows its first page, opens with all pages, and a file that can't be
   await page.keyboard.press("Escape");
 
   await page.locator("input[type=file]").setInputFiles([path.join(fixtures, "sample.docx")]);
+  // CI tests the viewer on a rendered two-page PDF without requiring an installed Office engine.
+  await page.route("**/api/attachment/docx?*", (route) => route.fulfill({
+    body: readFileSync(path.join(fixtures, "sample.pdf")),
+    contentType: "application/pdf",
+    headers: { etag: '"sample"' },
+  }));
   const docx = page.getByRole("button", { name: "Open sample.docx" });
   await expect(docx.getByText("DOCX", { exact: true })).toBeVisible();
   await docx.click({ button: "right" });
   await expect(page.getByRole("menuitem")).toHaveCount(0);
   await docx.click();
-  await expect(page.getByText("File previews are not supported for this file type")).toBeVisible();
+  const word = page.getByRole("dialog", { name: "sample.docx" });
+  await expect(word.getByText("Page 1 of 2", { exact: true })).toBeVisible();
+  await word.getByRole("region", { name: "Page 2" }).scrollIntoViewIfNeeded();
+  await expect(word.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+  await word.getByRole("combobox", { name: "Zoom" }).selectOption("125");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("a Word preview follows an atomic save and keeps its page and zoom", async ({ page }) => {
+  const workspace = process.env.COSCRIBE_E2E_WORKSPACE;
+  test.skip(!workspace, "Requires the backend's shared workspace");
+  await page.goto(freshThreadPath("live-word"));
+  await waitForConnected(page);
+  const fixture = path.join(__dirname, "fixtures", "sample.docx");
+  const upload = page.waitForResponse((res) => res.url().endsWith("/api/upload") && res.ok());
+  await page.locator("input[type=file]").setInputFiles(fixture);
+  const saved = path.join(workspace!, (await (await upload).json()).path);
+  const pdf = readFileSync(path.join(__dirname, "fixtures", "sample.pdf"));
+  let firstVersion: string | undefined;
+  let updates = 0;
+  let resume: () => void = () => {};
+  const delayed = new Promise<void>((resolve) => { resume = resolve; });
+  await page.route("**/api/attachment/docx?*", async (route) => {
+    const meta = await route.fetch({ method: "HEAD" });
+    const version = meta.headers().etag;
+    firstVersion ??= version;
+    if (version !== firstVersion) {
+      updates += 1;
+      await delayed;
+    }
+    await route.fulfill({
+      body: pdf, contentType: "application/pdf", headers: { etag: version },
+    });
+  });
+
+  await page.getByRole("button", { name: /^Open sample.*\.docx$/ }).click();
+  const dialog = page.getByRole("dialog");
+  const zoom = dialog.getByRole("combobox", { name: "Zoom" });
+  await zoom.selectOption("125");
+  await dialog.getByRole("region", { name: "Page 2" }).scrollIntoViewIfNeeded();
+  await expect(dialog.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Refresh" })).toHaveCount(0);
+  try {
+    writeFileSync(`${saved}.tmp`, readFileSync(fixture));
+    renameSync(`${saved}.tmp`, saved);
+    await expect.poll(() => updates).toBeGreaterThan(0);
+    await expect(dialog.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+    const loaded = page.waitForResponse((res) => res.url().includes("/api/attachment/docx?") && res.request().method() === "POST");
+    resume();
+    await loaded;
+    await expect(dialog.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+    await expect(zoom).toHaveValue("125");
+  } finally {
+    resume();
+  }
 });
 
 test("an attached and a pasted picture are saved in .coscribe/uploads and the model is told their paths", async ({ page }) => {

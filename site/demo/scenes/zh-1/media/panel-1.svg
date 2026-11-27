@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial">
+  <g><rect x="0" y="0" width="1280.00" height="720.00" fill="#FFFFFF" /></g><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" />
+
+  <text x="64" y="62" font-size="17" fill="#6B7280">Q3 2026 经营分析</text>
+  <text id="title" x="64" y="118" font-family="SimSun, Cambria" font-size="36" fill="#1E293B">缺口 1,252.9 万元，是规模下滑叠着结构失衡</text>
+  <rect x="64" y="136" width="96" height="3" fill="#2B6CB0" />
+
+  <g id="hero">
+    <text x="64" y="300" font-family="Cambria" font-size="132" fill="#B4342C">55.4%</text>
+    <text x="64" y="340" font-size="22" fill="#1E293B">Q3 目标达成率</text>
+    <text x="64" y="372" font-size="17" fill="#5A6B7B">实际 1,557.1 万元 / 目标 2,810 万元</text>
+    <text x="64" y="396" font-size="17" fill="#5A6B7B">毛利 595.9 万元，毛利率 38.27%</text>
+  </g>
+
+  <rect x="470" y="176" width="1" height="452" fill="#D6DDE4" />
+
+  <g id="finding-1">
+    <text x="520" y="212" font-family="Cambria" font-size="34" fill="#2B6CB0">01</text>
+    <text x="576" y="210" font-size="24" fill="#1E293B">规模：五个区域环比 Q2 全部下滑</text>
+    <text x="576" y="242" font-size="20" fill="#5A6B7B">降幅 16.5%—31.4%，华中跌 31.4% 最狠，无一区域守住上季规模。</text>
+  </g>
+  <rect x="520" y="272" width="696" height="1" fill="#E8EDF2" />
+
+  <g id="finding-2">
+    <text x="520" y="312" font-family="Cambria" font-size="34" fill="#2B6CB0">02</text>
+    <text x="576" y="310" font-size="24" fill="#1E293B">区域：规模第一的西南，缺口只排第三</text>
+    <text x="576" y="342" font-size="20" fill="#5A6B7B">缺口最大是华北 287.5 万元，西南 249.1 万元只排第三。</text>
+  </g>
+  <rect x="520" y="372" width="696" height="1" fill="#E8EDF2" />
+
+  <g id="finding-3">
+    <text x="520" y="412" font-family="Cambria" font-size="34" fill="#2B6CB0">03</text>
+    <text x="576" y="410" font-size="24" fill="#1E293B">质量：卖得最多的品类，毛利率反而最高</text>
+    <text x="576" y="442" font-size="20" fill="#5A6B7B">扫地机器人 466.1 万元 / 39.97%；智能音箱 376.7 万元 / 35.91%。</text>
+  </g>
+  <rect x="520" y="472" width="696" height="1" fill="#E8EDF2" />
+
+  <g id="finding-4">
+    <text x="520" y="512" font-family="Cambria" font-size="34" fill="#2E7D5B">04</text>
+    <text x="576" y="510" font-size="24" fill="#1E293B">拐点：9 月毛利率 40.79%，毛利额三个月最高</text>
+    <text x="576" y="542" font-size="20" fill="#5A6B7B">9 月毛利 217.5 万元，高于 7 月 201.2 万元，收入仍未回到 7 月水平。</text>
+  </g>
+
+  <rect x="520" y="576" width="696" height="1" fill="#D6DDE4" />
+  <text x="520" y="610" font-size="20" fill="#1E293B">结论：季度末是「量未回、价先稳」，四季度优先补规模，不靠让价换量。</text>
+
+  <text x="64" y="692" font-size="13" fill="#6B7280">数据来源：Q3销售数据.xlsx；环比基数为目标页 Q2 实际</text>
+
+  <text id="pagenum" x="1196" y="692" font-family="Cambria" font-size="13" fill="#6B7280">2</text>
+  <desc id="notes">四条判断：第一，规模上五区全线下滑，华中 -31.4% 最狠；第二，区域上西南规模最大但缺口 249.1 万元也最大，华东 266.6 万元、48.5% 垫底；第三，品类上扫地机器人是既上量又赚钱的，智能音箱上了量但毛利率只有 35.91%；第四，9 月毛利率 40.79%、毛利额 217.5 万元，是本季拐点信号，但收入还没回到 7 月。所以四季度第一优先是补规模，且不能用让价换量。</desc>
+</svg>

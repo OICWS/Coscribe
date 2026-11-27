@@ -39,6 +39,16 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
   replaces the log wholesale (`reducer.ts`); keep new sends behind that.
 - Hot files: `App.tsx` (about 1,100 lines, ratcheted in `quality/baseline.json`) and
   `components/dock/*` change often (Slides work); look at the open pull requests first.
+- A folder of `src/components/` is a feature (`frontend.<folder>` in `components.toml`, with its
+  own `CODEOWNERS` line). Another feature, the loose components, `lib/` or `App.tsx` enter it
+  through its `index.ts`; an import into any other file of it is counted per pair by
+  `frontend_feature_imports` in `scripts/ratchet.py`, and the count is 0, so any such import
+  fails `check.sh`. To use something a feature does not export yet, add it to that feature's
+  `index.ts` and import from there. The indexes import one another, so a file must not read
+  another feature's export while its module loads (a constant built at the top of a file);
+  `src/components/featureIndexes.test.ts` loads each index first and fails on such a cycle.
+  Import `chatlog` as `./chatlog/index`: on Windows `./chatlog` finds `ChatLog.tsx` first (the
+  same test fails otherwise).
 - UI text is English only. Unused files and exports fail `knip` (`knip.json`).
 - A build must pass `tsc -b`, not only `tsc --noEmit`: use `npm run build`.
 
@@ -64,3 +74,5 @@ restarts.
 
 ## Reviewed
 2026-10-17 (first card).
+2026-11-26: read against the code with the unified file previews (#1083); the paths, the wire
+contract, the launch-token rule and the feature-index rule still hold.

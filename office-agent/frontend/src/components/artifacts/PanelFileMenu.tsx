@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { lookupArtifact, type ArtifactSummary } from "../../lib/artifacts";
 import { openThreadFile } from "../../lib/rest";
 import { ExternalLinkIcon, FolderIcon } from "../icons";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
+import { SlideMenu, type MenuEntry } from "../slides";
 import { ArtifactMenu } from "./ArtifactMenu";
 import { usePins } from "./usePins";
 

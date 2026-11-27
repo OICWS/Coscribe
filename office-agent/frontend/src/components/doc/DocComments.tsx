@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getDocComments, type DocComment } from "../../lib/docComments";
 import { CloseIcon, FilterIcon, MoreIcon } from "../icons";
-import { PanelCommentButton } from "../artifacts/PanelCommentButton";
-import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
+import { PanelCommentButton } from "../artifacts";
+import { SlideMenu, type MenuEntry } from "../slides";
 
 /** While a sent comment waits for coscribe's answer, the panel looks for it this often. */
 const ANSWER_POLL_MS = 5000;

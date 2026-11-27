@@ -111,9 +111,9 @@ export function PluginDetailView({
         <div className="flex flex-col gap-4">
           <p className="text-[15px] leading-relaxed">{plugin.description}</p>
           <p className="text-sm text-[var(--muted)]">
-            From github.com/{plugin.repo}, under the {plugin.license === "Apache-2.0" ? "Apache License 2.0" : plugin.license}.
-            Adding it downloads {plugin.skills.length} skills into your skills folder; you can look through every file first
-            under Contents.
+            {plugin.source
+              ? `From github.com/${plugin.repo}, a source you added that no one has reviewed. Adding it downloads the whole plugin, as the source had it when you added it, into your skills folder; look through every file first under Contents.`
+              : `From github.com/${plugin.repo}, under the ${plugin.license === "Apache-2.0" ? "Apache License 2.0" : plugin.license}. Adding it downloads ${plugin.skills.length} skills into your skills folder; you can look through every file first under Contents.`}
           </p>
         </div>
       )}

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial">
+  <g><rect x="0" y="0" width="1280.00" height="720.00" fill="#FFFFFF" /></g><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" />
+
+  <text id="title" x="64" y="96" font-family="SimSun, Cambria" font-size="72" fill="#1E293B">Q3 经营分析</text>
+  <text x="64" y="146" font-size="26" fill="#5A6B7B">2026 年 7—9 月 · 5 个区域 · 4 个品类 · 60 笔订单</text>
+
+  <rect x="64" y="196" width="96" height="3" fill="#2B6CB0" />
+
+  <text x="64" y="272" font-size="34" fill="#1E293B">五个区域环比 Q2 全线下滑，目标只完成一半</text>
+  <text x="64" y="318" font-size="22" fill="#5A6B7B">结果、偏差、成因与承诺：本季看得清的三件事，和四季度要补的两个口子</text>
+
+  <rect x="64" y="352" width="1152" height="1" fill="#D6DDE4" />
+
+  <g id="cover-stats">
+    <text x="64" y="462" font-family="Cambria" font-size="64" fill="#1E293B">1,557.1</text>
+    <text x="64" y="496" font-size="17" fill="#5A6B7B">Q3 销售额（万元）</text>
+
+    <rect x="428" y="404" width="1" height="112" fill="#D6DDE4" />
+    <text x="472" y="462" font-family="Cambria" font-size="64" fill="#1E293B">595.9</text>
+    <text x="472" y="496" font-size="17" fill="#5A6B7B">毛利（万元）· 毛利率 38.27%</text>
+
+    <rect x="836" y="404" width="1" height="112" fill="#D6DDE4" />
+    <text id="cover-hit" x="880" y="462" font-family="Cambria" font-size="64" fill="#B4342C">55.4%</text>
+    <text x="880" y="496" font-size="17" fill="#5A6B7B">目标达成率 · 缺口 1,252.9 万元</text>
+  </g>
+
+  <rect x="64" y="580" width="1152" height="1" fill="#D6DDE4" />
+  <text x="64" y="626" font-size="17" fill="#5A6B7B">五区达成率区间 48.5%—62.6%，环比 Q2 降幅 16.5%—31.4%。</text>
+  <text x="64" y="654" font-size="17" fill="#5A6B7B">价稳的信号：9 月毛利率升至 40.79%，毛利额 217.5 万元为三个月最高。</text>
+
+  <text x="64" y="692" font-size="13" fill="#6B7280">数据来源：Q3销售数据.xlsx（明细 60 行 / 目标 5 行）</text>
+
+  <text id="pagenum" x="1196" y="692" font-family="Cambria" font-size="13" fill="#6B7280">1</text>
+  <desc id="notes">这一季先给结论：收入 1,557.1 万元，目标 2,810 万元，只完成 55.4%，缺口 1,252.9 万元。五个区域环比 Q2 全部下滑，降幅从 16.5% 到 31.4%。唯一的好消息是 9 月毛利率回到 40.79%，毛利额 217.5 万元是三个月里最高的。接下来按结果、偏差、成因、承诺四步走。</desc>
+</svg>

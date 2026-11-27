@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -31,8 +30,8 @@ class _FakeOffice:
         self.pdf_text = pdf_text
 
     def __call__(
-        self, command: list[str], timeout: float, env: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[bytes]:
+        self, command: list[str], timeout: float, marker: str, env: dict[str, str] | None = None
+    ) -> None:
         assert env is not None
         target = Path(env["COSCRIBE_TARGET"])
         if target.suffix == ".pdf":
@@ -43,7 +42,7 @@ class _FakeOffice:
             page.save()
         else:
             shutil.copy(self.samples / f"sample{target.suffix}", target)
-        return subprocess.CompletedProcess(command, 0, b"", b"")
+        return None
 
 
 @pytest.fixture
@@ -52,7 +51,7 @@ def office(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> _FakeOffice:
     samples.mkdir()
     check_office.write_modern_samples(samples)
     fake = _FakeOffice(samples, check_office.MARKER)
-    monkeypatch.setattr(_office_com, "run_killable", fake)
+    monkeypatch.setattr(_office_com, "run_until_marker", fake)
     monkeypatch.setattr(_office_com, "shutil", type("S", (), {"which": staticmethod(str)}))
     monkeypatch.setattr(_office_com, "_registered", lambda prog_id: not prog_id.startswith("K"))
     monkeypatch.setattr(check_office, "powershell", lambda code, env, check=True: "1")

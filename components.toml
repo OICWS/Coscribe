@@ -16,6 +16,10 @@
 #       of debt: the list may only shrink (an entry that no longer matches fails
 #       `lint-imports`), and a new import goes through the component's `__init__.py` instead.
 #
+# A frontend feature (`frontend.<name>`, a folder of `frontend/src/components/`) is entered
+# through its `index.ts`; imports into its other files from outside are counted by
+# `frontend_feature_imports` in `scripts/ratchet.py` and may only shrink.
+#
 # Every package here gets an import-linter "protected" contract, generated into the last block
 # of `office-agent/pyproject.toml`.
 
@@ -89,9 +93,11 @@ protected_modules = [
     "coscribe.tools.design_systems",
     "coscribe.tools.skills",
     "coscribe.tools.skill_catalog",
+    "coscribe.tools.plugin_sources",
     "coscribe.tools.pptx_templates",
     "coscribe.tools.presentations",
     "coscribe.tools._chart_data",
+    "coscribe.tools._doc_marker",
     "coscribe.tools._docx_chart",
     "coscribe.tools._file_locks",
     "coscribe.tools._files_written",
@@ -239,6 +245,72 @@ path = "office-agent/frontend"
 layer = "ui"
 owner = ["@OICWS"]
 card = "office-agent/frontend/AGENTS.md"
+
+[[component]]
+name = "frontend.artifacts"
+path = "office-agent/frontend/src/components/artifacts"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.chatlog"
+path = "office-agent/frontend/src/components/chatlog"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.design"
+path = "office-agent/frontend/src/components/design"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.doc"
+path = "office-agent/frontend/src/components/doc"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.dock"
+path = "office-agent/frontend/src/components/dock"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.environment"
+path = "office-agent/frontend/src/components/environment"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.files"
+path = "office-agent/frontend/src/components/files"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.sessions"
+path = "office-agent/frontend/src/components/sessions"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.settings"
+path = "office-agent/frontend/src/components/settings"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.slides"
+path = "office-agent/frontend/src/components/slides"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend.workflow"
+path = "office-agent/frontend/src/components/workflow"
+layer = "ui"
+owner = ["@OICWS"]
 
 [[component]]
 name = "desktop"

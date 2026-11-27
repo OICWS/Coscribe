@@ -615,6 +615,10 @@ where to read more.
   person's own template (the PPTX Slides skill; the PPTX Editing skill for changing slides,
   shapes, pictures, tables and theme colors in place). They are shown, not owned: the Word panel is frozen
   and an Excel file is not an artifact (decisions 0025, 0027).
+- **Chinese, Japanese and Korean text.** A Word file coscribe writes is marked in its language
+  (`write_docx` takes it, or guesses it from the text), and Word and PowerPoint files take one
+  East Asian face for body, headings, tables and punctuation, named as Word expects it
+  (`tools/office/docx/_style.py`, `apply_cjk_font_fix`).
 - **Previews and conversion** use the Microsoft Office or WPS on the machine through COM; a PDF
   and a deck built from SVG pages need no office program, and LibreOffice is an optional engine,
   found or installed on request (decisions 0012, 0026). Without one, a preview or conversion is
@@ -833,7 +837,11 @@ skills (decision 0058). Settings → Plugins lists them in three groups:
 
 - **Built into Coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
   Spreadsheets*, *Word Documents* and *Skill Creator*. They can be switched off but not
-  removed.
+  removed. *PPTX Pages* is a plugin in the Claude form that also brings one of Coscribe's own
+  tools, `build_pptx_from_pages` (its manifest's `coscribe.tools`); only a plugin built into
+  Coscribe can bring a tool. Switched off, its skill is not offered and its tool is neither
+  found by the model nor run: the model is told the plugin is off and does the work another
+  way. The tools bound to the model keep their shape (decision 0001).
 - **From Anthropic** (the **Discover** tab): Apache-2.0 skills from
   [anthropics/skills](https://github.com/anthropics/skills) that work with
   Coscribe's own tools -- algorithmic-art, brand-guidelines,
@@ -845,6 +853,14 @@ skills (decision 0058). Settings → Plugins lists them in three groups:
   docx/pdf/pptx/xlsx skills aren't offered: their license forbids
   redistribution, and Coscribe's built-in skills cover those formats.
   A removed skill shows up in Discover again.
+- **From your sources**: Discover's **Add a source** takes a GitHub repository with a
+  `marketplace.json` in the Claude form (in `.claude-plugin/`) or the Codex form (in
+  `.agents/plugins/`), such as a company's own or `openai/plugins`. Coscribe
+  reads it through GitHub's API at its branch's current commit and lists the plugins inside
+  the repository (an entry pointing to another repository is counted, not shown); **Add**
+  downloads the whole plugin at that commit and checks every file against the git hash the
+  listing recorded. No one has reviewed such a source, and the page says so. The sources live
+  in `<COSCRIBE_STATE_DIR>/plugin_sources.json`; adding one again reads its newest commit.
 - **Created by you**: folders in `COSCRIBE_SKILLS_DIR` (default
   `./skills`), whether dropped in by hand, uploaded (Add → Upload a
   skill, `.zip`/`.skill`/`.plugin`/`.md`) or written with Add → Create with
@@ -856,12 +872,16 @@ Clicking a plugin opens its page: its author, version and description, its
 skills as chips, and the parts Coscribe reads but does not use (commands,
 agents, hooks, MCP servers, apps, LSP servers). No connector is listed on a
 plugin: when a skill needs an outside service, the model offers one of
-Coscribe's own connectors in the conversation. On/off and Remove act on the
-whole plugin. Clicking a skill opens it: **Overview** (description, the
+Coscribe's own connectors in the conversation. A plugin's MCP servers are never added or
+started; loading one of its skills tells the model their names and hosts and points it to
+`find_connector` and `offer_connector`. On/off, Remove and Export act on
+the whole plugin. Clicking a skill opens it: **Overview** (description, the
 Coscribe tools it mentions) and **Contents** (its file tree; Markdown
 renders with a preview/source toggle, other text files show with line
 numbers); a plugin's skill goes back to its plugin and is removed only with
-it. The ⋮ menu turns a skill off or removes it.
+it. The ⋮ menu turns a skill off, exports it or removes it. **Export as .zip** gives the
+plugin's or skill's folder as it is (links and Coscribe's own source note left out), which
+Add → Upload takes back. PPTX Pages exports its skill only: its build tool is part of Coscribe.
 
 **On/off is global**: a switched-off skill isn't offered in any
 conversation, and the change applies from the next message, including in
@@ -1106,6 +1126,13 @@ blocking the others or crashing the process. Adding, removing, updating or
 changing permissions takes effect right away, open conversations included;
 the `coscribe` CLI reads MCP config once per invocation and doesn't apply
 the permissions.
+
+A file a connector hands back as an HTTPS link (an export, a download) never reaches the model
+as that link: the result carries a reference valid for 15 minutes instead, and
+`save_connector_file` streams the original bytes into the workspace's `downloads/` folder
+(at most 100 MB, `conversation/connector_files.py`). Each redirect is checked against the
+workspace's network rules, an existing file is never overwritten (the new one takes another name), and a failed transfer
+leaves no partial file. The saved file shows in Outputs and above the message box.
 
 Catalog entries pin an exact package version rather than `@latest` --
 an unpinned tag makes `npx` hit the npm registry on every startup just

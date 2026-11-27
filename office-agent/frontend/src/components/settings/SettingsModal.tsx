@@ -26,7 +26,7 @@ import {
 } from "./fields";
 import { DesignSystemsTab } from "./DesignSystemsTab";
 import { GeneralTab } from "./GeneralTab";
-import { DRAWS_TITLE_BAR, openBackdrops } from "../../lib/titleBar";
+import { DIALOG_INSET_CLASS, openBackdrops } from "../../lib/titleBar";
 import { ProvidersTab } from "./ProvidersTab";
 import { SecretsTab } from "./SecretsTab";
 import { SettingsSearch } from "./SettingsSearch";
@@ -208,11 +208,9 @@ export function SettingsModal({ open, initialCategory, start, onDescribeDesignSy
   // remote-page view included) can end up compositing above a dialog
   // that isn't a descendant of it in the first place.
   return createPortal(
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DRAWS_TITLE_BAR ? "pt-10" : ""}`} onClick={(e) => e.target === e.currentTarget && close()}>
-      {/* In the desktop app the OS draws its window buttons over the top
-       * 40px of the page, so the dialog stays below them. */}
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={(e) => e.target === e.currentTarget && close()}>
       <div
-        className={`relative flex ${DRAWS_TITLE_BAR ? "h-[min(840px,100vh-4.5rem)]" : "h-[min(840px,100vh-2rem)]"} w-[min(1100px,100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]`}
+        className="relative flex h-[min(840px,100%)] w-[min(1100px,100%)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]"
       >
         <button
           type="button"

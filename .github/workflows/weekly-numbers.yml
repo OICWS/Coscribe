@@ -1,0 +1,88 @@
+name: Weekly numbers
+
+# Whether the tree can keep growing (decision 0009, #1051): every Monday the numbers of the week
+# before go into the body of one issue, "Weekly numbers", which this run creates once and then
+# only edits, so it adds no comment and no notification beyond the first. The page is
+# `scripts/weekly_metrics.py`'s; `docs/metrics/` keeps the pages a person chose to commit. A pull
+# request that changes this job or the script only prints the page. Not a required check.
+"on":
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "ISO week such as 2026-W47 (empty: the week before this one)"
+        required: false
+  pull_request:
+    paths:
+      - ".github/workflows/weekly-numbers.yml"
+      - "office-agent/scripts/weekly_metrics.py"
+
+concurrency:
+  group: weekly-numbers-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  numbers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: read
+    defaults:
+      run:
+        working-directory: office-agent
+    steps:
+      # The whole history: the ratchet's week-start baseline and the cards' last change.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+
+      # The ratchet's measures import grimp and vulture.
+      - name: Install the dependencies
+        run: python scripts/install_locked.py --extra dev --no-project
+
+      - name: The page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEEK: ${{ inputs.week }}
+        run: |
+          if [ -n "$WEEK" ]; then
+            python scripts/weekly_metrics.py --week "$WEEK" > numbers.md
+          else
+            python scripts/weekly_metrics.py --last > numbers.md
+          fi
+          cat numbers.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Only the weekly run and a manual run touch the issue; a pull request run must not.
+      - name: Issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Weekly numbers"
+          number="$(gh issue list --state open --search "\"$title\" in:title" --json number,title --jq "map(select(.title == \"$title\"))[0].number // empty")"
+          { cat numbers.md; echo; echo "Run: $RUN_URL"; } > body.md
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi

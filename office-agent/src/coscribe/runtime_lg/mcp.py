@@ -75,17 +75,18 @@ import logging
 import os
 import shutil
 from collections.abc import Awaitable, Callable, Mapping
+from functools import wraps
 from pathlib import Path
 from typing import Any, cast
 
 import httpx
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, ToolException
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import Connection
 from langchain_mcp_adapters.tools import load_mcp_tools
 
 from ..runtime import tool_metadata
-from ..tools import load_mcp_server_configs
+from ..tools import is_read_only, load_mcp_server_configs
 
 logger = logging.getLogger(__name__)
 
@@ -389,9 +390,7 @@ class McpServerConnection:
                 {self.name: _to_lg_connection(self._config, auth)}, tool_name_prefix=True
             )
             async with client.session(self.name) as session:
-                tools = await load_mcp_tools(
-                    session, server_name=self.name, tool_name_prefix=True
-                )
+                tools = await load_mcp_tools(session, server_name=self.name, tool_name_prefix=True)
                 for tool in tools:
                     # See _strip_boolean_enums'/_collapse_non_nullable_
                     # anyof's/_default_missing_array_items' own docstrings
@@ -430,25 +429,41 @@ class McpServerConnection:
         if original is None:
             return
 
+        @wraps(original)
         async def guarded(*args: Any, **kwargs: Any) -> Any:
             try:
                 result = await asyncio.wait_for(original(*args, **kwargs), self._call_timeout)
                 content = result[0] if isinstance(result, tuple) else result
-                if content in ("", [], None):
+                if content in ("", [], None) and (not isinstance(result, tuple) or not result[1]):
                     # A blank answer reads as "nothing happened"; say it.
                     note = f"The {self.name} connector returned no content."
                     return (note, result[1] if isinstance(result, tuple) else None)
                 return result
+            except ToolException as exc:
+                # A server that returned an application error is still connected.
+                handler = tool.handle_tool_error
+                return (
+                    handler(exc) if callable(handler) else "The connector refused the call.",
+                    None,
+                )
             except TimeoutError:
                 reason = f"didn't answer within {self._call_timeout:.0f} seconds"
-            except Exception as exc:  # noqa: BLE001 -- told to the model, which can retry
-                reason = f"failed ({_innermost(exc)})"
-            logger.warning("MCP server %r %s; reconnecting it", self.name, reason)
+            except Exception as exc:  # noqa: BLE001 -- surface a safe transport failure
+                reason = "lost the connection or failed to return a usable response"
+                logger.debug("MCP tool call failed: %s", type(_innermost(exc)).__name__)
+            logger.warning("MCP server %r %s", self.name, reason)
+            recovery = ""
             if self._on_stale is not None:
                 self._on_stale(self.name)
+                recovery = " It is being reconnected."
+            if is_read_only(tool):
+                guidance = " You can try the same call again once the connector is available."
+            else:
+                guidance = (
+                    " The action may already have happened. Check its outcome before repeating it."
+                )
             return (
-                f"The {self.name} connector {reason}. It is being reconnected; "
-                "try the same call again in a moment.",
+                f"The {self.name} connector {reason}.{recovery}{guidance}",
                 None,
             )
 
@@ -538,9 +553,7 @@ async def connect_mcp_tools_lg(
     just no longer blocks them *serially* either.
     """
     if not config_path.is_file():
-        logger.warning(
-            "MCP config file not found at %s -- starting with no MCP tools", config_path
-        )
+        logger.warning("MCP config file not found at %s -- starting with no MCP tools", config_path)
         return [], {}
     configs = load_mcp_server_configs(config_path, state_dir)
     results = await asyncio.gather(

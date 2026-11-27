@@ -3,6 +3,7 @@ import { formatElapsed } from "../../lib/format";
 import { currentActivity } from "../../lib/simpleView";
 import { blockedWriteOf, type ToolRunGroup, type Turn } from "../../lib/transcriptGrouping";
 import { BlockedFolderCard } from "../BlockedFolderCard";
+import { ActivityRobot } from "./ActivityRobot";
 import { ConnectorTools } from "./contexts";
 
 // Kept outside the component: the line unmounts while a card waits for the person, and its time
@@ -22,6 +23,7 @@ function startOf(turn: Turn): number {
 /** The simple view's one line under a running turn: what it is doing and for how long. */
 export function SimpleStatus({ turn }: { turn: Turn }) {
   const connectorTools = useContext(ConnectorTools);
+  const activity = currentActivity(turn.items, connectorTools);
   const start = startOf(turn);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -30,7 +32,8 @@ export function SimpleStatus({ turn }: { turn: Turn }) {
   }, []);
   return (
     <div role="status" data-testid="simple-status" className="flex items-baseline gap-1.5 text-sm">
-      <span className="shimmer-text">{currentActivity(turn.items, connectorTools)}</span>
+      <ActivityRobot key={turn.id} activity={activity} />
+      <span className="shimmer-text">{activity}</span>
       <span className="tabular-nums text-[var(--muted)]">{formatElapsed(now - start)}</span>
     </div>
   );

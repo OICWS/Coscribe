@@ -1,25 +1,22 @@
-"""ask_user_question -- lets the Coordinator ask a clarifying question with
-clickable choices instead of only asking in prose, for exactly the same
-reason Claude Code's own AskUserQuestion tool exists: a fixed option set
-steers the user toward an answer that's actually actionable, and a click is
-faster than typing a full sentence.
+"""The interaction tools: what the Coordinator asks or offers the person in the conversation.
 
-Unlike every other tool in this package, this one never actually runs its
-own Python body. It's routed through LangGraph's HumanInTheLoopMiddleware
-with `allowed_decisions=["respond"]` (see conversation/session.py's
-_decide_action_request and runtime_lg/agent.py's `question_tool_names`) --
-the interrupt always fires, and the human's answer (typed via
-web/app.py's `question_response` message, or a stop/disconnect's own
-placeholder) is substituted directly as this call's result, the tool
-function itself never executing. The body below is a defensive
-RuntimeError, not a real implementation: reaching it means something
-failed to wire this tool into `question_tool_names` for whichever graph
-called it, and that should fail loudly, not hang forever waiting on a
-Future nobody will ever resolve.
+ask_user_question shows clickable choices for the same reason Claude Code's own
+AskUserQuestion exists: a fixed option set steers toward an answer that's actionable, and a
+click is faster than a sentence. It doesn't wait: the card stays in the conversation, the model
+goes on with what doesn't depend on the answer or ends its turn, and a person who is reading or
+busy isn't held up; they answer whenever, by a click or in their own words (decision 0060). A
+click comes back as their next message; a reply in their own words gets a note naming the open
+card (conversation/turn_text.py), and answer_question_card records how it answered.
 
-Not given to sub-agents (runtime_lg/subagents.py's _NOT_FOR_SUBAGENTS):
-a question belongs to the person talking to the parent, not to a
-delegated run.
+The rest (exit_plan_mode, remember, request_folder_access, install_package) never run their own
+body: they're routed through LangGraph's HumanInTheLoopMiddleware with
+`allowed_decisions=["respond"]` (conversation/approvals.py's _decide_action_request and
+runtime_lg/agent.py's `question_tool_names`), and the person's answer is substituted as the
+call's result. Their bodies raise, so a graph that failed to register one fails loudly instead
+of hanging.
+
+Not given to sub-agents (runtime_lg/subagents.py): a question belongs to the person talking to
+the parent, not to a delegated run.
 """
 
 import unicodedata
@@ -34,7 +31,15 @@ from typing_extensions import TypedDict
 from ...runtime import tool_metadata
 
 QUESTION_TOOL_NAMES: frozenset[str] = frozenset(
-    {"ask_user_question", "exit_plan_mode", "install_package", "remember", "request_folder_access"}
+    {"exit_plan_mode", "install_package", "remember", "request_folder_access"}
+)
+
+QUESTIONS_SHOWN = (
+    "The questions are on a card in the conversation; the person answers when they choose, by "
+    "a click (it arrives as their next message) or in their own words. Don't guess the answer. "
+    "If the rest of the work depends on it, end your turn now without repeating the questions. "
+    "If some of it doesn't, go on with that part only, and say in one line what waits on the "
+    "answer."
 )
 
 # exit_plan_mode's answers, as the frontend sends them.
@@ -48,6 +53,9 @@ class QuestionOption(TypedDict):
     label: Annotated[str, Field(description="a few words -- what the user clicks")]
     description: NotRequired[
         Annotated[str, Field(description="one short line under the label: what picking it means")]
+    ]
+    recommended: NotRequired[
+        Annotated[bool, Field(description="true on the one option you'd pick; at most one")]
     ]
 
 
@@ -79,28 +87,48 @@ def ask_user_question(questions: list[UserQuestion]) -> str:
     fully specifies what to do -- this is for decisions only the user can
     make, not a substitute for actually reading what they already said.
 
-    Ask everything you need at once (1-4 questions): the user steps
-    through them one by one and answers them together. Each option has a
-    short label and, when the label alone doesn't say enough, a one-line
-    description. The user can always type their own answer instead
-    ("Something else") or skip a question, so the options narrow the
+    Do the work that doesn't depend on the answer first, then ask
+    everything you need at once (1-4 questions). Each option has a short
+    label and, when the label alone doesn't say enough, a one-line
+    description; mark the one you'd pick as recommended. The user can
+    always answer in their own words instead, so the options narrow the
     likely answers without having to be exhaustive.
 
-    The answer comes back as the chosen label(s) -- several joined by
-    ", " for a multi-select question -- one line per question when you
-    asked more than one, "(skipped)" for a question the user skipped.
-
-    This call always pauses for a real person to answer; there's no
-    approval step and no auto-answer.
+    The questions show as a card in the conversation and this call
+    returns at once; the user answers when they choose, as a later
+    message. Until then do only work that doesn't depend on the answer,
+    or end your turn.
 
     Args:
         questions: the questions, in the order to ask them
     """
-    raise RuntimeError(
-        "ask_user_question must be resolved via HumanInTheLoopMiddleware's "
-        "'respond' decision -- reaching this body means the graph that "
-        "called it never registered it in question_tool_names."
-    )
+    return QUESTIONS_SHOWN
+
+
+def answer_question_card(answers: list[str]) -> str:
+    """Record that the user's own words answered your open question card,
+    so the card closes and shows their answers. Call it first, before
+    other work, when their message carries the note that a card is open
+    and, with what they said before, it settles every question on it. A
+    question they leave to you ("anything", "you decide") is settled:
+    record the choice you make. When some questions are still open,
+    don't call it yet: ask about those in a sentence of your reply, not
+    with a new card, and call it with every answer once their later
+    words settle the rest. When their message is about something else,
+    don't call it either.
+
+    Args:
+        answers: one per question on the card, in order: the option's
+            label when their words pick one or they leave it to you and
+            you pick one, otherwise their answer (or your choice) in a
+            few words in their language.
+    """
+    if not answers or any(not answer.strip() for answer in answers):
+        raise ValueError(
+            "Every question needs an answer: the card closes only once all are answered. "
+            "Ask about the rest in your reply instead."
+        )
+    return "The card is closed and shows their answers."
 
 
 def normalize_questions(args: dict[str, Any]) -> list[dict[str, Any]]:
@@ -128,10 +156,17 @@ def normalize_questions(args: dict[str, Any]) -> list[dict[str, Any]]:
                     str(option.get("label", "")),
                     str(option.get("description", "")),
                 )
+                recommended = option.get("recommended") is True
             else:
-                label, description = str(option), ""
+                label, description, recommended = str(option), "", False
             if label.strip():
-                options.append({"label": label.strip(), "description": description.strip()})
+                options.append(
+                    {
+                        "label": label.strip(),
+                        "description": description.strip(),
+                        "recommended": recommended,
+                    }
+                )
         questions.append(
             {
                 "question": str(item.get("question", "")),
@@ -301,11 +336,10 @@ def _is_one_emoji(text: str) -> bool:
 def build_interaction_tools() -> list[Callable[..., Any]]:
     """Return the interaction tool callables. No state to bind -- unlike
     every other build_*_tools factory in this package, this one takes no
-    arguments, since ask_user_question needs no workspace/thread/state_dir
-    access (its whole behavior lives in the interrupt machinery, not this
-    function body)."""
+    arguments: none of them needs workspace, thread or state_dir access."""
     return [
         tool_metadata(ask_user_question, risk_category="READ", category="interaction"),
+        tool_metadata(answer_question_card, risk_category="READ", category="interaction"),
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
         tool_metadata(remember, risk_category="READ", category="interaction"),
         tool_metadata(request_folder_access, risk_category="READ", category="interaction"),

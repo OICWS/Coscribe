@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { browseDirs } from "../../lib/rest";
 import type { BrowseDirsEntry } from "../../types/settings";
 import { isDesktop, pickFolderNative } from "../../lib/desktop";
+import { DIALOG_INSET_CLASS } from "../../lib/titleBar";
 
 interface DirBrowserModalProps {
   onSelect: (path: string) => void;
@@ -77,8 +78,8 @@ export function DirBrowserModal({ onSelect, onClose }: DirBrowserModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="flex h-[min(480px,90vh)] w-[min(480px,90vw)] flex-col rounded-xl bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]">
+    <div className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/40 ${DIALOG_INSET_CLASS}`} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="flex h-[min(480px,100%)] w-[min(480px,90vw)] flex-col rounded-xl bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium">Browse directories</span>
           <button type="button" className="text-[var(--muted)]" onClick={onClose}>

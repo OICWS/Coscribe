@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial">
+  <g><rect x="0" y="0" width="1280.00" height="720.00" fill="#FFFFFF" /></g><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" />
+
+  <text x="64" y="62" font-size="17" fill="#6B7280">Q3 2026 经营分析 · 产品走势与渗透</text>
+  <text id="title" x="64" y="118" font-family="SimSun, Cambria" font-size="36" fill="#1E293B">门锁 8 月断崖 −36.5%，安防摄像头的量在逐月爬坡</text>
+  <rect x="64" y="136" width="96" height="3" fill="#2B6CB0" />
+
+  <text x="64" y="178" font-size="17" fill="#5A6B7B">四品类月度销售额（万元）</text>
+
+  <g id="trend-chart"><g><g data-native="chart"><rect x="206.00" y="555.20" width="11.20" height="11.20" fill="#2B6CB0" /><text x="222.00" y="566.40" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="start">扫地机器人</text><rect x="318.00" y="555.20" width="11.20" height="11.20" fill="#B4342C" /><text x="334.00" y="566.40" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="start">智能门锁</text><rect x="414.00" y="555.20" width="11.20" height="11.20" fill="#94A3B8" /><text x="430.00" y="566.40" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="start">智能音箱</text><rect x="510.00" y="555.20" width="11.20" height="11.20" fill="#2E7D5B" /><text x="526.00" y="566.40" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="start">安防摄像头</text><line x1="100.30" y1="521.60" x2="754.40" y2="521.60" stroke="#D9D9D9" stroke-width="1" /><text x="93.90" y="527.20" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="end">0</text><line x1="100.30" y1="441.60" x2="754.40" y2="441.60" stroke="#D9D9D9" stroke-width="1" /><text x="93.90" y="447.20" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="end">50</text><line x1="100.30" y1="361.60" x2="754.40" y2="361.60" stroke="#D9D9D9" stroke-width="1" /><text x="93.90" y="367.20" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="end">100</text><line x1="100.30" y1="281.60" x2="754.40" y2="281.60" stroke="#D9D9D9" stroke-width="1" /><text x="93.90" y="287.20" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="end">150</text><line x1="100.30" y1="201.60" x2="754.40" y2="201.60" stroke="#D9D9D9" stroke-width="1" /><text x="93.90" y="207.20" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="end">200</text><text x="209.31" y="544.00" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="middle">7 月</text><text x="427.35" y="544.00" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="middle">8 月</text><text x="645.38" y="544.00" font-family="Microsoft YaHei, Arial" font-size="16.00" fill="#374151" text-anchor="middle">9 月</text><polyline points="209.31,232.48 427.35,304.80 645.38,281.76" fill="none" stroke="#2B6CB0" stroke-width="2.5" /><polyline points="209.31,278.40 427.35,367.20 645.38,337.28" fill="none" stroke="#B4342C" stroke-width="2.5" /><polyline points="209.31,321.60 427.35,313.60 645.38,326.88" fill="none" stroke="#94A3B8" stroke-width="2.5" /><polyline points="209.31,377.60 427.35,339.04 645.38,287.20" fill="none" stroke="#2E7D5B" stroke-width="2.5" /><line x1="100.30" y1="521.60" x2="754.40" y2="521.60" stroke="#BFBFBF" stroke-width="1" /></g></g></g>
+
+  <rect x="800" y="192" width="1" height="400" fill="#D6DDE4" />
+
+  <g id="pen-1">
+    <text x="840" y="206" font-size="20" fill="#1E293B">门锁：跌掉的是高毛利单量</text>
+    <text x="840" y="234" font-size="17" fill="#5A6B7B">8 月少 55.5 万元，9 月只回升 18.7 万元，</text>
+    <text x="840" y="258" font-size="17" fill="#5A6B7B">仍比 7 月少 36.8 万元，需按单复盘。</text>
+  </g>
+  <rect x="840" y="278" width="376" height="1" fill="#E8EDF2" />
+
+  <g id="pen-2">
+    <text x="840" y="312" font-size="20" fill="#1E293B">安防：唯一逐月爬坡</text>
+    <text x="840" y="340" font-size="17" fill="#5A6B7B">9 月比 7 月多 56.5 万元（+62.8%），</text>
+    <text x="840" y="364" font-size="17" fill="#5A6B7B">毛利率 37.66%，可作第二曲线。</text>
+  </g>
+  <rect x="840" y="384" width="376" height="1" fill="#E8EDF2" />
+
+  <g id="pen-3">
+    <text x="840" y="418" font-size="20" fill="#1E293B">扫地机：第一品类没回原位</text>
+    <text x="840" y="446" font-size="17" fill="#5A6B7B">8 月掉 45.2 万元是单月最大损失，</text>
+    <text x="840" y="470" font-size="17" fill="#5A6B7B">9 月仍比 7 月少 30.8 万元。</text>
+  </g>
+  <rect x="840" y="490" width="376" height="1" fill="#E8EDF2" />
+
+  <g id="pen-4">
+    <text x="840" y="524" font-size="20" fill="#1E293B">渗透：高毛利区卖得最少</text>
+    <text x="840" y="552" font-size="17" fill="#5A6B7B">华北安防 59.5 万元为五区最低，毛利</text>
+    <text x="840" y="576" font-size="17" fill="#5A6B7B">43.4% 却全场最高。</text>
+  </g>
+
+  <rect x="64" y="620" width="1152" height="1" fill="#D6DDE4" />
+  <text x="64" y="656" font-size="20" fill="#1E293B">智能音箱三个月平走（125.0 / 130.0 / 121.7），规模靠价格维持，没有增长势能。</text>
+  <text x="64" y="684" font-size="13" fill="#6B7280">数据来源：Q3销售数据.xlsx 明细页，按品类与月份、区域汇总</text>
+
+  <text id="pagenum" x="1196" y="692" font-family="Cambria" font-size="13" fill="#6B7280">7</text>
+  <desc id="notes">看走势：门锁 7 月 152 万元、8 月掉到 96.5 万元、−36.5%，9 月回到 115.2 万元，但仍比 7 月少 36.8 万元。门锁毛利率 39.11% 排第二，所以跌掉的是高毛利单量，要按单复盘供应和交付。安防摄像头是唯一逐月增长的品类，90 万、114.1 万、146.5 万，9 月比 7 月多 56.5 万元、+62.8%，毛利率 37.66%，可以当第二曲线。扫地机器人 8 月掉了 45.2 万元，9 月没回原位。最后一句，渗透上华北安防只做 59.5 万元、毛利却是全场最高的 43.4%。</desc>
+</svg>

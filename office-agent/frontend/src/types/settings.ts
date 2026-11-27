@@ -114,7 +114,7 @@ export interface SkillInfo {
   name: string;
   description: string;
   /** builtin: ships with coscribe; anthropic: added from Discover; custom: yours. */
-  source: "builtin" | "anthropic" | "custom";
+  source: "builtin" | "anthropic" | "github" | "custom";
   enabled: boolean;
   /** When its SKILL.md last changed, ISO 8601. */
   updated: string;
@@ -124,7 +124,7 @@ export interface SkillInfo {
 }
 
 /** A Claude or Codex plugin's manifest (decision 0058); `unused`: parts Coscribe keeps, unused. */
-export interface InstalledPluginInfo { name: string; description: string; version: string; author: string; unused: string[] }
+export interface InstalledPluginInfo { name: string; description: string; version: string; author: string; tools: string[]; unused: string[] }
 
 export interface SkillPlugin {
   id: string;
@@ -139,12 +139,11 @@ export interface SkillPlugin {
   skills: string[];
   /** How many of `skills` are already added. */
   added: number;
+  /** The repository of a source the person added; null for Discover's own catalog. */
+  source: string | null;
 }
 
-export interface SkillPluginDetail extends SkillPlugin {
-  files: string[];
-  skill_details: { name: string; description: string }[];
-}
+export interface SkillPluginDetail extends SkillPlugin { files: string[]; skill_details: { name: string; description: string }[] }
 
 export type SkillsResponse = SkillInfo[];
 

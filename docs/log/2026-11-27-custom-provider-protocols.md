@@ -7,7 +7,7 @@ A successful streaming reply and successful tool-result round trip report separa
 
 - The Providers settings page offers manual model entry and two on-demand model tests.
 - Custom providers can use Responses or versioned Azure OpenAI with an API key. Legacy
-  configurations use their existing resolution path. See decision 0060 for Azure.
+  configurations use their existing resolution path. See decision 0061 for Azure.
 
 ## Not verified
 

@@ -1,0 +1,70 @@
+name: Mutation of the changes
+
+# Coverage says a changed line ran; mutation says a test would notice it changing. On a pull
+# request that changes code under src/coscribe, this mutates only the functions the pull request
+# changed (at most CHANGED_MODULES modules, `scripts/mutation.py changed`) and runs the tests
+# that reach them through the import graph (decision 0059). It reports and never fails because
+# of a survivor: some mutants change nothing a test could see, so the author reads each one and
+# either adds a check or says in the description why it can't matter. Not a required check.
+"on":
+  pull_request:
+    paths:
+      - "office-agent/src/coscribe/**.py"
+      - ".github/workflows/mutation-changes.yml"
+      - "office-agent/scripts/mutation.py"
+
+concurrency:
+  group: mutation-changes-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  mutate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+
+      # The package itself stays uninstalled: an editable install would put the
+      # unmutated source ahead of the mutated copy on sys.path.
+      - name: Install the dependencies
+        run: |
+          python scripts/install_locked.py --extra dev --extra web --no-project
+          pip install mutmut==3.8.1
+
+      - name: Mutate the changed functions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python scripts/mutation.py changed --base "$(git merge-base "$BASE_SHA" HEAD)" \
+            --out mutation-results
+
+      - name: Table
+        if: always()
+        run: python3 scripts/mutation.py summary mutation-results >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-changes
+          path: office-agent/mutation-results/

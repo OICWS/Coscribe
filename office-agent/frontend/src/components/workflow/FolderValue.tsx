@@ -4,8 +4,8 @@ import { folderName } from "../../lib/folderName";
 import { browseDirs, getConfig, updateConfig } from "../../lib/rest";
 import { allowForTask, checkReach, useTaskReach, type ReachCheck, type TaskReach } from "../../lib/taskReach";
 import { CheckIcon, ChevronDownIcon, FolderIcon, SearchIcon } from "../icons";
-import { buildDirEntries, changedDirs } from "../settings/fields";
-import { DirBrowserModal } from "../settings/DirBrowserModal";
+import { buildDirEntries, changedDirs } from "../settings";
+import { DirBrowserModal } from "../settings";
 
 const item = "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] hover:bg-[color-mix(in_srgb,var(--border)_50%,var(--card-bg))]";
 const heading = "px-2.5 pb-1 pt-2 text-xs font-medium text-[var(--muted)]";

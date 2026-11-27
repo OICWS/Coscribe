@@ -380,7 +380,7 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .frow { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; text-align: left; padding: 7px 8px; border-radius: 9px; cursor: pointer; animation: pop .45s var(--ease) both; transition: background .15s, transform .15s; }
 .frow:hover { background: var(--chip); }
 .fb { width: 34px; height: 34px; border-radius: 7px; flex: none; display: grid; place-items: center; font: 600 8.5px/1 var(--sans); letter-spacing: .04em; color: #fff; }
-.fb.pptx { background: var(--slides); } .fb.docx { background: var(--doc); } .fb.xlsx { background: var(--sheet); } .fb.py { background: var(--code); }
+.fb.pptx { background: var(--slides); } .fb.docx { background: var(--doc); } .fb.xlsx { background: var(--sheet); } .fb.csv { background: var(--sheet); } .fb.md { background: var(--doc); }
 :root[data-theme="dark"] .fb { color: #1c1b1a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fb { color: #1c1b1a; } }
 .frow .fn { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -437,7 +437,32 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .appr .out { font: 400 12px/1.5 var(--mono); color: var(--success); }
 
 /* browser pane */
-.bz-bar { display: flex; align-items: center; gap: 4px; padding: 0 8px 8px; }
+.bz-tabs { display: flex; align-items: center; gap: 4px; padding: 0 8px 6px; }
+.bz-tab { display: inline-flex; align-items: center; gap: 7px; max-width: 180px; height: 28px; padding: 0 8px 0 10px; border-radius: 8px; background: var(--chip); font-size: 12.5px; white-space: nowrap; }
+.bz-tab i { width: 12px; height: 12px; border-radius: 3px; background: #2f5f9e; flex: none; }
+.bz-tab svg { width: 12px; height: 12px; color: var(--muted); flex: none; }
+.bz-bar { display: flex; align-items: center; gap: 2px; padding: 0 8px 6px; }
+.bz-bar .ib[disabled] { opacity: .4; }
+.bz-act { display: flex; align-items: center; gap: 8px; margin: 0 8px 6px; padding: 6px 10px; border-radius: 8px; background: rgba(42, 120, 214, .1); font-size: 12px; }
+.bz-act[hidden], .bz-perm[hidden] { display: none; }
+.bz-act .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; flex: none; }
+.bz-act .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-act button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; font: 500 12px/1 var(--sans); color: var(--fg); padding: 3px 6px; border-radius: 6px; cursor: default; }
+.bz-act button i { width: 8px; height: 8px; border-radius: 1.5px; background: currentColor; }
+@keyframes pulse { 50% { opacity: .35; } }
+.bz-perm { margin: 0 8px 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); box-shadow: var(--shadow); display: grid; gap: 10px; animation: pop .35s var(--ease) both; }
+.bz-perm .q { display: flex; gap: 10px; font-size: 13px; }
+.bz-perm .q svg { width: 16px; height: 16px; color: var(--muted); flex: none; margin-top: 1px; }
+.bz-perm .q b { display: block; font-weight: 500; }
+.bz-perm .q span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.bz-perm .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.bz-perm .acts button { height: 27px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: none; font: 400 12.5px/1 var(--sans); color: var(--fg); cursor: default; }
+.bz-perm .acts button.pri { border-color: transparent; background: var(--primary); color: var(--primary-fg); font-weight: 500; }
+.crm-f { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; font-size: 11.5px; color: var(--paper-muted); }
+.crm-f i { display: inline-block; min-width: 64px; margin-left: 4px; padding: 3px 7px; border: 1px solid var(--paper-line); border-radius: 6px; font-style: normal; color: var(--paper-ink); }
+.crm-f i.on { border-color: var(--accent); }
+.crm-f .pg { margin-left: auto; }
+.crm-t tbody tr.scan { background: rgba(42, 120, 214, .08); }
 .bz-url { flex: 1; min-width: 0; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 8px; background: var(--chip); font-size: 12.5px; color: var(--fg-2); white-space: nowrap; overflow: hidden; }
 .bz-url svg { width: 12px; height: 12px; color: var(--muted); }
 .bz-page { flex: 1; min-height: 0; margin: 0 8px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--paper-ink); overflow: hidden; font-size: 12.5px; position: relative; }
@@ -660,21 +685,32 @@ html[lang="zh-CN"] .hero h1 { font-weight: 700; font-size: clamp(38px, 5vw, 68px
 .xl-tabs span { display: flex; align-items: center; padding: 0 14px; color: var(--paper-muted); }
 .xl-tabs span.on { background: var(--paper); color: #217346; font-weight: 600; border-bottom: 2px solid #217346; }
 
-.diff { position: absolute; inset: 0; display: flex; flex-direction: column; }
-.diff-f { flex: 1; min-height: 0; overflow: auto; background: var(--bg); font: 400 12.5px/1.65 var(--mono); padding: 10px 0; }
-.diff-f .fh { padding: 4px 16px 8px; font-family: var(--sans); font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; }
-.diff-f .fh b { color: var(--fg); font-weight: 500; }
-.dl { display: grid; grid-template-columns: 42px 16px minmax(0, 1fr); white-space: pre; padding-right: 16px; }
-.dl .no { color: var(--muted); text-align: right; padding-right: 10px; opacity: .7; }
-.dl .sg { color: var(--muted); }
-.dl.add { background: var(--add-bg); } .dl.add .sg { color: var(--success); }
-.dl.rm { background: var(--rm-bg); } .dl.rm .sg { color: var(--danger); }
-.dl.hunk { color: var(--muted); }
-.dl.add.hide { opacity: 0; transform: translateX(-8px); }
-.dl.add { transition: opacity .35s, transform .35s var(--ease); }
-.term { flex: none; background: var(--term-bg); color: var(--term-fg); font: 400 12.5px/1.6 var(--mono); padding: 10px 16px 12px; min-height: 86px; }
-.term .p { color: var(--term-muted); }
-.term .ok { color: #8fd19f; }
+.fcard { text-align: left; font: inherit; color: inherit; display: flex; align-items: center; gap: 12px; width: min(100%, 360px); margin: 4px 0 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer; animation: pop .35s var(--ease) both; }
+.fcard .ic { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(45, 98, 184, .12); color: var(--doc); flex: none; }
+.fcard .ic svg { width: 17px; height: 17px; }
+.fcard .nm { flex: 1; min-width: 0; font-size: 13.5px; }
+.fcard .nm small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+.fcard > svg { width: 14px; height: 14px; color: var(--muted); }
+.dk { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--paper); color: var(--paper-ink); }
+.dk-tb { height: 40px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--paper-line); color: var(--paper-muted); }
+.dk-tb svg { width: 15px; height: 15px; margin: 0 6px; }
+.dk-tb .sep { width: 1px; height: 16px; background: var(--paper-line); margin: 0 4px; }
+.dk-page { flex: 1; min-height: 0; overflow: hidden; padding: 30px min(8%, 56px) 24px; font-size: 13.5px; line-height: 1.6; }
+.dk-page h4 { font: 400 26px/1.25 Georgia, "Songti SC", serif; margin: 0 0 8px; }
+.dk-page h5 { font: 400 18px/1.3 Georgia, "Songti SC", serif; margin: 20px 0 8px; }
+.dk-page p { margin: 0; }
+.dk-chart { border: 1px solid var(--paper-line); border-radius: 8px; padding: 12px 16px 10px; }
+.dk-chart .ct { text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.dk-bars { height: 120px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; justify-items: center; align-items: end; border-bottom: 1px solid var(--paper-line); padding: 0 6px; }
+.dk-bars i { display: block; width: 34%; background: #4f6df5; border-radius: 2px 2px 0 0; transform-origin: bottom; transform: scaleY(var(--p, 1)); }
+.dk-lab { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; padding: 4px 6px 0; font-size: 11px; text-align: center; color: var(--paper-muted); }
+.dk-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dk-check li { display: flex; align-items: center; gap: 8px; }
+.dk-check .cb { width: 13px; height: 13px; border: 1.5px solid #8a8a88; border-radius: 3px; flex: none; display: grid; place-items: center; }
+.dk-check li.on .cb { background: #4f6df5; border-color: #4f6df5; }
+.dk-check li.on .cb::after { content: ""; width: 6px; height: 3px; border: solid #fff; border-width: 0 0 1.6px 1.6px; transform: translateY(-1px) rotate(-45deg); }
+.dk-note { margin-top: 14px; padding: 10px 14px; border-left: 3px solid #4f6df5; border-radius: 0 6px 6px 0; background: rgba(79, 109, 245, .08); }
+.dk-note b { display: block; font-size: 10.5px; letter-spacing: .06em; color: #4f6df5; margin-bottom: 2px; }
 
 /* ---------- modals inside the app ---------- */
 .modal { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: var(--scrim); opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s; }
@@ -793,7 +829,11 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
 .cursor.down svg { transform: scale(.82); }
 
 /* scene picker under the window */
-.scenes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 6px 18px; margin-top: 22px; align-items: start; }
+.win.live { background: var(--bg); }
+.win.live iframe { display: block; width: 100%; aspect-ratio: 1280 / 861; border: 0; background: #fcfcfb; }
+@media (max-width: 700px) { .win.live iframe { aspect-ratio: 3 / 4; } }
+.real-note { margin: 10px 2px 0; font: 400 12.5px/1.5 var(--sans); color: var(--muted); }
+.scenes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px 18px; margin-top: 22px; align-items: start; }
 .sc { position: relative; text-align: left; border: 0; background: none; padding: 14px 0 0; cursor: pointer; color: var(--muted); font: 500 14px/1.35 var(--sans); transition: color .2s; min-width: 0; }
 .sc small { display: block; font: 400 11.5px/1 var(--mono); letter-spacing: .04em; margin-bottom: 6px; }
 .sc .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 2px; background: var(--line); overflow: hidden; }
@@ -1082,477 +1122,22 @@ footer a:hover { color: var(--fg); }
     </div>
 
     <div class="stage" id="stage">
-      <div class="win" id="win">
-        <div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span class="wt">Coscribe</span></div>
-        <div class="app" id="app" data-side="task" aria-label="A recreation of the Coscribe app, playing example tasks">
-
-          <nav class="rail" aria-label="Coscribe navigation">
-            <button class="ib" type="button" data-tip="Hide sidebar" data-act="none" aria-label="Hide sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
-            <button class="ib new" type="button" data-tip="New session" data-act="new" aria-label="New session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-            <button class="ib on" type="button" data-tip="Chat" data-act="chat" aria-label="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></button>
-            <button class="ib" type="button" data-tip="Scheduled" data-act="scheduled" aria-label="Scheduled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></button>
-          </nav>
-
-          <div class="main">
-            <div class="thead">
-              <span class="ttl" id="ttl"></span>
-              <div class="ticons">
-                <button class="ib" type="button" id="b-side" data-act="side" data-tip="Hide task details" aria-label="Task details" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg></button>
-                <button class="ib" type="button" id="b-browser" data-act="browser" data-tip="Browser" aria-label="Browser" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
-                <button class="ib" type="button" id="b-agents" data-act="agents" data-tip="Sub Agents" aria-label="Sub Agents" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg><span class="badge" id="ag-badge"></span></button>
-                <button class="ib" type="button" data-act="help" data-tip="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
-                <button class="ib" type="button" data-act="settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-              </div>
-            </div>
-            <div class="log" id="log" aria-live="off"></div>
-            <div class="composer">
-              <div class="cbox" id="cbox">
-                <div class="ctext"><span class="ph">Type / for commands</span><span id="typed"><span class="zh"></span><span class="en"></span></span><span class="ccaret"></span></div>
-                <div class="crow">
-                  <button class="cb af" type="button" data-act="none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add folder</span></button>
-                  <button class="cb mode" type="button" data-act="mode" id="modepill"><i></i><span>Auto</span></button>
-                  <span class="sp"></span>
-                  <button class="cb" type="button" data-act="settings">deepseek-v4-pro<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-                  <button class="send" type="button" id="send" tabindex="-1" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg></button>
-                </div>
-              </div>
-            </div>
-            <div class="home" id="home">
-              <h3>Good morning!</h3>
-              <div class="hc"><div class="hbox"><span class="ph">Type / for commands</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg></div><div class="hrow"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add folder</span><span>deepseek-v4-pro<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div></div>
-            </div>
-          </div>
-
-          <div class="side" id="side">
-            <aside class="pane task on" data-pane="task" aria-label="Task details">
-              <div class="tp-title" id="tp-title"></div>
-              <div class="pbody">
-                <div class="tp-sec">
-                  <h4>Progress<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></h4>
-                  <div id="tp-prog"></div>
-                </div>
-                <div class="tp-sec">
-                  <h4>Outputs <span class="n" id="tp-outn"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></h4>
-                  <ul class="outs" id="tp-outs"></ul>
-                  <p class="tp-empty" id="tp-outs-e">View and open files created or edited during this task.</p>
-                </div>
-                <div class="tp-sec">
-                  <h4>Context<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></h4>
-                  <div id="tp-ctx"></div>
-                  <p class="tp-empty" id="tp-ctx-e">Track tools and referenced files used in this task.</p>
-                </div>
-              </div>
-              <div class="tp-foot">
-                <button type="button" data-act="workflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v4a3 3 0 0 0 3 3H14"/></svg>Save as workflow</button>
-                <p>Turn what this conversation did into fixed steps you can rerun.</p>
-              </div>
-            </aside>
-
-            <aside class="pane" data-pane="agents" aria-label="Sub agents">
-              <div class="ph-row">
-                <button class="ib" type="button" id="ag-back" data-act="ag-back" aria-label="All sub-agents" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-                <span class="t" id="ag-title">Sub agents</span>
-                <button class="ib" type="button" data-act="close-pane" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-              </div>
-              <div class="pbody" id="ag-body"></div>
-            </aside>
-
-            <aside class="pane" data-pane="browser" aria-label="Browser">
-              <div class="ph-row">
-                <span class="t">Browser</span>
-                <button class="ib" type="button" data-act="close-pane" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-              </div>
-              <div class="bz-bar">
-                <button class="ib" type="button" data-act="none" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-                <button class="ib" type="button" data-act="none" aria-label="Reload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
-                <div class="bz-url"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>crm.example.com/accounts</div>
-                <button class="ib" type="button" id="b-pick" data-act="pick" data-tip="Pick an element" aria-label="Pick an element" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 16 2.3-6.7L20.5 10z"/><path d="M14 14l5 5"/></svg></button>
-              </div>
-              <div class="bz-page" id="bz-page">
-                <div class="crm-top"><i></i>Example CRM<span>Q4 pipeline</span></div>
-                <div class="crm-h pickable">Accounts up for renewal</div>
-                <table class="crm-t">
-                  <thead><tr><th>Account</th><th>Owner</th><th>Stage</th><th>Value</th></tr></thead>
-                  <tbody>
-                    <tr class="pickable"><td>Nova Retail</td><td>Li Wei</td><td><span class="stage-tag">Renewal</span></td><td>¥1.20M</td></tr>
-                    <tr class="pickable"><td>Harbor Foods</td><td>Chen Jing</td><td><span class="stage-tag">Proposal</span></td><td>¥640K</td></tr>
-                    <tr class="pickable"><td>Brightline Labs</td><td>Wang Fang</td><td><span class="stage-tag">Negotiation</span></td><td>¥910K</td></tr>
-                    <tr class="pickable"><td>Summit Logistics</td><td>Zhao Lei</td><td><span class="stage-tag">Won</span></td><td>¥480K</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div id="bz-picked"></div>
-            </aside>
-          </div>
-
-          <div class="viewer" id="viewer" role="dialog" aria-label="File preview">
-            <div class="vbar"><span class="fb" id="v-badge"></span><span class="vn" id="v-name"></span><span class="vm" id="v-meta"></span><span class="sp"></span>
-              <button class="ib" type="button" data-act="close-viewer" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-            </div>
-            <div class="vbody" id="vbody"></div>
-          </div>
-
-          <div class="modal" id="m-help" role="dialog" aria-label="Keyboard shortcuts">
-            <div class="mbox">
-              <div class="mhead">Keyboard shortcuts<button class="ib" type="button" data-act="close-modal" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
-              <div class="sc-body">
-                <div class="sc-g"><h5>GENERAL</h5><ul>
-                  <li>Show this shortcuts list<span class="keys"><kbd>?</kbd></span></li>
-                  <li>Show this shortcuts list<span class="keys"><kbd>Ctrl</kbd><kbd>/</kbd></span></li>
-                  <li>Back to the previous page<span class="keys"><kbd>Alt</kbd><kbd>←</kbd></span></li>
-                  <li>Forward again<span class="keys"><kbd>Alt</kbd><kbd>→</kbd></span></li>
-                  <li>Close a dialog, or cancel editing a message<span class="keys"><kbd>Esc</kbd></span></li>
-                </ul></div>
-                <div class="sc-g"><h5>COMPOSER</h5><ul>
-                  <li>Send the message<span class="keys"><kbd>Enter</kbd></span></li>
-                  <li>Insert a new line<span class="keys"><kbd>Shift</kbd><kbd>Enter</kbd></span></li>
-                  <li>Open the command list<span class="keys"><kbd>/</kbd></span></li>
-                </ul></div>
-                <div class="sc-g"><h5>MODEL PICKER</h5><ul>
-                  <li>Switch to that numbered model<span class="keys"><kbd>1</kbd><kbd>-</kbd><kbd>9</kbd></span></li>
-                </ul></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal" id="m-settings" role="dialog" aria-label="Settings">
-            <div class="mbox settings">
-              <button class="ib st-x" type="button" data-act="close-modal" aria-label="Close settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-              <nav class="st-nav" aria-label="Settings categories">
-                <div class="st-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Search</div>
-                <div class="st-g"><div class="gl">Settings</div>
-                  <button type="button" data-t="general" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>General</button>
-                  <button type="button" data-t="workspace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Workspaces</button>
-                  <button type="button" data-t="providers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>Providers</button>
-                  <button type="button" data-t="capabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Capabilities</button>
-                  <button type="button" data-t="secrets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Secrets</button>
-                </div>
-                <div class="st-g"><div class="gl">Customize</div>
-                  <button type="button" data-t="skills"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Skills</button>
-                  <button type="button" data-t="connectors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Connectors</button>
-                  <button type="button" data-t="design-systems"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>Design systems</button>
-                </div>
-              </nav>
-              <div class="st-main" id="st-main">
-
-                <div class="st-tab on" data-t="general">
-                  <section class="st-sec"><h6>Appearance</h6>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Theme</b></span><span class="sseg"><button type="button" class="on" aria-label="Match the system"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button><button type="button" aria-label="Light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button type="button" aria-label="Dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button></span></div>
-                      <div><span class="sr-l"><b>Interface font</b><span>Font for the whole interface: menus, sidebars, panels and conversations.</span></span><span class="sfield w-m">Figtree<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
-                      <div><span class="sr-l"><b>Motion</b><span>Reduce animation in streaming responses and other parts of the interface.</span></span><span class="sseg"><button type="button" class="on">System</button><button type="button">Reduced</button></span></div>
-                      <div><span class="sr-l"><b>Conversation view</b><span>Simple shows each reply without the steps behind it, and one line saying what Coscribe is doing while it works. Detailed shows every step.</span></span><span class="sseg"><button type="button" class="on">Detailed</button><button type="button">Simple</button></span></div>
-                    </div>
-                  </section>
-                  <section class="st-sec"><h6>Model</h6>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Default model</b><span>What a new conversation starts with. Each conversation can switch from its own model picker.</span></span><span class="sfield w-l">deepseek-v4-pro · deepseek<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
-                      <div><span class="sr-l"><b>Default mode</b><span>The permission mode a new conversation starts in. Auto lets a reviewer model approve routine work and stop risky actions; Manual asks before every change.</span></span><span class="sseg"><button type="button">Manual</button><button type="button">Accept Edits</button><button type="button">Plan</button><button type="button" class="on">Auto</button></span></div>
-                    </div>
-                  </section>
-                  <section class="st-sec"><h6>Instructions</h6>
-                    <div class="st-rows">
-                      <div class="col"><span class="sr-l"><b>Global instructions</b><span>Preferences, conventions or context Coscribe should always know. Applies to every new conversation.</span></span><span class="stext">e.g. Always write dates as YYYY-MM-DD. I prefer decks with no more than 6 bullets per slide.</span></div>
-                    </div>
-                  </section>
-                  <section class="st-sec"><h6>Desktop app</h6>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Keep running in the background</b><span>Closing the window keeps Coscribe in the tray, so scheduled tasks still run. Turn off to quit when you close it.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Keep running in the background"></button></div>
-                      <div><span class="sr-l"><b>Notifications</b><span>When a task run finishes. Problems only: when a run fails or is waiting for you. Clicking one opens the run.</span></span><span class="sseg"><button type="button" class="on">All</button><button type="button">Problems only</button><button type="button">Off</button></span></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="workspace">
-                  <section class="st-sec">
-                    <div class="st-h"><h6>Workspaces</h6><button type="button" class="sbtn">+ New</button></div>
-                    <p class="sd">A workspace is a folder you work in. Its conversations and tasks reach that folder, the allowed folders below, and the sites and secrets you give it. Choose one for a conversation under the message box.</p>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Default</b><span class="mono">C:\Users\you\Documents\Coscribe</span></span><button type="button" class="sbtn">Edit</button></div>
-                      <div><span class="sr-l"><b>Q3 review</b><span class="mono">D:\Finance\Q3 2026</span></span><button type="button" class="sbtn">Edit</button></div>
-                    </div>
-                  </section>
-                  <section class="st-sec">
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Allowed folders</b><span>2 folders: 1 read only, 1 read and write. A workspace reaches only the ones it picks.</span></span><button type="button" class="sbtn">Manage</button></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="providers">
-                  <section class="st-sec"><h6>Your providers</h6>
-                    <p class="sd">The services Coscribe's models come from. Pick the default one on the General page.</p>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>deepseek</b><span>https://api.deepseek.com/v1 · key ••••••••3f9a</span></span><button class="sbtn" type="button">Remove</button></div>
-                    </div>
-                  </section>
-                  <section class="st-sec"><h6>Add a provider</h6>
-                    <p class="sd">Anthropic, OpenAI and Gemini are built in; any other OpenAI-compatible service can be added. Pick one to fill in the form, or enter it yourself.</p>
-                    <div class="cat" id="cat"></div>
-                    <div class="form">
-                      <label>Name<span class="f ph" id="f-name">e.g. deepseek</span></label>
-                      <label>Base URL<span class="f ph" id="f-url">https://api.example.com/v1</span></label>
-                      <label>API key<span class="f ph" id="f-key"></span></label>
-                      <label>Default model (optional)<span class="f ph" id="f-model">e.g. deepseek-chat</span></label>
-                    </div>
-                    <div class="st-act"><button type="button" class="pbtn">Save provider</button></div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="capabilities">
-                  <section class="st-sec"><h6>Capabilities</h6>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Create and edit files</b><span>Coscribe writes and changes files in the folders of its workspace: Word, Excel, PowerPoint, PDF and text. Off, it only reads them and answers in the conversation.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Create and edit files"></button></div>
-                      <div><span class="sr-l"><b>Artifacts</b><span>Docs, designs and dashboards that open beside the conversation.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Artifacts"></button></div>
-                      <div><span class="sr-l"><b>Run scripts</b><span>For work too big for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it, kept to the folders of its workspace.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Run scripts"></button></div>
-                      <div><span class="sr-l"><b>Run commands</b><span>Command lines in cmd or PowerShell, for what a script can't do: git, build tools, installers. You approve each one.</span></span><button type="button" class="stog" role="switch" aria-checked="false" aria-label="Run commands"></button></div>
-                      <div><span class="sr-l"><b>Chats can hand tasks to Code</b><span>A conversation can give a coding job to Codex, a coding agent.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Chats can hand tasks to Code"></button></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="secrets">
-                  <section class="st-sec">
-                    <div class="st-h"><h6>Secrets</h6><button type="button" class="sbtn">+ Add</button></div>
-                    <p class="sd">Add a key or token once, then give it to the workspaces that need it. The assistant can use it in a web request only for the hosts you allow here, and never sees its value.</p>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b class="mono">CRM_TOKEN</b><span>api.crm.example.com</span></span><button type="button" class="sbtn">Edit</button></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="design-systems">
-                  <section class="st-sec">
-                    <div class="st-h"><h6>Design systems</h6><button type="button" class="sbtn">Describe it</button><button type="button" class="sbtn">+ New design system</button></div>
-                    <p class="sd">A design system is your colors, fonts and spacing, kept once. A deck made with one gets a copy, so changing it later does not move a finished deck.</p>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Acme brand</b><span>6 colors · IBM Plex Sans · 3 logos</span></span><button type="button" class="sbtn">Open</button></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="skills">
-                  <section class="st-sec">
-                    <div class="st-h"><h6>Skills</h6><span class="sfield sm ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Search skills</span><button type="button" class="sbtn">+ Add</button></div>
-                    <div class="st-rows">
-                      <div><span class="sr-l"><b>Excel Spreadsheets <i class="tag">Built-in</i></b><span>Formula discipline, financial-model color and number conventions, and verification habits for Excel workbooks.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Excel Spreadsheets"></button></div>
-                      <div><span class="sr-l"><b>PPTX Slides <i class="tag">Built-in</i></b><span>Color palettes, typography, layout rules and pre-designed templates for decks.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="PPTX Slides"></button></div>
-                      <div><span class="sr-l"><b>Word Documents <i class="tag">Built-in</i></b><span>When and how to use tables of contents, comments and tracked changes in Word files.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Word Documents"></button></div>
-                      <div><span class="sr-l"><b>Skill Creator <i class="tag">Built-in</i></b><span>Interview you and write a new skill Coscribe can load.</span></span><button type="button" class="stog" role="switch" aria-checked="true" aria-label="Skill Creator"></button></div>
-                    </div>
-                  </section>
-                </div>
-
-                <div class="st-tab" data-t="connectors">
-                  <section class="st-sec">
-                    <div class="st-h"><h6>Connectors</h6><span class="sfield sm ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Search connectors</span><button type="button" class="sbtn">+ Add</button></div>
-                    <div class="st-tbl">
-                      <div class="th"><span>Connector</span><span>Type</span><span>Status</span></div>
-                      <div><span><i class="cbdg">M</i>Microsoft 365</span><span>Local</span><span><button type="button" class="sbtn">Connect</button></span></div>
-                    </div>
-                  </section>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          <div class="cursor" id="cursor" aria-hidden="true"><svg viewBox="0 0 20 22"><path d="M3 2v16.5l4.3-3.9 2.9 6.4 2.8-1.2-2.8-6.2 5.8-.2z" fill="var(--fg)" stroke="var(--bg)" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
-        </div>
+      <div class="win live" id="win">
+        <iframe id="demo" title="Coscribe replaying a real conversation" src="demo/?scene=1&amp;autoplay=0" loading="lazy"></iframe>
       </div>
+      <p class="real-note"><span class="en">Real conversations replayed in Coscribe's own interface. Each task ran on Windows with deepseek-flash on sample files with made-up data; the CRM is a small sample site. Click the steps, the file notice or the slides.</span><span class="zh">在 Coscribe 自己的界面里重放真实对话。每个任务都在 Windows 上用 deepseek-flash 跑过，示例文件里是虚构数据，CRM 是一个示例网站。可以点开步骤、文件通知和幻灯片。</span></p>
 
       <div class="scenes" role="tablist" aria-label="Example tasks" id="scenes">
         <button class="sc" role="tab" type="button" aria-selected="true" data-s="0"><span class="bar"><i></i></span><small>01 · PPTX</small><span class="zh">表格做成汇报 PPT</span><span class="en">Spreadsheet to board deck</span></button>
         <button class="sc" role="tab" type="button" aria-selected="false" data-s="1" tabindex="-1"><span class="bar"><i></i></span><small>02 · DOCX</small><span class="zh">合同修订加批注</span><span class="en">Contract with tracked changes</span></button>
         <button class="sc" role="tab" type="button" aria-selected="false" data-s="2" tabindex="-1"><span class="bar"><i></i></span><small>03 · XLSX</small><span class="zh">两份流水对账</span><span class="en">Reconcile two exports</span></button>
-        <button class="sc" role="tab" type="button" aria-selected="false" data-s="3" tabindex="-1"><span class="bar"><i></i></span><small>04 · CODE</small><span class="zh">把编程交给代码模块</span><span class="en">Hand code to the code module</span></button>
+        <button class="sc" role="tab" type="button" aria-selected="false" data-s="3" tabindex="-1"><span class="bar"><i></i></span><small>04 · WEB</small><span class="zh">从网站导出数据</span><span class="en">Export data from a website</span></button>
+        <button class="sc" role="tab" type="button" aria-selected="false" data-s="4" tabindex="-1"><span class="bar"><i></i></span><small>05 · DOC</small><span class="zh">写成可编辑的文档</span><span class="en">A doc you can edit</span></button>
         <button class="playp" type="button" id="playp" aria-pressed="false" aria-label="Pause the demo"><svg class="pa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg><svg class="pl" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
       </div>
     </div>
   </div>
 </section>
-
-<template id="deck-tpl">
-  <div class="sl s1">
-    <div class="cv-l">
-      <div class="k a"><span class="en">Quarterly business review</span><span class="zh">季度经营分析</span></div>
-      <h2 class="a" style="--d:1"><span class="en">Q3 2026<br>Business Review</span><span class="zh">2026 年第三季度<br>经营分析</span></h2>
-      <p class="cv-sub a" style="--d:2"><span class="en">Sales performance, July to September</span><span class="zh">7 至 9 月销售表现</span></p>
-      <ol class="cv-toc a" style="--d:3">
-        <li><i>01</i><span class="en">Summary</span><span class="zh">核心结论</span></li><li><i>05</i><span class="en">Customers</span><span class="zh">客户</span></li>
-        <li><i>02</i><span class="en">Monthly trend</span><span class="zh">月度走势</span></li><li><i>06</i><span class="en">Risks</span><span class="zh">风险</span></li>
-        <li><i>03</i><span class="en">Regions</span><span class="zh">区域</span></li><li><i>07</i><span class="en">Q4 plan</span><span class="zh">Q4 计划</span></li>
-        <li><i>04</i><span class="en">Product mix</span><span class="zh">产品结构</span></li>
-      </ol>
-      <p class="cv-meta a" style="--d:4"><span class="en">Leadership meeting · 10 October 2026</span><span class="zh">管理层例会 · 2026 年 10 月 10 日</span></p>
-    </div>
-    <div class="cv-r">
-      <div class="cv-big a" style="--d:2"><b>101.3%</b><span class="en">of the Q3 revenue target</span><span class="zh">Q3 收入目标达成率</span></div>
-      <div class="cv-mini a" style="--d:3">
-        <div><b><span class="en">¥48.6M</span><span class="zh">4,860 万</span></b><span class="en">revenue</span><span class="zh">收入</span></div>
-        <div><b>+8.8%</b><span class="en">vs Q2</span><span class="zh">环比</span></div>
-        <div><b>39.0%</b><span class="en">gross margin</span><span class="zh">毛利率</span></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Executive summary</span><span class="zh">核心结论</span></div>
-    <h3><span class="en">Q3 beat target, led by Overseas, East and services</span><span class="zh">Q3 超额完成目标，海外、华东和服务业务领跑</span></h3>
-    <div class="bd s2">
-      <div class="kpis">
-        <div class="a" style="--d:1"><span class="kl"><span class="en">Revenue</span><span class="zh">收入</span></span><b><span class="en">¥48.6M</span><span class="zh">4,860 万</span></b><span class="up">▲ 8.8% <span class="en">vs Q2</span><span class="zh">环比</span></span><svg class="sp" viewBox="0 0 120 30" aria-hidden="true"><polyline pathLength="1" points="4,25.0 32,18.6 60,23.8 88,16.3 116,5.0"/><circle cx="116" cy="5" r="3"/></svg></div>
-        <div class="a" style="--d:2"><span class="kl"><span class="en">Target attainment</span><span class="zh">目标达成率</span></span><b>101.3%</b><span><span class="en">Target ¥48.0M</span><span class="zh">目标 4,800 万</span></span><svg class="sp" viewBox="0 0 120 30" aria-hidden="true"><polyline pathLength="1" points="4,25.0 32,13.6 60,20.3 88,14.0 116,5.0"/><circle cx="116" cy="5" r="3"/></svg></div>
-        <div class="a" style="--d:3"><span class="kl"><span class="en">Gross margin</span><span class="zh">毛利率</span></span><b>39.0%</b><span class="up">▲ 1.6 <span class="en">pts vs Q2</span><span class="zh">个百分点</span></span><svg class="sp" viewBox="0 0 120 30" aria-hidden="true"><polyline pathLength="1" points="4,25.0 32,21.4 60,24.1 88,19.5 116,5.0"/><circle cx="116" cy="5" r="3"/></svg></div>
-        <div class="a" style="--d:4"><span class="kl"><span class="en">Top 8 accounts</span><span class="zh">前 8 大客户</span></span><b>30.2%</b><span><span class="en">of revenue, none above 6%</span><span class="zh">占收入，单一客户均低于 6%</span></span><svg class="sp" viewBox="0 0 120 30" aria-hidden="true"><polyline pathLength="1" points="4,5.0 32,9.3 60,12.9 88,15.7 116,25.0"/><circle cx="116" cy="25" r="3"/></svg></div>
-      </div>
-      <p class="sp-cap a" style="--d:5"><span class="en">Lines show the last five quarters, Q3 2025 to Q3 2026.</span><span class="zh">折线为最近五个季度（2025 Q3 至 2026 Q3）。</span></p>
-      <ol class="tk">
-        <li class="a" style="--d:5"><i>1</i><span><span class="en"><b>Momentum built every month.</b> September closed at 104.8% of target, the best month of the year.</span><span class="zh"><b>逐月走强。</b>9 月达成 104.8%，为全年最高。</span></span></li>
-        <li class="a" style="--d:6"><i>2</i><span><span class="en"><b>Two regions drove the growth.</b> Overseas (+21%) and East (+11%) delivered nearly three quarters of it.</span><span class="zh"><b>两个区域贡献增长。</b>海外（+21%）和华东（+11%）贡献了近四分之三。</span></span></li>
-        <li class="a" style="--d:7"><i>3</i><span><span class="en"><b>Services is the margin engine.</b> Up 41% on last year at a 58% margin; gateways lag at 22%.</span><span class="zh"><b>服务拉动毛利。</b>同比增长 41%，毛利 58%；网关仅 22%，拖了后腿。</span></span></li>
-      </ol>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>2</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Monthly trend</span><span class="zh">月度走势</span></div>
-    <h3><span class="en">Momentum built every month; September closed at 104.8% of target</span><span class="zh">逐月走强，9 月目标达成 104.8%</span></h3>
-    <div class="bd s3">
-      <svg viewBox="0 0 530 336" role="img" aria-label="Monthly revenue against target">
-        <text class="ax" x="0" y="22"><tspan class="en">¥M</tspan><tspan class="zh">百万元</tspan></text>
-        <g class="lg"><rect x="318" y="12" width="11" height="11" rx="2" fill="#2a5aa0"/><text x="335" y="22"><tspan class="en">Revenue</tspan><tspan class="zh">收入</tspan></text><path d="M408 17.5h18" stroke="#e39b2d" stroke-width="3"/><text x="432" y="22"><tspan class="en">Target</tspan><tspan class="zh">目标</tspan></text></g>
-        <g class="gr"><path d="M40 290H530M40 227.5H530M40 165H530M40 102.5H530M40 40H530"/></g>
-        <g class="ax"><text x="32" y="294" text-anchor="end">0</text><text x="32" y="231.5" text-anchor="end">5</text><text x="32" y="169" text-anchor="end">10</text><text x="32" y="106.5" text-anchor="end">15</text><text x="32" y="44" text-anchor="end">20</text></g>
-        <rect class="gy" style="--d:1" x="88" y="100" width="84" height="190" rx="3" fill="#2a5aa0"/>
-        <rect class="gy" style="--d:2" x="248" y="88.75" width="84" height="201.25" rx="3" fill="#2a5aa0"/>
-        <rect class="gy" style="--d:3" x="408" y="73.75" width="84" height="216.25" rx="3" fill="#2a5aa0"/>
-        <g class="tg a" style="--d:5"><path d="M74 96.25h112M234 90h112M394 83.75h112" stroke="#e39b2d" stroke-width="3"/></g>
-        <g class="vl a" style="--d:4"><text x="130" y="86" text-anchor="middle">15.2</text><text x="290" y="76" text-anchor="middle">16.1</text><text x="450" y="61" text-anchor="middle">17.3</text></g>
-        <g class="xl"><text x="130" y="312" text-anchor="middle"><tspan class="en">July</tspan><tspan class="zh">7 月</tspan></text><text x="290" y="312" text-anchor="middle"><tspan class="en">August</tspan><tspan class="zh">8 月</tspan></text><text x="450" y="312" text-anchor="middle"><tspan class="en">September</tspan><tspan class="zh">9 月</tspan></text></g>
-        <g class="xs"><text x="130" y="331" text-anchor="middle">98.1%</text><text x="290" y="331" text-anchor="middle">100.6%</text><text x="450" y="331" text-anchor="middle" class="b">104.8%</text></g>
-      </svg>
-      <div class="side">
-        <h4 class="a" style="--d:3"><span class="en">What drove it</span><span class="zh">驱动因素</span></h4>
-        <ul>
-          <li class="a" style="--d:4"><span class="en">Overseas revenue rose 21% after the July distributor launch.</span><span class="zh">7 月新增海外分销商，海外收入环比增长 21%。</span></li>
-          <li class="a" style="--d:5"><span class="en">Back-to-school bundles lifted August lock sales by 12%.</span><span class="zh">开学季套装带动 8 月门锁销量增长 12%。</span></li>
-          <li class="a" style="--d:6"><span class="en">Average order value rose 6% as more customers added services.</span><span class="zh">更多客户加购服务，客单价提升 6%。</span></li>
-        </ul>
-      </div>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>3</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Regions</span><span class="zh">区域</span></div>
-    <h3><span class="en">Overseas and East carried the quarter; the other three missed by under 2%</span><span class="zh">海外和华东领跑，其余三个区域差距均在 2% 以内</span></h3>
-    <div class="bd">
-      <svg viewBox="0 0 872 300" role="img" aria-label="Revenue against target by region">
-        <g class="hd"><text x="0" y="16"><tspan class="en">Region</tspan><tspan class="zh">区域</tspan></text><text x="300" y="16" text-anchor="middle"><tspan class="en">vs target</tspan><tspan class="zh">较目标</tspan></text><text x="760" y="16" text-anchor="end"><tspan class="en">Revenue, ¥M</tspan><tspan class="zh">收入（百万元）</tspan></text><text x="868" y="16" text-anchor="end"><tspan class="en">vs Q2</tspan><tspan class="zh">环比</tspan></text></g>
-        <path d="M0 30H872" stroke="#e2e6ed"/>
-        <g class="nm"><text x="0" y="57"><tspan class="en">Overseas</tspan><tspan class="zh">海外</tspan></text><text x="0" y="103"><tspan class="en">East</tspan><tspan class="zh">华东</tspan></text><text x="0" y="149"><tspan class="en">North</tspan><tspan class="zh">华北</tspan></text><text x="0" y="195"><tspan class="en">South</tspan><tspan class="zh">华南</tspan></text><text x="0" y="241"><tspan class="en">West</tspan><tspan class="zh">西部</tspan></text></g>
-        <rect class="gx" style="--d:1" x="300" y="40" width="193.8" height="24" rx="3" fill="#2a5aa0"/>
-        <rect class="gx" style="--d:2" x="300" y="86" width="132.6" height="24" rx="3" fill="#2a5aa0"/>
-        <rect class="gxr" style="--d:3" x="262.6" y="132" width="37.4" height="24" rx="3" fill="#d1543a"/>
-        <rect class="gxr" style="--d:4" x="242.2" y="178" width="57.8" height="24" rx="3" fill="#d1543a"/>
-        <rect class="gxr" style="--d:5" x="235.4" y="224" width="64.6" height="24" rx="3" fill="#d1543a"/>
-        <path d="M300 34V256" stroke="#14213d" stroke-width="1.5"/>
-        <g class="vl a" style="--d:6"><text x="502" y="57">+5.7%</text><text x="441" y="103">+3.9%</text><text x="254" y="149" text-anchor="end">−1.1%</text><text x="234" y="195" text-anchor="end">−1.7%</text><text x="227" y="241" text-anchor="end">−1.9%</text></g>
-        <g class="nb a" style="--d:6"><text x="760" y="57" text-anchor="end">7.4</text><text x="760" y="103" text-anchor="end">15.8</text><text x="760" y="149" text-anchor="end">8.9</text><text x="760" y="195" text-anchor="end">11.4</text><text x="760" y="241" text-anchor="end">5.1</text>
-          <text x="868" y="57" text-anchor="end">+21%</text><text x="868" y="103" text-anchor="end">+11%</text><text x="868" y="149" text-anchor="end">+4%</text><text x="868" y="195" text-anchor="end">+6%</text><text x="868" y="241" text-anchor="end">+2%</text></g>
-        <path d="M0 262H872" stroke="#c9d0db"/>
-        <g class="tt"><text x="0" y="288"><tspan class="en">Total</tspan><tspan class="zh">合计</tspan></text><text x="310" y="288">+1.3%</text><text x="760" y="288" text-anchor="end">48.6</text><text x="868" y="288" text-anchor="end">+8.8%</text></g>
-      </svg>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>4</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Product mix</span><span class="zh">产品结构</span></div>
-    <h3><span class="en">Services grew fastest and earns the highest margin</span><span class="zh">服务业务增长最快，毛利也最高</span></h3>
-    <div class="bd s5">
-      <div class="mx-cap a"><span class="en">Q3 revenue by product</span><span class="zh">Q3 收入构成</span></div>
-      <div class="mix">
-        <div class="gx m1" style="--w:39.9;--d:1"><span class="en">Smart locks</span><span class="zh">智能门锁</span><b>40%</b></div>
-        <div class="gx m2" style="--w:25.9;--d:2"><span class="en">Cameras</span><span class="zh">摄像头</span><b>26%</b></div>
-        <div class="gx m3" style="--w:18.1;--d:3"><span class="en">Services</span><span class="zh">服务</span><b>18%</b></div>
-        <div class="gx m4" style="--w:16.0;--d:4"><span class="en">Gateways</span><span class="zh">网关</span><b>16%</b></div>
-      </div>
-      <table class="stbl">
-        <thead><tr><th><span class="en">Product</span><span class="zh">产品</span></th><th><span class="en">Revenue</span><span class="zh">收入</span></th><th><span class="en">vs Q3 2025</span><span class="zh">同比</span></th><th><span class="en">Gross margin</span><span class="zh">毛利率</span></th></tr></thead>
-        <tbody>
-          <tr class="a" style="--d:5"><td><span class="en">Smart locks</span><span class="zh">智能门锁</span></td><td><span class="en">¥19.4M</span><span class="zh">1,940 万</span></td><td>+14%</td><td><i class="gm" style="--m:41"></i>41%</td></tr>
-          <tr class="a" style="--d:6"><td><span class="en">Cameras</span><span class="zh">摄像头</span></td><td><span class="en">¥12.6M</span><span class="zh">1,260 万</span></td><td>+12%</td><td><i class="gm" style="--m:33"></i>33%</td></tr>
-          <tr class="a hl" style="--d:7"><td><span class="en">Services</span><span class="zh">服务</span></td><td><span class="en">¥8.8M</span><span class="zh">880 万</span></td><td>+41%</td><td><i class="gm" style="--m:58"></i>58%</td></tr>
-          <tr class="a" style="--d:8"><td><span class="en">Gateways</span><span class="zh">网关</span></td><td><span class="en">¥7.8M</span><span class="zh">780 万</span></td><td>+9%</td><td><i class="gm" style="--m:22"></i>22%</td></tr>
-          <tr class="a tot" style="--d:9"><td><span class="en">Total</span><span class="zh">合计</span></td><td><span class="en">¥48.6M</span><span class="zh">4,860 万</span></td><td>+16.6%</td><td><i class="gm" style="--m:39"></i>39.0%</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>5</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Customers</span><span class="zh">客户</span></div>
-    <h3><span class="en">The top 8 accounts are 30% of revenue; none is above 6%</span><span class="zh">前 8 大客户占收入 30%，单一客户均低于 6%</span></h3>
-    <div class="bd s6">
-      <svg viewBox="0 0 540 290" role="img" aria-label="Share of Q3 revenue by account">
-        <g class="nm sm"><text x="0" y="25"><tspan class="en">Nova Retail</tspan><tspan class="zh">诺瓦零售</tspan></text><text x="0" y="59"><tspan class="en">Brightway</tspan><tspan class="zh">明途商贸</tspan></text><text x="0" y="93"><tspan class="en">Oakridge Homes</tspan><tspan class="zh">橡岭家居</tspan></text><text x="0" y="127"><tspan class="en">Citylink</tspan><tspan class="zh">城联物业</tspan></text><text x="0" y="161"><tspan class="en">Halden Group</tspan><tspan class="zh">海登集团</tspan></text><text x="0" y="195"><tspan class="en">Pinecrest</tspan><tspan class="zh">松峰置业</tspan></text><text x="0" y="229"><tspan class="en">Solano</tspan><tspan class="zh">索拉诺</tspan></text><text x="0" y="263"><tspan class="en">Vireo Living</tspan><tspan class="zh">维瑞生活</tspan></text></g>
-        <rect class="gx" style="--d:1" x="150" y="10" width="319" height="20" rx="3" fill="#16968a"/>
-        <rect class="gx" style="--d:2" x="150" y="44" width="253" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:3" x="150" y="78" width="225.5" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:4" x="150" y="112" width="203.5" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:5" x="150" y="146" width="187" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:6" x="150" y="180" width="170.5" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:7" x="150" y="214" width="159.5" height="20" rx="3" fill="#5d6b82"/>
-        <rect class="gx" style="--d:8" x="150" y="248" width="143" height="20" rx="3" fill="#5d6b82"/>
-        <g class="vl sm a" style="--d:8"><text x="477" y="25" class="b">5.8%</text><text x="411" y="59">4.6%</text><text x="383.5" y="93">4.1%</text><text x="361.5" y="127">3.7%</text><text x="345" y="161">3.4%</text><text x="328.5" y="195">3.1%</text><text x="317.5" y="229">2.9%</text><text x="301" y="263">2.6%</text></g>
-        <path d="M150 4V274" stroke="#14213d" stroke-width="1.2"/>
-        <text class="ax" x="150" y="288"><tspan class="en">Share of Q3 revenue</tspan><tspan class="zh">占 Q3 收入比例</tspan></text>
-      </svg>
-      <div class="stats">
-        <div class="a" style="--d:3"><b>30.2%</b><span><span class="en">Top 8 share of revenue, down from 31.5% in Q2</span><span class="zh">前 8 大客户收入占比，Q2 为 31.5%</span></span></div>
-        <div class="a" style="--d:4"><b>+63%</b><span><span class="en">Nova Retail year on year, after adding our locks to 120 stores in July</span><span class="zh">诺瓦零售同比增长，7 月起 120 家门店上架我们的门锁</span></span></div>
-      </div>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>6</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Risks</span><span class="zh">风险</span></div>
-    <h3><span class="en">Three issues to fix before they cost us Q4</span><span class="zh">三个问题需要在 Q4 前解决</span></h3>
-    <div class="bd s7">
-      <div class="rk a" style="--d:1"><span class="rl"><i>!</i><span class="en">Margin</span><span class="zh">毛利</span></span><b>22%</b><h5><span class="en">Gateway gross margin</span><span class="zh">网关毛利率</span></h5><p><span class="en">Down from 26% in Q2 as component costs rose 9%. Reprice the two entry models.</span><span class="zh">Q2 为 26%，元器件成本上涨 9%。需对两款入门型号调价。</span></p><div class="rk-ch"><span><span class="en">Gross margin by quarter</span><span class="zh">各季度毛利率</span></span><svg viewBox="0 0 200 68" aria-hidden="true"><path d="M8 50H192" stroke="#c9d0db"/><rect class="gy" style="--d:4" x="18" y="13.6" width="36" height="36.4" rx="2" fill="#c3cbd8"/><text class="mv a" style="--d:5" x="36" y="8.6" text-anchor="middle">28%</text><text class="ml" x="36" y="64" text-anchor="middle"><tspan class="en">Q1</tspan><tspan class="zh">Q1</tspan></text><rect class="gy" style="--d:5" x="82" y="16.2" width="36" height="33.8" rx="2" fill="#c3cbd8"/><text class="mv a" style="--d:6" x="100" y="11.2" text-anchor="middle">26%</text><text class="ml" x="100" y="64" text-anchor="middle"><tspan class="en">Q2</tspan><tspan class="zh">Q2</tspan></text><rect class="gy" style="--d:6" x="146" y="21.4" width="36" height="28.6" rx="2" fill="#d1543a"/><text class="mv a" style="--d:7" x="164" y="16.4" text-anchor="middle">22%</text><text class="ml" x="164" y="64" text-anchor="middle"><tspan class="en">Q3</tspan><tspan class="zh">Q3</tspan></text></svg></div><span class="ow"><span class="en">Owner: Product and Finance</span><span class="zh">负责：产品部、财务部</span></span></div>
-      <div class="rk a" style="--d:2"><span class="rl"><i>!</i><span class="en">Pipeline</span><span class="zh">商机</span></span><b>3</b><h5><span class="en">Regions below target</span><span class="zh">个区域未达标</span></h5><p><span class="en">North, South and West each missed by under 2%, and their November pipeline is thin.</span><span class="zh">华北、华南、西部均差 2% 以内，且 11 月商机储备不足。</span></p><div class="rk-ch"><span><span class="en">November pipeline coverage</span><span class="zh">11 月商机覆盖率</span></span><svg viewBox="0 0 200 68" aria-hidden="true"><path d="M8 50H192" stroke="#c9d0db"/><rect class="gy" style="--d:4" x="18" y="22.0" width="36" height="28.0" rx="2" fill="#d1543a"/><text class="mv in a" style="--d:5" x="36" y="44" text-anchor="middle">0.8×</text><text class="ml" x="36" y="64" text-anchor="middle"><tspan class="en">North</tspan><tspan class="zh">华北</tspan></text><rect class="gy" style="--d:5" x="82" y="25.5" width="36" height="24.5" rx="2" fill="#d1543a"/><text class="mv in a" style="--d:6" x="100" y="44" text-anchor="middle">0.7×</text><text class="ml" x="100" y="64" text-anchor="middle"><tspan class="en">South</tspan><tspan class="zh">华南</tspan></text><rect class="gy" style="--d:6" x="146" y="29.0" width="36" height="21.0" rx="2" fill="#d1543a"/><text class="mv in a" style="--d:7" x="164" y="44" text-anchor="middle">0.6×</text><text class="ml" x="164" y="64" text-anchor="middle"><tspan class="en">West</tspan><tspan class="zh">西部</tspan></text><path d="M8 15.0H192" stroke="#14213d" stroke-width="1" stroke-dasharray="3 3"/><text class="ml" x="192" y="11.0" text-anchor="end">1.0×</text></svg></div><span class="ow"><span class="en">Owner: Regional leads</span><span class="zh">负责：各区域负责人</span></span></div>
-      <div class="rk a" style="--d:3"><span class="rl"><i>!</i><span class="en">Cash</span><span class="zh">回款</span></span><b><span class="en">¥3.1M</span><span class="zh">310 万</span></b><h5><span class="en">Receivables over 60 days</span><span class="zh">逾期 60 天以上应收账款</span></h5><p><span class="en">Up from ¥1.9M in Q2; three distributors hold 70% of it.</span><span class="zh">Q2 为 190 万；其中 70% 集中在三家分销商。</span></p><div class="rk-ch"><span><span class="en">Over 60 days, ¥M</span><span class="zh">逾期 60 天以上（百万元）</span></span><svg viewBox="0 0 200 68" aria-hidden="true"><path d="M8 50H192" stroke="#c9d0db"/><rect class="gy" style="--d:4" x="18" y="34.0" width="36" height="16.0" rx="2" fill="#c3cbd8"/><text class="mv a" style="--d:5" x="36" y="29.0" text-anchor="middle">1.6</text><text class="ml" x="36" y="64" text-anchor="middle"><tspan class="en">Q1</tspan><tspan class="zh">Q1</tspan></text><rect class="gy" style="--d:5" x="82" y="31.0" width="36" height="19.0" rx="2" fill="#c3cbd8"/><text class="mv a" style="--d:6" x="100" y="26.0" text-anchor="middle">1.9</text><text class="ml" x="100" y="64" text-anchor="middle"><tspan class="en">Q2</tspan><tspan class="zh">Q2</tspan></text><rect class="gy" style="--d:6" x="146" y="19.0" width="36" height="31.0" rx="2" fill="#d1543a"/><text class="mv a" style="--d:7" x="164" y="14.0" text-anchor="middle">3.1</text><text class="ml" x="164" y="64" text-anchor="middle"><tspan class="en">Q3</tspan><tspan class="zh">Q3</tspan></text></svg></div><span class="ow"><span class="en">Owner: Finance</span><span class="zh">负责：财务部</span></span></div>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>7</span></div>
-  </div>
-
-  <div class="sl">
-    <div class="k"><span class="en">Q4 plan</span><span class="zh">Q4 计划</span></div>
-    <h3><span class="en">Q4: turn the momentum into a ¥50M quarter</span><span class="zh">Q4：把势头转化为 5,000 万元的季度</span></h3>
-    <div class="bd s8">
-      <table class="stbl act">
-        <thead><tr><th></th><th><span class="en">Action</span><span class="zh">行动</span></th><th><span class="en">Owner</span><span class="zh">负责</span></th><th><span class="en">Due</span><span class="zh">完成时间</span></th></tr></thead>
-        <tbody>
-          <tr class="a" style="--d:1"><td><i>1</i></td><td><span class="en">Launch the distributor program in two more overseas markets</span><span class="zh">在另外两个海外市场推出分销商计划</span></td><td><span class="en">International sales</span><span class="zh">国际销售部</span></td><td><span class="en">15 Nov</span><span class="zh">11 月 15 日</span></td></tr>
-          <tr class="a" style="--d:2"><td><i>2</i></td><td><span class="en">Attach a services plan to every lock sold through retail</span><span class="zh">零售渠道每售出一把门锁都搭配服务套餐</span></td><td><span class="en">Product</span><span class="zh">产品部</span></td><td><span class="en">31 Oct</span><span class="zh">10 月 31 日</span></td></tr>
-          <tr class="a" style="--d:3"><td><i>3</i></td><td><span class="en">Reprice the two entry gateway models by 6%</span><span class="zh">两款入门网关上调价格 6%</span></td><td><span class="en">Finance</span><span class="zh">财务部</span></td><td><span class="en">31 Oct</span><span class="zh">10 月 31 日</span></td></tr>
-          <tr class="a" style="--d:4"><td><i>4</i></td><td><span class="en">Weekly pipeline review for North, South and West</span><span class="zh">华北、华南、西部每周复盘商机</span></td><td><span class="en">Regional leads</span><span class="zh">各区域负责人</span></td><td><span class="en">From 13 Oct</span><span class="zh">10 月 13 日起</span></td></tr>
-        </tbody>
-      </table>
-      <div class="stats">
-        <div class="a" style="--d:3"><b><span class="en">¥50.0M</span><span class="zh">5,000 万</span></b><span><span class="en">Q4 revenue target, 2.9% above Q3</span><span class="zh">Q4 收入目标，比 Q3 高 2.9%</span></span></div>
-        <div class="a" style="--d:4"><b>1.25×</b><span><span class="en">Pipeline coverage: ¥62.4M open against the target</span><span class="zh">商机覆盖率：在手商机 6,240 万</span></span></div>
-      </div>
-    </div>
-    <div class="ft"><span><span class="en">Q3 2026 Business Review · Example data</span><span class="zh">2026 Q3 经营分析 · 示例数据</span></span><span>8</span></div>
-  </div>
-</template>
-
 <!-- ======================= FILM ======================= -->
 <section id="film" class="film">
   <div class="wrap">
@@ -1579,11 +1164,11 @@ footer a:hover { color: var(--fg); }
     <div>
       <div class="eyebrow rv"><span class="zh">固定工作流</span><span class="en">Workflows</span></div>
       <h2 class="h2 rv" style="--i:1"><span class="en">Do it once. <em>Rerun it forever.</em></span><span class="zh">做成一次，<em>以后一键重跑。</em></span></h2>
-      <p class="sub rv" style="--i:2"><span class="en">When a conversation gets the job done, save it as a workflow: fixed steps you can review, edit and schedule.</span><span class="zh">对话把活干完后，一键存成工作流：步骤固定，能审、能改、能定时。</span></p>
+      <p class="sub rv" style="--i:2"><span class="en">When a conversation gets the job done, save it as a workflow: fixed steps you can review and edit. It runs on a schedule, when a file lands in a folder, when a connector has something new, or when another program sends an event.</span><span class="zh">对话把活干完后，一键存成工作流：步骤固定，能审、能改。它可以定时运行，也可以在文件夹里来了新文件、连接器里有新内容、或别的程序发来事件时自动运行。</span></p>
       <ul class="points">
-        <li class="rv" style="--i:3"><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span><h3><span class="en">Same steps, every run</span><span class="zh">每次都是同样的步骤</span></h3><p><span class="en">Built on LangGraph. Only the inputs change.</span><span class="zh">基于 LangGraph，变的只有输入。</span></p></li>
+        <li class="rv" style="--i:3"><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span><h3><span class="en">You decide how much the AI decides</span><span class="zh">AI 能自己做多少，由你定</span></h3><p><span class="en">Fixed steps, self-healing when a page changes, or fully autonomous.</span><span class="zh">固定步骤、网页变了能自己修复，或完全自主。</span></p></li>
         <li class="rv" style="--i:4"><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></span><h3><span class="en">Models only where you want them</span><span class="zh">只在需要的步骤调用模型</span></h3><p><span class="en">This report has no model step: 2 seconds a run, zero tokens.</span><span class="zh">这份日报不调用模型：一次 2 秒，零 token。</span></p></li>
-        <li class="rv" style="--i:5"><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z"/><path d="M12 8v4M12 16h.01"/></svg></span><h3><span class="en">Stops at the first failure</span><span class="zh">出错就停，不硬写</span></h3><p><span class="en">A failed check halts the run and says why, instead of shipping a wrong report.</span><span class="zh">检查不通过就停下并写明原因，不会交出一份错的报告。</span></p></li>
+        <li class="rv" style="--i:5"><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z"/><path d="M12 8v4M12 16h.01"/></svg></span><h3><span class="en">Stops at the first failure</span><span class="zh">出错就停，不硬写</span></h3><p><span class="en">A failed check halts the run and its report says why, instead of shipping a wrong file.</span><span class="zh">检查不通过就停下，运行报告里写明原因，不会交出一份错的文件。</span></p></li>
       </ul>
     </div>
 
@@ -1617,7 +1202,7 @@ footer a:hover { color: var(--fg); }
     <div>
       <div class="eyebrow rv"><span class="zh">模型与权限</span><span class="en">Models and control</span></div>
       <h2 class="h2 rv" style="--i:1"><span class="en">Any model. <em>Your rules.</em></span><span class="zh">模型随你选，<em>权限你说了算。</em></span></h2>
-      <p class="sub rv" style="--i:2"><span class="en">Claude, GPT and Gemini are built in. DeepSeek, Kimi, GLM, Qwen, Ollama or any OpenAI-compatible service takes just a base URL and a key. Connectors bring in the tools you already use, and you can add your own.</span><span class="zh">Claude、GPT、Gemini 原生支持。DeepSeek、Kimi、GLM、Qwen、Ollama 等任何兼容 OpenAI 的服务，填上地址和 Key 就能用。连接器接入你常用的工具，也可以自己添加。</span></p>
+      <p class="sub rv" style="--i:2"><span class="en">Claude, GPT and Gemini are built in. DeepSeek, Kimi, GLM, Qwen, Doubao, OpenRouter, Ollama, LM Studio and more have presets, and any other OpenAI-compatible service takes a base URL and a key. Connectors bring in the tools you already use, and you can add your own.</span><span class="zh">Claude、GPT、Gemini 原生支持。DeepSeek、Kimi、GLM、Qwen、豆包、OpenRouter、Ollama、LM Studio 等都有预设，其他兼容 OpenAI 的服务填上地址和 Key 就能用。连接器接入你常用的工具，也可以自己添加。</span></p>
       <p class="local rv" style="--i:4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg><span><span class="en">Your files stay on your computer. Only what the model reads goes to the provider you picked. With Ollama, nothing leaves the machine.</span><span class="zh">文件始终在你的电脑上。只有模型要读的内容会发给你选的服务商；用 Ollama，数据完全不出本机。</span></span></p>
     </div>
 
@@ -1693,8 +1278,8 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
 <span class="p">&gt; </span><span class="cmd">cd coscribe\office-agent</span>
 <span class="p">&gt; </span><span class="cmd">python -m venv .venv</span>
 <span class="p">&gt; </span><span class="cmd">.\.venv\Scripts\Activate.ps1</span>
-<span class="p">&gt; </span><span class="cmd">pip install -e ".[dev,web]"</span>
-<span class="p">&gt; </span><span class="cmd">pip install -U "google-genai&gt;=2.13.0,&lt;2.14.0"</span>
+<span class="p">&gt; </span><span class="cmd">pip install uv</span>
+<span class="p">&gt; </span><span class="cmd">python scripts\install_locked.py --extra dev --extra web</span>
 <span class="p">&gt; </span><span class="cmd">copy .env.example .env</span>
 <span class="p">&gt; </span><span class="cmd">cd frontend; npm install; npm run build; cd ..</span>
 <span class="p">&gt; </span><span class="cmd">coscribe-web</span></pre>
@@ -1713,7 +1298,7 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     <div class="faq">
       <details class="rv" style="--i:1">
         <summary><span class="zh">和其他桌面 Agent 有什么不同？</span><span class="en">How is it different from other desktop agents?</span><i></i></summary>
-        <div class="fa"><ul class="zh"><li><b>本地运行，模型随便换。</b>文件留在本机，只有对话发给你选的模型。Claude、GPT、Gemini、DeepSeek、Kimi、GLM 等 OpenAI 兼容接口都能接。</li><li><b>Office 能力内置。</b>Word、Excel、PPT、PDF 读写自带：修订、公式、图表、PPT 动画和模板、PDF 检索。写完用 LibreOffice 渲染预览，让模型“看到”成品。</li><li><b>重视做对。</b>独立评审员拿脚本实际看到的证据核对产出，评审次数和每轮步数都有硬上限。</li><li><b>成功对话可固化成工作流。</b>跑通的任务可以固化成固定流程，定时执行时不再让模型做决定，稳定、快、便宜；AI 只在起草和修复失败时参与。</li><li><b>审批分级。</b>四种模式：手动、自动接受编辑、计划、Auto（由评审模型代为审批）。脚本只能写入授权文件夹，有审计日志，支持 Hooks。</li><li><b>成本认真优化。</b>缓存针对各家模型调过，同一个三文件办公任务从约 ¥2.9 降到 ¥1，每次调用花了多少都能查。</li><li><b>一个应用，两个 runtime。</b>办公交给 Coscribe runtime，编程可交给 Codex（可选模块，用到时才下载）。</li><li><b>交互打磨到位。</b>内置浏览器面板保持登录、批量提问、运行中途补充、任务进度和子代理面板、会话分组和状态图标。</li></ul><ul class="en"><li><b>Local, any model.</b>Your files stay on your PC; only the conversation goes to the model you pick: Claude, GPT, Gemini, DeepSeek, Kimi, GLM or any OpenAI-compatible API.</li><li><b>Office built in.</b>Word, Excel, PowerPoint and PDF tools ship with it: tracked changes, formulas, charts, slide animations and templates, PDF search. Each file is rendered with LibreOffice so the model sees the result.</li><li><b>Built to get it right.</b>An independent reviewer checks the output against evidence of what the scripts actually saw, and reviews and steps per turn have hard limits.</li><li><b>Chats become workflows.</b>A run that worked can become a fixed workflow. Scheduled runs follow its steps without the model deciding, so they are steady, fast and cheap; AI only drafts it and repairs failures.</li><li><b>Tiered approval.</b>Four modes: manual, auto-accept edits, plan, and Auto, where a reviewer model approves for you. Scripts write only to folders you allowed, with an audit log and Hooks.</li><li><b>Cost tuned per model.</b>Caching is tuned for each provider: the same three-file office task fell from about ¥2.9 to ¥1. You can see what every call cost.</li><li><b>Two runtimes, one app.</b>Office work runs on the Coscribe runtime; coding can go to Codex, an optional module downloaded only when you need it.</li><li><b>Polished to use.</b>A built-in browser pane that keeps you signed in, batch questions, adding input mid-run, progress and sub-agent panes, and grouped sessions with status icons.</li></ul></div>
+        <div class="fa"><ul class="zh"><li><b>本地运行，模型随便换。</b>文件留在本机，只有模型要读的内容发给你选的服务商。Claude、GPT、Gemini 原生支持，DeepSeek、Kimi、GLM、Qwen、豆包、Ollama 等都有预设。</li><li><b>Office 文件做到位。</b>真正的 Word、Excel、PPT 文件：原生图表、算好的公式、修订和批注。每个文件都渲染出来逐页检查，让模型“看到”成品；预览用你电脑上的 Office 或 WPS，LibreOffice 可选。</li><li><b>Artifacts 在对话旁边。</b>文档、幻灯片、设计稿和数据看板在对话旁的面板里打开，可以直接改。</li><li><b>AI 在你眼前用浏览器。</b>桌面版自带浏览器，保持登录。AI 能填整张表单、上传下载、把多页表格存成 CSV；遇到登录或验证码会交还给你，你也可以随时接手。</li><li><b>重视做对。</b>独立评审员只用只读工具，拿脚本实际返回的结果核对成品；大活拆给子代理并行做。</li><li><b>重复的活变成任务。</b>跑通的对话可以存成工作流，定时、来文件、连接器有新内容或收到事件时自动运行。AI 能自己做多少由你定：固定步骤、自我修复或完全自主。每次运行都有报告。</li><li><b>权限你说了算。</b>四种模式：Manual、Accept Edits、Plan、Auto（由评审模型代为审批）。计划可以先审再改，发出的消息可以回退重写。Windows 上脚本在隔离沙箱里运行，只能碰你允许的文件夹，每个决定都有审计日志。</li><li><b>编程交给代码模块。</b>编程任务可以交给 Codex，可选模块，用到时才下载。</li></ul><ul class="en"><li><b>Local, any model.</b>Your files stay on your PC; only what the model reads goes to the provider you pick. Claude, GPT and Gemini are built in, with presets for DeepSeek, Kimi, GLM, Qwen, Doubao, Ollama and more.</li><li><b>Office files done properly.</b>Real Word, Excel and PowerPoint files with native charts, computed formulas, tracked changes and comments. Every file is rendered and its pages checked, so the model sees what it made. Your own Office or WPS draws the previews; LibreOffice is optional.</li><li><b>Artifacts beside the chat.</b>Docs, slide decks, designs and data dashboards open in a panel next to the conversation, where you edit them.</li><li><b>A browser the AI uses in front of you.</b>The desktop app has its own browser that keeps your sign-ins. The AI fills whole forms, uploads and downloads files and saves tables across pages as CSV; it hands a sign-in or captcha back to you, and you can take over at any moment.</li><li><b>Built to get it right.</b>A separate reviewer with read-only tools checks the finished work against what the scripts actually returned. Larger jobs are split across sub-agents.</li><li><b>Work that repeats becomes a task.</b>A conversation that worked can be saved as a workflow that runs on a schedule, when a file arrives, when a connector has something new or when an event comes in. You choose how much the AI decides: fixed steps, self-healing or fully autonomous. Every run ends with a report.</li><li><b>You stay in control.</b>Four modes: Manual, Accept Edits, Plan, and Auto, where a reviewer model approves for you. Plans can be reviewed and edited first, and a sent message can be rewound. On Windows, scripts run in an isolated sandbox that reaches only the folders you allowed, and every decision goes to an audit log.</li><li><b>Code when you need it.</b>Programming tasks can go to Codex, an optional module downloaded only when you need it.</li></ul></div>
       </details>
       <details class="rv" style="--i:2">
         <summary><span class="zh">要付费吗？</span><span class="en">Does it cost anything?</span><i></i></summary>
@@ -1888,832 +1473,70 @@ df.to_excel("Q3订单明细_清洗后.xlsx", index=False)</span></pre>
     return { select: select, relayout: relayout };
   }
 
-  /* =====================================================================
-     The app window. Four scripted scenes play in turn; each is a list of
-     beats [at, fn] or [at, duration, fn(progress)] on the scene's own
-     clock, which only runs while the window is on screen and nobody is
-     using it.
-     ===================================================================== */
-  var app = $("app"), log = $("log"), cbox = $("cbox"), cursor = $("cursor");
-  var typed = $("typed").children, viewer = $("viewer"), vbody = $("vbody");
-  var panes = all(".pane", app);
-  var ff = false;
+  /* ---------------------------------------------------------------------
+     The example tasks: demo/ replays each real conversation in the app's
+     own markup. A tab picks the task; the tour moves to the next task when
+     one finishes, and pauses while the window is off screen.
+     --------------------------------------------------------------------- */
+  (function () {
+    var frame = $("demo"), win = $("win"), tabs = all("#scenes .sc"), playp = $("playp");
+    var at = 0, paused = reduced, visible = false, ready = false, fill = 0;
 
-  /* side panes */
-  var side = "task";
-  function setSide(which) {
-    side = which;
-    app.setAttribute("data-side", which === "off" ? "off" : which === "task" ? "task" : "wide");
-    app.classList.toggle("drawer", narrow.matches && which !== "off");
-    panes.forEach(function (p) { p.classList.toggle("on", p.getAttribute("data-pane") === which); });
-    $("b-side").setAttribute("aria-pressed", which === "task" ? "true" : "false");
-    $("b-side").setAttribute("data-tip", which === "task" ? "Hide task details" : "Show task details");
-    $("b-browser").setAttribute("aria-pressed", which === "browser" ? "true" : "false");
-    $("b-agents").setAttribute("aria-pressed", which === "agents" ? "true" : "false");
-  }
-  function defaultSide() { return narrow.matches ? "off" : "task"; }
-  narrow.addEventListener("change", function () {
-    if (narrow.matches && side === "task") setSide("off");
-    else if (!narrow.matches && side === "off") setSide("task");
-    else setSide(side);
-  });
-
-  /* composer */
-  function typeTo(zh, en, p) {
-    typed[0].textContent = zh.slice(0, Math.round(zh.length * p));
-    typed[1].textContent = en.slice(0, Math.round(en.length * p));
-    cbox.classList.add("focus");
-    cbox.classList.toggle("has", p > 0);
-  }
-  function clearComposer() { typed[0].textContent = ""; typed[1].textContent = ""; cbox.classList.remove("has", "focus"); }
-
-  /* transcript */
-  function scrollLog() {
-    requestAnimationFrame(function () { log.scrollTo({ top: log.scrollHeight, behavior: reduced || ff ? "auto" : "smooth" }); });
-  }
-  function put(node) { log.appendChild(node); scrollLog(); return node; }
-  function userMsg(zh, en, pick) {
-    return put(h("div", "m-user", '<div class="bubble">' + (pick ? '<div class="pick">' + svg(I.pick) + pick + "</div>" : "") + bi(esc(zh), esc(en)) + "</div>"));
-  }
-  function send(zh, en) {
-    clearComposer();
-    var s = $("send");
-    s.classList.add("pressed");
-    setTimeout(function () { s.classList.remove("pressed"); }, 160);
-    userMsg(zh, en);
-  }
-  /* A tool label: the app's English verb with the object in the reader's language. */
-  function L(verb, zh, en, glue) { return verb + (glue || " ") + "<b>" + (zh === en ? zh : bi(zh, en)) + "</b>"; }
-  function group() { return put(h("div", "run", '<div class="rh"><span class="rl"></span>' + svg(I.chev) + '</div><div class="rows"></div>')); }
-  function head(g, html, live) { var l = g.querySelector(".rl"); l.innerHTML = html; l.classList.toggle("shimmer-text", !!live); }
-  function row(g, html) {
-    var r = h("div", "rrow live", '<span class="ic"></span><span class="lb shimmer-text">' + html + "</span>");
-    g.querySelector(".rows").appendChild(r);
-    scrollLog();
-    return r;
-  }
-  function fin(r, extra) {
-    if (!r) return;
-    r.classList.remove("live"); r.classList.add("ok");
-    r.querySelector(".ic").innerHTML = svg(I.check, 2.4);
-    var lb = r.querySelector(".lb");
-    lb.classList.remove("shimmer-text");
-    if (extra) lb.insertAdjacentHTML("beforeend", extra);
-  }
-  function ds(a, r) { return ' <span class="ds"><span class="a">+' + a + "</span>" + (r ? ' <span class="r">−' + r + "</span>" : "") + "</span>"; }
-  function note(g, html) { var n = h("p", "note", html); g.querySelector(".rows").appendChild(n); scrollLog(); return n; }
-  function wrapWords(el) {
-    all("code", el).forEach(function (c) { c.classList.add("w"); });
-    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), texts = [];
-    while (walker.nextNode()) if (!walker.currentNode.parentNode.closest("code")) texts.push(walker.currentNode);
-    texts.forEach(function (t) {
-      var parts = t.textContent.match(/[　-〿㐀-鿿＀-￯]{1,2}|[^\s　-〿㐀-鿿＀-￯]+\s*|\s+/g) || [];
-      var frag = document.createDocumentFragment();
-      parts.forEach(function (s) { var sp = document.createElement("span"); sp.className = "w"; sp.textContent = s; frag.appendChild(sp); });
-      t.parentNode.replaceChild(frag, t);
-    });
-  }
-  function reply(zh, en) {
-    var el = put(h("div", "reply", bi(zh, en)));
-    wrapWords(el);
-    var words = [all(".zh .w", el), all(".en .w", el)];
-    return function (p) {
-      words.forEach(function (ws) { var n = Math.round(ws.length * p); ws.forEach(function (w, i) { w.classList.toggle("on", i < n); }); });
-    };
-  }
-
-  /* task details pane */
-  var tp = { title: $("tp-title"), prog: $("tp-prog"), outs: $("tp-outs"), outsE: $("tp-outs-e"), outN: $("tp-outn"), ctx: $("tp-ctx"), ctxE: $("tp-ctx-e") };
-  function resetTask(t) {
-    tp.title.innerHTML = bi(t[0], t[1]);
-    tp.prog.innerHTML = '<p class="tp-empty">See task progress for longer tasks.</p>';
-    tp.outs.innerHTML = ""; tp.outsE.hidden = false; tp.outN.textContent = "";
-    tp.ctx.innerHTML = ""; tp.ctxE.hidden = false;
-  }
-  function setTodos(list) {
-    tp.prog.innerHTML = '<div class="dots">' + list.map(function () { return "<i></i>"; }).join("") + '<span class="dots-t"></span></div><ul class="todo">' +
-      list.map(function (x, i) { return '<li style="animation-delay:' + i * 70 + 'ms"><span class="c"></span><span>' + bi(x[0], x[1]) + "</span></li>"; }).join("") + "</ul>";
-    todoCount();
-  }
-  function todo(i, state) {
-    var li = tp.prog.querySelectorAll(".todo li")[i], dot = tp.prog.querySelectorAll(".dots i")[i];
-    if (!li) return;
-    li.className = state; dot.className = state;
-    todoCount();
-  }
-  function todoCount() {
-    var n = tp.prog.querySelectorAll(".todo li.done").length, total = tp.prog.querySelectorAll(".todo li").length;
-    var t = tp.prog.querySelector(".dots-t");
-    if (t) t.textContent = n + " of " + total + " done";
-  }
-  function output(f) {
-    tp.outsE.hidden = true;
-    var li = h("li", null, '<button class="frow" type="button"><span class="fb ' + f.kind + '">' + f.kind.toUpperCase() + '</span><span><span class="fn">' + bi(f.zh, f.en) + '</span><span class="fm">' + f.meta + "</span></span></button>");
-    li.firstChild.addEventListener("click", function () { hold("viewer"); openViewer(true); });
-    tp.outs.appendChild(li);
-    tp.outN.textContent = tp.outs.children.length;
-    return li.firstChild;
-  }
-  function ctx(sec, html) {
-    tp.ctxE.hidden = true;
-    var grp = tp.ctx.querySelector('[data-sec="' + sec + '"]');
-    if (!grp) {
-      tp.ctx.insertAdjacentHTML("beforeend", '<div class="ctx-lab">' + sec + '</div><div class="chips" data-sec="' + sec + '"></div>');
-      grp = tp.ctx.querySelector('[data-sec="' + sec + '"]');
+    function post(message) {
+      if (!ready) return;
+      message.type = "coscribe-demo";
+      frame.contentWindow.postMessage(message, "*");
     }
-    grp.insertAdjacentHTML("beforeend", "<span>" + html + "</span>");
-  }
-
-  /* sub agents pane */
-  var agBody = $("ag-body"), agBadge = $("ag-badge"), agBack = $("ag-back"), agTitle = $("ag-title");
-  function agEmpty() {
-    agBody.innerHTML = '<p class="ag-empty">Sub-agents this conversation delegates to show up here.</p>';
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
-  }
-  function badge(n) { agBadge.textContent = n || ""; agBadge.classList.toggle("on", !!n); }
-  function facts(a) { return "<span>deepseek-v4-pro</span><span>" + a.tokens + " tokens</span><span>" + a.uses + " tool use" + (a.uses === 1 ? "" : "s") + "</span>"; }
-  function agRunning(list) {
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
-    agBody.innerHTML = '<div class="ag-body"><div class="ag-h">Running</div>' + list.map(function (a) {
-      return '<div class="ag-card"><div class="d"><span>' + bi(a.zh, a.en) + '</span><span class="ag-stop" title="Stop"><i></i></span></div>' +
-        '<div class="ag-meta"><span>Agent</span><span class="tm">' + (a.tm || "0:00") + "</span>" + (a.need ? '<span class="ag-need">' + svg(I.alert) + "Needs your approval</span>" : "") + "</div>" +
-        '<div class="ag-facts">' + facts(a) + (a.doing ? '<span class="shimmer-text">' + a.doing + "</span>" : "") + '<button class="ag-link" type="button">' + (a.need ? "Review" : "View transcript") + "</button></div></div>";
-    }).join("") + "</div>";
-  }
-  function agFinished(list) {
-    agBack.hidden = true; agTitle.textContent = "Sub agents";
-    agBody.innerHTML = '<div class="ag-body"><div class="ag-fin">Finished ' + list.length + svg(I.chevD) + "</div>" + list.map(function (a) {
-      return '<div class="ag-row"><span class="d">' + svg(I.done) + bi(a.zh, a.en) + '</span><span class="ag-facts">' + facts(a) + "</span></div>";
-    }).join("") + "</div>";
-  }
-  function agTimes(ms) {
-    var s = Math.max(0, Math.floor(ms / 1000));
-    all(".ag-card .tm", agBody).forEach(function (e) { e.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); });
-  }
-
-  /* file viewer */
-  var viewerOf = -1;
-  function vhead(kind, name, meta) {
-    var b = $("v-badge"); b.className = "fb " + kind; b.textContent = kind.toUpperCase();
-    $("v-name").innerHTML = name; $("v-meta").innerHTML = meta;
-  }
-  function openViewer(byUser) {
-    var sc = SCENES[S.i];
-    if (!sc.viewer) return;
-    if (viewerOf !== S.i) { sc.viewer(); viewerOf = S.i; if (byUser && sc.settle) sc.settle(); }
-    viewer.classList.add("on");
-  }
-  function closeViewer() { viewer.classList.remove("on"); }
-
-  /* the scripted pointer */
-  var pt = { x: 0, y: 0 };
-  function placeCursor(x, y) { pt.x = x; pt.y = y; cursor.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)"; }
-  function visibleIn(el) {
-    if (!el || !el.isConnected) return false;
-    var r = el.getBoundingClientRect(), a = app.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && r.left >= a.left - 1 && r.right <= a.right + 1 && r.top >= a.top - 1 && r.bottom <= a.bottom + 1;
-  }
-  function moveTo(at, dur, pick) {
-    var from = null, to = null;
-    return [at, dur, function (p) {
-      if (ff) return;
-      var el = pick();
-      if (!visibleIn(el)) return;
-      if (!from) {
-        var a = app.getBoundingClientRect(), r = el.getBoundingClientRect();
-        from = { x: pt.x, y: pt.y };
-        to = { x: r.left - a.left + Math.min(r.width / 2, 48), y: r.top - a.top + r.height * 0.55 };
-        cursor.classList.add("on");
-      }
-      var e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-      placeCursor(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e);
-    }];
-  }
-  function clickOn(at, pick, fn) {
-    return [at, function () {
-      var el = pick();
-      if (!ff && visibleIn(el)) {
-        cursor.classList.add("down");
-        el.classList.add("pressed");
-        setTimeout(function () { cursor.classList.remove("down"); el.classList.remove("pressed"); }, 170);
-      }
-      if (fn) fn(el);
-    }];
-  }
-  function hideCursor(at) { return [at, function () { cursor.classList.remove("on"); }]; }
-
-  /* ---------------------------- scene 1: deck ---------------------------- */
-  var DECK = {
-    en: ["Q3 2026 Business Review", "Executive summary", "Monthly trend", "Regions", "Product mix", "Customers", "Risks", "Q4 plan"],
-    zh: ["2026 年 Q3 经营分析", "核心结论", "月度走势", "区域", "产品结构", "客户", "风险", "Q4 计划"]
-  };
-  var slideAt = 0;
-  function deckViewer() {
-    vhead("pptx", bi("Q3季度经营分析.pptx", "Q3 Business Review.pptx"), bi("8 页", "8 slides"));
-    vbody.innerHTML = '<div class="deck"><div class="thumbs"></div><div class="slide"><div class="sf"></div><div class="cap"></div></div></div>';
-    var sf = vbody.querySelector(".sf"), th = vbody.querySelector(".thumbs");
-    all(".sl", $("deck-tpl").content).forEach(function (s, i) {
-      sf.appendChild(s.cloneNode(true));
-      var b = h("button", "", "<span>" + (i + 1) + '</span><span class="tsw"></span>');
-      b.type = "button";
-      b.setAttribute("aria-label", "Slide " + (i + 1));
-      var mini = s.cloneNode(true);
-      mini.classList.add("st");
-      mini.setAttribute("aria-hidden", "true");
-      b.querySelector(".tsw").appendChild(mini);
-      b.addEventListener("click", function () { hold("viewer"); showSlide(i); });
-      th.appendChild(b);
-    });
-    showSlide(slideAt);
-  }
-  function showSlide(i) {
-    slideAt = i;
-    all(".sf .sl", vbody).forEach(function (m, k) { m.classList.toggle("on", k === i); });
-    var th = all(".thumbs button", vbody);
-    th.forEach(function (b, k) { b.classList.toggle("on", k === i); });
-    var box = vbody.querySelector(".thumbs");
-    if (box && th[i]) box.scrollTo({ top: Math.max(0, th[i].offsetTop - 60), behavior: reduced ? "auto" : "smooth" });
-    var cap = vbody.querySelector(".cap");
-    if (cap) cap.textContent = (i + 1) + " / 8 · " + DECK[isEn() ? "en" : "zh"][i];
-  }
-  document.addEventListener("coscribe:lang", function () { if (vbody.querySelector(".deck")) showSlide(slideAt); });
-
-  /* ---------------------------- scene 2: contract ---------------------------- */
-  var DOC = [
-    ["h", "第四条　价格与付款", "4. Price and payment"],
-    ["p", "4.1", "货物价格见附件一，在合同期内固定不变。", "The prices for the Goods are set out in Schedule 1 and are fixed for the Term."],
-    ["p", "4.2", "买方应在收到无争议发票后 [30|60] 日内付款。", "The Buyer shall pay each undisputed invoice within [30|60] days of receipt.",
-      "我方标准条款第 3.1 条规定付款期为 60 天。", "Our standard terms (§3.1) set payment at 60 days."],
-    ["h", "第七条　交付", "7. Delivery"],
-    ["p", "7.1", "供方应将货物完税交付（DDP）至每份采购订单载明的地址。", "The Supplier shall deliver the Goods DDP to the address given in each Purchase Order."],
-    ["p", "7.2", "货物的所有权和风险自交付时转移给买方。", "Title and risk in the Goods pass to the Buyer on delivery."],
-    ["h", "第九条　责任", "9. Liability"],
-    ["p", "9.1", "任何一方均不限制其因过失造成人身伤亡或因欺诈而应承担的责任。", "Neither party limits its liability for death or personal injury caused by its negligence, or for fraud."],
-    ["p", "9.2", "除第 9.1 条外，供方在本合同项下的累计赔偿责任不超过此前[一个月|十二个月]已付的费用。", "Subject to clause 9.1, the Supplier’s total liability under this Agreement shall not exceed the fees paid in the preceding [one month|twelve months].",
-      "一个月的上限低于标准条款第 7.2 条的下限，我方标准为十二个月。", "A one-month cap is below our minimum in §7.2. Twelve months is our standard."],
-    ["h", "第十二条　期限与终止", "12. Term and termination"],
-    ["p", "12.1", "本合同自双方签署之日起生效，有效期三年。", "This Agreement starts on the date both parties sign it and runs for three years."],
-    ["p", "12.2", "任一方可提前 [30|90] 日书面通知对方终止本合同。", "Either party may terminate this Agreement on [30|90] days’ written notice.",
-      "标准条款第 9.4 条要求 90 天，以便有时间引入替代供应商。", "§9.4 asks for 90 days, so we have time to qualify another supplier."]
-  ];
-  function docViewer() {
-    vhead("docx", bi("供货合同.docx", "supply-agreement.docx"), bi("3 处修订 · 3 条批注", "3 tracked changes · 3 comments"));
-    var k = 0, bals = "";
-    var body = DOC.map(function (d) {
-      if (d[0] === "h") return "<h5>" + bi(d[1], d[2]) + "</h5>";
-      var kk = k, has = d.length > 4;
-      var mark = function (s) {
-        return s.replace(/\[([^|\]]+)\|([^\]]+)\]/, function (_, a, b) { return '<span class="anc" data-k="' + kk + '"><del data-k="' + kk + '">' + a + '</del><ins data-k="' + kk + '" data-t="' + b + '"></ins></span>'; });
-      };
-      if (has) {
-        bals += '<div class="bal" data-k="' + kk + '"><div class="bh"><i>C</i><b>Coscribe</b><span>' + bi("刚刚", "Just now") + "</span></div><p>" + bi(d[4], d[5]) + "</p></div>";
-        k++;
-      }
-      return '<p class="wc' + (has ? ' chg" data-k="' + kk : "") + '"><span class="n">' + d[1] + "</span><span>" + bi(mark(d[2]), mark(d[3])) + "</span></p>";
-    }).join("");
-    vbody.innerHTML = '<div class="wd"><div class="wsheet"><div class="wpage"><div class="whdr"><span>' + bi("供货合同 · SA-2026-118", "Supply Agreement · SA-2026-118") + "</span><span>" +
-      bi("审阅稿", "Draft for review") + '</span></div><h4 class="wt">' + bi("供 货 合 同", "SUPPLY AGREEMENT") + '</h4><p class="wparties">' +
-      bi("买方：示例贸易有限公司　　供方：德尔塔元件有限公司", "between <b>Example Trading Co.</b> (the “Buyer”) and <b>Delta Components Ltd.</b> (the “Supplier”)") + "</p>" + body +
-      '<div class="wfoot">' + bi("第 2 页，共 7 页", "Page 2 of 7") + '</div></div><div class="wmk">' + bals + '</div><svg class="wlinks" aria-hidden="true"></svg></div></div>';
-    layoutDoc();
-  }
-  // Word's markup pane: each balloon sits level with its change, pushed down
-  // when the one above runs long, with a dotted lead back to the text.
-  function layoutDoc() {
-    var sh = vbody.querySelector(".wsheet");
-    if (!sh) return;
-    var mk = sh.querySelector(".wmk"), ln = sh.querySelector(".wlinks");
-    if (getComputedStyle(ln).display === "none") { mk.style.minHeight = ""; return; }
-    var sr = sh.getBoundingClientRect(), z = sr.width / sh.offsetWidth || 1, mx = mk.offsetLeft, last = 0, d = "";
-    all(".bal", mk).forEach(function (b) {
-      var k = b.getAttribute("data-k"), a = null;
-      all('.anc[data-k="' + k + '"]', sh).forEach(function (x) { if (x.getClientRects().length) a = x; });
-      if (!a) return;
-      var rs = a.getClientRects(), r = rs[rs.length - 1];
-      var ax = (r.right - sr.left) / z, ay = (r.bottom - sr.top) / z - 3;
-      var top = Math.max((rs[0].top - sr.top) / z - 10, last + 10);
-      b.style.top = top + "px";
-      last = top + b.offsetHeight;
-      d += '<path data-k="' + k + '"' + (b.classList.contains("on") ? ' class="on"' : "") + ' d="M' + ax.toFixed(1) + " " + ay.toFixed(1) + "H" + mx + "L" + (mx + 12) + " " + (top + 17).toFixed(1) + '"/>';
-    });
-    ln.innerHTML = d;
-    // The last balloon can run past the end of the text; the page grows to hold it.
-    mk.style.minHeight = last ? last + 16 + "px" : "";
-  }
-  function docEdit(k, p) {
-    var sh = vbody.querySelector(".wsheet");
-    if (!sh) return;
-    all('del[data-k="' + k + '"]', sh).forEach(function (d) { d.style.setProperty("--p", clamp(p / 0.35)); d.classList.toggle("on", p > 0); });
-    all('ins[data-k="' + k + '"]', sh).forEach(function (n) { var t = n.getAttribute("data-t"); n.textContent = t.slice(0, Math.round(t.length * clamp((p - 0.35) / 0.4))); });
-    var para = sh.querySelector('.wc[data-k="' + k + '"]');
-    if (para) {
-      para.classList.toggle("on", p > 0);
-      var wd = vbody.querySelector(".wd");
-      if (p > 0 && !ff && !para.getAttribute("data-seen") && wd) {
-        para.setAttribute("data-seen", "1");
-        wd.scrollTo({ top: Math.max(0, sh.offsetTop + para.offsetTop - 110), behavior: reduced ? "auto" : "smooth" });
-      }
+    function lang() { return isEn() ? "en" : "zh"; }
+    function syncPlay() {
+      playp.setAttribute("aria-pressed", paused ? "true" : "false");
+      playp.setAttribute("aria-label", paused ? "Play the demo" : "Pause the demo");
+      post({ paused: paused || !visible || document.hidden });
     }
-    var on = p > 0.78, b = sh.querySelector('.bal[data-k="' + k + '"]');
-    if (b && b.classList.contains("on") !== on) {
-      b.classList.toggle("on", on);
-      all('.anc[data-k="' + k + '"]', sh).forEach(function (a) { a.classList.toggle("on", on); });
-      layoutDoc();
+    function draw() {
+      tabs.forEach(function (t, k) {
+        t.setAttribute("aria-selected", k === at ? "true" : "false");
+        t.tabIndex = k === at ? 0 : -1;
+        t.querySelector(".bar i").style.transform = "scaleX(" + (k === at ? fill : 0) + ")";
+      });
     }
-  }
-  document.addEventListener("coscribe:lang", layoutDoc);
-  window.addEventListener("resize", layoutDoc);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutDoc);
-
-  /* ---------------------------- scene 3: reconciliation ---------------------------- */
-  var LEDGER = [
-    ["2026-09-03", "TRX-4471", 3200, null, "m"], ["2026-09-07", "TRX-4520", 1150, null, "m"], ["2026-09-12", "INV-2093", 5600, 5060, "a"],
-    ["2026-09-15", "TRX-4688", 2480, null, "m"], ["2026-09-19", "INV-2141", 7900, 7090, "a"], ["2026-09-24", "TRX-4802", 4360, null, "m"],
-    ["2026-09-28", "INV-2188", 5700, 11400, "d"]
-  ];
-  var ISSUE = { m: ["账簿漏记", "Missing in ledger"], a: ["金额不符", "Amount differs"], d: ["重复入账", "Booked twice"] };
-  function money(n) { return n == null ? "—" : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-  function sheetViewer() {
-    vhead("xlsx", bi("对账结果-9月.xlsx", "reconciliation-sep.xlsx"), bi("差异 · 7 行", "Mismatches · 7 rows"));
-    var cols = "ABCDEF".split(""), rows = "";
-    LEDGER.forEach(function (r, i) {
-      var diff = r[3] == null ? r[2] : Math.abs(r[2] - r[3]);
-      rows += '<tr class="r"><th>' + (i + 2) + "</th><td>" + r[0] + "</td><td>" + r[1] + '</td><td class="n">' + money(r[2]) + '</td><td class="n">' + money(r[3]) +
-        '</td><td class="n flag">' + money(diff) + '</td><td class="t">' + bi(ISSUE[r[4]][0], ISSUE[r[4]][1]) + "</td></tr>";
+    function show(scene) {
+      at = scene; fill = 0;
+      draw();
+      post({ scene: scene + 1, lang: lang() });
+    }
+    frame.addEventListener("load", function () {
+      ready = true;
+      show(at);
+      syncPlay();
     });
-    var blank = "";
-    for (var j = 10; j <= 16; j++) blank += "<tr><th>" + j + "</th><td></td><td></td><td></td><td></td><td></td><td></td></tr>";
-    vbody.innerHTML = '<div class="xl"><div class="xl-fx"><span class="ref" id="xl-ref">A1</span><span class="fx">fx</span><code id="xl-f">' + bi("日期", "Date") + '</code></div><div class="xl-grid"><table><thead><tr><th></th>' +
-      cols.map(function (c) { return "<th>" + c + "</th>"; }).join("") + '</tr></thead><tbody><tr class="hd"><th>1</th><td>' + bi("日期", "Date") + "</td><td>" + bi("凭证号", "Reference") + "</td><td>" +
-      bi("银行", "Bank") + "</td><td>" + bi("账簿", "Ledger") + "</td><td>" + bi("差额", "Difference") + "</td><td>" + bi("类型", "Issue") + "</td></tr>" + rows +
-      '<tr class="tot"><th>9</th><td></td><td></td><td></td><td class="n">' + bi("合计", "Total") + '</td><td class="n" id="xl-tot">0.00</td><td></td></tr>' + blank +
-      '</tbody></table></div><div class="xl-tabs"><span>' + bi("汇总", "Summary") + '</span><span class="on">' + bi("差异", "Mismatches") + "</span></div></div>";
-  }
-  function sheetRow(i) { var r = vbody.querySelectorAll(".xl tr.r")[i]; if (r) r.classList.add("on"); }
-  function sheetTotal(p) {
-    var tot = $("xl-tot");
-    if (!tot) return;
-    var e = 1 - Math.pow(1 - p, 3);
-    tot.textContent = money(Math.round(18240 * e * 100) / 100);
-    tot.classList.add("sel");
-    $("xl-ref").textContent = "E9";
-    $("xl-f").textContent = "=SUM(E2:E8)";
-  }
-
-  /* ---------------------------- scene 4: code ---------------------------- */
-  var DIFF = [
-    ["f", "export_orders.py", "+5 −2"],
-    ["@", "@@ -1,18 +1,21 @@"],
-    [" ", 1, "import argparse"], ["+", 2, "from datetime import date"], [" ", 3, ""], [" ", 4, "import pandas as pd"], [" ", 5, ""], [" ", 6, ""],
-    ["-", 7, "def export(orders_path, out_path):"], ["+", 7, "def export(orders_path, out_path, since=None):"],
-    [" ", 8, "    df = pd.read_excel(orders_path)"], ["+", 9, "    if since:"], ["+", 10, '        df = df[df["order_date"].dt.date >= since]'],
-    [" ", 11, "    df.to_csv(out_path, index=False)"], [" ", 12, ""], [" ", 13, ""], [" ", 14, "def main():"],
-    [" ", 15, "    parser = argparse.ArgumentParser()"], [" ", 16, '    parser.add_argument("orders")'], ["+", 17, '    parser.add_argument("--since", type=date.fromisoformat)'],
-    [" ", 18, "    args = parser.parse_args()"], ["-", 19, '    export(args.orders, "orders.csv")'], ["+", 19, '    export(args.orders, "orders.csv", args.since)'],
-    ["f", "tests/test_export.py", "+12"],
-    ["@", "@@ -0,0 +1,12 @@"],
-    ["+", 1, "from datetime import date"], ["+", 2, ""], ["+", 3, "import pandas as pd"], ["+", 4, ""], ["+", 5, "from export_orders import export"], ["+", 6, ""], ["+", 7, ""],
-    ["+", 8, "def test_since_keeps_only_newer_orders(tmp_path):"],
-    ["+", 9, '    src, out = tmp_path / "orders.xlsx", tmp_path / "orders.csv"'],
-    ["+", 10, '    dates = pd.to_datetime(["2026-09-28", "2026-10-01", "2026-10-03"])'],
-    ["+", 11, '    pd.DataFrame({"order_id": [1, 2, 3], "order_date": dates}).to_excel(src, index=False)'],
-    ["+", 12, "    export(src, out, since=date(2026, 10, 1))"],
-    ["+", 13, '    assert pd.read_csv(out)["order_id"].tolist() == [2, 3]']
-  ];
-  function codeViewer() {
-    vhead("py", "export_orders.py", bi("2 个文件 · +17 −2", "2 files · +17 −2"));
-    var html = DIFF.map(function (d) {
-      if (d[0] === "f") return '<div class="fh"><b>' + d[1] + "</b><span>" + d[2] + "</span></div>";
-      if (d[0] === "@") return '<div class="dl hunk"><span class="no"></span><span class="sg"></span><span>' + d[1] + "</span></div>";
-      var cls = d[0] === "+" ? "add hide" : d[0] === "-" ? "rm" : "";
-      return '<div class="dl ' + cls + '"><span class="no">' + d[1] + '</span><span class="sg">' + (d[0] === " " ? "" : d[0] === "-" ? "−" : "+") + "</span><span>" + esc(d[2]) + "</span></div>";
-    }).join("");
-    vbody.innerHTML = '<div class="diff"><div class="diff-f">' + html + '</div><div class="term" id="term"></div></div>';
-  }
-  function codeLines(p) {
-    var adds = all(".dl.add", vbody), n = Math.round(adds.length * p);
-    adds.forEach(function (d, i) { d.classList.toggle("hide", i >= n); });
-    var box = vbody.querySelector(".diff-f"), last = adds[n - 1];
-    if (box && last && !ff) box.scrollTop = Math.max(0, last.offsetTop - box.clientHeight + 40);
-  }
-  function term(lines) { var t = $("term"); if (t) t.innerHTML = lines; }
-
-  /* ---------------------------- the scenes ---------------------------- */
-  var SCENES = [
-    {
-      title: ["Q3 季度经营分析", "Q3 business review"], mode: "Auto", len: 25600, rest: 13000,
-      viewer: deckViewer, settle: function () { showSlide(0); },
-      beats: function () {
-        var P = ["读一下 Q3销售数据.xlsx，做一份 8 页的经营分析 PPT。区域和产品分两路并行分析，做完请评审检查一遍。",
-                 "Read Q3 sales.xlsx and build an 8-slide business review. Analyse regions and products in parallel, then have a reviewer check it."];
-        var g, r = [], out, say;
-        var F = L("Read", "Q3销售数据.xlsx", "Q3 sales.xlsx");
-        var CMD = L("ran a command", "用 pptxgenjs 生成 Q3季度经营分析.pptx", "Build Q3 Business Review.pptx with pptxgenjs", ": ");
-        var A = [{ zh: "分析各区域达成与环比", en: "Analyze regions vs target and Q2", tokens: "4.1k", uses: 1, doing: "Reading Q3 sales.xlsx" },
-                 { zh: "分析产品结构、毛利和重点客户", en: "Analyze product mix, margins, top customers", tokens: "3.6k", uses: 1, doing: "Running a command" }];
-        return [
-          [300, 1900, function (p) { typeTo(P[0], P[1], p); }],
-          [2400, function () { send(P[0], P[1]); }],
-          [2800, function () { g = group(); r[0] = row(g, F); head(g, L("Reading", "Q3销售数据.xlsx", "Q3 sales.xlsx"), true); }],
-          [3300, function () {
-            setTodos([["读取销售数据", "Read the sales data"], ["并行分析区域和产品", "Analyse regions and products in parallel"], ["生成 PPT", "Build the deck"], ["渲染并请评审检查", "Render it and have it reviewed"], ["按评审意见修改", "Fix what the review finds"]]);
-            ctx("FILES READ", bi("Q3销售数据.xlsx", "Q3 sales.xlsx"));
-          }],
-          [3900, function () {
-            fin(r[0]); todo(0, "done"); todo(1, "act");
-            r[1] = row(g, L("Delegated to a sub-agent", A[0].zh, A[0].en, ": "));
-            r[2] = row(g, L("Delegated to a sub-agent", A[1].zh, A[1].en, ": "));
-            head(g, F, true); badge(2); agRunning(A); ctx("TOOLS", "Sub-agents");
-          }],
-          [3900, 2200, function (p) { agTimes(p * 2200); }],
-          [6100, function () {
-            fin(r[1]); fin(r[2]); todo(1, "done"); todo(2, "act"); badge(0);
-            agFinished([{ zh: A[1].zh, en: A[1].en, tokens: "11.9k", uses: 1 }, { zh: A[0].zh, en: A[0].en, tokens: "10.2k", uses: 1 }]);
-            head(g, F + ", finished 2 sub-agent tasks", true);
-            r[3] = row(g, L("Ran a command", "用 pptxgenjs 生成 Q3季度经营分析.pptx", "Build Q3 Business Review.pptx with pptxgenjs", ": "));
-            ctx("TOOLS", "Run script");
-          }],
-          [7700, function () {
-            fin(r[3]); todo(2, "done"); todo(3, "act");
-            out = output({ kind: "pptx", zh: "Q3季度经营分析.pptx", en: "Q3 Business Review.pptx", meta: "Created today at 10:42 AM" });
-            head(g, F + ", finished 2 sub-agent tasks, " + CMD, true);
-            r[4] = row(g, "Rendered a PowerPoint preview");
-            ctx("TOOLS", "Render preview");
-          }],
-          [8600, function () { fin(r[4]); head(g, F + ", finished 2 sub-agent tasks, " + CMD + ", and 1 more action", true); r[5] = row(g, "Asked a reviewer to check the work"); ctx("TOOLS", "Review"); }],
-          [10100, function () {
-            fin(r[5]); todo(3, "done"); todo(4, "act");
-            note(g, bi("<b>评审：</b>数字都核对无误，但第 6 页标题写“单一客户均低于 5%”，诺瓦零售实际是 5.8%。", "<b>Reviewer:</b> every figure checks out, but slide 6 says no account is above 5%, and Nova Retail is 5.8%."));
-            head(g, F + ", finished 3 sub-agent tasks, " + CMD + ", and 1 more action", true);
-            r[6] = row(g, L("Ran a command", "改正第 6 页标题", "Correct the headline on slide 6", ": "));
-          }],
-          [11100, function () { fin(r[6]); todo(4, "done"); head(g, F + ", finished 3 sub-agent tasks, ran 2 commands, and 1 more action", false); }],
-          [11300, function () {
-            say = reply("<b>Q3季度经营分析.pptx</b> 做好了，共 8 页，图表都可以在 PowerPoint 里直接编辑。Q3 收入 4,860 万元，达成目标的 101.3%，海外和华东领跑；服务增长最快，毛利 58%。评审指出的第 6 页标题已改正。",
-              "<b>Q3 Business Review.pptx</b> is ready: 8 slides, with charts you can edit in PowerPoint. Revenue reached ¥48.6M, 101.3% of target, led by Overseas and East; services grew fastest at a 58% margin. The slide 6 headline the reviewer flagged is fixed.");
-          }],
-          [11300, 1600, function (p) { if (say) say(p); }],
-          moveTo(13300, 700, function () { return out; }),
-          clickOn(14050, function () { return out; }, function () { slideAt = 0; openViewer(); }),
-          hideCursor(14500),
-          [15600, function () { showSlide(1); }], [17000, function () { showSlide(2); }], [18400, function () { showSlide(3); }], [19800, function () { showSlide(4); }],
-          [21200, function () { showSlide(5); }], [22600, function () { showSlide(6); }], [24000, function () { showSlide(7); }]
-        ];
-      }
-    },
-    {
-      title: ["供货合同审阅", "Supply agreement review"], mode: "Auto", len: 16400, rest: 8200,
-      viewer: docViewer, settle: function () { var was = ff; ff = true; [0, 1, 2].forEach(function (k) { docEdit(k, 1); }); ff = was; },
-      beats: function () {
-        var P = ["对照我们的标准条款审阅 供货合同.docx，改动用修订标出来，每处在批注里写明理由。",
-                 "Review supply-agreement.docx against our standard terms. Make the edits as tracked changes and explain each one in a comment."];
-        var g, r = [], out, say;
-        var D = L("Read", "供货合同.docx", "supply-agreement.docx"), E = L("edited", "供货合同.docx", "supply-agreement.docx");
-        return [
-          [300, 1900, function (p) { typeTo(P[0], P[1], p); }],
-          [2400, function () { send(P[0], P[1]); }],
-          [2800, function () { g = group(); r[0] = row(g, D); head(g, L("Reading", "供货合同.docx", "supply-agreement.docx"), true); ctx("FILES READ", bi("供货合同.docx", "supply-agreement.docx")); }],
-          [3500, function () { fin(r[0]); r[1] = row(g, L("Read", "标准条款.docx", "standard-terms.docx")); head(g, D, true); ctx("FILES READ", bi("标准条款.docx", "standard-terms.docx")); }],
-          [4200, function () { fin(r[1]); head(g, "Read 2 files", true); r[2] = row(g, L("Edited", "供货合同.docx", "supply-agreement.docx")); ctx("TOOLS", "Edit Word document"); }],
-          [6000, function () {
-            fin(r[2], ds(3, 3)); head(g, "Read 2 files, " + E + ds(3, 3), false);
-            out = output({ kind: "docx", zh: "供货合同.docx", en: "supply-agreement.docx", meta: "Edited today at 11:05 AM" });
-          }],
-          [6300, function () {
-            say = reply("在 <b>供货合同.docx</b> 里做了 3 处修订，每处都附了批注：付款期改回 60 天，赔偿上限提高到 12 个月服务费，终止需提前 90 天通知。可以在 Word 里逐条接受或拒绝。",
-              "Made 3 tracked changes in <b>supply-agreement.docx</b>, each with a comment: payment back to 60 days, the liability cap raised to 12 months of fees, and 90 days’ notice to terminate. Accept or reject each one in Word.");
-          }],
-          [6300, 1600, function (p) { if (say) say(p); }],
-          moveTo(8500, 700, function () { return out; }),
-          clickOn(9250, function () { return out; }, function () { openViewer(); }),
-          hideCursor(9700),
-          [10000, 1400, function (p) { docEdit(0, p); }],
-          [11800, 1400, function (p) { docEdit(1, p); }],
-          [13600, 1400, function (p) { docEdit(2, p); }]
-        ];
-      }
-    },
-    {
-      title: ["9 月银行对账", "September reconciliation"], mode: "Auto", len: 16800, rest: 8800,
-      viewer: sheetViewer, settle: function () { for (var i = 0; i < 7; i++) sheetRow(i); sheetTotal(1); },
-      beats: function () {
-        var P = ["把 银行流水-9月.xlsx 和 账簿-9月.xlsx 对一下账，对不上的都列到一张新表里。",
-                 "Reconcile bank-sep.xlsx against ledger-sep.xlsx and list every mismatch in a new sheet."];
-        var g, r = [], out, say;
-        var CMD = L("ran a command", "按日期、金额和凭证号匹配 1,284 笔流水", "Match 1,284 transactions by date, amount and reference", ": ");
-        var beats = [
-          [300, 1700, function (p) { typeTo(P[0], P[1], p); }],
-          [2200, function () { send(P[0], P[1]); }],
-          [2600, function () { g = group(); r[0] = row(g, L("Read", "银行流水-9月.xlsx", "bank-sep.xlsx")); head(g, L("Reading", "银行流水-9月.xlsx", "bank-sep.xlsx"), true); ctx("FILES READ", bi("银行流水-9月.xlsx", "bank-sep.xlsx")); }],
-          [3200, function () { fin(r[0]); r[1] = row(g, L("Read", "账簿-9月.xlsx", "ledger-sep.xlsx")); head(g, L("Read", "银行流水-9月.xlsx", "bank-sep.xlsx"), true); ctx("FILES READ", bi("账簿-9月.xlsx", "ledger-sep.xlsx")); }],
-          [3800, function () { fin(r[1]); head(g, "Read 2 files", true); r[2] = row(g, L("Ran a command", "按日期、金额和凭证号匹配 1,284 笔流水", "Match 1,284 transactions by date, amount and reference", ": ")); ctx("TOOLS", "Run script"); }],
-          [5800, function () { fin(r[2]); head(g, "Read 2 files, " + CMD, true); r[3] = row(g, L("Wrote", "对账结果-9月.xlsx", "reconciliation-sep.xlsx")); ctx("TOOLS", "Write Excel"); }],
-          [6500, function () {
-            fin(r[3]); head(g, "Read 2 files, " + CMD + ", " + L("wrote", "对账结果-9月.xlsx", "reconciliation-sep.xlsx"), false);
-            out = output({ kind: "xlsx", zh: "对账结果-9月.xlsx", en: "reconciliation-sep.xlsx", meta: "Created today at 9:12 AM" });
-          }],
-          [6800, function () {
-            say = reply("有 7 笔对不上，合计 <b>¥18,240</b>：账簿漏记 4 笔，金额不符 2 笔，重复入账 1 笔。都列在 <b>对账结果-9月.xlsx</b> 的“差异”表里。",
-              "7 transactions don’t match, <b>¥18,240</b> in total: 4 are missing from the ledger, 2 have different amounts, and 1 was booked twice. They’re on the Mismatches sheet of <b>reconciliation-sep.xlsx</b>.");
-          }],
-          [6800, 1600, function (p) { if (say) say(p); }],
-          moveTo(9000, 700, function () { return out; }),
-          clickOn(9750, function () { return out; }, function () { openViewer(); }),
-          hideCursor(10200),
-          [12900, 1500, function (p) { sheetTotal(p); }]
-        ];
-        for (var i = 0; i < 7; i++) beats.push([10400 + i * 330, sheetRow.bind(null, i)]);
-        return beats;
-      }
-    },
-    {
-      title: ["订单导出加 --since 参数", "Add --since to the orders export"], mode: "Accept Edits", len: 19600, rest: 12900,
-      viewer: codeViewer, settle: function () { codeLines(1); term('<span class="p">$</span> pytest -q<br>...                                    [100%]<br><span class="ok">3 passed in 0.41s</span>'); },
-      beats: function () {
-        var P = ["给 export_orders.py 加一个 --since 参数，只导出这个日期之后的订单，再补一个测试。",
-                 "Add a --since option to export_orders.py so it only exports orders from that date on, and add a test."];
-        var g, out, say, card, sub;
-        var TASK = { zh: "给 export_orders.py 加 --since 参数", en: "Add --since to export_orders.py" };
-        var HAND = L("Handed a coding task to the code module", TASK.zh, TASK.en, ": ");
-        function detail() {
-          agBack.hidden = false; agTitle.innerHTML = bi(TASK.zh, TASK.en);
-          agBody.innerHTML = '<div class="ag-detail"><div class="rows">' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Listed files</span></div>' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Read <b>export_orders.py</b></span></div>' +
-            '<div class="rrow ok"><span class="ic">' + svg(I.check, 2.4) + '</span><span class="lb">Changed files' + ds(17, 2) + "</span></div></div>" +
-            '<div class="appr"><div class="at">' + svg(I.alert) + 'Run a command</div><pre>pytest -q</pre><div class="an">Runs isolated: it can use only this conversation’s folders, can’t delete or rename files there, and reaches the internet only if the workspace allows any site. Review it before approving.</div>' +
-            '<div class="acts"><button type="button" class="yes">Approve</button><button type="button">Deny</button><span class="res"></span></div></div></div>';
-          card = agBody.querySelector(".appr");
-          var bs = all("button", card);
-          bs[0].addEventListener("click", function () { approve(true); });
-          bs[1].addEventListener("click", function () { approve(false); });
-        }
-        function approve(yes) {
-          if (!card || card.getAttribute("data-done")) return;
-          card.setAttribute("data-done", "1");
-          all("button", card).forEach(function (b) { b.disabled = true; });
-          card.querySelector(".res").textContent = yes ? "Approved" : "Denied";
-          if (yes) {
-            sub = h("div", "rrow live", '<span class="ic"></span><span class="lb shimmer-text">Ran a command: <b>pytest -q</b></span>');
-            agBody.querySelector(".rows").appendChild(sub);
-          }
-        }
-        return [
-          [300, 1700, function (p) { typeTo(P[0], P[1], p); }],
-          [2200, function () { send(P[0], P[1]); }],
-          [2600, function () {
-            g = group(); head(g, HAND, true); badge(1);
-            agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "2.1k", uses: 1, doing: "Reading export_orders.py" }]);
-            ctx("TOOLS", "Code module");
-          }],
-          [2600, 8000, function (p) { agTimes(p * 8000); }],
-          moveTo(3200, 700, function () { return $("b-agents"); }),
-          clickOn(3950, function () { return $("b-agents"); }, function () { setSide("agents"); }),
-          [4800, function () { agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "5.8k", uses: 3, doing: "Changing files", tm: "0:02" }]); }],
-          [5800, function () { agRunning([{ zh: TASK.zh, en: TASK.en, tokens: "8.4k", uses: 4, need: true, tm: "0:03" }]); }],
-          moveTo(6300, 700, function () { return agBody.querySelector(".ag-link"); }),
-          clickOn(7050, function () { return agBody.querySelector(".ag-link"); }, function () { detail(); }),
-          moveTo(8000, 700, function () { return card && card.querySelector(".yes"); }),
-          clickOn(8750, function () { return card && card.querySelector(".yes"); }, function () { approve(true); }),
-          [9900, function () {
-            if (sub) { sub.className = "rrow ok"; sub.querySelector(".ic").innerHTML = svg(I.check, 2.4); sub.querySelector(".lb").classList.remove("shimmer-text"); }
-            if (card) card.insertAdjacentHTML("beforeend", '<div class="out">3 passed in 0.41s</div>');
-          }],
-          hideCursor(10200),
-          [10700, function () {
-            setSide(defaultSide()); badge(0);
-            agFinished([{ zh: TASK.zh, en: TASK.en, tokens: "9.0k", uses: 6 }]);
-            head(g, HAND, false);
-            out = output({ kind: "py", zh: "export_orders.py", en: "export_orders.py", meta: "Edited today at 2:16 PM" });
-            output({ kind: "py", zh: "test_export.py", en: "test_export.py", meta: "Created today at 2:16 PM" });
-          }],
-          [11000, function () {
-            say = reply("完成了。<b>export_orders.py</b> 现在支持 <code>--since YYYY-MM-DD</code>，新增的 <b>tests/test_export.py</b> 覆盖了它，3 个测试全部通过。",
-              "Done. <b>export_orders.py</b> now takes <code>--since YYYY-MM-DD</code>, and the new <b>tests/test_export.py</b> covers it. All 3 tests pass.");
-          }],
-          [11000, 1600, function (p) { if (say) say(p); }],
-          moveTo(13100, 700, function () { return out; }),
-          clickOn(13850, function () { return out; }, function () { openViewer(); }),
-          hideCursor(14300),
-          [14400, 2600, function (p) { codeLines(p); }],
-          [17200, function () { term('<span class="p">$</span> pytest -q'); }],
-          [17900, function () { term('<span class="p">$</span> pytest -q<br>...                                    [100%]<br><span class="ok">3 passed in 0.41s</span>'); }]
-        ];
-      }
-    }
-  ];
-
-  /* ---------------------------- the clock ---------------------------- */
-  var S = { i: 0, t: 0, beats: [], fired: [], paused: reduced, visible: false, swapping: false, raf: 0, last: 0 };
-  var holds = {};
-  var tabs = all("#scenes .sc"), playp = $("playp");
-  function held() { return Object.keys(holds).length > 0; }
-  function syncPlay() {
-    var stopped = S.paused || held();
-    playp.setAttribute("aria-pressed", stopped ? "true" : "false");
-    playp.setAttribute("aria-label", stopped ? "Play the demo" : "Pause the demo");
-  }
-  function hold(k) { holds[k] = 1; syncPlay(); }
-  function release(k) { delete holds[k]; syncPlay(); kick(); }
-
-  function resetApp(sc) {
-    log.innerHTML = ""; clearComposer(); closeViewer(); vbody.innerHTML = ""; viewerOf = -1; slideAt = 0;
-    closeModals(); $("home").classList.remove("on");
-    $("ttl").innerHTML = bi(sc.title[0], sc.title[1]);
-    resetTask(sc.title);
-    agEmpty(); badge(0);
-    setSide(defaultSide());
-    $("modepill").querySelector("span").textContent = sc.mode;
-    cursor.classList.remove("on", "down");
-    placeCursor(app.clientWidth * 0.55, app.clientHeight - 80);
-    unpick();
-  }
-  function load(i) {
-    S.i = i; S.t = 0;
-    var sc = SCENES[i];
-    resetApp(sc);
-    S.beats = sc.beats().sort(function (a, b) { return a[0] - b[0]; });
-    S.fired = S.beats.map(function () { return false; });
-    tabs.forEach(function (b, k) {
-      b.setAttribute("aria-selected", k === i ? "true" : "false");
-      b.tabIndex = k === i ? 0 : -1;
-      b.querySelector(".bar i").style.transform = "scaleX(" + (reduced && k === i ? 1 : 0) + ")";
+    window.addEventListener("message", function (e) {
+      if (e.source !== frame.contentWindow || !e.data || e.data.type !== "coscribe-demo") return;
+      /* The bar under the tab fills as the task plays. */
+      if (e.data.event === "progress") { fill = e.data.value; draw(); }
+      if (e.data.event === "done" && !paused) show((at + 1) % tabs.length);
     });
-  }
-  function step(t) {
-    for (var k = 0; k < S.beats.length; k++) {
-      if (S.fired[k]) continue;
-      var b = S.beats[k];
-      if (t < b[0]) continue;
-      if (b.length === 2) { S.fired[k] = true; b[1](); }
-      else { var p = clamp((t - b[0]) / b[1]); b[2](p); if (p >= 1) S.fired[k] = true; }
-    }
-  }
-  function fastForward(to) { ff = true; step(to); ff = false; scrollLog(); }
-  function running() { return !S.paused && !held() && S.visible && !document.hidden && !S.swapping; }
-  function frame(now) {
-    S.raf = 0;
-    var dt = S.last ? Math.min(64, now - S.last) : 0;
-    S.last = now;
-    if (running()) {
-      S.t += dt;
-      step(S.t);
-      tabs[S.i].querySelector(".bar i").style.transform = "scaleX(" + Math.min(1, S.t / SCENES[S.i].len) + ")";
-      if (S.t >= SCENES[S.i].len) go((S.i + 1) % SCENES.length);
-    }
-    if (S.visible && !document.hidden) S.raf = requestAnimationFrame(frame);
-    else S.last = 0;
-  }
-  function kick() { if (!S.raf && S.visible && !document.hidden) { S.last = 0; S.raf = requestAnimationFrame(frame); } }
-  function go(i) {
-    if (S.swapping) return;
-    if (reduced) { load(i); fastForward(SCENES[i].rest); return; }
-    S.swapping = true;
-    app.classList.add("swap");
-    setTimeout(function () { load(i); app.classList.remove("swap"); S.swapping = false; }, 320);
-  }
-
-  tabs.forEach(function (b, k) {
-    b.addEventListener("click", function () { holds = {}; S.paused = reduced; syncPlay(); go(k); });
-    b.addEventListener("keydown", function (e) {
-      var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (!d) return;
-      e.preventDefault();
-      var n = (k + d + tabs.length) % tabs.length;
-      tabs[n].focus(); tabs[n].click();
-    });
-  });
-  playp.addEventListener("click", function () {
-    if (S.paused || held()) {
-      holds = {}; S.paused = false;
-      closeModals(); closeViewer(); $("home").classList.remove("on");
-      if (side === "browser") setSide(defaultSide());
-      unpick();
-    } else S.paused = true;
-    syncPlay(); kick();
-  });
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(function (es) {
-      es.forEach(function (e) { S.visible = e.isIntersecting; });
-      kick();
-    }, { threshold: 0.2 }).observe($("win"));
-  } else { S.visible = true; }
-  document.addEventListener("visibilitychange", kick);
-
-  /* Selecting text in the window pauses the demo so it can be copied. */
-  document.addEventListener("selectionchange", function () {
-    var sel = window.getSelection();
-    var inApp = sel && !sel.isCollapsed && sel.anchorNode && app.contains(sel.anchorNode);
-    if (inApp) hold("select"); else if (holds.select) release("select");
-  });
-
-  /* ---------------------------- clicking around the app ---------------------------- */
-  function modalOpen() { return all(".modal.on", app).length > 0; }
-  function closeModals() { all(".modal", app).forEach(function (m) { m.classList.remove("on"); }); delete holds.modal; }
-  function openModal(id) { closeModals(); $(id).classList.add("on"); hold("modal"); var b = $(id).querySelector("[data-act=close-modal]"); if (b) b.focus({ preventScroll: true }); }
-
-  app.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-act]");
-    if (!b || !app.contains(b)) return;
-    var act = b.getAttribute("data-act");
-    if (act === "side") { setSide(side === "task" ? "off" : "task"); release("pane"); }
-    else if (act === "browser") { if (side === "browser") { setSide(defaultSide()); release("pane"); } else { setSide("browser"); hold("pane"); } }
-    else if (act === "agents") { if (side === "agents") { setSide(defaultSide()); release("pane"); } else { setSide("agents"); hold("pane"); } }
-    else if (act === "close-pane") { setSide(defaultSide()); unpick(); release("pane"); }
-    else if (act === "help") openModal("m-help");
-    else if (act === "settings") openModal("m-settings");
-    else if (act === "close-modal") { closeModals(); release("modal"); }
-    else if (act === "close-viewer") { closeViewer(); release("viewer"); }
-    else if (act === "new") { $("home").classList.add("on"); hold("home"); }
-    else if (act === "chat") { $("home").classList.remove("on"); release("home"); }
-    else if (act === "scheduled" || act === "workflow") $("workflows").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
-    else if (act === "mode") $("models").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
-    else if (act === "pick") togglePick();
-    else if (act === "ag-back") { var sc = SCENES[S.i]; if (S.i === 3) agRunning([{ zh: "给 export_orders.py 加 --since 参数", en: "Add --since to export_orders.py", tokens: "9.0k", uses: 6 }]); else agEmpty(); }
-  });
-  all(".modal", app).forEach(function (m) {
-    m.addEventListener("click", function (e) { if (e.target === m) { closeModals(); release("modal"); } });
-  });
-  app.addEventListener("keydown", function (e) {
-    if (e.key !== "Escape") return;
-    if (modalOpen()) { closeModals(); release("modal"); }
-    else if (viewer.classList.contains("on")) { closeViewer(); release("viewer"); }
-    else if (side === "browser" || side === "agents") { setSide(defaultSide()); unpick(); release("pane"); }
-  });
-
-  /* browser pane: pick an element and send it to the chat */
-  var page = $("bz-page"), picked = $("bz-picked"), picking = false;
-  function togglePick() { picking = !picking; page.classList.toggle("picking", picking); $("b-pick").setAttribute("aria-pressed", picking ? "true" : "false"); }
-  function unpick() {
-    picking = false; page.classList.remove("picking"); $("b-pick").setAttribute("aria-pressed", "false");
-    all(".pickable", page).forEach(function (p) { p.classList.remove("picked"); });
-    picked.innerHTML = "";
-  }
-  all(".pickable", page).forEach(function (el) {
-    el.addEventListener("click", function () {
-      if (!picking) return;
-      togglePick();
-      all(".pickable", page).forEach(function (p) { p.classList.toggle("picked", p === el); });
-      var text = el.innerText.replace(/\s+/g, " ").trim();
-      picked.innerHTML = '<div class="bz-pick"><div class="k">Picked element · crm.example.com</div><div class="v">' + esc(text) + '</div><button type="button">Send to chat</button></div>';
-      picked.querySelector("button").addEventListener("click", function () {
-        userMsg("给这个客户写一封续约跟进邮件。", "Draft a renewal follow-up for this account.", esc(text));
-        picked.innerHTML = "";
-        el.classList.remove("picked");
+    tabs.forEach(function (t, k) {
+      t.addEventListener("click", function () { show(k); });
+      t.addEventListener("keydown", function (e) {
+        var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var n = (k + d + tabs.length) % tabs.length;
+        tabs[n].focus(); tabs[n].click();
       });
     });
-  });
-
-  /* settings: the categories, their controls, and the provider catalog filling the form */
-  var sett = $("m-settings");
-  all(".st-g button", sett).forEach(function (b) {
-    b.addEventListener("click", function () {
-      var t = b.getAttribute("data-t");
-      all(".st-g button", sett).forEach(function (x) {
-        x.classList.toggle("on", x === b);
-        if (x === b) x.setAttribute("aria-current", "page"); else x.removeAttribute("aria-current");
-      });
-      all(".st-tab", sett).forEach(function (p) { p.classList.toggle("on", p.getAttribute("data-t") === t); });
-      $("st-main").scrollTop = 0;
-      // On phones the categories are a sideways strip; keep the picked one clear of the close button.
-      var nav = sett.querySelector(".st-nav");
-      if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, b.offsetLeft - 40), behavior: reduced ? "auto" : "smooth" });
-    });
-  });
-  all(".sseg", sett).forEach(function (g) {
-    all("button", g).forEach(function (b) {
-      b.addEventListener("click", function () { all("button", g).forEach(function (x) { x.classList.toggle("on", x === b); }); });
-    });
-  });
-  all(".stog", sett).forEach(function (t) {
-    t.addEventListener("click", function () { t.setAttribute("aria-checked", t.getAttribute("aria-checked") === "true" ? "false" : "true"); });
-  });
-  var CAT = [
-    ["anthropic", "Anthropic's Claude models.", ""], ["openai", "OpenAI's GPT models.", ""], ["gemini", "Google's Gemini models.", ""],
-    ["deepseek", "DeepSeek's OpenAI-compatible API.", "https://api.deepseek.com/v1"], ["kimi", "Moonshot AI's Kimi, OpenAI-compatible API.", "https://api.moonshot.ai/v1"],
-    ["glm", "Zhipu's GLM, OpenAI-compatible API.", "https://open.bigmodel.cn/api/paas/v4"], ["ollama", "Ollama's local OpenAI-compatible API -- fully offline, no cloud account.", "http://localhost:11434/v1"]
-  ];
-  var cat = $("cat");
-  cat.innerHTML = CAT.map(function (c) {
-    var added = c[0] === "deepseek";
-    return '<button type="button" data-n="' + c[0] + '" title="' + (added ? "Update " : "Add ") + c[0] + '"><span><span class="n">' + c[0] + '</span><span class="d">' + c[1] + '</span></span><span class="a' + (added ? " added" : "") + '">' + (added ? "Added" : "Add") + "</span></button>";
-  }).join("");
-  all("button", cat).forEach(function (b, i) {
-    b.addEventListener("click", function () {
-      var c = CAT[i];
-      all("button", cat).forEach(function (x) { x.classList.toggle("sel", x === b); });
-      var set = function (id, text, ph) { var f = $(id); f.textContent = text; f.classList.toggle("ph", !!ph); f.classList.add("flash"); setTimeout(function () { f.classList.remove("flash"); }, 500); };
-      set("f-name", c[0]);
-      set("f-url", c[2] || "Not needed for built-in providers", !c[2]);
-      set("f-key", "", true);
-      set("f-model", "e.g. deepseek-chat", true);
-    });
-  });
-
-  setSide(defaultSide());
-  load(0);
-  if (reduced) fastForward(SCENES[0].rest);
-  syncPlay();
+    playp.addEventListener("click", function () { paused = !paused; syncPlay(); });
+    document.addEventListener("coscribe:lang", function () { show(at); });
+    document.addEventListener("visibilitychange", syncPlay);
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (es) {
+        es.forEach(function (e) { visible = e.isIntersecting; });
+        syncPlay();
+      }, { threshold: 0.2 }).observe(win);
+    } else visible = true;
+    syncPlay(); draw();
+  })();
 
   /* ---------------------------- workflow card ---------------------------- */
   (function () {

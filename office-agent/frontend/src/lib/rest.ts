@@ -240,6 +240,14 @@ export const removeSkill = (name: string, plugin = false) =>
     undefined,
   );
 
+/** A skill, or with `plugin` the plugin called `name`, as a .zip that Upload takes back. */
+export async function exportSkill(name: string, plugin = false): Promise<{ blob: Blob; name: string }> {
+  const res = await fetch(`/api/skills/${encodeURIComponent(name)}/export${plugin ? "?plugin=true" : ""}`);
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `HTTP ${res.status}`);
+  const file = /filename\*=UTF-8''([^;]+)/.exec(res.headers.get("content-disposition") ?? "")?.[1];
+  return { blob: await res.blob(), name: file ? decodeURIComponent(file) : `${name}.zip` };
+}
+
 export const getSkillPlugins = () => getJson<SkillPlugin[]>("/api/skills/plugins");
 
 export const getSkillPlugin = (id: string) =>
@@ -247,6 +255,24 @@ export const getSkillPlugin = (id: string) =>
 
 export const addSkillPlugin = (id: string) =>
   sendForResult<{ added: string[] }>(`/api/skills/plugins/${encodeURIComponent(id)}`, "POST", undefined);
+
+/** GET /api/skills/sources -- a GitHub repository with a marketplace.json the person added. */
+export interface PluginSourceRow {
+  repo: string;
+  name: string;
+  commit: string;
+  updated: string;
+  plugins: number;
+  /** Plugins its marketplace lists from other repositories, which are not shown. */
+  elsewhere: number;
+}
+
+export const getPluginSources = () => getJson<PluginSourceRow[]>("/api/skills/sources");
+
+export const addPluginSource = (address: string) => sendForResult<PluginSourceRow>("/api/skills/sources", "POST", { address });
+
+export const removePluginSource = (repo: string) =>
+  sendForResult<{ removed: string }>(`/api/skills/sources/${repo.split("/").map(encodeURIComponent).join("/")}`, "DELETE", undefined);
 
 export async function getSkillPluginFile(id: string, path: string): Promise<SkillFileContentResult> {
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");

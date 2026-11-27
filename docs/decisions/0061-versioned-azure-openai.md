@@ -1,4 +1,4 @@
-# 0060: Custom providers can use versioned Azure OpenAI deployments
+# 0061: Custom providers can use versioned Azure OpenAI deployments
 
 Status proposed 2026-11-27.
 

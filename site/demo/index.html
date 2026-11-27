@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coscribe demo</title>
+<meta name="robots" content="noindex">
+<!-- The app's own built stylesheet (tools/build.sh), so every piece below looks as it does in Coscribe. -->
+<link rel="stylesheet" href="app.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+  #stage { position: absolute; left: 0; top: 0; width: 1280px; height: 861px; transform-origin: 0 0; overflow: hidden; }
+  #stage > #root { height: 100%; }
+  /* The demo plays the conversation back; the window's own controls are not live. */
+  #stage textarea { pointer-events: none; }
+  .demo-in { animation: demo-in .32s ease-out both; }
+  @keyframes demo-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* Narrow: the captured windows' fixed pixel layout gives way to the full frame. */
+  .demo-narrow #root .absolute.flex.flex-col[style] { width: 100% !important; height: 100% !important; }
+  .demo-narrow section[data-panel] { left: 8px !important; top: 8px !important; width: calc(100% - 16px) !important; height: calc(100% - 16px) !important; z-index: 20; }
+  .demo-narrow [role="separator"] { display: none; }
+  @media (prefers-reduced-motion: reduce) { .demo-in { animation: none; } }
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Coscribe playing back a real conversation"></div>
+<script src="labels.js"></script>
+<script src="demo.js"></script>
+</body>
+</html>

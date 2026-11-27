@@ -15,6 +15,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from ..._file_locks import write_atomically
+
 _ERRORS_LISTED = 20
 _CELL = r"\$?[A-Z]{1,3}\$?\d+"
 _REFERENCE = re.compile(
@@ -219,11 +221,13 @@ def _write_values(path: Path, values: dict[str, dict[str, Any]]) -> None:
         entries[part] = etree.tostring(
             root, xml_declaration=True, encoding="UTF-8", standalone=True
         )
-    patched = path.with_name(path.name + ".values")
-    with zipfile.ZipFile(patched, "w", zipfile.ZIP_DEFLATED) as archive:
-        for info in infos:
-            archive.writestr(info, entries[info.filename])
-    patched.replace(path)
+
+    def write(patched: Path) -> None:
+        with zipfile.ZipFile(patched, "w", zipfile.ZIP_DEFLATED) as archive:
+            for info in infos:
+                archive.writestr(info, entries[info.filename])
+
+    write_atomically(path, write)
 
 
 def recalculate(path: Path) -> dict[str, Any]:
@@ -234,7 +238,8 @@ def recalculate(path: Path) -> dict[str, Any]:
     values, unchecked, problem = evaluate(path)
     if problem is not None:
         return {"status": "skipped", "skipped_reason": problem}
-    _write_values(path, values)
+    if values:
+        _write_values(path, values)
     errors: dict[str, list[str]] = {}
     for sheet, cells in values.items():
         for address, value in cells.items():

@@ -2,7 +2,9 @@ import { useContext, useRef, useState, type MouseEvent, type FocusEvent } from "
 import { createPortal } from "react-dom";
 import { editedLabel, KINDS, lookupArtifact, type ArtifactSummary } from "../../lib/artifacts";
 import { baseName, KIND_WORDS, kindOfFile } from "../../lib/fileMentions";
-import { KindIcon } from "../artifacts/artifactIcons";
+import { isXlsx } from "../../lib/viewers";
+import { FileSheetIcon } from "../files";
+import { KindIcon } from "../artifacts";
 import { ThreadIdContext } from "../threadContext";
 import { openMentioned, ViewFile } from "./contexts";
 import { useShownFile } from "./useShownFile";
@@ -19,6 +21,8 @@ export function FileChip({ path }: { path: string }) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const kind = kindOfFile(path);
+  const xlsx = isXlsx(path);
+  const color = xlsx ? "var(--file-sheet)" : KINDS[kind].colour;
   const name = baseName(path);
   const shown = useShownFile(threadId, path);
   if (!view || !shown) return <>{name}</>;
@@ -49,7 +53,7 @@ export function FileChip({ path }: { path: string }) {
         onFocus={show}
         onBlur={hide}
       >
-        <KindIcon kind={kind} className="h-3.5 w-3.5 shrink-0" />
+        {xlsx ? <FileSheetIcon className="h-3.5 w-3.5 shrink-0" /> : <KindIcon kind={kind} className="h-3.5 w-3.5 shrink-0" />}
         <span className="truncate">{(found?.name ?? name).replace(/\.[^.]+$/, "")}</span>
       </button>
       {anchor &&
@@ -63,8 +67,8 @@ export function FileChip({ path }: { path: string }) {
           >
             <div className="flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
               <span className="flex items-center gap-1.5">
-                <KindIcon kind={kind} className="h-3.5 w-3.5" style={{ color: KINDS[kind].colour }} />
-                {KIND_WORDS[kind]}
+                <span style={{ color }}>{xlsx ? <FileSheetIcon className="h-3.5 w-3.5" /> : <KindIcon kind={kind} className="h-3.5 w-3.5" />}</span>
+                {xlsx ? "Excel" : KIND_WORDS[kind]}
               </span>
               {edited && <span>{edited}</span>}
             </div>

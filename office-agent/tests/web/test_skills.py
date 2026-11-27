@@ -13,8 +13,6 @@ from langchain_core.messages import (
     HumanMessage,
 )
 
-from coscribe.web.routes import skills as skills_routes
-
 from .helpers import (
     FakeToolCallingChatModel,
     _client_lg,
@@ -359,67 +357,39 @@ def test_removing_a_skill_deletes_it_but_builtins_only_switch_off_lg(
     assert "PPTX Slides" in names
 
 
-def test_adding_a_discover_skill_downloads_and_checks_it_lg(
+def test_a_source_lists_its_plugins_in_discover_and_adds_one_whole_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import hashlib
+    from coscribe.tools import plugin_sources
 
-    from coscribe.tools import skill_catalog
+    from ..test_plugin_sources import fake_github
 
-    skill_md = b"---\nname: tiny\ndescription: a tiny skill\n---\nDo tiny things."
-    catalog = {
-        "repo": "anthropics/skills",
-        "commit": "abc",
-        "skills": [
-            {
-                "name": "tiny",
-                "description": "a tiny skill",
-                "license": "Apache-2.0",
-                "files": [
-                    {"path": "SKILL.md", "size": 1, "sha256": hashlib.sha256(skill_md).hexdigest()},
-                    {
-                        "path": "scripts/run.py",
-                        "size": 1,
-                        "sha256": hashlib.sha256(b"x").hexdigest(),
-                    },  # noqa: E501
-                ],
-            }
-        ],
-    }
-    monkeypatch.setattr(skill_catalog, "load_catalog", lambda: catalog)
-    monkeypatch.setattr(skills_routes, "load_catalog", lambda: catalog)
-    served = {"SKILL.md": skill_md, "scripts/run.py": b"tampered"}
-    fetched: list[str] = []
-
-    def fake_download(url: str) -> bytes:
-        fetched.append(url)
-        return served[url.split("/skills/tiny/", 1)[1]]
-
-    monkeypatch.setattr(skill_catalog, "_download", fake_download)
+    files = fake_github()
+    monkeypatch.setattr(plugin_sources, "_download", files.__getitem__)
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        before = client.get("/api/skills/catalog").json()
-        bad = client.post("/api/skills/catalog/tiny")
-        left_behind = [p.name for p in (tmp_path / "skills").iterdir()]
-        served["scripts/run.py"] = b"x"
-        good = client.post("/api/skills/catalog/tiny")
-        listing = {s["name"]: s for s in client.get("/api/skills").json()}
-        files = client.get("/api/skills/tiny/files").json()["files"]
-        after = client.get("/api/skills/catalog").json()
-        again = client.post("/api/skills/catalog/tiny")
+        bad = client.post("/api/skills/sources", json={"address": "not a repo"})
+        added = client.post("/api/skills/sources", json={"address": "github.com/acme/plugins"})
+        sources = client.get("/api/skills/sources").json()
+        listed = [p for p in client.get("/api/skills/plugins").json() if p["source"]]
+        detail = client.get("/api/skills/plugins/gh:acme:plugins:notes").json()
+        preview = client.get("/api/skills/plugins/gh:acme:plugins:notes/files/skills/tidy/SKILL.md")
+        installed = client.post("/api/skills/plugins/gh:acme:plugins:notes")
+        rows = {s["name"]: s for s in client.get("/api/skills").json()}
+        removed = client.delete("/api/skills/sources/acme/plugins")
+        after = client.get("/api/skills/sources").json()
 
-    assert [(e["name"], e["added"]) for e in before] == [("tiny", False)]
-    assert bad.status_code == 400 and "expected contents" in bad.json()["error"]
-    assert left_behind == []
-    assert good.json() == {"added": "tiny"}
-    assert (
-        fetched[0] == "https://raw.githubusercontent.com/anthropics/skills/abc/skills/tiny/SKILL.md"
-    )
-    assert listing["tiny"]["source"] == "anthropic"
-    assert listing["tiny"]["enabled"] is True
-    assert files == ["SKILL.md", "scripts/run.py"]
-    assert after[0]["added"] is True
-    assert again.status_code == 400
+    assert bad.status_code == 400
+    assert added.json()["plugins"] == 1 and added.json()["elsewhere"] == 2
+    assert [s["repo"] for s in sources] == ["acme/plugins"]
+    assert [(p["id"], p["title"], p["skills"]) for p in listed] == [
+        ("gh:acme:plugins:notes", "Notes", ["tidy"])
+    ]
+    assert detail["files"] == [".claude-plugin/plugin.json", "skills/tidy/SKILL.md"]
+    assert preview.json()["content"].startswith("---")
+    assert installed.json() == {"added": ["tidy"]}
+    assert rows["tidy"]["source"] == "github" and rows["tidy"]["plugin"] == "notes"
+    assert removed.status_code == 200 and after == []
 
 
 def test_create_skill_writes_skill_md_and_makes_it_usable_immediately_lg(
@@ -594,3 +564,47 @@ def test_an_uploaded_plugin_lists_its_skills_and_is_removed_whole_lg(
     assert alone.status_code == 400
     assert removed.json() == {"removed": "kit", "skills": ["one"]}
     assert "one" not in after
+
+
+def test_a_plugin_exported_as_a_zip_uploads_back_whole_and_leaves_out_links_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+    import zipfile
+
+    plugin = tmp_path / "skills" / "kit-folder"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text('{"name": "kit"}', encoding="utf-8")
+    (plugin / "skills" / "one").mkdir(parents=True)
+    (plugin / "skills" / "one" / "SKILL.md").write_text(
+        "---\nname: one\ndescription: d\n---\nbody", encoding="utf-8"
+    )
+    (plugin / "scripts").mkdir()
+    (plugin / "scripts" / "run.py").write_text("print(1)", encoding="utf-8")
+    (plugin / ".coscribe-source.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "secret.txt").write_text("not yours", encoding="utf-8")
+    try:
+        (plugin / "scripts" / "secret.txt").symlink_to(tmp_path / "secret.txt")
+    except OSError:  # Windows without the right to make links
+        pass
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        exported = client.get("/api/skills/kit/export?plugin=true")
+        builtin = client.get("/api/skills/pptx-pages/export?plugin=true")
+        missing = client.get("/api/skills/nope/export?plugin=true")
+        client.delete("/api/skills/kit?plugin=true")
+        upload = client.post(
+            "/api/skills/upload",
+            files={"file": ("kit-folder.zip", exported.content, "application/zip")},
+        )
+
+    names = zipfile.ZipFile(io.BytesIO(exported.content)).namelist()
+    assert sorted(names) == [
+        "kit-folder/.claude-plugin/plugin.json",
+        "kit-folder/scripts/run.py",
+        "kit-folder/skills/one/SKILL.md",
+    ]
+    assert "kit-folder.zip" in exported.headers["content-disposition"]
+    assert "pptx-pages/SKILL.md" in zipfile.ZipFile(io.BytesIO(builtin.content)).namelist()
+    assert missing.status_code == 404
+    assert upload.json()["plugin"] == "kit"

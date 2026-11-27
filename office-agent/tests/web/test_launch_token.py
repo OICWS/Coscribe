@@ -138,6 +138,9 @@ def test_the_real_app_hands_its_page_the_token_and_refuses_a_post_without_it(
             local = {"Host": "127.0.0.1:8000"}
             posted = bare.post("/api/threads/x/doc/blocks", json={}, headers=local)
             assert posted.status_code == 403
+            preview = "/api/attachment/docx?thread_id=x&path=sample.docx"
+            assert bare.post(preview, headers=local).status_code == 403
+            assert bare.head(preview, headers=local).status_code == 404
             with pytest.raises(WebSocketDisconnect) as refused:
                 with bare.websocket_connect("/ws/some-thread", headers=local):
                     pass
@@ -171,6 +174,7 @@ AUDITED_READ_ONLY_GETS = {
     # Reads one picture of the Doc from its side folder; an <img> cannot carry the token header.
     "/api/threads/{thread_id}/doc/asset",
     "/api/artifacts/{artifact}/thumbnail",
+    "/api/attachment/docx/versions",
     "/api/attachment/pdf",
     "/api/attachment/pdf/page",
     "/api/background-tasks/{task_id}/log",
@@ -212,11 +216,12 @@ AUDITED_READ_ONLY_GETS = {
     "/api/secrets",
     "/api/settings/proxy",
     "/api/skills",
-    "/api/skills/catalog",
+    "/api/skills/sources",
     "/api/skills/plugins",
     "/api/script-isolation",
     "/api/skills/plugins/{plugin_id}",
     "/api/skills/plugins/{plugin_id}/files/{path}",
+    "/api/skills/{name}/export",
     "/api/skills/{name}/files",
     "/api/skills/{name}/files/{path}",
     "/api/subagents/{task_id}/transcript",

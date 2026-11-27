@@ -5,6 +5,7 @@ import { saveBlob } from "../lib/slides";
 import type { ThreadSummary } from "../types/session";
 import { DownloadIcon } from "./icons";
 import { itemClass } from "./menuStyle";
+import { DIALOG_INSET_CLASS } from "../lib/titleBar";
 
 const FIELD =
   "w-full resize-none rounded-md border border-[var(--border)] bg-[var(--card-bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]";
@@ -118,12 +119,12 @@ export function FailedTurnDialog({ threadId, onClose }: { threadId: string; onCl
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[min(640px,100vh-2rem)] w-[min(560px,100vw-2rem)] flex-col gap-3 overflow-y-auto rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
+        className="flex max-h-[min(640px,100%)] w-[min(560px,100%)] flex-col gap-3 overflow-y-auto rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div id={titleId} className="text-sm font-medium">

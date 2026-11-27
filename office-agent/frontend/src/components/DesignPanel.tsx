@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { dashboardInfo, designFileUrl, type DashboardInfo } from "../lib/artifacts";
 import { exportDesign, type DesignExport } from "../lib/designExport";
-import { PanelFileMenu } from "./artifacts/PanelFileMenu";
-import { PanelTitleButton } from "./artifacts/PanelTitleButton";
-import { useDockPanel } from "./dock/dockContext";
+import { PanelFileMenu } from "./artifacts";
+import { PanelTitleButton } from "./artifacts";
+import { useDockPanel } from "./dock";
 import { CodeIcon, DownloadIcon, ReloadIcon } from "./icons";
-import type { MenuEntry } from "./slides/SlideMenu";
+import type { MenuEntry } from "./slides";
 
 const EXPORTS: { kind: DesignExport; label: string; description: string; icon: ReactNode; download: boolean }[] = [
   { kind: "html", label: "HTML", description: "Standalone web page", icon: <CodeIcon className="h-5 w-5" />, download: true },

@@ -33,7 +33,7 @@ describe("file kinds", () => {
     expect(fileKind("app.py")).toBe("text");
     expect(fileKind("tsconfig.json")).toBe("text");
     expect(fileKind("photo.JPG")).toBe("image");
-    expect(fileKind("deck.pptx")).toBe("office");
+    expect(fileKind("deck.pptx")).toBe("pptx");
     expect(fileKind("tool.exe")).toBe("binary");
     expect(hasSource("text")).toBe(false);
   });

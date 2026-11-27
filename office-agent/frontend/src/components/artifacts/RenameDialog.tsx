@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { DIALOG_INSET_CLASS } from "../../lib/titleBar";
 
 /** A new name, asked in the app's own dialog; `rename` makes the change and what it returns goes to `onDone`. */
 export function RenameDialog<T>({ current, rename, onCancel, onDone }: { current: string; rename: (name: string) => Promise<T>; onCancel: () => void; onDone: (result: T) => void }) {
@@ -16,7 +17,7 @@ export function RenameDialog<T>({ current, rename, onCancel, onDone }: { current
     });
   };
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DIALOG_INSET_CLASS}`} onClick={onCancel}>
       <form
         role="dialog"
         aria-modal="true"
