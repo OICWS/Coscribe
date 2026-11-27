@@ -375,11 +375,15 @@ async def test_the_tool_list_never_changes_and_a_found_tool_runs_under_its_real_
 
 
 async def test_deferred_and_approval_gated_tool_still_pauses_once_discovered() -> None:
-    risky_tool = tool_metadata(write_pptx_chart, risk_category="WRITE_LOCAL")
+    def risky_chart(text: str) -> str:
+        """Add a chart to a pptx slide."""
+        return write_pptx_chart(text)
+
+    risky_tool = tool_metadata(risky_chart, risk_category="WRITE_LOCAL")
     search_call = ToolCall(name="search_tools", args={"query": "chart"}, id="c1")
     write_call = ToolCall(
         name=USE_TOOL_NAME,
-        args={"name": "write_pptx_chart", "arguments": {"text": "hi"}},
+        args={"name": "risky_chart", "arguments": {"text": "hi"}},
         id="c2",
     )
     model = FakeToolCallingChatModel(
@@ -403,7 +407,7 @@ async def test_deferred_and_approval_gated_tool_still_pauses_once_discovered() -
     )
     assert agent.get_state(config).next, "should be paused on approval for the discovered tool"
     pending = agent.get_state(config).tasks[0].interrupts[0].value["action_requests"]
-    assert [(r["name"], r["args"]) for r in pending] == [("write_pptx_chart", {"text": "hi"})]
+    assert [(r["name"], r["args"]) for r in pending] == [("risky_chart", {"text": "hi"})]
 
     # Same resume shape session.py's own _resolve_pending_approvals uses:
     # keyed by the interrupt's own id (not the tool_call_id), value a

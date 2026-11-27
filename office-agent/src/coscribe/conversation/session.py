@@ -100,7 +100,7 @@ from .agent_assembly import AgentAssembly, ConnectorDirectory, RebuiltOnUse, ris
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .edit_preview import build_document_edit_preview
-from .events import EventSink, TurnSocket, keeps_running
+from .events import EventSink, QueuedSteer, TurnSocket, deliver_steers, keeps_running
 from .history import ConversationHistory
 from .prompts import INIT_PROMPT
 from .reconfigure import SessionReconfigurer
@@ -253,8 +253,8 @@ class ChatSessionLG:
         # shared state (_pending_tool_args, _stop_requested). resolve_approval/request_stop
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
-        # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
-        self._steers: list[tuple[str, str, list[str]]] = []
+        # Notes stay queued until the next model step can take them.
+        self._steers: list[QueuedSteer] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's
         # docstring for why this exists: a turn lock alone would let an
@@ -504,22 +504,18 @@ class ChatSessionLG:
         """A note for the turn in progress, with its pictures, read before its next step (a script
         it waits on moves to the background). With no turn running, it is sent as a message."""
         key = str(steer_id)
-        self._steers = [s for s in self._steers if s[0] != key]
+        self._steers = [note for note in self._steers if note.id != key]
         if text is not None:
-            self._steers.append((key, text, list(images or [])))
+            self._steers.append(QueuedSteer.capture(key, text, images))
             if not self._turn_lock.locked():
                 asyncio.get_running_loop().create_task(self._send_unread_steers())
             request_detach(self.thread_id, None, asyncio.get_running_loop(), "steer")
 
-    async def _take_steers(self) -> list[tuple[str, list[str]]]:
+    async def _take_steers(self) -> list[tuple[str, list[str], str]]:
         if not self._steers:
             return []
         steers, self._steers = self._steers, []
-        socket = self._live_websocket or self._turn_websocket
-        if socket is not None:
-            with contextlib.suppress(Exception):  # the tab went away; the model still has them
-                await socket.send_json({"type": "steers_delivered", "ids": [s[0] for s in steers]})
-        return [(text, images) for _, text, images in steers]
+        return await deliver_steers(self._live_websocket or self._turn_websocket, steers)
 
     def _turn_lock_changed(self, active: bool) -> None:
         BROWSER_HOST.set_active(self.thread_id, active)
@@ -531,17 +527,19 @@ class ChatSessionLG:
         if not self._steers or self._turn_lock.locked():
             return
         steers, self._steers = self._steers, []
-        text = "\n\n".join(note for _, note, _ in steers)
+        text = "\n\n".join(note.text for note in steers)
         websocket: Any = self._live_websocket
         if websocket is not None:
             try:
                 await websocket.send_json(
-                    {"type": "steers_requeued", "ids": [s[0] for s in steers], "text": text}
+                    {"type": "steers_requeued", "ids": [note.id for note in steers], "text": text}
                 )
             except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
                 websocket = None
         socket: Any = websocket or SilentSocket()
-        await self.handle_user_message(text, socket, [u for s in steers for u in s[2]] or None)
+        await self.handle_user_message(
+            text, socket, [image for note in steers for image in note.images] or None
+        )
 
     def detach_command(self, script: str) -> bool:
         """From the running loop, which the background task announces itself to later."""

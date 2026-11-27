@@ -66,13 +66,18 @@ function SentAttachments({ files, images }: { files: string[]; images: string[] 
  * whether the model has read it yet. */
 export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> }) {
   const actions = useContext(SteerActionsContext);
+  const [now, setNow] = useState(() => Date.now());
+  const pending = item.status === "pending";
   const files = item.files ?? [];
   const images = item.images ?? [];
   // Taking the note back puts it in the message box, which would lose what is typed there.
   const editBlocked = actions?.composerHasDraft ?? false;
   return (
-    <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1">
-      <div className={`flex flex-col items-end gap-1.5 ${item.status === "pending" ? "opacity-60" : ""}`}>
+    <div
+      className={`group/msg ml-auto flex max-w-[96%] flex-col items-end ${pending ? "gap-1" : "gap-1.5"}`}
+      onMouseEnter={() => setNow(Date.now())}
+    >
+      <div className={`flex flex-col items-end gap-1.5 ${pending ? "opacity-60" : ""}`}>
         <SentAttachments files={files} images={images} />
         {(item.text.trim() !== "" || (files.length === 0 && images.length === 0)) && (
           <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
@@ -80,7 +85,7 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
           </div>
         )}
       </div>
-      {item.status === "pending" && actions ? (
+      {pending && actions ? (
         <div className="flex items-center gap-0.5 text-xs text-[var(--muted)]">
           {item.text.trim() !== "" && (
             <HoverTip label="Copy">
@@ -115,10 +120,17 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
             Send now
           </button>
         </div>
+      ) : pending ? (
+        <span className="text-xs text-[var(--muted)]">Will be read at the next step</span>
       ) : (
-        <span className="text-xs text-[var(--muted)]">
-          {item.status === "pending" ? "Will be read at the next step" : "Added while working"}
-        </span>
+        <SentMessageActions
+          text={item.text}
+          sentAt={item.sentAt}
+          timeDetail="Added while working"
+          now={now}
+          blocked="This message was added during a reply and can’t be edited or rewound separately."
+          leavesChanges={false}
+        />
       )}
     </div>
   );
@@ -197,10 +209,14 @@ export function UserMessageView({
         text={item.text}
         sentAt={item.sentAt}
         now={now}
-        blocked={actions ? actions.blocked : undefined}
         leavesChanges={leavesChanges}
-        onRewind={() => actions?.rewind(item.turnIndex, item.text)}
-        onEdit={() => setEditing(true)}
+        {...(actions?.blocked === null
+          ? {
+              blocked: null,
+              onRewind: () => actions.rewind(item.turnIndex, item.text),
+              onEdit: () => setEditing(true),
+            }
+          : { blocked: actions?.blocked })}
       />
     </div>
   );

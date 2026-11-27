@@ -80,6 +80,7 @@ class SteerEntry(TypedDict):
     text: str
     images: NotRequired[list[str]]
     files: NotRequired[list[str]]
+    sent_at: NotRequired[str]
 
 
 class AgentEntry(TypedDict):
@@ -530,6 +531,7 @@ class SteersDeliveredEvent(TypedDict):
 
     type: Literal["steers_delivered"]
     ids: list[str]
+    sent_at_by_id: NotRequired[dict[str, str]]
 
 
 class SteersRequeuedEvent(TypedDict):

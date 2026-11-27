@@ -495,9 +495,11 @@ async def test_a_model_that_sends_nothing_fails_the_run(tmp_path: Path) -> None:
 
 
 async def test_a_slow_tool_is_not_taken_for_a_hung_model(tmp_path: Path) -> None:
+    stall_seconds = 2.0
+
     def _slow_read() -> str:
         """Read slowly."""
-        time.sleep(0.6)
+        time.sleep(stall_seconds + 0.5)
         return "slow but fine"
 
     model = FakeToolCallingChatModel(
@@ -507,13 +509,15 @@ async def test_a_slow_tool_is_not_taken_for_a_hung_model(tmp_path: Path) -> None
         ]
     )
     host = _host(tmp_path, model)
-    host.model_stall_seconds = 0.3
+    host.model_stall_seconds = stall_seconds
     _, spawn_background = build_delegation_tools(
         host, [tool_metadata(_slow_read, risk_category="READ", category="files")]
     )
 
     started = await spawn_background(description="slow", prompt="read slowly")
-    task = await _wait_for_status(SubAgentTaskStore(tmp_path), started["task_id"], "succeeded")
+    task = await _wait_for_status(
+        SubAgentTaskStore(tmp_path), started["task_id"], "succeeded", timeout=15
+    )
 
     assert task.result == "read it"
 
@@ -579,9 +583,11 @@ async def test_the_model_can_stop_a_run_of_its_own(tmp_path: Path) -> None:
 async def test_a_slow_tool_run_after_its_approval_is_not_taken_for_a_hung_model(
     tmp_path: Path,
 ) -> None:
+    stall_seconds = 2.0
+
     def _slow_write(text: str) -> str:
         """Write slowly."""
-        time.sleep(0.6)
+        time.sleep(stall_seconds + 0.5)
         return f"wrote {text}"
 
     async def decide(request: dict[str, Any], task: SubAgentTask) -> Any:
@@ -594,13 +600,15 @@ async def test_a_slow_tool_run_after_its_approval_is_not_taken_for_a_hung_model(
         ]
     )
     host = _host(tmp_path, model, decide)
-    host.model_stall_seconds = 0.3
+    host.model_stall_seconds = stall_seconds
     _, spawn_background = build_delegation_tools(
         host, [tool_metadata(_slow_write, risk_category="WRITE_LOCAL", category="files")]
     )
 
     started = await spawn_background(description="slow write", prompt="write x")
-    task = await _wait_for_status(SubAgentTaskStore(tmp_path), started["task_id"], "succeeded")
+    task = await _wait_for_status(
+        SubAgentTaskStore(tmp_path), started["task_id"], "succeeded", timeout=15
+    )
 
     assert task.result == "written"
 

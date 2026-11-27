@@ -25,14 +25,16 @@ describe("steering notes", () => {
     expect(next.items.map((i) => i.id)).toEqual(["u", "s2"]);
   });
 
-  it("marks the listed notes delivered", () => {
+  it("marks the listed notes delivered with the timestamp from the server", () => {
     const base = run(
       stateWith(),
       { type: "local_steer", id: "s1", text: "a" },
       { type: "local_steer", id: "s2", text: "b" },
     );
-    const next = run(base, { type: "steers_delivered", ids: ["s2"] });
-    expect(next.items.map((i) => (i.kind === "steer" ? i.status : null))).toEqual(["pending", "delivered"]);
+    const sentAt = "2026-11-27T01:40:26+00:00";
+    const next = run(base, { type: "steers_delivered", ids: ["s2"], sent_at_by_id: { s2: sentAt } });
+    expect(next.items[0]).toBe(base.items[0]);
+    expect(next.items[1]).toMatchObject({ status: "delivered", sentAt });
   });
 
   it("replaces requeued notes with one user message and starts a turn", () => {
