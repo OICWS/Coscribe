@@ -309,14 +309,19 @@ STEER_NOTE = (
 _STEER_MARK = "coscribe_steer"
 
 
-def steer_message(text: str, images: Sequence[str] = ()) -> HumanMessage:
+def steer_message(
+    text: str, images: Sequence[str] = (), *, sent_at: str | None = None
+) -> HumanMessage:
     """A note the user sent mid-turn, read before the model's next step, with the pictures
     attached to it. Marked so the per-turn counts don't take it for a new request."""
     content: str | list[str | dict[str, Any]] = STEER_NOTE + text
     if images:
         content = [{"type": "text", "text": STEER_NOTE + text}]
         content.extend({"type": "image_url", "image_url": {"url": url}} for url in images)
-    return HumanMessage(content=content, additional_kwargs={_STEER_MARK: True})
+    marks: dict[str, Any] = {_STEER_MARK: True}
+    if sent_at is not None:
+        marks["sent_at"] = sent_at
+    return HumanMessage(content=content, additional_kwargs=marks)
 
 
 def is_steer(message: Any) -> bool:
@@ -481,7 +486,7 @@ def _user_history_entry(message: Any, text: str) -> dict[str, Any] | None:
     if files:
         entry["files"] = files
     sent_at = (getattr(message, "additional_kwargs", None) or {}).get("sent_at")
-    if kind == "user" and isinstance(sent_at, str):
+    if isinstance(sent_at, str):
         entry["sent_at"] = sent_at
     return entry
 

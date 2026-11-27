@@ -282,7 +282,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
       return { id: genId(), kind: "agent", text: entry.text, streaming: false };
     }
     if (entry.kind === "steer") {
-      return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
+      return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files, sentAt: entry.sent_at };
     }
     if (entry.kind === "system") return { id: genId(), kind: "system", text: entry.text };
     if (entry.tool_name === "exit_plan_mode") {
@@ -743,7 +743,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.kind === "steer" && action.ids.includes(item.id) ? { ...item, status: "delivered" } : item,
+          item.kind === "steer" && action.ids.includes(item.id)
+            ? { ...item, status: "delivered", sentAt: action.sent_at_by_id?.[item.id] ?? item.sentAt }
+            : item,
         ),
       };
 

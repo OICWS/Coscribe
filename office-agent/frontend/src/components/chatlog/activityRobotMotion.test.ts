@@ -32,4 +32,19 @@ describe("activity robot poses", () => {
       }
     },
   );
+
+  it("searches in one sweep from lower left to lower right across entrances", () => {
+    const phases = [1.35, 1.62, 1.94, 2.24, 2.57];
+    for (const entrance of [0, 5.5, 11]) {
+      const poses = phases.map((phase) => poseAt("Searching", phase, entrance + phase));
+      expect(poses[0][0]).toBeLessThan(-0.25);
+      expect(poses[poses.length - 1][0]).toBeGreaterThan(0.25);
+      expect(poses.map(([yaw]) => yaw)).toEqual(poses.map(([yaw]) => yaw).sort((a, b) => a - b));
+      for (const [yaw, pitch, , height, width] of poses) {
+        expect(Math.abs(yaw)).toBeLessThan(0.5);
+        expect(pitch).toBeCloseTo(0.31);
+        expect([height, width]).toEqual([1, 1]);
+      }
+    }
+  });
 });

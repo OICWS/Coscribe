@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import json
 import re
 import shutil
@@ -38,7 +39,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "src/coscribe"
@@ -89,38 +90,60 @@ def changed_lines(diff: str) -> set[int]:
     return lines
 
 
-def mutant_prefixes(source: str, lines: set[int]) -> list[str]:
-    """mutmut's name prefix for each top-level function and method that a changed line is in.
+def _functions(source: str) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    functions = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            functions[f"x_{node.name}__mutmut_"] = node
+        elif isinstance(node, ast.ClassDef):
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
+                    functions[f"x\u01c1{node.name}\u01c1{item.name}__mutmut_"] = item
+    return functions
 
-    mutmut 3 names a function's mutants `x_<name>__mutmut_<n>` and a method's
-    `xǁ<Class>ǁ<name>__mutmut_<n>`; a nested function is mutated as part of its parent. mutmut
-    leaves a decorated function alone (only a lone @staticmethod or @classmethod is mutated), so
-    asking for one would find no mutant and read as a broken run."""
+
+def _without_local_attribute_annotations(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> str:
+    # Python does not evaluate or store attribute annotations inside a function.
+    executable = copy.copy(function)
+    executable.body = [
+        ast.Assign(targets=[statement.target], value=statement.value)
+        if isinstance(statement, ast.AnnAssign)
+        and isinstance(statement.target, ast.Attribute)
+        and statement.value is not None
+        else statement
+        for statement in function.body
+    ]
+    return ast.dump(executable)
+
+
+def mutant_prefixes(source: str, lines: set[int], before: str = "") -> list[str]:
+    """Find mutmut's name prefixes for functions with executable changes.
+
+    A nested definition is part of its parent. Mutmut leaves decorated functions alone
+    except for lone static and class methods.
+    """
+    previous = _functions(before)
     prefixes = []
-
-    def touched(node: ast.AST) -> bool:
-        end = getattr(node, "end_lineno", None) or node.lineno  # type: ignore[attr-defined]
-        return any(node.lineno <= line <= end for line in lines)  # type: ignore[attr-defined]
-
-    def mutated(node: ast.AST) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or not touched(node):
-            return False
+    for prefix, node in _functions(source).items():
+        if not any(node.lineno <= line <= (node.end_lineno or node.lineno) for line in lines):
+            continue
         if len(node.body) == 1:
             statement = node.body[0]
             if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant):
                 if statement.value.value is Ellipsis:
-                    return False
-        names = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
-        lone = len(node.decorator_list) == 1 and names in (["staticmethod"], ["classmethod"])
-        return not node.decorator_list or lone
-
-    for node in ast.parse(source).body:
-        if mutated(node):
-            prefixes.append(f"x_{node.name}__mutmut_")
-        elif isinstance(node, ast.ClassDef):
-            for item in node.body:
-                if mutated(item):
-                    prefixes.append(f"x\u01c1{node.name}\u01c1{item.name}__mutmut_")
+                    continue
+        decorators = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
+        lone = len(node.decorator_list) == 1 and decorators in (["staticmethod"], ["classmethod"])
+        if node.decorator_list and not lone:
+            continue
+        old = previous.get(prefix)
+        if old and _without_local_attribute_annotations(
+            old
+        ) == _without_local_attribute_annotations(node):
+            continue
+        prefixes.append(prefix)
     return prefixes
 
 
@@ -271,13 +294,17 @@ def _changed_modules(base: str) -> list[tuple[str, list[str], list[str]]]:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import ci_scope
 
-    paths = _git("diff", "--name-only", "--diff-filter=AM", base, "--", PACKAGE).split()
+    changes = _git("diff", "--name-status", "--diff-filter=AM", base, "--", PACKAGE).splitlines()
+    paths = sorted((path, status) for status, path in (line.split("\t", 1) for line in changes))
     graph = ci_scope.Graph.build(ROOT)
     picked = []
-    for path in sorted(p for p in paths if p.endswith(".py")):
+    for path, status in paths:
+        if not path.endswith(".py"):
+            continue
         rel = path.removeprefix("office-agent/")
         lines = changed_lines(_git("diff", "-U0", base, "--", rel))
-        prefixes = mutant_prefixes((ROOT / rel).read_text(encoding="utf-8"), lines)
+        before = _git("show", f"{base}:{path}") if status == "M" else ""
+        prefixes = mutant_prefixes((ROOT / rel).read_text(encoding="utf-8"), lines, before)
         tests = _own_tests(graph, ci_scope, path)
         if prefixes and tests:
             picked.append((rel.removeprefix(PACKAGE + "/"), prefixes, tests))
@@ -368,9 +395,7 @@ def summary(directory: Path) -> str:
     note_files = sorted(directory.glob("**/notes.txt"))
     if note_files:  # a pull request's `changed` run, which has no fixed module list
         notes = dict.fromkeys(
-            note
-            for path in note_files
-            for note in path.read_text(encoding="utf-8").splitlines()
+            note for path in note_files for note in path.read_text(encoding="utf-8").splitlines()
         )
         lines += ["", *notes]
         return "\n".join(lines) + "\n"

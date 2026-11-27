@@ -15,8 +15,10 @@ preview while Microsoft Excel has the workbook open.
 Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
 Office conversion engines and reading during writes.
 
-The Simple conversation activity robot (#1085) is in review. Desktop verification covers
-the indicator at normal Windows display scaling.
+Desktop verification for the Simple conversation activity robot (#1085) covers the
+indicator at normal Windows display scaling.
+
+Desktop verification for messages added while working (#1101) covers copying one after reload.
 
 ## Next, in order
 
@@ -100,6 +102,12 @@ the indicator at normal Windows display scaling.
 
 ## Open, smaller
 
+- **Public office benchmarks** (#1072): `office-agent/evals/external.py` runs OmegaUse-OfficeVal
+  and SpreadsheetBench Verified (`docs/log/2026-11-25-external-benchmarks.md`). OfficeVal: 93
+  tasks, mean 0.48 (PowerPoint 0.39 the lowest); seeing pictures (#1088) is the first fix. Next:
+  SpreadsheetBench and our own tasks in batches on `deepseek-flash`, each approved first. Reuse
+  the baseline for targeted reruns of dev tasks; freeze the implementation for the final run and
+  report the held-out tasks apart (`office-agent/evals/README.md`, `external_splits.json`).
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in
@@ -200,7 +208,7 @@ the indicator at normal Windows display scaling.
   newer tools and the sign-in handover, `docs/log/2026-11-17-browser-sign-in-handover.md`; part
   4b, acting from a picture and watching a page, `docs/log/2026-11-17-browser-look-and-watch.md`.
   Open: which configured models take images (a text-only one refuses browser_screenshot's
-  picture, as it does look_at_page's).
+  picture, as it does look_at_page's and look_at_image's).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
