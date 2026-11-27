@@ -13,6 +13,8 @@ written by someone else, give a score others can compare.
 - Batch 1, the rest of OfficeVal: 93 tasks graded in all. 6 need Word through COM, and 061's
   input video is missing upstream. Mean 0.48: Word 0.61, Excel 0.49, PowerPoint 0.39. About $8 in
   all, $0.08 a task. The 48 tasks with a picture scored 0.41, which led to `look_at_image` (#1088).
+- `evals/AGENTS.md`: how to keep an eval's cost down. Ask before a large run, rerun only the dev
+  tasks a change can reach, check for free where possible, and cut model calls per task.
 - `tests/test_evals_external.py` for the parts that need no model or download.
 
 ## Not verified
