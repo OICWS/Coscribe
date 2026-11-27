@@ -28,6 +28,7 @@ from .design_canvas import (
     with_parts,
     with_pictures,
 )
+from .look_image import image_blocks
 from .page_shot import PageShotError, shoot_page
 
 _MAX_BOARDS = 4
@@ -155,7 +156,8 @@ def build_page_tools(
     state_dir: str | Path | None = None,
     thread_id: str | None = None,
 ) -> list[Callable[..., Any]]:
-    """`look_at_page`, read only and deferred like the other non-core tools (0001). With the
+    """`look_at_page` and `look_at_image`, read only and deferred like the other non-core tools
+    (0001). With the
     conversation (`state_dir`, `thread_id`), a canvas is also checked for the logo of the library
     system the conversation started with."""
 
@@ -205,4 +207,32 @@ def build_page_tools(
             summary["design_system"] = note
         return [{"type": "text", "text": json.dumps(summary, ensure_ascii=False)}, *images]
 
-    return [tool_metadata(look_at_page, risk_category="READ", category="documents")]
+    def look_at_image(path: str) -> list[dict[str, Any]]:
+        """See a picture file with your own eyes: a scan or photo whose words to read, a chart,
+        diagram or slide to redraw, a screenshot. Use it whenever a task hands you a picture,
+        before working from it, rather than guessing from its pixels in a script. PNG, JPEG, GIF,
+        WebP, BMP or TIFF; shrunk to at most 1568 pixels on its long side. Also opens a preview
+        a render tool returned (its preview_path or preview name), to check your own work.
+
+        Args:
+            path: the picture, relative to the workspace root (or an allowed absolute path),
+                or a preview's name
+        """
+        workspace = scope()
+        previews = Path(state_dir) / "previews" if state_dir is not None else None
+        if (
+            previews is not None
+            and Path(path).name == path
+            and not (workspace.root / path).exists()
+        ):
+            if (previews / path).is_file():
+                return image_blocks(previews / path, path)
+        file = workspace.resolve(path)
+        if not file.is_file():
+            raise ValueError(f"File does not exist: {path}")
+        return image_blocks(file, workspace.relative(file))
+
+    return [
+        tool_metadata(look_at_page, risk_category="READ", category="documents"),
+        tool_metadata(look_at_image, risk_category="READ", category="documents"),
+    ]

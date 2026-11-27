@@ -15,8 +15,8 @@ preview while Microsoft Excel has the workbook open.
 Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
 Office conversion engines and reading during writes.
 
-The Simple conversation activity robot (#1085) is in review. Desktop verification covers
-the indicator at normal Windows display scaling.
+Desktop verification for the Simple conversation activity robot (#1085) covers the
+indicator at normal Windows display scaling.
 
 ## Next, in order
 
@@ -200,7 +200,7 @@ the indicator at normal Windows display scaling.
   newer tools and the sign-in handover, `docs/log/2026-11-17-browser-sign-in-handover.md`; part
   4b, acting from a picture and watching a page, `docs/log/2026-11-17-browser-look-and-watch.md`.
   Open: which configured models take images (a text-only one refuses browser_screenshot's
-  picture, as it does look_at_page's).
+  picture, as it does look_at_page's and look_at_image's).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.

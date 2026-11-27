@@ -840,7 +840,6 @@ async def test_history_shows_a_starting_runs_prompt_exactly_once(
         assert [e["text"] for e in history["entries"] if e["kind"] == "user"] == [prompt]
 
 
-@pytest.mark.quarantine(issue=986, until="2026-11-26")
 async def test_a_run_parked_on_approval_offers_it_to_a_watching_tab(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -854,11 +853,12 @@ async def test_a_run_parked_on_approval_offers_it_to_a_watching_tab(
 
     class _WatchingTab:
         def __init__(self) -> None:
-            self.events: list[dict[str, Any]] = []
+            self.approval: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
         async def send_json(self, data: dict[str, Any]) -> None:
             check_event(data)
-            self.events.append(data)
+            if data["type"] == "approval_required":
+                self.approval.put_nowait(data)
 
     tab = _WatchingTab()
     sessions: list[Any] = []
@@ -875,17 +875,22 @@ async def test_a_run_parked_on_approval_offers_it_to_a_watching_tab(
             return session
 
         run = await fire_trigger_now(settings.state_dir, "trig-offer", get_watched_session)
-        # The offer runs in the background; let it deliver, then deny so
-        # the pending approval future doesn't outlive the test.
-        for _ in range(50):
-            if any(e["type"] == "approval_required" for e in tab.events):
-                break
-            await asyncio.sleep(0.02)
-        approval = next(e for e in tab.events if e["type"] == "approval_required")
-        sessions[0].resolve_approval(approval["id"], False)
-        await asyncio.wait_for(sessions[0]._offer_task, timeout=5)
+        assert run is not None and run.status == "needs_approval"
+        [session] = sessions
+        offer = session._offer_task
+        assert offer is not None
+        # Join the background offer before closing the SQLite checkpointer, even
+        # when delivery fails or the runner is slow.
+        try:
+            async with asyncio.timeout(30):
+                approval = await tab.approval.get()
+                session.resolve_approval(approval["id"], False)
+                await offer
+        finally:
+            if not offer.done():
+                offer.cancel()
+                await asyncio.gather(offer, return_exceptions=True)
 
-    assert run is not None and run.status == "needs_approval"
     assert approval["tool_name"] == "write_file"
     # Resolved from the tab, the run finished -- its record must say so.
     resumed = store.load("trig-offer")

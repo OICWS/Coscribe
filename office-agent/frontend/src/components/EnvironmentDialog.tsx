@@ -213,8 +213,8 @@ function MainPage({
           onChange={(e) => draft.setName(e.target.value)}
         />
       </label>
-      <FoldersSection part="main" folders={draft.folders} library={library} onChange={draft.setFolders} />
       <div className="flex flex-col gap-2">
+        <FoldersSection part="main" folders={draft.folders} library={library} onChange={draft.setFolders} />
         {summaries.map(([target, value]) => (
           <EnvironmentRow key={target} title={PAGE_TITLES[target]} value={value} onOpen={() => onOpen(target)} />
         ))}
