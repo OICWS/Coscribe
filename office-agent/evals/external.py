@@ -360,6 +360,17 @@ async def run_all(tasks: list[ExternalTask], args: argparse.Namespace) -> list[d
     return list(await asyncio.gather(*(one(t) for t in tasks)))
 
 
+SPLITS = Path(__file__).with_name("external_splits.json")
+
+
+def split_tasks(bench: str, tasks: str) -> list[str]:
+    """The ids `--tasks` names: a list, or a frozen split. The held split is for the final run of
+    a frozen implementation; a task looked into while fixing something moves to dev for good."""
+    if tasks in ("dev", "held"):
+        return list(json.loads(SPLITS.read_text(encoding="utf-8"))[bench][tasks])
+    return [t.strip() for t in tasks.split(",") if t.strip()]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
@@ -367,7 +378,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bench", choices=("officeval", "spreadsheetbench"), required=True)
     parser.add_argument("--data", type=Path, required=True, help="the benchmark's dataset")
     parser.add_argument("--grader", type=Path, required=True, help="the benchmark's repository")
-    parser.add_argument("--tasks", required=True, help="comma-separated task ids")
+    parser.add_argument(
+        "--tasks", required=True, help='comma-separated task ids, or "dev" or "held" (SPLITS)'
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", default=base.DEFAULT_MODEL)
     parser.add_argument("--effort", choices=base.EFFORT_LEVELS, default=base.DEFAULT_EFFORT)
@@ -377,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
         "--grader-python", default=sys.executable, help="the interpreter the checker runs in"
     )
     args = parser.parse_args(argv)
-    wanted = [t.strip() for t in args.tasks.split(",") if t.strip()]
+    wanted = split_tasks(args.bench, args.tasks)
     if args.bench == "officeval":
         skipped = sorted(OFFICEVAL_COM.intersection(wanted))
         if skipped and sys.platform != "win32":

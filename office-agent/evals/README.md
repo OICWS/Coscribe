@@ -369,6 +369,15 @@ python -m evals.external --bench spreadsheetbench --data <spreadsheetbench_verif
   LibreOffice recalculates it as the benchmark does, and its `compare_workbooks` checks the
   answer range against the golden file (1 or 0).
 
+**Development and held-out tasks** (`external_splits.json`, frozen 2026-11-27): `--tasks dev` or
+`--tasks held`. A fix is developed and checked on dev tasks only, rerunning just the ones it can
+reach, with the same model, effort and verifier as the baseline. A task whose trace, reference
+answer or verifier details informed a change moves to dev, and never back; so does any task from a
+public solution trace (SheetXL's) that was read. The held tasks run once, on a frozen
+implementation, and their score is reported apart from the dev score. A published score names its
+pass count or mean with the number graded, the coscribe commit, model and effort, and the dataset
+and verifier versions.
+
 `--grader-python` names the Python with each checker's dependencies (openpyxl, python-docx,
 python-pptx), which coscribe's own environment may not have. Run on `deepseek-flash` off-peak:
 a task costs about one to five cents. Only the deterministic parts are tested

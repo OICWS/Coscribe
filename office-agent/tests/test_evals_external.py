@@ -143,3 +143,11 @@ def test_a_summary_averages_only_the_graded_tasks():
     assert summary["total_cost"] == 0.06
     assert summary["cost_per_task"] == 0.03
     assert [r["task"] for r in summary["rows"]] == ["a", "b", "c"]
+
+
+def test_the_frozen_splits_do_not_overlap():
+    for bench in ("officeval", "spreadsheetbench"):
+        dev, held = external.split_tasks(bench, "dev"), external.split_tasks(bench, "held")
+        assert dev and held
+        assert not set(dev) & set(held)
+    assert external.split_tasks("officeval", "003, 033") == ["003", "033"]
