@@ -86,3 +86,26 @@ def test_the_async_path_refuses_too(tmp_path):
 
     refused = asyncio.run(guard.awrap_tool_call(_call("edit_docx_review", "a.docx"), handler))
     assert refused.status == "error"
+
+
+def test_a_file_the_models_own_script_changed_is_not_taken_for_the_persons(tmp_path):
+    (tmp_path / "a.docx").write_bytes(b"one")
+    ran: list[str] = []
+    guard = EditGuardMiddleware(lambda p: root / p, {"edit_docx_review"}, {"run_python_script"})
+    root = tmp_path
+
+    def handler(request: Any) -> ToolMessage:
+        ran.append(request.tool_call["name"])
+        if request.tool_call["name"] == "run_python_script":
+            (tmp_path / "a.docx").write_bytes(b"two, from the script")
+        return ToolMessage(content="ok", tool_call_id="c1", name=request.tool_call["name"])
+
+    guard.wrap_tool_call(_call("read_docx_review", "a.docx"), handler)
+    script = SimpleNamespace(
+        tool_call={"id": "c2", "name": "run_python_script", "args": {"script": "..."}}
+    )
+    guard.wrap_tool_call(script, handler)
+    done = guard.wrap_tool_call(_call("edit_docx_review", "a.docx"), handler)
+
+    assert done.content == "ok"
+    assert ran == ["read_docx_review", "run_python_script", "edit_docx_review"]

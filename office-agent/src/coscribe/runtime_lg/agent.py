@@ -388,12 +388,20 @@ class _CompactMiddleware(SummarizationMiddleware):
         return self._with_tasks(await super().abefore_model(state, runtime), state)
 
 
-def _writer_names(tools: Sequence[Callable[..., Any] | BaseTool]) -> set[str]:
+def _writer_names(
+    tools: Sequence[Callable[..., Any] | BaseTool], risk: str = "WRITE_LOCAL"
+) -> set[str]:
     return {
         tool_name(t)
         for t in tools
-        if get_tool_metadata(cast(Callable[..., Any], t)).risk_category == "WRITE_LOCAL"
+        if get_tool_metadata(cast(Callable[..., Any], t)).risk_category == risk
     }
+
+
+def _edit_guard(
+    resolve_file: Callable[[str], Path], tools: Sequence[Callable[..., Any] | BaseTool]
+) -> EditGuardMiddleware:
+    return EditGuardMiddleware(resolve_file, _writer_names(tools), _writer_names(tools, "EXEC"))
 
 
 def build_langgraph_agent(
@@ -516,7 +524,7 @@ def build_langgraph_agent(
     middleware: list[Any] = [_CatchToolErrorsMiddleware(after=repeat_note(tools))]
     middleware.append(CallOrderMiddleware())
     if resolve_file is not None:
-        middleware.append(EditGuardMiddleware(resolve_file, _writer_names(tools)))
+        middleware.append(_edit_guard(resolve_file, tools))
     if redact is not None:
         middleware.insert(0, _RedactToolResultsMiddleware(redact))
     # Only for an Anthropic model: importing langchain_anthropic pulls in the

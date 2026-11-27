@@ -29,12 +29,19 @@ def _digest(path: Path) -> str | None:
 
 class EditGuardMiddleware(AgentMiddleware):
     """`resolve` turns a tool's `path` argument into the file it names (and raises for one outside
-    the workspace); `write_tools` are the names of the tools that change a file."""
+    the workspace); `write_tools` are the names of the tools that change a file; `script_tools`
+    run the model's own code, which may change any file without naming it."""
 
-    def __init__(self, resolve: Callable[[str], Path], write_tools: Iterable[str]) -> None:
+    def __init__(
+        self,
+        resolve: Callable[[str], Path],
+        write_tools: Iterable[str],
+        script_tools: Iterable[str] = (),
+    ) -> None:
         super().__init__()
         self._resolve = resolve
         self._writes = frozenset(write_tools)
+        self._scripts = frozenset(script_tools)
         self._seen: dict[Path, str] = {}
 
     def _target(self, request: Any) -> tuple[str, Path | None, str]:
@@ -67,6 +74,16 @@ class EditGuardMiddleware(AgentMiddleware):
         now = _digest(path)
         return now is not None and now != self._seen[path]
 
+    def _after_script(self, name: str) -> None:
+        # The model's script changed what it changed: taking that for the person's edit sent it
+        # back to read a file it had just written, once in every few runs.
+        if name not in self._scripts:
+            return
+        for path in list(self._seen):
+            now = _digest(path)
+            if now is not None:
+                self._seen[path] = now
+
     def _remember(self, path: Path | None, result: Any) -> None:
         if path is None or getattr(result, "status", None) == "error":
             return
@@ -80,6 +97,7 @@ class EditGuardMiddleware(AgentMiddleware):
             return self._refusal(request, given)
         result = handler(request)
         self._remember(path, result)
+        self._after_script(name)
         return result
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
@@ -88,4 +106,5 @@ class EditGuardMiddleware(AgentMiddleware):
             return self._refusal(request, given)
         result = await handler(request)
         self._remember(path, result)
+        self._after_script(name)
         return result
