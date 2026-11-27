@@ -1152,6 +1152,8 @@ def test_no_proxy_overrides_the_proxy_variables(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
+    # App startup loads this .env into the process. Restore the runner's proxy for later tests.
+    monkeypatch.setenv("HTTPS_PROXY", "")
     (tmp_path / ".env").write_text("HTTPS_PROXY=http://old:3128\n", encoding="utf-8")
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         client.put("/api/settings/proxy", json={"mode": "none"})
