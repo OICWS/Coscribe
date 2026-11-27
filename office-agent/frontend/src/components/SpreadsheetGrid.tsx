@@ -1,9 +1,12 @@
-import { type CSSProperties, type KeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent, type ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SpreadsheetDrawing } from "./SpreadsheetDrawing";
 import { address, axis, cellKey, columnName, drawingBox, edge, indexAt, type Axis, type Cell, type CellFormat, type Merge, type Position, type Sheet, visible } from "./spreadsheetModel";
 
 const HEADER_HEIGHT = 26;
 const HEADER_WIDTH = 45;
+// Rows and columns drawn past each edge, so a fast scroll shows cells, not white, before React catches up.
+const OVERSCAN_ROWS = 12;
+const OVERSCAN_COLUMNS = 4;
 
 function formatCell(format: CellFormat | undefined, cell: Cell | undefined): CSSProperties {
   const horizontal = format?.align === "center" || format?.align === "centerContinuous" ? "center" :
@@ -44,31 +47,41 @@ function reveal(data: Axis, index: number, scroll: number, viewport: number): nu
   return scroll;
 }
 
-function cellBox(row: number, column: number, endRow: number, endColumn: number, rows: Axis, columns: Axis, x: number, y: number) {
-  const frozenRow = row <= rows.frozen;
-  const frozenColumn = column <= columns.frozen;
+// Frozen panes and headers sit in sticky layers, so the browser keeps them in place on the same
+// frame it scrolls the sheet. Positioning them from the scroll event lags a frame behind while the
+// scrollbar is dragged, and they visibly shake.
+type Layer = "body" | "top" | "left" | "corner";
+
+function layerOf(row: number, column: number, rows: Axis, columns: Axis): Layer {
+  const top = row <= rows.frozen;
+  const left = column <= columns.frozen;
+  return top && left ? "corner" : top ? "top" : left ? "left" : "body";
+}
+
+function cellBox(row: number, column: number, endRow: number, endColumn: number, rows: Axis, columns: Axis) {
   return {
-    top: HEADER_HEIGHT + edge(rows, row) + (frozenRow ? y : 0),
-    left: HEADER_WIDTH + edge(columns, column) + (frozenColumn ? x : 0),
+    top: HEADER_HEIGHT + edge(rows, row),
+    left: HEADER_WIDTH + edge(columns, column),
     width: edge(columns, endColumn + 1) - edge(columns, column),
     height: edge(rows, endRow + 1) - edge(rows, row),
-    zIndex: Number(frozenRow) + Number(frozenColumn) + (frozenRow || frozenColumn ? 4 : 0),
   };
 }
 
-function GridTiles({ sheet, selected, cells, rows, columns, x, y, visibleRows, visibleColumns, onSelect }: {
+function Sticky({ top, left, z, children }: { top?: boolean; left?: boolean; z: number; children: ReactNode }) {
+  return <div className="spreadsheet-layer" style={{ top: top ? 0 : undefined, left: left ? 0 : undefined, zIndex: z }}>{children}</div>;
+}
+
+function gridTiles({ sheet, selected, cells, rows, columns, visibleRows, visibleColumns, onSelect }: {
   sheet: Sheet;
   selected: Position;
   cells: Map<number, Cell>;
   rows: Axis;
   columns: Axis;
-  x: number;
-  y: number;
   visibleRows: number[];
   visibleColumns: number[];
   onSelect: (p: Position) => void;
-}) {
-  const tiles = [];
+}): Record<Layer, ReactNode[]> {
+  const tiles: Record<Layer, ReactNode[]> = { body: [], top: [], left: [], corner: [] };
   const drawn = new Set<number>();
   for (const row of visibleRows) {
     const merges = sheet.merges.filter(([a, , b]) => row >= a && row <= b);
@@ -79,18 +92,44 @@ function GridTiles({ sheet, selected, cells, rows, columns, x, y, visibleRows, v
       drawn.add(key);
       const cell = cells.get(key);
       const active = selected.row === r && selected.column === c;
-      tiles.push(<div
+      tiles[layerOf(r, c, rows, columns)].push(<div
         key={key} role="gridcell"
         aria-rowindex={r} aria-colindex={c} aria-selected={active}
         aria-rowspan={rEnd - r + 1} aria-colspan={cEnd - c + 1}
         aria-label={address({ row: r, column: c })} title={cell?.[2]}
         className={`spreadsheet-cell${active ? " spreadsheet-selected" : ""}`}
         onClick={() => onSelect({ row: r, column: c })}
-        style={{ ...cellBox(r, c, rEnd, cEnd, rows, columns, x, y), ...formatCell(cell ? sheet.styles[cell[4]] : undefined, cell) }}
+        style={{ ...cellBox(r, c, rEnd, cEnd, rows, columns), ...formatCell(cell ? sheet.styles[cell[4]] : undefined, cell) }}
       ><span>{cell?.[2]}</span></div>);
     }
   }
   return tiles;
+}
+
+function GridHeaders({ rows, columns, visibleRows, visibleColumns, selected }: {
+  rows: Axis;
+  columns: Axis;
+  visibleRows: number[];
+  visibleColumns: number[];
+  selected: Position;
+}) {
+  const columnHeader = (column: number) => <div key={column} role="columnheader"
+    className="spreadsheet-header" data-selected={column === selected.column} style={{
+      top: 0, left: HEADER_WIDTH + edge(columns, column), width: columns.sizes[column], height: HEADER_HEIGHT,
+    }}>{columnName(column)}</div>;
+  const rowHeader = (row: number) => <div key={row} role="rowheader"
+    className="spreadsheet-header" data-selected={row === selected.row} style={{
+      top: HEADER_HEIGHT + edge(rows, row), left: 0, width: HEADER_WIDTH, height: rows.sizes[row],
+    }}>{row}</div>;
+  return <>
+    <Sticky top z={8}>{visibleColumns.filter((column) => column > columns.frozen).map(columnHeader)}</Sticky>
+    <Sticky left z={9}>{visibleRows.filter((row) => row > rows.frozen).map(rowHeader)}</Sticky>
+    <Sticky top left z={10}>
+      {visibleColumns.filter((column) => column <= columns.frozen).map(columnHeader)}
+      {visibleRows.filter((row) => row <= rows.frozen).map(rowHeader)}
+      <div aria-hidden="true" className="spreadsheet-header spreadsheet-corner" style={{ top: 0, left: 0, width: HEADER_WIDTH, height: HEADER_HEIGHT }} />
+    </Sticky>
+  </>;
 }
 
 export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
@@ -101,12 +140,13 @@ export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
   const columns = useMemo(() => axis(Math.max(sheet.columnCount + 8, sheet.freeze[1] + 8, 26, ...sheet.drawings.map((d) => d.end?.[1] ?? d.origin[1] + 12)), sheet.columnWidth, sheet.columns, sheet.freeze[1]), [sheet]);
   const cells = useMemo(() => new Map(sheet.cells.map((cell) => [cellKey(cell[0], cell[1]), cell])), [sheet]);
   const { width, height, x, y } = viewport;
-  const visibleRows = visible(rows, y, Math.max(height - HEADER_HEIGHT, 0));
-  const visibleColumns = visible(columns, x, Math.max(width - HEADER_WIDTH, 0));
+  const visibleRows = visible(rows, y, Math.max(height - HEADER_HEIGHT, 0), OVERSCAN_ROWS);
+  const visibleColumns = visible(columns, x, Math.max(width - HEADER_WIDTH, 0), OVERSCAN_COLUMNS);
   const first = selection ?? { row: indexAt(rows, 0), column: indexAt(columns, 0) };
   const firstMerge = mergeAt(sheet.merges, first.row, first.column);
   const selected = firstMerge ? { row: firstMerge[0], column: firstMerge[1] } : first;
   const selectedCell = cells.get(cellKey(selected.row, selected.column));
+  const tiles = gridTiles({ sheet, selected, cells, rows, columns, visibleRows, visibleColumns, onSelect: setSelection });
 
   useLayoutEffect(() => {
     const node = scroller.current;
@@ -152,7 +192,7 @@ export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
       aria-rowcount={rows.sizes.length - 1} aria-colcount={columns.sizes.length - 1}
       tabIndex={0} onKeyDown={navigate}>
       <div className="spreadsheet-canvas" style={{ width: columns.total + HEADER_WIDTH, height: rows.total + HEADER_HEIGHT }}>
-        <GridTiles {...{ sheet, selected, cells, rows, columns, x, y, visibleRows, visibleColumns }} onSelect={setSelection} />
+        {tiles.body}
         {sheet.drawings.map((drawing, i) => {
           const { top, left, width: w, height: h } = drawingBox(drawing, rows, columns);
           if (w <= 0 || h <= 0 || left >= columns.total || top >= rows.total) return null;
@@ -160,23 +200,18 @@ export function SpreadsheetGrid({ sheet }: { sheet: Sheet }) {
             top: top + HEADER_HEIGHT, left: left + HEADER_WIDTH, width: w, height: h,
           }}><SpreadsheetDrawing drawing={drawing} /></div>;
         })}
-        {visibleRows.map((row) => <div key={row} role="rowheader"
-          className="spreadsheet-header" data-selected={row === selected.row} style={{
-            top: HEADER_HEIGHT + edge(rows, row) + (row <= rows.frozen ? y : 0),
-            left: x, width: HEADER_WIDTH, height: rows.sizes[row],
-            zIndex: row <= rows.frozen ? 10 : 8,
-          }}>{row}</div>)}
-        {visibleColumns.map((column) => <div key={column} role="columnheader"
-          className="spreadsheet-header" data-selected={column === selected.column} style={{
-            top: y, left: HEADER_WIDTH + edge(columns, column) + (column <= columns.frozen ? x : 0),
-            width: columns.sizes[column], height: HEADER_HEIGHT,
-            zIndex: column <= columns.frozen ? 10 : 8,
-          }}>{columnName(column)}</div>)}
-        <div aria-hidden="true" className="spreadsheet-header spreadsheet-corner" style={{ top: y, left: x, width: HEADER_WIDTH, height: HEADER_HEIGHT }} />
-        {rows.frozen > 0 && <div aria-hidden="true" className="spreadsheet-freeze-row"
-          style={{ top: y + HEADER_HEIGHT + edge(rows, rows.frozen + 1), left: x, width }} />}
-        {columns.frozen > 0 && <div aria-hidden="true" className="spreadsheet-freeze-col"
-          style={{ top: y, left: x + HEADER_WIDTH + edge(columns, columns.frozen + 1), height }} />}
+        <Sticky top z={5}>
+          {tiles.top}
+          {rows.frozen > 0 && <div aria-hidden="true" className="spreadsheet-freeze-row"
+            style={{ top: HEADER_HEIGHT + edge(rows, rows.frozen + 1), left: 0, width: columns.total + HEADER_WIDTH }} />}
+        </Sticky>
+        <Sticky left z={6}>
+          {tiles.left}
+          {columns.frozen > 0 && <div aria-hidden="true" className="spreadsheet-freeze-col"
+            style={{ top: 0, left: HEADER_WIDTH + edge(columns, columns.frozen + 1), height: rows.total + HEADER_HEIGHT }} />}
+        </Sticky>
+        <Sticky top left z={7}>{tiles.corner}</Sticky>
+        <GridHeaders {...{ rows, columns, visibleRows, visibleColumns, selected }} />
       </div>
     </div>
     {tail && <div className="spreadsheet-note">This workbook has more rows or columns than the preview can show.</div>}

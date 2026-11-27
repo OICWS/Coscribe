@@ -100,6 +100,13 @@ the indicator at normal Windows display scaling.
 
 ## Open, smaller
 
+- **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
+  DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
+  and Gemini, whose search runs only inside a model call, as a second kind in
+  `runtime/models/web_search.json`; and web search shown as a capability in Settings > Providers
+  and the model picker (a frontend PR). Free engines stay first for every provider (Collins,
+  2026-11-26).
+
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
   the checks on what tests prove, the frontend features and the weekly numbers
   (`docs/log/2026-11-24-weekly-numbers.md`) shipped. Read the "Weekly numbers" issue on

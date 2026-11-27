@@ -48,10 +48,11 @@ export default function SpreadsheetPreview({ threadId, path, refreshKey = "" }: 
         <div className="spreadsheet-tabs" aria-label="Worksheets">
           {loaded.sheets.map((name) => <button
             type="button" key={name} aria-pressed={loaded.sheet?.name === name}
+            aria-busy={loading && requested === name}
             onClick={() => { if (loaded.sheet?.name !== name || error) setRequested(name); }}
           >{name}</button>)}
         </div>
-        <span className="spreadsheet-note" role="status">{loading ? "Loading…" : "Read-only"}</span>
+        {loading && <span className="spreadsheet-note" role="status">Loading…</span>}
       </div>
     )}
   </section>;
