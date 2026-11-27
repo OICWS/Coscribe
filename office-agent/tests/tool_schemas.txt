@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 26904 chars, ~6726 tokens, sha256 0633db2e3d
+system prompt: 27110 chars, ~6777 tokens, sha256 5b1e9bab41
 
 bound to the model: 24 tools, ~5498 tokens
   answer_question_card (answers:array) desc 920 chars sha256 986a8d060c
@@ -20,7 +20,7 @@ bound to the model: 24 tools, ~5498 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 2033 chars sha256 573603a5fe
+  search_tools (query:string) desc 2033 chars sha256 19a4b374e1
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -29,7 +29,7 @@ bound to the model: 24 tools, ~5498 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 125 tools, ~38856 tokens (the ones not bound are found through search_tools)
+registered: 126 tools, ~39029 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -94,6 +94,7 @@ registered: 125 tools, ~38856 tokens (the ones not bound are found through searc
   list_subagent_tasks | READ | subagent_tasks | deferred | sha256 21efb81849
   list_wakes | READ | selfwake | deferred | sha256 88b974a2c2
   load_skill | READ | skills | deferred | sha256 7b0c5ee61e
+  look_at_image | READ | documents | deferred | sha256 7383123e97
   look_at_page | READ | documents | deferred | sha256 55d7a94738
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
   modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f

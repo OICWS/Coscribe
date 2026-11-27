@@ -21,7 +21,7 @@ export function AddMenu({ onUpload, onCreate }: { onUpload: () => void; onCreate
       {addMenuOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1 min-w-48 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] py-1 shadow-[var(--shadow)]"
+          className="absolute right-0 top-full z-20 mt-1 w-max min-w-48 whitespace-nowrap rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] py-1 shadow-[var(--shadow)]"
         >
           <button
             type="button"
