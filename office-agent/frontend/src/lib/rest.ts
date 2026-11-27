@@ -29,10 +29,9 @@ import type {
   MemoryResponse,
   NpmLatestVersionResponse,
   ProviderCatalogEntry,
-  ProviderDeleteResult,
-  ProviderModelsResult,
-  ProviderUpdateResult,
   ProvidersResponse,
+  ModelRow,
+  ProviderFormat,
   ScheduledRun,
   ScheduledTask,
   ScheduledTaskDeleteResult,
@@ -379,11 +378,30 @@ export const bumpMcpVersion = (name: string, pkg: string, version: string) =>
 
 export const getProvidersCatalog = () => getJson<ProviderCatalogEntry[]>("/api/providers/catalog");
 export const getProviders = () => getJson<ProvidersResponse>("/api/providers");
-export const addProvider = (name: string, baseUrl: string, apiKey: string, models: string[], defaultModel: string) =>
+interface ProviderUpdateResult {
+  restart_required: boolean;
+  rejected: Record<string, string>;
+}
+
+interface ProviderModelsResult {
+  models: ModelRow[];
+  error: string | null;
+}
+
+interface ProviderDeleteResult {
+  restart_required: boolean;
+}
+
+interface ProviderConnection {
+  name: string;
+  base_url: string;
+  api_key: string;
+  api_format?: ProviderFormat;
+  api_version?: string;
+}
+export const addProvider = (connection: ProviderConnection, models: string[], defaultModel: string) =>
   postJson<ProviderUpdateResult>("/api/providers", {
-    name,
-    base_url: baseUrl,
-    api_key: apiKey,
+    ...connection,
     models,
     default_model: defaultModel,
   });
@@ -391,8 +409,10 @@ export const addProvider = (name: string, baseUrl: string, apiKey: string, model
 export const providerModelIds = (providers: ProvidersResponse) =>
   Object.entries(providers).flatMap(([key, info]) => info.models.map((m) => `${key}:${m.id}`));
 /** A blank key lists with the key already saved for `name`. */
-export const listProviderModels = (name: string, baseUrl: string, apiKey: string) =>
-  postJson<ProviderModelsResult>("/api/providers/models", { name, base_url: baseUrl, api_key: apiKey });
+export const listProviderModels = (connection: ProviderConnection) =>
+  postJson<ProviderModelsResult>("/api/providers/models", connection);
+export const testProvider = (connection: ProviderConnection, model: string) =>
+  postJson<{ error: string | null }>("/api/providers/test", { ...connection, model });
 export const removeProvider = (name: string) => del<ProviderDeleteResult>(`/api/providers/${encodeURIComponent(name)}`);
 
 // -- Environment (script-env packages) -------------------------------------

@@ -12,9 +12,8 @@ from .secrets import resolve_secret
 
 def load_custom_providers(config_path: Path) -> dict[str, dict[str, str]]:
     """Parse a {"providers": {name: {base_url, api_key, ...}}} JSON file into
-    the {name: {"base_url", "api_key"}} shape LLMClient(custom_providers=...)
-    wants. `default_model` (a UI-only convenience, not a provider setting) and
-    any other extra keys are dropped. `api_key` is resolved via
+    a map of runtime connection settings. The model list and default model
+    belong to the UI. `api_key` is resolved via
     runtime/secrets.py's resolve_secret before being returned, so every
     caller here keeps getting a plain string regardless of whether it's
     stored on disk as a keyring reference or (legacy, or keyring
@@ -42,5 +41,9 @@ def load_custom_providers(config_path: Path) -> dict[str, dict[str, str]]:
         api_key = resolve_secret(entry.get("api_key")) or ""
         if not base_url or not api_key:
             raise ValueError(f'{config_path}: provider {name!r} needs "base_url" and "api_key"')
-        result[name] = {"base_url": base_url, "api_key": api_key}
+        config = {"base_url": base_url, "api_key": api_key}
+        for field in ("api_format", "api_version"):
+            if isinstance(value := entry.get(field), str):
+                config[field] = value
+        result[name] = config
     return result

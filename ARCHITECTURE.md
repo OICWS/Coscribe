@@ -43,8 +43,9 @@ tools, and repeat work on a schedule. It needs only a model API key.
   tool results cleared from each request from half that size), and notes
   the user adds mid-turn. It replaced a
   hand-written runtime whose own provider adapters kept producing bugs.
-- **Models.** Anthropic, OpenAI and Gemini directly, and any
-  OpenAI-compatible API as a custom provider; Settings › Providers offers
+- **Models.** Anthropic, OpenAI and Gemini directly. Custom providers support
+  OpenAI-compatible Chat Completions, Responses and versioned Azure OpenAI
+  deployments. Settings › Providers offers
   presets for the common ones (DeepSeek, Kimi, GLM, Qwen, OpenRouter, local
   runners and more, `web/provider_catalog.py`). The context-window indicator asks the Gemini API
   directly and estimates for the rest.

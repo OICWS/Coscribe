@@ -262,8 +262,9 @@ Desktop verification for messages added while working (#1101) covers copying one
   The catalog and its update job shipped (`docs/log/2026-11-21-model-catalog.md`), then the
   provider page's Models section and the grouped model picker
   (`docs/log/2026-11-21-provider-models.md`), then each model's own effort levels from the
-  catalog (`docs/log/2026-11-21-model-effort-levels.md`). Open: the protocols; pasting a vendor's
-  Codex or Claude Code setup.
+  catalog (`docs/log/2026-11-21-model-effort-levels.md`). Responses, versioned Azure OpenAI,
+  manual model entry and model tests are implemented (`docs/log/2026-11-27-custom-provider-protocols.md`).
+  Open items include custom Anthropic Messages and pasting a vendor's Codex or Claude Code setup.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
   a first-run page that takes a compatible provider and checks the key; steps and time per task in the agentic evaluation.
