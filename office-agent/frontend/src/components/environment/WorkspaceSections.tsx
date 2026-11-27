@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { folderName } from "../../lib/folderName";
 import type { BrowserLevel, SecretInfo } from "../../types/settings";
-import { FolderIcon, PlusIcon } from "../icons";
+import { PlusIcon } from "../icons";
 import { SelectMenu, type SelectOption } from "../SelectMenu";
 import { DirBrowserModal } from "../settings";
 import { DIR_PERMISSION_OPTIONS, type DirEntry } from "../settings";
@@ -9,6 +9,7 @@ import { SegmentedControl } from "../settings";
 import { fieldClass, secondaryButtonClass } from "../settings";
 import { normalizeSite, patternBase, reachesPattern } from "../../lib/workspaceSites";
 import type { NetworkDraft, SitesMode } from "./drafts";
+import { EnvironmentRow } from "./EnvironmentPages";
 
 const smallButton = `${secondaryButtonClass} !h-8 !px-2.5 text-[13px]`;
 const cell = "border-b border-[var(--border)] py-2 align-middle";
@@ -115,20 +116,11 @@ export function FoldersSection({
   return (
     <>
       {part === "main" && (
-        <Section
+        <EnvironmentRow
           title="Folder"
-        description="New files, screenshots and artifacts go here."
-        action={
-          <button type="button" className={`${smallButton} flex items-center gap-1.5`} onClick={() => setBrowsing("main")}>
-            <FolderIcon className="h-3.5 w-3.5" />
-            {main === undefined ? "Choose" : "Change"}
-          </button>
-        }
-      >
-        <span className={`truncate text-[13px] ${main === undefined ? "text-[var(--muted)]" : ""}`} title={main}>
-          {main ?? "Coscribe's default workspace folder"}
-        </span>
-        </Section>
+          value={main ?? "Coscribe's default workspace folder"}
+          onOpen={() => setBrowsing("main")}
+        />
       )}
       {part === "more" && (
         <Section
