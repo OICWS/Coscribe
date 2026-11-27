@@ -5,7 +5,8 @@
     python scripts/mutation.py run KEY --out DIR          mutate one module, write DIR/KEY.json
                                                           and DIR/KEY-survivors.txt
     python scripts/mutation.py summary DIR                a markdown table of every DIR/*.json
-    python scripts/mutation.py changed --base SHA --out DIR
+    python scripts/mutation.py changed-list --base SHA    the modules to run, as JSON
+    python scripts/mutation.py changed --base SHA --out DIR [--module PATH]
                                                           mutate only the functions a pull request
                                                           changed, with the tests that reach them
 
@@ -30,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import json
 import re
 import shutil
@@ -37,7 +39,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "src/coscribe"
@@ -88,33 +90,60 @@ def changed_lines(diff: str) -> set[int]:
     return lines
 
 
-def mutant_prefixes(source: str, lines: set[int]) -> list[str]:
-    """mutmut's name prefix for each top-level function and method that a changed line is in.
-
-    mutmut 3 names a function's mutants `x_<name>__mutmut_<n>` and a method's
-    `xǁ<Class>ǁ<name>__mutmut_<n>`; a nested function is mutated as part of its parent. mutmut
-    leaves a decorated function alone (only a lone @staticmethod or @classmethod is mutated), so
-    asking for one would find no mutant and read as a broken run."""
-    prefixes = []
-
-    def touched(node: ast.AST) -> bool:
-        end = getattr(node, "end_lineno", None) or node.lineno  # type: ignore[attr-defined]
-        return any(node.lineno <= line <= end for line in lines)  # type: ignore[attr-defined]
-
-    def mutated(node: ast.AST) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or not touched(node):
-            return False
-        names = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
-        lone = len(node.decorator_list) == 1 and names in (["staticmethod"], ["classmethod"])
-        return not node.decorator_list or lone
-
+def _functions(source: str) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    functions = {}
     for node in ast.parse(source).body:
-        if mutated(node):
-            prefixes.append(f"x_{node.name}__mutmut_")
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            functions[f"x_{node.name}__mutmut_"] = node
         elif isinstance(node, ast.ClassDef):
             for item in node.body:
-                if mutated(item):
-                    prefixes.append(f"x\u01c1{node.name}\u01c1{item.name}__mutmut_")
+                if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
+                    functions[f"x\u01c1{node.name}\u01c1{item.name}__mutmut_"] = item
+    return functions
+
+
+def _without_local_attribute_annotations(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> str:
+    # Python does not evaluate or store attribute annotations inside a function.
+    executable = copy.copy(function)
+    executable.body = [
+        ast.Assign(targets=[statement.target], value=statement.value)
+        if isinstance(statement, ast.AnnAssign)
+        and isinstance(statement.target, ast.Attribute)
+        and statement.value is not None
+        else statement
+        for statement in function.body
+    ]
+    return ast.dump(executable)
+
+
+def mutant_prefixes(source: str, lines: set[int], before: str = "") -> list[str]:
+    """Find mutmut's name prefixes for functions with executable changes.
+
+    A nested definition is part of its parent. Mutmut leaves decorated functions alone
+    except for lone static and class methods.
+    """
+    previous = _functions(before)
+    prefixes = []
+    for prefix, node in _functions(source).items():
+        if not any(node.lineno <= line <= (node.end_lineno or node.lineno) for line in lines):
+            continue
+        if len(node.body) == 1:
+            statement = node.body[0]
+            if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant):
+                if statement.value.value is Ellipsis:
+                    continue
+        decorators = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
+        lone = len(node.decorator_list) == 1 and decorators in (["staticmethod"], ["classmethod"])
+        if node.decorator_list and not lone:
+            continue
+        old = previous.get(prefix)
+        if old and _without_local_attribute_annotations(
+            old
+        ) == _without_local_attribute_annotations(node):
+            continue
+        prefixes.append(prefix)
     return prefixes
 
 
@@ -146,7 +175,10 @@ def _prepare_module(work: Path, module: str, pytest_args: list[str]) -> None:
     static = work / PACKAGE / "web" / "static"
     if not static.exists():
         static.mkdir(parents=True)
-        (static / "index.html").write_text("<!doctype html>\n", encoding="utf-8")
+        (static / "index.html").write_text(
+            "<!doctype html><html><head></head><body></body></html>\n",
+            encoding="utf-8",
+        )
     copied = [
         "src",
         *(folder for folder in ("evals", "scripts", "frontend") if (work / folder).is_dir()),
@@ -258,27 +290,42 @@ def _git(*args: str) -> str:
     ).stdout
 
 
-def changed(base: str, out: Path) -> int:
-    """Mutate the functions this checkout changed since `base`; a report, like `run`."""
+def _changed_modules(base: str) -> list[tuple[str, list[str], list[str]]]:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import ci_scope
 
-    out.mkdir(parents=True, exist_ok=True)
-    paths = _git("diff", "--name-only", "--diff-filter=AM", base, "--", PACKAGE).split()
+    changes = _git("diff", "--name-status", "--diff-filter=AM", base, "--", PACKAGE).splitlines()
+    paths = sorted((path, status) for status, path in (line.split("\t", 1) for line in changes))
     graph = ci_scope.Graph.build(ROOT)
     picked = []
-    for path in sorted(p for p in paths if p.endswith(".py")):
+    for path, status in paths:
+        if not path.endswith(".py"):
+            continue
         rel = path.removeprefix("office-agent/")
         lines = changed_lines(_git("diff", "-U0", base, "--", rel))
-        prefixes = mutant_prefixes((ROOT / rel).read_text(encoding="utf-8"), lines)
+        before = _git("show", f"{base}:{path}") if status == "M" else ""
+        prefixes = mutant_prefixes((ROOT / rel).read_text(encoding="utf-8"), lines, before)
         tests = _own_tests(graph, ci_scope, path)
         if prefixes and tests:
             picked.append((rel.removeprefix(PACKAGE + "/"), prefixes, tests))
+    return picked
+
+
+def changed(base: str, out: Path, only_module: str | None = None) -> int:
+    """Mutate the functions this checkout changed since `base`; a report, like `run`."""
+    out.mkdir(parents=True, exist_ok=True)
+    picked = _changed_modules(base)
+    selected = picked[:CHANGED_MODULES]
+    if only_module is not None:
+        selected = [item for item in selected if item[0] == only_module]
+        if not selected:
+            print(f"Module is outside the selected changes: {only_module}", file=sys.stderr)
+            return 1
     notes = [f"Changed modules with changed functions: {len(picked)}"]
     if len(picked) > CHANGED_MODULES:
         notes.append(f"Only the first {CHANGED_MODULES} were mutated.")
     status = 0
-    for module, prefixes, tests in picked[:CHANGED_MODULES]:
+    for module, prefixes, tests in selected:
         key = module.removesuffix(".py").replace("/", ".")
         dotted = "coscribe." + key
         with tempfile.TemporaryDirectory(prefix="mutation-changed-") as tmp:
@@ -286,9 +333,9 @@ def changed(base: str, out: Path) -> int:
             _prepare_module(work, module, tests)
             result = _mutmut(work, "run", *(f"{dotted}.{prefix}*" for prefix in prefixes))
             sys.stdout.write(result.stdout[-2000:])
-            if "failed to" in result.stdout + result.stderr:
+            if result.returncode or "failed to" in (result.stdout + result.stderr).lower():
                 status = 1
-                notes.append(f"`{PACKAGE}/{module}`: the tests failed before any mutation")
+                notes.append(f"`{PACKAGE}/{module}`: mutmut exited before producing results")
                 sys.stderr.write(result.stderr[-2000:])
                 continue
             listing = _mutmut(work, "results", "--all", "true").stdout
@@ -345,9 +392,12 @@ def summary(directory: Path) -> str:
         f"| **Total** | {totals['mutants']} | {totals['killed']} | {totals['survived']} "
         f"| {totals['timeout']} | {totals['no_tests']} |"
     )
-    notes = directory / "notes.txt"
-    if notes.is_file():  # a pull request's `changed` run, which has no fixed module list
-        lines += ["", *notes.read_text(encoding="utf-8").splitlines()]
+    note_files = sorted(directory.glob("**/notes.txt"))
+    if note_files:  # a pull request's `changed` run, which has no fixed module list
+        notes = dict.fromkeys(
+            note for path in note_files for note in path.read_text(encoding="utf-8").splitlines()
+        )
+        lines += ["", *notes]
         return "\n".join(lines) + "\n"
     missing = sorted(set(MODULES) - {p.stem for p in rows})
     if missing:
@@ -370,17 +420,24 @@ def main() -> int:
     run_parser.add_argument("--out", type=Path, required=True)
     summary_parser = sub.add_parser("summary")
     summary_parser.add_argument("directory", type=Path)
+    changed_list_parser = sub.add_parser("changed-list")
+    changed_list_parser.add_argument("--base", required=True)
     changed_parser = sub.add_parser("changed")
     changed_parser.add_argument("--base", required=True)
     changed_parser.add_argument("--out", type=Path, required=True)
+    changed_parser.add_argument("--module")
     args = parser.parse_args()
     if args.command == "list":
         print("\n".join(MODULES))
         return 0
     if args.command == "run":
         return run(args.key, args.out)
+    if args.command == "changed-list":
+        selected = _changed_modules(args.base)[:CHANGED_MODULES]
+        print(json.dumps([module for module, _, _ in selected]))
+        return 0
     if args.command == "changed":
-        return changed(args.base, args.out)
+        return changed(args.base, args.out, args.module)
     sys.stdout.write(summary(args.directory))
     return 0
 

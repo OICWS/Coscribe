@@ -85,3 +85,16 @@ def test_a_decorated_function_is_not_asked_for_since_mutmut_leaves_it_alone(
     )
 
     assert mutation.mutant_prefixes(source, {3, 9, 13}) == ["xǁBoxǁmake__mutmut_"]
+
+
+def test_protocol_method_declarations_have_no_mutants(mutation: ModuleType) -> None:
+    source = "class Host(Protocol):\n    async def deliver(self) -> None: ...\n"
+    assert mutation.mutant_prefixes(source, {2}) == []
+
+
+def test_an_attribute_annotation_alone_does_not_mutate_a_method(mutation: ModuleType) -> None:
+    before = "class Session:\n    def __init__(self):\n        self.items: list[str] = []\n"
+    after = before.replace("list[str]", "list[Note]")
+    assert mutation.mutant_prefixes(after, {3}, before) == []
+    changed = after.replace("= []", "= [Note()]")
+    assert mutation.mutant_prefixes(changed, {3}, before) == ["xǁSessionǁ__init____mutmut_"]

@@ -18,6 +18,8 @@ Office conversion engines and reading during writes.
 Desktop verification for the Simple conversation activity robot (#1085) covers the
 indicator at normal Windows display scaling.
 
+Desktop verification for messages added while working (#1101) covers copying one after reload.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
@@ -100,6 +102,12 @@ indicator at normal Windows display scaling.
 
 ## Open, smaller
 
+- **Public office benchmarks** (#1072): `office-agent/evals/external.py` runs OmegaUse-OfficeVal
+  and SpreadsheetBench Verified (`docs/log/2026-11-25-external-benchmarks.md`). OfficeVal: 93
+  tasks, mean 0.48 (PowerPoint 0.39 the lowest); seeing pictures (#1088) is the first fix. Next:
+  SpreadsheetBench and our own tasks in batches on `deepseek-flash`, each approved first. Reuse
+  the baseline for targeted reruns of dev tasks; freeze the implementation for the final run and
+  report the held-out tasks apart (`office-agent/evals/README.md`, `external_splits.json`).
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in
