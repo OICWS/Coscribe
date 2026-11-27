@@ -9,6 +9,7 @@ export interface SteerItem {
   status: "pending" | "delivered";
   images?: string[];
   files?: string[];
+  sentAt?: string;
   /** What the model gets when it differs from `text` (the note naming the attached files, an
    * element picked in a preview); only on a note sent from this page. */
   outgoingText?: string;

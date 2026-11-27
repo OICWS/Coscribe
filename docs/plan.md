@@ -18,6 +18,8 @@ Office conversion engines and reading during writes.
 Desktop verification for the Simple conversation activity robot (#1085) covers the
 indicator at normal Windows display scaling.
 
+Desktop verification for messages added while working (#1101) covers copying one after reload.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
