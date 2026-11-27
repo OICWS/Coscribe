@@ -157,8 +157,8 @@ Then write `design.md` in the deck folder, short, with exactly these parts:
   its job. The accent marks the key figure only.
 - **Type**: the families by role, from fonts every Windows PC has: Chinese titles SimSun (serif,
   authority) or Microsoft YaHei / SimHei (sans); Chinese body Microsoft YaHei or DengXian; Latin
-  and figures Cambria, Georgia or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans);
-  Consolas for code. At most three families. A text sets its own `font-family`
+  and figures Cambria or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans), not Georgia
+  (its digits rise and drop, so amounts look misaligned); Consolas for code. At most three families. A text sets its own `font-family`
   ("SimSun, Cambria") when it differs from the section's. Sizes in px: display 84-120, title
   54-66, lead 36-42, body as talk or read sets it, annotation 24-27 (21-24 when read), source
   line 20-21.

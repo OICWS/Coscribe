@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 from coscribe.tools import _thumbnail
-from coscribe.tools._svg_preview import page_svg
+from coscribe.tools.office.pptx import slide_svg
 from coscribe.tools.office.pptx.engine import build_deck
 
 _PAGE = (
@@ -61,12 +61,40 @@ def test_one_page_deep_in_the_deck_can_be_previewed(tmp_path: Path) -> None:
     assert missing is None and "out of range" in str(why)
 
 
-def test_a_native_chart_is_a_labelled_box_of_its_size(tmp_path: Path) -> None:
-    deck = _deck(tmp_path)
+def test_a_native_chart_is_drawn_from_its_data_not_left_as_a_box(tmp_path: Path) -> None:
+    deck, state = _deck(tmp_path), tmp_path / "state"
 
-    svg = page_svg(deck.parent / "pages" / "1.svg")
+    names, _ = _thumbnail.render_all_page_previews(deck, state)
 
-    assert 'width="560.0"' in svg and "Column chart: Q3 营收" in svg and "metadata" not in svg
+    first = Image.open(state / "previews" / names[0]).convert("RGB")
+    # The chart's box is x 64-624, y 160-640; the first bar (5 of 5) is tall, the second (3) is
+    # not, so the bars are drawn to their values.
+    tall, short = first.getpixel((212, 250)), first.getpixel((482, 250))
+    assert tall != (255, 255, 255) and short == (255, 255, 255)
+    assert first.getpixel((482, 500)) == tall
+    assert "metadata" not in slide_svg(deck, 0, None)
+
+
+def test_a_picture_beside_the_pages_is_still_drawn(tmp_path: Path) -> None:
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    Image.new("RGB", (10, 10), (200, 30, 30)).save(pages_dir / "logo.png")
+    (pages_dir / "1.svg").write_text(
+        _PAGE.format(
+            fill="#FFFFFF",
+            n=1,
+            body='<image href="logo.png" x="600" y="300" width="200" height="200"/>',
+        ),
+        encoding="utf-8",
+    )
+    deck = tmp_path / "deck.pptx"
+    build_deck(pages_dir, deck, resource_root=tmp_path)
+
+    name, reason = _thumbnail.render_thumbnail(deck, tmp_path / "state")
+
+    assert reason is None and name is not None
+    shown = Image.open(tmp_path / "state" / "previews" / name).convert("RGB")
+    assert shown.getpixel((700, 400)) == (200, 30, 30)
 
 
 def test_a_deck_edited_since_its_build_is_not_previewed_from_stale_pages(
@@ -107,10 +135,10 @@ def test_a_page_edited_since_the_build_is_not_shown_as_the_deck(tmp_path: Path) 
 def test_a_page_that_cannot_be_drawn_skips_the_preview(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools import _svg_preview
+    from coscribe.tools.office.pptx.engine import build
 
     deck = _deck(tmp_path, pages=1)
-    monkeypatch.setattr(_svg_preview, "page_svg", lambda _path: "<svg")
+    monkeypatch.setattr(build, "built_slide_svg", lambda *_args: "<svg")
 
     name, reason = _thumbnail.render_thumbnail(deck, tmp_path / "state")
 

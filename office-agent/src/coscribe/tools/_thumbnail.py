@@ -71,11 +71,12 @@ def _draw(
             layout.extend(measure_page_words(pdf_path, last))
         return _render_pdf_pages(pdf_path, out_dir, first, last)
     from ._svg_preview import render_page
+    from .office.pptx.engine.build import built_slide_svg
 
     files = []
     for number, page in enumerate(pages[max(first, 1) - 1 : last], max(first, 1)):
         target = out_dir / f"page-{number:04d}.png"
-        render_page(page, target)
+        render_page(built_slide_svg(file_path, number - 1), page.parent, target)
         files.append(target)
     return files
 

@@ -441,3 +441,16 @@ def test_a_deck_as_a_source_gives_its_charts_numbers(tmp_path: Path) -> None:
     deck.save(str(tmp_path / "draft.pptx"))
 
     assert "Q1 1180, Q2 1320" in source_text(tmp_path / "draft.pptx")
+
+
+def test_figures_in_georgia_are_a_warning_naming_the_text(tmp_path: Path) -> None:
+    errors, warnings = _findings(
+        tmp_path,
+        '<text x="64" y="300" font-size="40" font-family="Georgia" fill="#1E2A36">'
+        "营收 1,284.6 亿</text>"
+        '<text x="64" y="500" font-size="40" font-family="Georgia" fill="#1E2A36">Outlook</text>'
+        '<text x="640" y="500" font-size="40" font-family="Cambria" fill="#1E2A36">9,876</text>',
+    )
+
+    assert errors == [] and len(warnings) == 1
+    assert "1,284.6" in warnings[0] and "old-style" in warnings[0]
