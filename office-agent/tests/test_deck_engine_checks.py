@@ -481,3 +481,30 @@ def test_figures_in_georgia_are_one_warning_per_text_and_found_in_tables(tmp_pat
 
     assert len(warnings) == 2, warnings
     assert warnings[0].startswith('"12.5"') and warnings[1].startswith('"5,410"')
+
+
+def test_a_chart_set_in_georgia_is_a_warning(tmp_path: Path) -> None:
+    def chart(font: str) -> str:
+        data = {
+            "x": 64,
+            "y": 160,
+            "width": 560,
+            "height": 400,
+            "type": "column",
+            "categories": ["华东", "华北"],
+            "series": [{"name": "营收", "values": [5410, 2120]}],
+            "style": {"font_family": font},
+        }
+        return (
+            f'<g id="c-{font}" data-pptx-replace-with="chart"><metadata type="application/json">'
+            f"{json.dumps(data, ensure_ascii=False)}</metadata></g>"
+        )
+
+    _, georgia = _findings(tmp_path, chart("Georgia"))
+    _, cambria = _findings(tmp_path, chart("Cambria"))
+
+    assert georgia == [
+        "a chart sets its numbers in Georgia, whose digits rise and drop (old-style figures), "
+        "so they look misaligned: give the chart Cambria, Times New Roman or a sans face"
+    ]
+    assert cambria == []

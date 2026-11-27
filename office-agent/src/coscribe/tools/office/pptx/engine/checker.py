@@ -150,6 +150,7 @@ def _check(prs: Any, page: PageReport, slide: Any, known: set[str | Decimal] | N
     page.errors.extend(unreadable)
     page.warnings.extend(faint)
     page.warnings.extend(_old_style_figures(slide._element))
+    page.warnings.extend(_old_style_chart_figures(slide))
     if known is not None:
         page.warnings.extend(_unknown_numbers(texts + _data(slide), known))
 
@@ -169,6 +170,24 @@ def _old_style_figures(slide: Any) -> Iterator[str]:
                     "Cambria, Times New Roman or a sans face"
                 )
                 break
+
+
+def _old_style_chart_figures(slide: Any) -> Iterator[str]:
+    """A chart's text is its axis numbers and data labels, so a chart set in such a face always
+    shows figures in it. Its fonts are in the chart's own part, not the slide."""
+    for shape in slide.shapes:
+        for chart in _charts(shape):
+            faces = {
+                latin.get("typeface", "")
+                for latin in chart._chartSpace.iter(f"{_A}latin")
+                if latin.get("typeface", "").lower() in _OLD_STYLE_FIGURES
+            }
+            for face in sorted(faces):
+                yield (
+                    f"a chart sets its numbers in {face}, whose digits rise and drop (old-style "
+                    "figures), so they look misaligned: give the chart Cambria, Times New Roman "
+                    "or a sans face"
+                )
 
 
 def _schema(slide: Any) -> Iterator[str]:
