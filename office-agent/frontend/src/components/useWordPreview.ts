@@ -46,7 +46,7 @@ export function useWordPreview(query: URLSearchParams, beforeReplace: () => void
         received = response.headers.get("ETag");
         const data = await response.arrayBuffer();
         if (abort.signal.aborted || (desired !== started && desired !== received)) return;
-        pending = getDocument({ data, isEvalSupported: false, useWasm: false });
+        pending = getDocument({ data, useWasm: false });
         const pdf = await pending.promise;
         if (abort.signal.aborted || (desired !== started && desired !== received)) return;
         pending = undefined;
