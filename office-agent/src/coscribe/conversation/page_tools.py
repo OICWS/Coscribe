@@ -207,16 +207,20 @@ def build_page_tools(
             summary["design_system"] = note
         return [{"type": "text", "text": json.dumps(summary, ensure_ascii=False)}, *images]
 
-    def look_at_image(path: str) -> list[dict[str, Any]]:
+    def look_at_image(path: str, region: str = "") -> list[dict[str, Any]]:
         """See a picture file with your own eyes: a scan or photo whose words to read, a chart,
         diagram or slide to redraw, a screenshot. Use it whenever a task hands you a picture,
         before working from it, rather than guessing from its pixels in a script. PNG, JPEG, GIF,
         WebP, BMP or TIFF; shrunk to at most 1568 pixels on its long side. Also opens a preview
         a render tool returned (its preview_path or preview name), to check your own work.
+        To check small print or one corner, look again with `region` rather than cropping and
+        measuring in a script.
 
         Args:
             path: the picture, relative to the workspace root (or an allowed absolute path),
                 or a preview's name
+            region: part of the picture to see up close, "left,top,right,bottom" as fractions
+                of its width and height (0-1), e.g. "0.5,0,1,0.5" for the top-right quarter
         """
         workspace = scope()
         previews = Path(state_dir) / "previews" if state_dir is not None else None
@@ -226,11 +230,11 @@ def build_page_tools(
             and not (workspace.root / path).exists()
         ):
             if (previews / path).is_file():
-                return image_blocks(previews / path, path)
+                return image_blocks(previews / path, path, region)
         file = workspace.resolve(path)
         if not file.is_file():
             raise ValueError(f"File does not exist: {path}")
-        return image_blocks(file, workspace.relative(file))
+        return image_blocks(file, workspace.relative(file), region)
 
     return [
         tool_metadata(look_at_page, risk_category="READ", category="documents"),

@@ -428,7 +428,12 @@ around. A file that happens to already be sitting in the workspace is not \
 evidence of what a fresh, wordless attachment is about. \
 A picture file a task hands you (a scan, a photo, a chart or diagram to \
 redraw) is read with look_at_image before you work from it: a script on \
-its pixels cannot read its words or tell its boxes apart.
+its pixels cannot read its words or tell its boxes apart; to read small \
+print or one corner, look again with its region. \
+Each tool call resends this whole conversation, so check a finished file \
+once and whole: one script that reads back every requirement of the task \
+(values, fonts, sizes, positions) and prints what fails, then fix all of \
+it together, rather than many small scripts that each check one thing.
 """
 
 

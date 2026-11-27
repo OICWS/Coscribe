@@ -19,9 +19,24 @@ _MAX_BYTES = 50 * 1024 * 1024
 _MAX_PIXELS = 100_000_000
 
 
-def image_blocks(file: Path, shown_as: str) -> list[dict[str, Any]]:
-    """A line on the picture and the picture itself, at most `_MAX_SIDE` pixels on its long
-    side, as PNG. Raises ValueError for what is not a picture it can open."""
+def _box(region: str, width: int, height: int) -> tuple[int, int, int, int] | None:
+    """The pixel box of "left,top,right,bottom" given as fractions of the picture, 0 to 1."""
+    if not region.strip():
+        return None
+    try:
+        left, top, right, bottom = (float(part) for part in region.split(","))
+    except ValueError:
+        raise ValueError('region is "left,top,right,bottom" as fractions 0-1') from None
+    if not (0 <= left < right <= 1 and 0 <= top < bottom <= 1):
+        raise ValueError("region needs 0 <= left < right <= 1 and 0 <= top < bottom <= 1")
+    box = (round(left * width), round(top * height), round(right * width), round(bottom * height))
+    return box[0], box[1], max(box[2], box[0] + 1), max(box[3], box[1] + 1)
+
+
+def image_blocks(file: Path, shown_as: str, region: str = "") -> list[dict[str, Any]]:
+    """A line on the picture and the picture itself (or the `region` of it, cut out before
+    shrinking so small print stays legible), at most `_MAX_SIDE` pixels on its long side, as
+    PNG. Raises ValueError for what is not a picture it can open."""
     from PIL import Image, ImageOps, UnidentifiedImageError
 
     if file.suffix.lower() not in IMAGE_SUFFIXES:
@@ -38,6 +53,9 @@ def image_blocks(file: Path, shown_as: str) -> list[dict[str, Any]]:
             # A palette PNG or GIF keeps its transparency in `info`, not in a band.
             clear = "A" in picture.getbands() or "transparency" in picture.info
             picture = picture.convert("RGBA" if clear else "RGB")
+            box = _box(region, *picture.size)
+            if box is not None:
+                picture = picture.crop(box)
             picture.thumbnail((_MAX_SIDE, _MAX_SIDE))
             out = BytesIO()
             picture.save(out, format="PNG", optimize=True)
@@ -45,6 +63,8 @@ def image_blocks(file: Path, shown_as: str) -> list[dict[str, Any]]:
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
         raise ValueError(f"{shown_as} could not be opened as a picture: {exc}") from None
     note = {"path": shown_as, "size": f"{width}x{height}", "shown": f"{shown[0]}x{shown[1]}"}
+    if box is not None:
+        note["region"] = ",".join(str(edge) for edge in box)
     data = base64.b64encode(out.getvalue()).decode("ascii")
     return [
         {"type": "text", "text": json.dumps(note, ensure_ascii=False)},
