@@ -862,9 +862,8 @@ skills (decision 0058). Settings → Plugins lists them in three groups:
   listing recorded. No one has reviewed such a source, and the page says so. The sources live
   in `<COSCRIBE_STATE_DIR>/plugin_sources.json`; adding one again reads its newest commit.
 - **Created by you**: folders in `COSCRIBE_SKILLS_DIR` (default
-  `./skills`), whether dropped in by hand, uploaded (Add → Upload a
-  skill, `.zip`/`.skill`/`.plugin`/`.md`) or written with Add → Create with
-  coscribe. A folder there may also be a whole Claude or Codex plugin (a
+  `./skills`), whether dropped in by hand, uploaded (Add → Upload a plugin or skill,
+  `.zip`/`.skill`/`.plugin`/`.md`) or written with Add → Create with Coscribe. A folder there may also be a whole Claude or Codex plugin (a
   `plugin.json` in `.claude-plugin/`, `.codex-plugin/` or its root, and a
   `skills/` folder): it is one row with its skill count.
 
