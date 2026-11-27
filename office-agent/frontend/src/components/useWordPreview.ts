@@ -1,7 +1,12 @@
 import { getDocument, type PDFDocumentProxy } from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
 
-type View = { url: string; pdf?: PDFDocumentProxy; error?: string };
+type View = {
+  url: string;
+  pdf?: PDFDocumentProxy;
+  task?: ReturnType<typeof getDocument>;
+  error?: string;
+};
 
 export function useWordPreview(query: URLSearchParams, beforeReplace: () => void) {
   const address = query.toString();
@@ -14,7 +19,8 @@ export function useWordPreview(query: URLSearchParams, beforeReplace: () => void
 
   const visible = view?.url === url ? view : undefined;
   const pdf = visible?.pdf;
-  useEffect(() => () => { void pdf?.destroy().catch(() => undefined); }, [pdf]);
+  const task = visible?.task;
+  useEffect(() => () => { void task?.destroy().catch(() => undefined); }, [task]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -46,17 +52,18 @@ export function useWordPreview(query: URLSearchParams, beforeReplace: () => void
         received = response.headers.get("ETag");
         const data = await response.arrayBuffer();
         if (abort.signal.aborted || (desired !== started && desired !== received)) return;
-        pending = getDocument({ data, isEvalSupported: false, useWasm: false });
-        const pdf = await pending.promise;
+        const task = getDocument({ data, useWasm: false });
+        pending = task;
+        const pdf = await task.promise;
         if (abort.signal.aborted || (desired !== started && desired !== received)) return;
         pending = undefined;
         published = received;
         prepareSwap.current();
-        setView({ url, pdf });
+        setView({ url, pdf, task });
       } catch (error) {
         if (!abort.signal.aborted && desired === started) {
           const message = error instanceof Error ? error.message : "Couldn't prepare this Word preview.";
-          setView((before) => ({ url, pdf: before?.url === url ? before.pdf : undefined, error: message }));
+          setView((before) => ({ ...(before?.url === url ? before : { url }), error: message }));
         }
       } finally {
         void pending?.destroy().catch(() => undefined);
