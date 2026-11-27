@@ -26,6 +26,7 @@ GET /api/artifacts
 GET /api/artifacts/lookup
 GET /api/artifacts/{artifact}/content
 GET /api/artifacts/{artifact}/thumbnail
+GET /api/attachment/docx/versions
 GET /api/attachment/pdf
 GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log
@@ -113,6 +114,7 @@ GET,HEAD /docs
 GET,HEAD /docs/oauth2-redirect
 GET,HEAD /openapi.json
 GET,HEAD /redoc
+HEAD /api/attachment/docx
 HEAD /api/threads/{thread_id}/files/download
 MOUNT /static
 PATCH /api/scheduled-tasks/{trigger_id}
@@ -120,6 +122,8 @@ POST /api/artifacts/{artifact}/duplicate
 POST /api/artifacts/{artifact}/open
 POST /api/artifacts/{artifact}/rename
 POST /api/artifacts/{artifact}/show
+POST /api/attachment/docx
+POST /api/attachment/xlsx
 POST /api/background-tasks/{task_id}/stop
 POST /api/code/install
 POST /api/command-sandbox

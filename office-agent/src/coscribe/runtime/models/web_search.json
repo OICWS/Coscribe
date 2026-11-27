@@ -1,0 +1,18 @@
+{
+  "about": "Which providers can search the web with the key the person already gave, keyed by the models.dev provider id; models.dev has no such field. kind search_api: a search endpoint of its own, called without a model. Each row names its source, the date it was checked, and the phrases that source must still contain: scripts/check_web_search_sources.py checks them on the model catalog's schedule and opens an issue when one is gone.",
+  "providers": {
+    "deepseek": {
+      "kind": "search_api",
+      "search": "/v1/tools/search",
+      "fetch": "/v1/tools/fetch",
+      "price": "$0.75 per 1,000 successful requests; empty results and failures are free",
+      "source": "https://api-docs.deepseek.com/guides/search.md",
+      "checked": "2026-11-26",
+      "expect": [
+        "/v1/tools/search",
+        "/v1/tools/fetch",
+        "| Search API | Per 1,000 successful requests | $0.75 |"
+      ]
+    }
+  }
+}

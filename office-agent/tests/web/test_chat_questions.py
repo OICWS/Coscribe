@@ -2,8 +2,8 @@
 """Web tests: the model asking the user a question, and redelivery after a reconnect."""
 
 import json
-import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -21,271 +21,195 @@ from .helpers import (
     _tool_call,
 )
 
+_CARD = {
+    "questions": [
+        {
+            "question": "Who is the deck for?",
+            "options": [
+                {"label": "Management", "description": "8 slides", "recommended": True},
+                {"label": "Team"},
+            ],
+        }
+    ]
+}
 
-def test_ask_user_question_sends_question_required_and_feeds_answer_back_lg(
+
+def _connect(ws: Any) -> None:
+    ws.receive_json()  # state
+    ws.receive_json()  # history
+
+
+def test_a_question_shows_its_card_and_lets_the_turn_go_on(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {
-            "questions": [
-                {
-                    "question": "What kind of plan?",
-                    "header": "Plan type",
-                    "options": [
-                        {"label": "Travel", "description": "Flights, hotels, a route"},
-                        {"label": "Study"},
-                    ],
-                },
-                {
-                    "question": "Which days?",
-                    "options": [{"label": "Weekdays"}, {"label": "Weekends"}],
-                    "multi_select": True,
-                },
-                {"question": "Budget?", "options": [{"label": "Low"}, {"label": "High"}]},
-            ]
-        },
-    )
     fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+        responses=[
+            AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)]),
+            AIMessage(content="I'll wait for your answer."),
+        ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         with client.websocket_connect("/ws/t_q1") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "help me plan something"})
-
-            question = ws.receive_json()
-            assert question["type"] == "question_required"
-            assert [q["question"] for q in question["questions"]] == [
-                "What kind of plan?",
-                "Which days?",
-                "Budget?",
-            ]
-            assert question["questions"][0]["header"] == "Plan type"
-            assert question["questions"][0]["options"] == [
-                {"label": "Travel", "description": "Flights, hotels, a route"},
-                {"label": "Study", "description": ""},
-            ]
-            assert [q["multi_select"] for q in question["questions"]] == [False, True, False]
-
-            ws.send_json(
-                {
-                    "type": "question_response",
-                    "id": question["id"],
-                    "answers": ["Travel", "Weekdays, Weekends", None],
-                }
-            )
-            messages = _receive_until(ws, "tasks_changed")
-
-    types = [m["type"] for m in messages]
-    assert "approval_required" not in types
-    # No "tool_result" WS event either: the question_required/answered card
-    # already fully represents this call, so session.py deliberately skips
-    # sending the normal tool_result event for QUESTION_TOOL_NAMES (it would
-    # otherwise show up as a redundant second "Asked: ..." row in the log --
-    # see _stream_turn's ToolMessage branch). Confirm the answer really did
-    # feed back into the model instead by inspecting the follow-up call.
-    assert "tool_result" not in types
-    tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
-    assert tool_messages[-1].name == "ask_user_question"
-    assert tool_messages[-1].content == (
-        "1. What kind of plan? -> Travel\n"
-        "2. Which days? -> Weekdays, Weekends\n"
-        "3. Budget? -> (skipped)"
-    )
-    agent_message = next(m for m in messages if m["type"] == "agent_message")
-    assert agent_message["text"] == "done"
-
-
-def test_closing_the_questions_tells_the_model_to_go_on_without_asking_again_lg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {"questions": [{"question": "Which one?", "options": [{"label": "A"}, {"label": "B"}]}]},
-    )
-    fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
-    )
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_q1b") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "ask me something"})
-            question = ws.receive_json()
-            ws.send_json({"type": "question_response", "id": question["id"], "dismissed": True})
-            _receive_until(ws, "tasks_changed")
-
-    tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
-    assert "closed the questions without answering" in str(tool_messages[-1].content)
-
-
-def test_ask_user_question_free_text_answer_works_too_lg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The user can always type a custom answer instead of clicking a
-    listed option -- there's nothing server-side that validates the
-    answer against `options` at all, matching AskUserQuestion's own
-    "Other" escape hatch."""
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {"question": "What kind of plan?", "options": "Travel\nStudy"},
-    )
-    fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
-    )
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_q2") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "help me plan something"})
-
-            question = ws.receive_json()
-            ws.send_json(
-                {
-                    "type": "question_response",
-                    "id": question["id"],
-                    "answer": "Actually, a birthday party",
-                }
-            )
-            messages = _receive_until(ws, "tasks_changed")
-
-    types = [m["type"] for m in messages]
-    assert "tool_result" not in types
-    tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
-    assert "birthday party" in json.dumps(tool_messages[-1].content)
-
-
-def test_ask_user_question_is_not_blocked_by_plan_mode_lg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Unlike a WRITE_LOCAL/EXEC/EXTERNAL tool, asking a question isn't a
-    risky action plan mode's read-only guarantee needs to block -- it's
-    pure communication, no side effect."""
-    call = _tool_call("call_1", "ask_user_question", {"question": "Which one?", "options": "A\nB"})
-    fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
-    )
-    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_q3") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "/plan"})
-            ws.receive_json()  # state (plan_mode: True)
-
-            ws.send_json({"type": "user_message", "text": "ask me something"})
-            question = ws.receive_json()
-            assert question["type"] == "question_required"
-            ws.send_json({"type": "question_response", "id": question["id"], "answer": "A"})
-            _receive_until(ws, "tasks_changed")
-
-
-def test_ask_user_question_hook_veto_becomes_a_respond_decision_not_a_reject_lg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A PreToolUse hook can still veto ask_user_question, but the
-    HumanInTheLoopMiddleware interrupt for this tool only allows a
-    "respond" decision -- a bare {"type": "reject", ...} would raise
-    inside the middleware, so the veto reason has to be delivered as the
-    tool's own "answer" instead."""
-    hook_script = tmp_path / "veto_hook.py"
-    hook_script.write_text("import sys; sys.stderr.write('no questions allowed'); sys.exit(1)\n")
-    hooks_path = tmp_path / "hooks.json"
-    hooks_path.write_text(
-        json.dumps({"PreToolUse": [f"{sys.executable} {hook_script}"]}), encoding="utf-8"
-    )
-    call = _tool_call("call_1", "ask_user_question", {"question": "Which one?", "options": "A\nB"})
-    fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="blocked")]
-    )
-    with _client_lg(tmp_path, monkeypatch, fake_model, hooks_config_path=hooks_path) as client:
-        with client.websocket_connect("/ws/t_q4") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "ask me something"})
+            _connect(ws)
+            ws.send_json({"type": "user_message", "text": "make a deck from the sales data"})
             messages = _receive_until(ws, "tasks_changed")
 
     types = [m["type"] for m in messages]
     assert "question_required" not in types
-    assert "tool_result" not in types
-    tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
-    assert "no questions allowed" in json.dumps(tool_messages[-1].content)
+    assert "approval_required" not in types
+    shown = next(m for m in messages if m["type"] == "tool_result")
+    assert shown["tool_name"] == "ask_user_question"
+    assert shown["arguments"] == _CARD
+    assert "on a card in the conversation" in str(shown["result"])
     agent_message = next(m for m in messages if m["type"] == "agent_message")
-    assert agent_message["text"] == "blocked"
+    assert agent_message["text"] == "I'll wait for your answer."
 
 
-def test_stop_resolves_a_pending_question_with_a_placeholder_answer_lg(
+def test_a_question_is_not_blocked_by_plan_mode_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Proves request_stop() resolves a pending question rather than
-    leaving the turn hanging forever -- the same "[stopped]" fallback text
-    test_stop_denies_pending_approval_and_marks_reply_stopped's approval
-    case gets (see _stream_turn's reply_text fallback), since the resumed
-    astream's own cooperative stop check (checked after every chunk,
-    including the ToolNode's ToolMessage carrying the placeholder answer)
-    breaks the loop before any further model narration exists to report.
-    The placeholder's actual content ("(Stopped by user before
-    answering.)") isn't independently observable over the wire once
-    resolved this way -- ask_user_question's tool_result WS event is
-    deliberately suppressed (see _stream_turn's ToolMessage branch), same
-    as the non-stopped answer path above -- so this only checks the
-    contract a client actually sees: the turn ends promptly, not that it
-    hangs waiting on a future nobody will ever resolve."""
-    call = _tool_call("call_1", "ask_user_question", {"question": "Which one?", "options": "A\nB"})
     fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="stopped")]
+        responses=[
+            AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)]),
+            AIMessage(content="done"),
+        ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_q5") as ws:
-            ws.receive_json()  # state
-            ws.receive_json()  # history
+        with client.websocket_connect("/ws/t_q3") as ws:
+            _connect(ws)
+            ws.send_json({"type": "user_message", "text": "/plan"})
+            ws.receive_json()  # state (plan_mode: True)
             ws.send_json({"type": "user_message", "text": "ask me something"})
-            question = ws.receive_json()
-            assert question["type"] == "question_required"
-
-            ws.send_json({"type": "stop"})
             messages = _receive_until(ws, "tasks_changed")
 
-    types = [m["type"] for m in messages]
-    assert "tool_result" not in types
-    agent_message = next(m for m in messages if m["type"] == "agent_message")
-    assert agent_message["text"] == "[stopped]"
+    shown = next(m for m in messages if m["type"] == "tool_result")
+    assert "on a card in the conversation" in str(shown["result"])
 
 
-def test_ask_user_question_still_reads_a_single_question_with_line_options_lg(
+def _note_in(message: Any) -> bool:
+    return "[Open question card]" in str(message.content)
+
+
+def test_the_next_message_tells_the_model_a_card_is_open_until_it_is_answered(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {
-            "question": "Which ones?",
-            "options": "A\n\nB\nC\n",
-            "multi_select": True,
-        },
-    )
+    ask = _tool_call("call_1", "ask_user_question", _CARD)
+    answered = _tool_call("call_2", "answer_question_card", {"answers": ["Management"]})
     fake_model = FakeToolCallingChatModel(
-        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+        responses=[
+            AIMessage(content="", tool_calls=[ask]),
+            AIMessage(content="waiting"),
+            AIMessage(content="It's 3 pm."),
+            AIMessage(content="", tool_calls=[answered]),
+            AIMessage(content="Management it is."),
+            AIMessage(content="ok"),
+        ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect("/ws/t_q6") as ws:
+        with client.websocket_connect("/ws/t_q_note") as ws:
+            _connect(ws)
+            for text in ("make a deck", "what time is it?", "for my boss", "thanks"):
+                ws.send_json({"type": "user_message", "text": text})
+                messages = _receive_until(ws, "tasks_changed")
+                last_user = [m for m in fake_model.received[-1] if m.type == "human"][-1]
+                assert _note_in(last_user) is (text in ("what time is it?", "for my boss"))
+        with client.websocket_connect("/ws/t_q_note") as ws:
             ws.receive_json()  # state
-            ws.receive_json()  # history
-            ws.send_json({"type": "user_message", "text": "ask me something"})
-            question = ws.receive_json()
-            # A call saved in a conversation from before questions came in
-            # lists still shows: one question, its options one per line,
-            # blank lines dropped.
-            (only,) = question["questions"]
-            assert only["multi_select"] is True
-            assert [option["label"] for option in only["options"]] == ["A", "B", "C"]
+            history = ws.receive_json()
 
-            ws.send_json({"type": "question_response", "id": question["id"], "answer": "A, C"})
-            _receive_until(ws, "tasks_changed")
+    assert "Who is the deck for?" in str(fake_model.received[2][-1].content)
+    recorded = next(m for m in messages if m["type"] == "agent_message")
+    assert recorded["text"] == "ok"
+    shown = json.dumps(history)
+    assert "[Open question card]" not in shown
+
+
+def test_a_click_on_the_card_is_the_answer_and_carries_no_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)]),
+            AIMessage(content="waiting"),
+            AIMessage(content="Management it is."),
+            AIMessage(content="ok"),
+        ]
+    )
+    click = "[Answers to your question card]\n1. Who is the deck for? -> Management"
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_q_click") as ws:
+            _connect(ws)
+            for text in ("make a deck", click, "thanks"):
+                ws.send_json({"type": "user_message", "text": text})
+                _receive_until(ws, "tasks_changed")
+                last_user = [m for m in fake_model.received[-1] if m.type == "human"][-1]
+                assert not _note_in(last_user)
+
+
+def test_answer_question_card_needs_every_answer() -> None:
+    from coscribe.tools.bookkeeping.interaction import answer_question_card
+
+    assert "closed" in answer_question_card(["Management", "Brand"])
+    for partial in ([], ["Management", " "]):
+        with pytest.raises(ValueError, match="Every question needs an answer"):
+            answer_question_card(partial)
+
+
+def test_a_click_behind_a_note_about_edits_in_the_app_still_answers_the_card() -> None:
+    from langchain_core.messages import HumanMessage
+
+    from coscribe.conversation.turn_text import OPEN_QUESTION_NOTE, open_question
+    from coscribe.runtime_lg import strip_mode_note
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    shown = ToolMessage(
+        content="The questions are on a card", tool_call_id="call_1", name="ask_user_question"
+    )
+    edits = "The user edited slide 2 of deck.pptx since your last turn.\n\n"
+    click = edits + "[Answers to your question card]\n1. Who is the deck for? -> Team"
+    note = OPEN_QUESTION_NOTE.format(questions="- Who is the deck for?")
+
+    assert open_question([ask, shown]) == ["Who is the deck for?"]
+    assert open_question([ask, shown, HumanMessage(content=click)]) == []
+    assert strip_mode_note(note + edits + "hello") == edits + "hello"
+
+
+def test_a_card_answered_before_cards_stopped_waiting_is_not_open() -> None:
+    from coscribe.conversation.turn_text import open_question
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    answered = ToolMessage(content="Team", tool_call_id="call_1", name="ask_user_question")
+
+    assert open_question([ask, answered]) == []
+
+
+def test_the_note_counts_a_question_left_to_the_model_as_answered() -> None:
+    # "随便" or "you decide" answers the card: without this the model went on working and
+    # left the card open.
+    from coscribe.conversation.turn_text import open_question_note
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    shown = ToolMessage(
+        content="The questions are on a card", tool_call_id="call_1", name="ask_user_question"
+    )
+
+    note = open_question_note([ask, shown], "随便什么内容")
+
+    assert "Leaving a question to you" in note
+    assert "record the choice you make" in note
+    # A partial answer is followed up in words, and the same card later closes with every answer.
+    assert "not with a new card" in note
+
+
+def test_a_failed_question_call_opens_no_card() -> None:
+    from coscribe.conversation.turn_text import open_question
+
+    ask = AIMessage(content="", tool_calls=[_tool_call("call_1", "ask_user_question", _CARD)])
+    failed = ToolMessage(
+        content="bad arguments", tool_call_id="call_1", name="ask_user_question", status="error"
+    )
+
+    assert open_question([ask, failed]) == []
 
 
 def test_pending_approval_is_redelivered_on_reconnect(
@@ -335,11 +259,7 @@ def test_a_pending_question_is_redelivered_every_time_the_conversation_is_reopen
     # Leaving a conversation and coming back again and again, never answering:
     # a redelivered question that outlives its connection must not keep the
     # turn lock, or the next reconnect finds nothing to answer.
-    call = _tool_call(
-        "call_1",
-        "ask_user_question",
-        {"questions": [{"question": "Budget?", "options": [{"label": "Low"}, {"label": "High"}]}]},
-    )
+    call = _tool_call("call_1", "remember", {"line": "Write in English."})
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
     )
@@ -360,7 +280,9 @@ def test_a_pending_question_is_redelivered_every_time_the_conversation_is_reopen
             ws.receive_json()  # state
             ws.receive_json()  # history
             question = ws.receive_json()
-            ws.send_json({"type": "question_response", "id": question["id"], "answers": ["Low"]})
+            ws.send_json(
+                {"type": "question_response", "id": question["id"], "answers": ["Don't save"]}
+            )
             messages = _receive_until(ws, "tasks_changed")
 
     assert next(m for m in messages if m["type"] == "agent_message")["text"] == "done"

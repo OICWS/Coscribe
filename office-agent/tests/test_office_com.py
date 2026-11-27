@@ -25,8 +25,8 @@ class _FakeOffice:
         self.fail = fail
 
     def __call__(
-        self, command: list[str], timeout: float, env: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[bytes]:
+        self, command: list[str], timeout: float, marker: str, env: dict[str, str] | None = None
+    ) -> None:
         assert env is not None
         self.runs.append({"script": command[-1], "env": env, "timeout": timeout})
         if self.fail:
@@ -38,13 +38,13 @@ class _FakeOffice:
             Image.new("RGB", (200, 300), "white").save(target)
         else:
             target.write_bytes(b"converted")
-        return subprocess.CompletedProcess(command, 0, b"", b"")
+        return None
 
 
 @pytest.fixture
 def office(monkeypatch: pytest.MonkeyPatch) -> _FakeOffice:
     fake = _FakeOffice()
-    monkeypatch.setattr(_office_com, "run_killable", fake)
+    monkeypatch.setattr(_office_com, "run_until_marker", fake)
     monkeypatch.setattr(_office_com, "shutil", type("S", (), {"which": staticmethod(str)}))
     monkeypatch.setattr(_office_com, "_registered", lambda prog_id: prog_id.startswith("K"))
     return fake
@@ -155,15 +155,20 @@ def test_a_timeout_ends_the_office_program_com_started_for_the_job(
 ) -> None:
     # COM starts the program outside PowerShell's process tree, so killing that tree on a
     # timeout leaves it running hidden with the file open.
-    def hang_then_clean(
+    def hang(
+        command: list[str], timeout: float, marker: str, env: dict[str, str] | None = None
+    ) -> None:
+        office.runs.append({"script": command[-1], "env": env, "timeout": timeout})
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    def clean(
         command: list[str], timeout: float, env: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[bytes]:
         office.runs.append({"script": command[-1], "env": env, "timeout": timeout})
-        if len(office.runs) == 1:
-            raise subprocess.TimeoutExpired(command, timeout)
         return subprocess.CompletedProcess(command, 0, b"", b"")
 
-    monkeypatch.setattr(_office_com, "run_killable", hang_then_clean)
+    monkeypatch.setattr(_office_com, "run_until_marker", hang)
+    monkeypatch.setattr(_office_com, "run_killable", clean)
     (tmp_path / "a.xlsx").write_bytes(b"x")
 
     with pytest.raises(ValueError, match="took too long"):
@@ -185,3 +190,43 @@ def test_every_office_program_has_its_process_name() -> None:
     assert {p for names in _office_com._PROGRAMS.values() for p in names} == set(
         _office_com._IMAGES
     )
+
+
+def test_a_word_pdf_is_the_final_text_without_the_comment_pane() -> None:
+    script = _office_com._OPEN_AND_SAVE["word"]
+
+    assert "RevisionsFilter.Markup = 0" in script
+    assert "ExportAsFixedFormat($env:COSCRIBE_TARGET, 17, $false, 0, 0, 1, 1, 0)" in script
+    assert "catch { $doc.SaveAs2($env:COSCRIBE_TARGET, 17) }" in script
+
+
+def test_each_script_says_when_the_file_is_saved_before_the_program_quits() -> None:
+    for script in _office_com._OPEN_AND_SAVE.values():
+        saved = script.index(f"WriteLine('{_office_com._SAVED}')")
+        assert script.index(".Close(") < saved < script.index("$app.Quit()")
+
+
+def test_the_next_job_waits_for_the_last_program_to_exit(
+    office: _FakeOffice, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    exiting: list[str] = []
+
+    class StillExiting:
+        def wait(self, timeout: float) -> int:
+            exiting.append("exited")
+            return 0
+
+    def saved_early(
+        command: list[str], timeout: float, marker: str, env: dict[str, str] | None = None
+    ) -> StillExiting:
+        office(command, timeout, marker, env)
+        exiting.append("saved")
+        return StillExiting()
+
+    monkeypatch.setattr(_office_com, "run_until_marker", saved_early)
+    (tmp_path / "a.docx").write_bytes(b"x")
+
+    for name in ("a.pdf", "b.pdf"):
+        assert _office_com.convert(tmp_path / "a.docx", tmp_path / name, "pdf", 30)
+
+    assert exiting[:3] == ["saved", "exited", "saved"]

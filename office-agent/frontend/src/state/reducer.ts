@@ -1,3 +1,4 @@
+import { type LiveDocs, updateDocDraft } from "../lib/docDrafts";
 import { testProgress } from "./workflowTest";
 import type { DraftTestProgress } from "../types/workflow";
 import { splitAttachedFiles } from "../lib/attachments";
@@ -133,6 +134,7 @@ export interface ChatState {
    * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
+  docDrafts: LiveDocs;
   compaction: CompactionState;
   retainedUserTurns: number;
   /** When the running turn started (ms since the epoch), as the server said on connect. */
@@ -200,6 +202,7 @@ export const initialChatState: ChatState = {
   totalTokens: 0,
   cacheStats: null,
   turnInFlight: false,
+  docDrafts: {},
   compaction: null,
   retainedUserTurns: 0,
   turnStartedAt: null,
@@ -378,7 +381,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_connection_reset":
       // The server's paging cursor lives on the session, so a new connection starts it over:
       // keeping olderItems would show a stale "no_more" or reveal a batch twice.
-      return { ...state, historyReceived: false, olderItems: [], olderStatus: "none",
+      return { ...state, docDrafts: {}, historyReceived: false, olderItems: [], olderStatus: "none",
         compaction: state.compaction?.status === "running" ? null : state.compaction };
 
     case "local_switch_thread":
@@ -754,9 +757,13 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ],
       };
 
+    case "doc_draft":
+    case "doc_draft_finished":
+      return { ...state, docDrafts: updateDocDraft(state.docDrafts, action) };
+
     case "turn_started":
       return {
-        ...state,
+        ...state, docDrafts: {},
         turnInFlight: true,
         suggestion: null, saveOffer: null,
         error: null,

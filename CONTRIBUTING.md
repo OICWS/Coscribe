@@ -32,8 +32,9 @@ See [`README.md`](README.md). Then check your setup works:
    description waives either when it can't apply: `Fails before: <why>`,
    `Changed-line coverage: <why>`.
 4. **Run the checks:** `cd office-agent && bash scripts/check.sh --fast` before
-   pushing; CI runs the full `bash scripts/check.sh` (frontend `tsc -b` and
-   build, oxlint, ruff, mypy, pytest). Touching
+   pushing; CI runs `bash scripts/check.sh` (frontend `tsc -b` and build, oxlint,
+   ruff, mypy, pytest), on a pull request with only the tests its change can reach
+   (decision 0059) and on `main` with all of them. Touching
    the UI also means looking at it in the running app, not only compiling it.
 5. **Check the documents your change can make untrue.**
    `python office-agent/scripts/doc_impact.py` lists them (from `docs/doc-map.toml`, and a

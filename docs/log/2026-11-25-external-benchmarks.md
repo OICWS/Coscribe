@@ -10,11 +10,14 @@ written by someone else, give a score others can compare.
   `compare_workbooks` after a LibreOffice recalculation). Neither dataset is copied here.
 - Batch 0 on `deepseek-flash`, off-peak: OfficeVal 5 tasks, mean completion 0.84, $0.28;
   SpreadsheetBench 5 tasks, 3 of 5 right, $0.10. About 2 to 6 cents a task.
+- Batch 1, the rest of OfficeVal: 93 tasks graded in all. 6 need Word through COM, and 061's
+  input video is missing upstream. Mean 0.48: Word 0.61, Excel 0.49, PowerPoint 0.39. About $8 in
+  all, $0.08 a task. The 48 tasks with a picture scored 0.41, which led to `look_at_image` (#1088).
 - `tests/test_evals_external.py` for the parts that need no model or download.
 
 ## Not verified
 - The six OfficeVal tasks whose verifiers need Word through COM; they are skipped off Windows.
-- The full sets: only batch 0 has run; the rest runs in batches once each is approved.
+- SpreadsheetBench beyond batch 0 and our own tasks: they run in batches once each is approved.
 
 ## Follow-ups
 - Run the remaining OfficeVal tasks, 100 stratified SpreadsheetBench tasks and our own tasks,

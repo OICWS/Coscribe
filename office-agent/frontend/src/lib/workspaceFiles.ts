@@ -26,6 +26,7 @@ interface Listing {
 export interface FileRef {
   root: number;
   path: string;
+  size?: number | null;
 }
 
 const base = (threadId: string) => `/api/threads/${encodeURIComponent(threadId)}/workspace`;
@@ -62,7 +63,7 @@ export const refKey = (ref: FileRef) => `${ref.root}:${ref.path}`;
 export const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 /** How a file is shown. `rendered` kinds also have their source a click away. */
-export type FileKind = "markdown" | "html" | "svg" | "csv" | "image" | "pdf" | "office" | "text" | "binary";
+export type FileKind = "markdown" | "html" | "svg" | "csv" | "image" | "pdf" | "office" | "xlsx" | "docx" | "pptx" | "text" | "binary";
 
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|ico|avif)$/i;
 const OFFICE = /\.(docx?|xlsx?|xlsm|pptx?|odt|ods|odp)$/i;
@@ -75,9 +76,21 @@ export function fileKind(path: string): FileKind {
   if (/\.(csv|tsv)$/i.test(path)) return "csv";
   if (IMAGE.test(path)) return "image";
   if (/\.pdf$/i.test(path)) return "pdf";
+  if (/\.xlsx$/i.test(path)) return "xlsx";
+  if (/\.docx$/i.test(path)) return "docx";
+  if (/\.pptx$/i.test(path)) return "pptx";
   if (OFFICE.test(path)) return "office";
   if (BINARY.test(path)) return "binary";
   return "text";
+}
+
+/** Use the tree's file size before asking an Office renderer to open the file. */
+export function previewAvailability(kind: FileKind, bytes: number | null | undefined): "inline" | "defer" | "too-large" {
+  const size = (bytes ?? 0) / 1024 ** 2;
+  if (kind === "xlsx") return size > 32 ? "too-large" : size > 2 ? "defer" : "inline";
+  if (kind === "docx") return size > 50 ? "too-large" : size > 4 ? "defer" : "inline";
+  if (kind === "pptx" && size > 4) return "defer";
+  return "inline";
 }
 
 /** Kinds shown drawn by default, with a switch to their source. */

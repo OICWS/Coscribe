@@ -130,6 +130,27 @@ class AgentDeltaEvent(TypedDict):
     text: str
 
 
+class DocDraftBlock(TypedDict):
+    index: int
+    kind: str
+    text: str
+
+
+class DocDraftEvent(TypedDict):
+    type: Literal["doc_draft"]
+    id: str
+    path: str
+    new: bool
+    blocks: list[DocDraftBlock]
+
+
+class DocDraftFinishedEvent(TypedDict):
+    type: Literal["doc_draft_finished"]
+    id: str
+    path: str
+    committed: bool
+
+
 class ToolStartedEvent(TypedDict):
     """A call about to run; its tool_result follows. Not sent for a call waiting on
     approval (approval_required shows that one)."""
@@ -196,6 +217,7 @@ class QuestionOption(TypedDict):
     label: str
     # "" when the option has none.
     description: str
+    recommended: bool
 
 
 class QuestionSpec(TypedDict):
@@ -206,8 +228,8 @@ class QuestionSpec(TypedDict):
 
 
 class QuestionRequiredEvent(TypedDict):
-    """ask_user_question: one or more questions, answered together with
-    question_response."""
+    """remember's question, answered with question_response. ask_user_question doesn't send
+    this: its card is drawn from the tool call itself (decision 0060)."""
 
     type: Literal["question_required"]
     id: str
@@ -523,6 +545,8 @@ ServerEvent = (
     | HistoryEvent
     | OlderMessagesEvent
     | AgentDeltaEvent
+    | DocDraftEvent
+    | DocDraftFinishedEvent
     | ToolStartedEvent
     | ToolResultEvent
     | ApprovalRequiredEvent
@@ -619,7 +643,7 @@ class QuestionAnswerOut(TypedDict):
 
 
 class QuestionAnswersOut(TypedDict):
-    """ask_user_question's answers, one per question (a multi-select one's choices
+    """remember's answers, one per question (a multi-select one's choices
     joined by ", ", null for a skipped one)."""
 
     type: Literal["question_response"]

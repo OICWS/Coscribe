@@ -1,4 +1,5 @@
 import type { LogItem } from "../state/reducer";
+import { isAnswerCall, isAskCall, type AskCardEntry } from "./questionCards";
 import type { Workflow } from "../types/workflow";
 import { taskCardPlaces, type TaskCardEntry } from "./taskCard";
 
@@ -234,7 +235,7 @@ function connectorOfferOf(item: ToolOrApprovalItem): ConnectorOfferEntry | null 
   };
 }
 
-export type TranscriptEntry = Exclude<LogItem, ToolOrApprovalItem> | ToolRunGroup | WorkflowDraftEntry | ConnectorOfferEntry;
+export type TranscriptEntry = Exclude<LogItem, ToolOrApprovalItem> | ToolRunGroup | WorkflowDraftEntry | ConnectorOfferEntry | AskCardEntry;
 
 /** The newest draft of each workflow among `items`, oldest first -- a card for any earlier one
  * is superseded. A draft belongs to the saved task it changes, to the draft it revises, or else
@@ -308,7 +309,9 @@ export function groupToolRuns(items: LogItem[]): TranscriptEntry[] {
   };
 
   for (const item of items) {
-    const drafted = item.kind === "tool" ? (workflowDraftOf(item) ?? connectorOfferOf(item)) : null;
+    // Recording an answer in words shows on the card it answers, not as a row of its own.
+    if (isAnswerCall(item) && !item.isError) continue;
+    const drafted = item.kind !== "tool" ? null : isAskCall(item) ? ({ kind: "ask_card", id: item.id, item } satisfies AskCardEntry) : (workflowDraftOf(item) ?? connectorOfferOf(item));
     if (drafted) {
       flush();
       result.push(drafted);
@@ -690,7 +693,10 @@ const CATEGORY_WORDS: Record<Exclude<Category, "other">, [past: string, present:
 };
 const FILE_CATEGORIES = new Set<Category>(["write", "edit", "read"]);
 
-const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
+type ToolActivity = "Running commands" | "Writing" | "Editing" | "Reading" | "Searching" | "Browsing" | "Working";
+export type ConversationActivity = ToolActivity | "Thinking";
+
+const ACTIVITY_WORDS: Partial<Record<Category, ToolActivity>> = {
   command: "Running commands",
   write: "Writing",
   edit: "Editing",
@@ -700,7 +706,7 @@ const ACTIVITY_WORDS: Partial<Record<Category, string>> = {
 };
 
 /** What a call is doing in one or two words, with no object: the simple view's status line. */
-export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): string {
+export function activityOf(item: ToolOrApprovalItem, connectorTools: ReadonlySet<string> = new Set()): ToolActivity {
   // A deferred tool arrives as use_tool; its own name says what it does.
   const inner = item.toolName === "use_tool" ? item.arguments.name : undefined;
   const toolName = typeof inner === "string" ? inner : item.toolName;

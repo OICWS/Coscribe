@@ -37,7 +37,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "src/coscribe"
@@ -92,19 +92,28 @@ def mutant_prefixes(source: str, lines: set[int]) -> list[str]:
     """mutmut's name prefix for each top-level function and method that a changed line is in.
 
     mutmut 3 names a function's mutants `x_<name>__mutmut_<n>` and a method's
-    `xǁ<Class>ǁ<name>__mutmut_<n>`; a nested function is mutated as part of its parent."""
+    `xǁ<Class>ǁ<name>__mutmut_<n>`; a nested function is mutated as part of its parent. mutmut
+    leaves a decorated function alone (only a lone @staticmethod or @classmethod is mutated), so
+    asking for one would find no mutant and read as a broken run."""
     prefixes = []
 
     def touched(node: ast.AST) -> bool:
         end = getattr(node, "end_lineno", None) or node.lineno  # type: ignore[attr-defined]
         return any(node.lineno <= line <= end for line in lines)  # type: ignore[attr-defined]
 
+    def mutated(node: ast.AST) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or not touched(node):
+            return False
+        names = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
+        lone = len(node.decorator_list) == 1 and names in (["staticmethod"], ["classmethod"])
+        return not node.decorator_list or lone
+
     for node in ast.parse(source).body:
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and touched(node):
+        if mutated(node):
             prefixes.append(f"x_{node.name}__mutmut_")
         elif isinstance(node, ast.ClassDef):
             for item in node.body:
-                if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef) and touched(item):
+                if mutated(item):
                     prefixes.append(f"x\u01c1{node.name}\u01c1{item.name}__mutmut_")
     return prefixes
 

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
@@ -38,9 +39,13 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
 });
 }
 
-test("a Word file's card opens it in Word, since the app has no panel for it", async ({ page }) => {
+test("a Word file card opens the preview and its menu opens the original in Word", async ({ page }) => {
   const name = `word-${Math.random().toString(36).slice(2, 8)}`;
   const opened: string[] = [];
+  const pdf = readFileSync(new URL("./fixtures/sample.pdf", import.meta.url));
+  await page.route("**/api/attachment/docx?*", (route) => route.fulfill({
+    body: pdf, contentType: "application/pdf",
+  }));
   await page.route("**/files/open", async (route) => {
     opened.push(route.request().postData() ?? "");
     await route.fulfill({ json: { ok: true } });
@@ -51,10 +56,17 @@ test("a Word file's card opens it in Word, since the app has no panel for it", a
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
 
-  await page.getByTitle(`Open ${name}.docx`).click();
+  const card = page.getByTitle(`Open ${name}.docx`);
+  await expect(card).toBeVisible();
+  const viewer = page.getByRole("region", { name: "Viewer" });
+  await expect(viewer).toHaveCount(0);
+  await card.click();
+  await expect(viewer.getByText("Page 1 of 2", { exact: true })).toBeVisible();
+  expect(opened).toHaveLength(0);
+  await page.getByRole("button", { name: `File options for ${name}.docx` }).click();
+  await page.getByRole("menuitem", { name: "Open in Word" }).click();
   await expect.poll(() => opened.length).toBe(1);
   expect(JSON.parse(opened[0])).toEqual({ path: `${name}.docx`, reveal: false });
-  await expect(page.getByRole("region", { name: "Viewer" })).toHaveCount(0);
 });
 
 test("a Markdown file that is not a Doc gets no card that leads nowhere", async ({ page }) => {

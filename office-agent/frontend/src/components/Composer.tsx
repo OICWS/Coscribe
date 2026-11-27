@@ -96,6 +96,11 @@ const PASTE_CARD_MIN_LINES = 12;
 // attachments, unlike a pasted-text card, which isn't).
 const MAX_ATTACHED_FILES = 5;
 
+// The Send/Stop button's middle on the middle of the last text line: the box's 0.75rem padding
+// less half of what the h-7 button is taller than a 0.9rem line at leading-normal (1.35rem).
+// bottom-3 alone left it 3px above the text.
+const besideLastLine = "bottom-[calc(0.75rem-(1.75rem-1.35rem)/2)]";
+
 interface ComposerProps {
   turnInFlight: boolean;
   compaction: CompactionState;
@@ -572,7 +577,7 @@ export function Composer({
             type="button"
             // Still pressable while stopping: a second Stop is how a page that missed the end asks again.
             title={stopping ? "Stopping…" : "Stop"} aria-label={stopping ? "Stopping…" : "Stop"}
-            className={`absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-[var(--card-bg)] ${stopping ? "text-[var(--muted)]" : "text-[var(--fg)]"}`}
+            className={`absolute ${besideLastLine} right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-[var(--card-bg)] ${stopping ? "text-[var(--muted)]" : "text-[var(--fg)]"}`}
             onClick={() => (onStop(), textareaRef.current?.focus())}
           >
             <StopRingIcon className={stopping ? "h-5 w-5 animate-pulse" : "h-5 w-5"} />
@@ -581,7 +586,7 @@ export function Composer({
           <button
             type="button"
             title={sendTitle}
-            className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent"
+            className={`absolute ${besideLastLine} right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent`}
             onClick={performSend}
             disabled={!canSend || isCompacting}
           >
