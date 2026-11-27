@@ -146,7 +146,9 @@ def _prepare_module(work: Path, module: str, pytest_args: list[str]) -> None:
     static = work / PACKAGE / "web" / "static"
     if not static.exists():
         static.mkdir(parents=True)
-        (static / "index.html").write_text("<!doctype html>\n", encoding="utf-8")
+        (static / "index.html").write_text(
+            "<!doctype html><html><head></head><body></body></html>\n", encoding="utf-8"
+        )
     copied = [
         "src",
         *(folder for folder in ("evals", "scripts", "frontend") if (work / folder).is_dir()),
