@@ -163,6 +163,7 @@ function PanelContent({ state }: { state: PanelWindowState }) {
         key={`${state.threadId}:${state.path}`}
         threadId={state.threadId}
         path={state.path}
+        draft={state.draft}
         refreshKey={state.refreshKey}
       />
     );

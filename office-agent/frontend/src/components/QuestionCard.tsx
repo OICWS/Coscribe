@@ -237,43 +237,76 @@ function AnsweredCard({ questions, answers, inChat }: { questions: QuestionSpec[
     const parts = answer === null ? [] : question.multi_select ? splitChoices(answer, question.options.map((o) => o.label)) : [answer];
     const note = inChat ? "Answered in chat" : undefined;
     return (
-      <div className="w-full rounded-[20px] bg-[var(--card-bg)] px-4 pb-4 pt-4">
+      <div className={CARD}>
         <div className="px-1 pb-2 text-[15.5px]">{question.question}</div>
         {answer === null ? (
-          <div className="px-1 text-sm text-[var(--muted)]">Not answered</div>
+          <div className="px-1 pb-1 text-sm text-[var(--muted)]">Not answered</div>
         ) : (
-          <div className="flex flex-col gap-1.5">
-            {parts.map((part) => {
-              const i = question.options.findIndex((o) => o.label === part);
-              return (
-                <div key={part} className="flex items-center gap-3.5 rounded-xl bg-[color-mix(in_srgb,var(--fg)_5%,transparent)] px-2.5 py-2.5">
-                  <Badge mark={i >= 0 ? letter(i) : <PencilIcon className="h-3.5 w-3.5" />} />
-                  <OptionText option={i >= 0 ? question.options[i] : { label: part, description: "", recommended: false }} answered note={note} />
-                  <CheckIcon className="ml-auto h-4 w-4 shrink-0 text-[var(--muted)]" aria-label="Answered" />
-                </div>
-              );
-            })}
+          <div className="flex flex-col gap-1.5 pb-1">
+            {parts.map((part) => (
+              <ChosenRow key={part} question={question} part={part} note={note} />
+            ))}
           </div>
         )}
       </div>
     );
   }
+  const count = answers.filter((a) => a).length;
   return (
-    <div className="flex w-full flex-col gap-2.5 rounded-[20px] bg-[var(--card-bg)] px-5 py-4">
+    <div className={CARD}>
       {questions.map((q, i) => (
-        <div key={i}>
-          <div className="text-[13.5px] text-[var(--muted)]">{q.question}</div>
-          {answers[i] ? (
-            <div className="flex items-start gap-2 text-[15px]">
-              <CheckIcon className="mt-[5px] h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-              <span className="min-w-0">{answers[i]}</span>
-            </div>
-          ) : (
-            <div className="text-[15px] text-[var(--muted)]">Skipped</div>
-          )}
+        <div key={i} className="flex gap-3.5 border-b border-[var(--border)] px-2.5 py-3 first:pt-0.5">
+          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--card-bg)] text-[12px] text-[var(--muted)]">
+            {i + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] leading-snug">{q.question}</div>
+            {answers[i] ? (
+              <AnswerChip question={q} answer={answers[i] ?? ""} />
+            ) : (
+              <div className="mt-1.5 text-[14px] text-[var(--muted)]">Skipped</div>
+            )}
+          </div>
         </div>
       ))}
-      {inChat && <div className="text-[12.5px] text-[var(--muted)]">Answered in chat</div>}
+      <div className="flex items-center gap-2 px-2.5 pt-2.5 text-[13px] text-[var(--muted)]">
+        <CheckIcon className="h-3.5 w-3.5 text-[var(--accent)]" aria-label="Answered" />
+        {`${count} of ${questions.length} answered${inChat ? " in chat" : ""}`}
+      </div>
+    </div>
+  );
+}
+
+function ChosenRow({ question, part, note }: { question: QuestionSpec; part: string; note?: string }) {
+  const i = question.options.findIndex((o) => o.label === part);
+  return (
+    <div className="flex items-center gap-3.5 rounded-xl bg-[var(--accent-soft)] px-2.5 py-2.5">
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-[var(--bg)] text-[14px] text-[var(--accent)]">
+        {i >= 0 ? letter(i) : <PencilIcon className="h-3.5 w-3.5" />}
+      </span>
+      <OptionText option={i >= 0 ? question.options[i] : { label: part, description: "", recommended: false }} answered note={note} />
+      <CheckIcon className="ml-auto h-4 w-4 shrink-0 text-[var(--accent)]" aria-label="Answered" />
+    </div>
+  );
+}
+
+/** The answer under its question: each chosen option with its letter, the person's own words with
+ * a pencil. */
+function AnswerChip({ question, answer }: { question: QuestionSpec; answer: string }) {
+  const parts = question.multi_select ? splitChoices(answer, question.options.map((o) => o.label)) : [answer];
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {parts.map((part) => {
+        const i = question.options.findIndex((o) => o.label === part);
+        return (
+          <span key={part} className="inline-flex max-w-full items-center gap-2 rounded-lg bg-[var(--accent-soft)] py-1 pl-1.5 pr-2.5 text-[14px]">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--bg)] text-[11.5px] text-[var(--accent)]">
+              {i >= 0 ? letter(i) : <PencilIcon className="h-3 w-3" />}
+            </span>
+            <span className="min-w-0">{part}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }

@@ -113,11 +113,17 @@
   color: #164b7e;
 }
 
-.spreadsheet-corner { z-index: 12; }
+/* A sticky layer takes no room, so the layers all start at the sheet's origin; their tiles overflow it. */
+.spreadsheet-layer {
+  position: sticky;
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
 
 .spreadsheet-freeze-row, .spreadsheet-freeze-col {
   position: absolute;
-  z-index: 9;
+  z-index: 1;
   pointer-events: none;
   background: #a1adbb;
 }
@@ -171,17 +177,48 @@
 }
 
 .spreadsheet-tabs button {
+  position: relative;
   flex: none;
-  border: 1px solid transparent;
   border-radius: 6px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   color: var(--muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-.spreadsheet-tabs button:hover, .spreadsheet-tabs button[aria-pressed="true"] {
-  border-color: var(--border);
-  background: var(--card-bg);
+.spreadsheet-tabs button:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
   color: var(--fg);
+}
+
+.spreadsheet-tabs button:active {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.spreadsheet-tabs button:focus-visible {
+  outline: 2px solid var(--sheet-active);
+  outline-offset: -2px;
+}
+
+.spreadsheet-tabs button[aria-pressed="true"] {
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.spreadsheet-tabs button[aria-pressed="true"]::after {
+  position: absolute;
+  inset: auto 10px 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--file-sheet, #1d7a45);
+  content: "";
+}
+
+.spreadsheet-tabs button[aria-busy="true"] {
+  color: var(--fg);
+  opacity: 0.7;
 }
 
 .spreadsheet-note {

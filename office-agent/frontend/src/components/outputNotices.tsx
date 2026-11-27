@@ -6,7 +6,7 @@ import { KIND_WORDS } from "../lib/fileMentions";
 import { changedWhen, closeKey, folderOf, isImageFile, madeOutputs, titleOf, type MadeOutput } from "../lib/madeOutputs";
 import { getThreadActivity, openThreadFile, setThreadMeta, threadFileDownloadUrl } from "../lib/rest";
 import { readStored, writeStored } from "../lib/storage";
-import { isDocMarkdown, isXlsx } from "../lib/viewers";
+import { isDocMarkdown, isDocx, isXlsx } from "../lib/viewers";
 import type { ActivityFile } from "../types/session";
 import { KindIcon } from "./artifacts";
 import { FolderIcon } from "./icons";
@@ -186,13 +186,14 @@ export function useOutputNotices(
           ? <FileSheetIcon className="h-4 w-4" style={{ color: EXTERNAL_COLOURS[type] }} />
           : <FileIcon className="h-4 w-4" style={{ color: EXTERNAL_COLOURS[type] }} />,
         title: file.name,
-        onOpen: isXlsx(file.path) ? () => open(file) : undefined,
+        onOpen: (isXlsx(file.path) || isDocx(file.path)) ? () => open(file) : undefined,
         openTitle: `Preview ${file.name}`,
         detail: [type, folder].filter(Boolean).join(" · "),
         plainDetail: true,
         actions: [
           file.openable
-            ? { label: "Open", title: "Open in its own program", onClick: () => void openThreadFile(threadId, file.path, false) }
+            ? { label: isDocx(file.path) ? "Open in Word" : isXlsx(file.path) ? "Open in Excel" : "Open",
+                title: "Open in its own program", onClick: () => void openThreadFile(threadId, file.path, false) }
             : { label: "Download", onClick: () => downloadFile(threadId, file) },
           { label: "Show in folder", icon: <FolderIcon className="h-4 w-4" />, onClick: () => void openThreadFile(threadId, file.path, true) },
         ],

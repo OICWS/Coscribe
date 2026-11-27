@@ -12,6 +12,12 @@ Last reviewed: 2026-11-22.
 The read-only Excel grid (#1073) is in review. Windows desktop verification covers opening the
 preview while Microsoft Excel has the workbook open.
 
+Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
+Office conversion engines and reading during writes.
+
+The Simple conversation activity robot (#1085) is in review. Desktop verification covers
+the indicator at normal Windows display scaling.
+
 ## Next, in order
 
 1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
@@ -93,6 +99,13 @@ preview while Microsoft Excel has the workbook open.
    directly and Coscribe's Discover reads as a source (step 4 of #1036).
 
 ## Open, smaller
+
+- **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
+  DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
+  and Gemini, whose search runs only inside a model call, as a second kind in
+  `runtime/models/web_search.json`; and web search shown as a capability in Settings > Providers
+  and the model picker (a frontend PR). Free engines stay first for every provider (Collins,
+  2026-11-26).
 
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,
   the checks on what tests prove, the frontend features and the weekly numbers

@@ -1,75 +1,20 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { getDocument, GlobalWorkerOptions, TextLayer, type PDFDocumentProxy, type PDFPageProxy } from "pdfjs-dist";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { GlobalWorkerOptions, TextLayer, type PDFDocumentProxy, type PDFPageProxy } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import { openThreadFile } from "../lib/rest";
+import { useWordPreview } from "./useWordPreview";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
-type Preview = { pdf: PDFDocumentProxy } | { error: string };
 const pointsToPixels = 96 / 72;
-const control = "h-8 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 text-sm hover:bg-[var(--card-bg)] disabled:opacity-40";
-
-function useWordPreview(url: string) {
-  const [revision, setRevision] = useState(0);
-  const [loaded, setLoaded] = useState<{ url: string; revision: number; preview: Preview } | null>(null);
-
-  useEffect(() => {
-    const abort = new AbortController();
-    let task: ReturnType<typeof getDocument> | undefined;
-    let version: string | null = null;
-    let checking = false;
-    const finish = (preview: Preview) => {
-      if (!abort.signal.aborted) setLoaded({ url, revision, preview });
-    };
-    const load = async () => {
-      const response = await fetch(url, { method: "POST", signal: abort.signal });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error ?? "Couldn't prepare this Word preview.");
-      }
-      const data = await response.arrayBuffer();
-      if (abort.signal.aborted) return;
-      task = getDocument({ data, isEvalSupported: false, useWasm: false });
-      const pdf = await task.promise;
-      version = response.headers.get("ETag");
-      finish({ pdf });
-    };
-    void load().catch((error: Error) => {
-      finish({ error: error.message });
-    });
-    const timer = window.setInterval(async () => {
-      if (checking || version === null || document.hidden) return;
-      checking = true;
-      try {
-        const response = await fetch(url, { method: "HEAD", signal: abort.signal });
-        const changed = response.ok && response.headers.get("ETag") !== version;
-        if (!abort.signal.aborted && (changed || response.status === 403 || response.status === 404)) {
-          setRevision((value) => value + 1);
-        }
-      } catch {
-        // Keep the page visible during a transient check failure.
-      } finally {
-        checking = false;
-      }
-    }, 2500);
-    return () => {
-      abort.abort();
-      window.clearInterval(timer);
-      void task?.destroy().catch(() => undefined);
-    };
-  }, [url, revision]);
-  return {
-    preview: loaded?.url === url && loaded.revision === revision ? loaded.preview : null,
-    revision,
-    refresh: () => setRevision((value) => value + 1),
-  };
-}
+const control = "h-7 rounded-md bg-transparent px-2 text-sm hover:bg-[var(--card-bg)] disabled:opacity-40";
 
 function WordPage({ pdf, number, zoom, fitWidth }: { pdf: PDFDocumentProxy; number: number; zoom: string; fitWidth: number }) {
   const surface = useRef<HTMLDivElement>(null);
   const [nearby, setNearby] = useState(false);
-  const [page, setPage] = useState<PDFPageProxy | null>(null);
+  const [loaded, setPage] = useState<{ pdf: PDFDocumentProxy; page: PDFPageProxy }>();
+  const page = loaded?.pdf === pdf ? loaded.page : null;
   const [failed, setFailed] = useState(false);
   const scale = zoom === "fit"
     ? Math.min(fitWidth / (page?.getViewport({ scale: 1 }).width ?? 595), 2.5)
@@ -87,7 +32,7 @@ function WordPage({ pdf, number, zoom, fitWidth }: { pdf: PDFDocumentProxy; numb
     if (!nearby || page) return;
     let cancelled = false;
     void pdf.getPage(number)
-      .then((next) => { if (!cancelled) setPage(next); })
+      .then((next) => { if (!cancelled) setPage({ pdf, page: next }); })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, [pdf, number, nearby, page]);
@@ -144,9 +89,15 @@ export default function WordPreview({ threadId, path }: { threadId: string; path
   const [width, setWidth] = useState(640);
   const [openError, setOpenError] = useState<string | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
-  const url = `/api/attachment/docx?${new URLSearchParams({ path, thread_id: threadId })}`;
-  const { preview, revision, refresh } = useWordPreview(url);
-  const pages = preview && "pdf" in preview ? preview.pdf.numPages : 0;
+  const restore = useRef<{ page: number; offset: number }>(null);
+  const query = new URLSearchParams({ path, thread_id: threadId });
+  const keepPosition = () => {
+    const root = scroll.current;
+    const page = root?.querySelector<HTMLElement>(`[data-word-page="${active}"]`);
+    if (root && page) restore.current = { page: active, offset: root.getBoundingClientRect().top - page.getBoundingClientRect().top };
+  };
+  const { pdf, error, retry } = useWordPreview(query, keepPosition);
+  const pages = pdf?.numPages ?? 0;
   const fitWidth = Math.max(width - 48, 100);
 
   useEffect(() => {
@@ -157,9 +108,17 @@ export default function WordPreview({ threadId, path }: { threadId: string; path
     return () => observer.disconnect();
   }, []);
 
-  const goTo = (page: number) => {
-    scroll.current?.querySelector(`[data-word-page="${page}"]`)?.scrollIntoView({ block: "start", inline: "nearest" });
-  };
+  useLayoutEffect(() => {
+    const root = scroll.current;
+    const saved = restore.current;
+    if (!pdf || !root || !saved) return;
+    const number = Math.min(saved.page, pdf.numPages);
+    const page = root.querySelector<HTMLElement>(`[data-word-page="${number}"]`);
+    if (page) root.scrollTop += page.getBoundingClientRect().top - root.getBoundingClientRect().top + saved.offset;
+    restore.current = null;
+    setActive(number);
+  }, [pdf]);
+
   const pageAtTop = () => {
     const root = scroll.current;
     if (!root) return;
@@ -173,31 +132,29 @@ export default function WordPreview({ threadId, path }: { threadId: string; path
   const openOriginal = () => void openThreadFile(threadId, path, false)
     .then(setOpenError).catch(() => setOpenError("Couldn't open the original Word file."));
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Previous page" className={control} disabled={current <= 1} onClick={() => goTo(current - 1)}>‹</button>
-          <span aria-live="polite" className="whitespace-nowrap text-sm tabular-nums">{pages ? `Page ${current} of ${pages}` : "Word preview"}</span>
-          <button type="button" aria-label="Next page" className={control} disabled={current >= pages} onClick={() => goTo(current + 1)}>›</button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Zoom" className={control} value={zoom} onChange={(event) => setZoom(event.target.value)}>
-            <option value="fit">Fit width</option>
-            {[75, 100, 125, 150, 200].map((level) => <option key={level} value={level}>{level}%</option>)}
-          </select>
-          <button type="button" className={control} onClick={refresh}>Refresh</button>
-          <button type="button" className={control} onClick={openOriginal}>Open in Word</button>
-        </div>
-      </div>
+    <div className="relative flex h-full min-h-0 flex-col">
       {openError && <p role="alert" className="px-4 py-2 text-sm text-[var(--danger)]">{openError}</p>}
       <div ref={scroll} onScroll={pageAtTop} className="min-h-0 flex-1 overflow-auto bg-[var(--card-bg)]">
-        {!preview && <p role="status" className="p-6 text-center text-sm text-[var(--muted)]">Preparing Word preview…</p>}
-        {preview && "error" in preview && <p role="alert" className="p-6 text-center text-sm text-[var(--muted)]">{preview.error}</p>}
-        {preview && "pdf" in preview && (
-          <div className="flex w-max min-w-full flex-col items-center gap-5 p-6" key={revision}>
-            {Array.from({ length: pages }, (_, i) => <WordPage key={i} pdf={preview.pdf} number={i + 1} zoom={zoom} fitWidth={fitWidth} />)}
+        {!pdf && !error && <p role="status" className="p-6 text-center text-sm text-[var(--muted)]">Preparing Word preview…</p>}
+        {error && <div role="alert" className="flex items-center justify-center gap-3 p-4 text-sm text-[var(--muted)]">
+          <span>{error}</span><button type="button" className={`${control} border border-[var(--border)]`} onClick={retry}>Retry</button>
+        </div>}
+        {pdf && (
+          <div className="flex w-max min-w-full flex-col items-center gap-5 p-6" key={pdf.fingerprints.join(":")}>
+            {Array.from({ length: pages }, (_, i) => <WordPage key={i} pdf={pdf} number={i + 1} zoom={zoom} fitWidth={fitWidth} />)}
           </div>
         )}
+      </div>
+      {/* Pages turn by scrolling; the controls float over the corner instead of taking a row. */}
+      <div className="absolute bottom-4 right-6 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
+        {pages > 0 && <span aria-live="polite" className="px-2 tabular-nums text-[var(--muted)]">
+          <span aria-hidden="true">{current} / {pages}</span><span className="sr-only">Page {current} of {pages}</span>
+        </span>}
+        <select aria-label="Zoom" className={control} value={zoom} onChange={(event) => setZoom(event.target.value)}>
+          <option value="fit">Fit width</option>
+          {[75, 100, 125, 150, 200].map((level) => <option key={level} value={level}>{level}%</option>)}
+        </select>
+        <button type="button" className={control} onClick={openOriginal}>Open in Word</button>
       </div>
     </div>
   );

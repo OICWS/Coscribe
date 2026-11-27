@@ -1,9 +1,9 @@
 """A .pptx coscribe did not build, drawn read-only for the Slides panel.
 
 Its slides are not pages coscribe can draw, so the installed office program (Microsoft Office or
-WPS, decision 0012) writes the deck as a PDF, once per version of the file, and each slide is that
-PDF's page, drawn by PDFium and held in an SVG as a picture. Without a program there is nothing to
-show, and the panel says it was not built by coscribe, as before.
+WPS, with LibreOffice as a fallback) writes the deck as a PDF once per file version. PDFium
+draws each slide as an image inside an SVG. Without a converter the existing fallback still
+explains that the presentation was not built from pages.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from pptx import Presentation
 
 from ...._office_com import convert
 from ...._pdfium import PDFIUM_LOCK
+from ....libreoffice import convert_with_libreoffice
 from .view import NotBuiltFromPages, _notes, _transition, slide_elements
 
 _OFFICE_TIMEOUT = 60.0
@@ -40,6 +41,8 @@ def _pdf(deck: Path, state_dir: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
             written = convert(deck, target, "pdf", _OFFICE_TIMEOUT)
+            if written is None:
+                written = convert_with_libreoffice(state_dir, deck, target, "pdf", _OFFICE_TIMEOUT)
         except ValueError as error:
             raise NotBuiltFromPages(str(error)) from None
         if written is None or not target.is_file():

@@ -1,10 +1,17 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { type FileKind, type FileRef, looksBinary, MAX_TEXT_BYTES, rawUrl, readsText, splitCsv } from "../../lib/workspaceFiles";
 
-const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Markdown })));
+type MarkdownModule = typeof import("../Markdown");
+// Held once loaded so a later file renders it directly: React.lazy suspends on every new mount,
+// and React holds a revealed fallback for about 300 ms, which showed as a flash before the page.
+let markdownModule: MarkdownModule | undefined;
+const loadMarkdown = () => import("../Markdown").then((m) => (markdownModule = m));
+const Markdown = lazy(() => loadMarkdown().then((m) => ({ default: m.Markdown })));
 // CodeMirror and its languages load with the first file shown as code, not with the app.
 const SpreadsheetPreview = lazy(() => import("../SpreadsheetPreview"));
 const CodeView = lazy(() => import("./CodeView"));
+const PresentationPreview = lazy(() => import("./PresentationPreview"));
+const DocFileReading = lazy(() => import("../doc").then((m) => ({ default: m.DocFileReading })));
 const WordPreview = lazy(() => import("../WordPreview"));
 
 type Loaded = { text: string } | { error: string } | { tooBig: true } | { binary: true } | null;
@@ -28,24 +35,22 @@ export function FilePreview({
   threadId,
   file,
   kind,
-  workbookPath,
+  path,
   source,
   wrap,
   refreshKey,
   fallback,
-  wordPath,
 }: {
   threadId: string;
   file: FileRef;
   kind: FileKind;
-  workbookPath?: string;
+  path?: string;
   source: boolean;
   /** Long lines of source wrap instead of scrolling sideways. */
   wrap: boolean;
   refreshKey: string;
   /** What to offer for a file that has no preview here. */
   fallback: React.ReactNode;
-  wordPath?: string;
 }) {
   const url = rawUrl(threadId, file);
   const [loaded, setLoaded] = useState<Loaded>(null);
@@ -53,14 +58,16 @@ export function FilePreview({
 
   useEffect(() => {
     if (!needsText) return;
+    // The renderer's chunk loads beside the text, so the page appears once, already rendered.
+    const renderer = kind === "markdown" && !source && !markdownModule ? loadMarkdown().catch(() => undefined) : undefined;
     let cancelled = false;
-    void loadText(url)
+    void Promise.all([loadText(url), renderer]).then(([text]) => text)
       .catch(() => ({ error: "Couldn't read this file." }))
       .then((result) => !cancelled && setLoaded(result));
     return () => {
       cancelled = true;
     };
-  }, [url, needsText, refreshKey]);
+  }, [url, needsText, refreshKey, kind, source]);
 
   // The key makes a changed file load again instead of keeping the browser's copy of the page.
   const fresh = `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(refreshKey)}`;
@@ -74,26 +81,28 @@ export function FilePreview({
   if (!source && kind === "html") {
     return <iframe title={file.path} src={fresh} sandbox="allow-same-origin" className="h-full w-full border-0 bg-white" />;
   }
-  if (workbookPath !== undefined) return <Suspense fallback={loading}>
-    <SpreadsheetPreview threadId={threadId} path={workbookPath} refreshKey={refreshKey} />
+  if (kind === "pptx" && path) return <Suspense fallback={loading}>
+    <PresentationPreview threadId={threadId} path={path} revision={refreshKey} />
+  </Suspense>;
+  if (kind === "xlsx" && path) return <Suspense fallback={loading}>
+    <SpreadsheetPreview threadId={threadId} path={path} refreshKey={refreshKey} />
   </Suspense>;
   if (kind === "pdf") return <iframe title={file.path} src={fresh} className="h-full w-full border-0" />;
-  if (kind === "docx" && wordPath) return <Suspense fallback={loading}><WordPreview key={wordPath} threadId={threadId} path={wordPath} /></Suspense>;
+  if (kind === "docx" && path) return <Suspense fallback={loading}><WordPreview key={path} threadId={threadId} path={path} /></Suspense>;
   if (!readsText(kind)) return <div className={note}>{fallback}</div>;
   if (!loaded) return loading;
   if ("error" in loaded) return <div className={note}>{loaded.error}</div>;
   if ("tooBig" in loaded) return <div className={note}>{fallback}<br />This file is too large to show here.</div>;
   if ("binary" in loaded) return <div className={note}>{fallback}</div>;
   if (!source && kind === "markdown") {
-    return (
-      <div className="h-full overflow-auto px-8 py-6">
-        <Suspense fallback={<p className="whitespace-pre-wrap text-sm">{loaded.text}</p>}>
-          <div className="plan-doc">
-            <Markdown text={loaded.text} />
-          </div>
-        </Suspense>
-      </div>
-    );
+    const markdown = <div className="h-full overflow-auto px-8 py-6">
+      {markdownModule ? <div className="plan-doc"><markdownModule.Markdown text={loaded.text} /></div> : <Suspense fallback={null}>
+        <div className="plan-doc"><Markdown text={loaded.text} /></div>
+      </Suspense>}
+    </div>;
+    return path && /^\uFEFF?[ \t]*---[ \t]*\r?\n/.test(loaded.text)
+      ? <Suspense fallback={loading}><DocFileReading threadId={threadId} path={path} revision={refreshKey} markdown={markdown} /></Suspense>
+      : markdown;
   }
   if (!source && kind === "csv") return <CsvTable text={loaded.text} tabs={/\.tsv$/i.test(file.path)} />;
   return (

@@ -10,10 +10,10 @@ import { DocTableLook } from "../../lib/docTableLook";
 import { docContent, editorExtensions, loadedOf } from "../../lib/docModel";
 import { DocPictureDrop, choosePicture, pictureUrl } from "../../lib/docPictures";
 import type { CommentLink } from "../../lib/slideComments";
+import { DocPage } from "./DocReading";
 import { DocBubble } from "./DocBubble";
 import { CommentsPopover, CommentsToggle } from "./DocComments";
 import { DocNotices } from "./DocNotices";
-import type { Step } from "./DocPanel";
 import { DocToolbar } from "./DocToolbar";
 import { useDocCommentFlow } from "./useDocCommentFlow";
 import { useAddPicture } from "./useAddPicture";
@@ -35,20 +35,22 @@ export function DocEditor({
   unsaved,
   version,
   onReload,
-  step,
-  onStep,
   onDismissStep,
   onAsk,
+  scroll,
+  frame,
+  previewing,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
   doc: DocRead;
+  scroll: HTMLDivElement | null;
+  frame: HTMLDivElement | null;
+  previewing: boolean;
   unsaved: { current: boolean };
   version: { current: string };
   onReload: () => void;
-  step: Step | null;
-  onStep: (taken: { kind: "undo" | "redo"; to: string }) => void;
   onDismissStep: () => void;
   onAsk?: (text: string, link?: CommentLink) => void;
 }) {
@@ -80,13 +82,20 @@ export function DocEditor({
   }, [state, unsaved, onDismissStep]);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => setSlot(document.getElementById("doc-save-state")), []);
+  useEffect(() => {
+    if (!scroll || !editor || previewing) return;
+    // The margin beside the page belongs to the scroll surface, which DocPanel owns.
+    const focus = (event: MouseEvent) => { if (event.target === scroll) editor.commands.focus(); };
+    scroll.addEventListener("click", focus);
+    return () => scroll.removeEventListener("click", focus);
+  }, [scroll, editor, previewing]);
 
   return (
     <>
       {slot && createPortal(SAVE_LABELS[state.kind], slot)}
       <CommentsToggle shown={comments.show} dot={comments.open.length > 0} onToggle={() => comments.setShow((now) => !now)} />
-      {editor && <DocToolbar editor={editor} look={look} onLook={changeLook} onPicture={() => choosePicture((file) => addPicture.current(file))} />}
-      {editor && (
+      {editor && <div inert={previewing}><DocToolbar editor={editor} look={look} onLook={changeLook} onPicture={() => choosePicture((file) => addPicture.current(file))} /></div>}
+      {editor && !previewing && (
         <DocBubble editor={editor} onAsk={onAsk && ((instruction, words) => onAsk(`${askAboutWords(path, words)}\n\n${instruction}`))} onComment={(text, send) => void comments.add(text, send)} />
       )}
       <DocNotices
@@ -94,12 +103,8 @@ export function DocEditor({
         onDismissProblem={() => comments.setProblem(null)}
         state={state}
         onReload={onReload}
-        step={step}
-        onStep={onStep}
-        onDismissStep={onDismissStep}
       />
-      <div className="relative min-h-0 flex-1">
-        {comments.show && (
+      {frame && comments.show && !previewing && createPortal(
           <CommentsPopover
             comments={store.comments}
             focus={comments.focus}
@@ -110,19 +115,8 @@ export function DocEditor({
             onEdit={(id, text) => void store.act(editDocComment(threadId, path, id, text))}
             onDelete={(id) => void store.act(deleteDocComment(threadId, path, id))}
             onClose={() => comments.setShow(false)}
-          />
-        )}
-        <div data-doc-scroll className="h-full overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
-          <div
-            className={`doc-page mx-auto px-10 pb-24 pt-8 ${look.wide ? "max-w-[1100px]" : "max-w-[760px]"}`}
-            data-headings={look.headings}
-            data-text={look.text}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <EditorContent editor={editor} />
-          </div>
-        </div>
-      </div>
+          />, frame)}
+      {scroll && createPortal(<DocPage hidden={previewing} look={look}><EditorContent editor={editor} /></DocPage>, scroll)}
     </>
   );
 }

@@ -134,3 +134,50 @@ def test_the_bundled_catalog_and_overrides_load() -> None:
     assert data["source"] == model_catalog.SOURCE_URL and len(data["models"]) > 1000
     for key in json.loads(model_catalog.OVERRIDES_PATH.read_text(encoding="utf-8"))["models"]:
         assert key in data["models"], f"override for a model the catalog lacks: {key}"
+
+
+def test_the_web_search_rows_name_catalog_providers_and_their_source() -> None:
+    from coscribe.runtime.models import provider_web_search
+    from coscribe.runtime.models import web_search as web_search_table
+
+    model_catalog._catalog.cache_clear()
+    providers = json.loads(model_catalog.CATALOG_PATH.read_text(encoding="utf-8"))["providers"]
+    rows = json.loads(web_search_table.WEB_SEARCH_PATH.read_text(encoding="utf-8"))["providers"]
+    for pid, row in rows.items():
+        assert pid in providers, f"web search row for a provider the catalog lacks: {pid}"
+        assert row["source"].startswith("https://") and row["checked"]
+        assert row["kind"] == "search_api" and row["search"].startswith("/")
+
+    info = provider_web_search("my deepseek", "https://api.deepseek.com/v1")
+    assert info is not None and info.provider == "deepseek" and info.search == "/v1/tools/search"
+    assert provider_web_search("anthropic") is None
+    assert provider_web_search("local", "http://localhost:11434/v1") is None
+
+
+def test_the_web_search_source_check_names_what_a_source_stopped_saying() -> None:
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "check_web_search_sources.py"
+    spec = importlib.util.spec_from_file_location("check_web_search_sources", path)
+    assert spec is not None and spec.loader is not None
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+
+    rows = json.loads(check.TABLE_PATH.read_text(encoding="utf-8"))["providers"]
+    assert all(row["expect"] for row in rows.values())
+    pages = {"https://a.example/doc": "POST /v1/tools/search, $0.75"}
+
+    def fetch(url: str) -> str:
+        if url not in pages:
+            raise OSError("404")
+        return pages[url]
+
+    table = {
+        "a": {"source": "https://a.example/doc", "expect": ["/v1/tools/search", "/v1/tools/fetch"]},
+        "b": {"source": "https://b.example/doc", "expect": ["x"]},
+    }
+    assert check.findings(table, fetch) == [
+        "- `a`: https://a.example/doc no longer says `/v1/tools/fetch`",
+        "- `b`: couldn't read https://b.example/doc (404)",
+    ]
+    assert check.findings({"a": table["a"] | {"expect": ["$0.75"]}}, fetch) == []

@@ -1,7 +1,7 @@
 import { asksThePerson } from "../state/folderAccess";
 import type { LogItem } from "../state/reducer";
 import type { TurnEntry } from "./taskCard";
-import { activityOf, blockedWriteOf, groupHasPendingApproval, isRunning, type ToolRunGroup, type Turn } from "./transcriptGrouping";
+import { activityOf, blockedWriteOf, groupHasPendingApproval, isRunning, type ConversationActivity, type ToolRunGroup, type Turn } from "./transcriptGrouping";
 
 /** The simple conversation view (Settings > General > Appearance) draws a turn without its tool
  * rows and in-between narration: the cards a person answers or reads stay, a running turn shows
@@ -35,7 +35,7 @@ export function onlyPendingApprovals(group: ToolRunGroup): ToolRunGroup {
 }
 
 /** The status line's words: the latest running call's activity, or Thinking between calls. */
-export function currentActivity(items: LogItem[], connectorTools: ReadonlySet<string>): string {
+export function currentActivity(items: LogItem[], connectorTools: ReadonlySet<string>): ConversationActivity {
   const running = items.findLast(
     (item): item is Extract<LogItem, { kind: "tool" | "approval" }> =>
       (item.kind === "tool" || item.kind === "approval") && isRunning(item, true),

@@ -52,7 +52,8 @@ For a new person and their own Claude Code or Codex session. The rules live in
 
 The maintainer reviews and squash-merges when the checks are green. Sessions never merge,
 enable auto-merge or push to `main`. A change to an invariant path also needs a review by a
-separate session, posted on the PR with `/code-review <PR> --comment`.
+separate session, posted on the PR as a GitHub review (`/code-review <PR> --comment`); the
+`independent-review` job of `PR text` fails until the description links it.
 
 ## A red ratchet
 

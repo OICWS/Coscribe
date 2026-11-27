@@ -9,6 +9,10 @@ name: Model catalog
 # run only when the repository has a `MODEL_CATALOG_TOKEN` secret (a token that may push and open
 # pull requests); without it the maintainer starts them, e.g. by pushing to the branch. Run by a
 # pull request that changes this job, it only prints.
+#
+# The web search table beside it (`web_search.json`) has no upstream to copy, so the same run
+# checks each row's source page still says what the row relies on, and opens an issue (or
+# updates the open one) when one doesn't.
 "on":
   schedule:
     - cron: "23 4 1,15 * *"
@@ -18,6 +22,8 @@ name: Model catalog
       - ".github/workflows/model-catalog.yml"
       - "office-agent/scripts/update_model_catalog.py"
       - "office-agent/src/coscribe/runtime/models/catalog.py"
+      - "office-agent/scripts/check_web_search_sources.py"
+      - "office-agent/src/coscribe/runtime/models/web_search.json"
 
 concurrency:
   group: model-catalog-${{ github.event_name }}-${{ github.ref }}
@@ -26,6 +32,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   refresh:
@@ -42,6 +49,24 @@ jobs:
           python-version: "3.11"
       - name: Refresh the catalog
         run: python office-agent/scripts/update_model_catalog.py --summary "$RUNNER_TEMP/changes.md"
+      - name: Check the web search table against its sources
+        run: python office-agent/scripts/check_web_search_sources.py --summary "$RUNNER_TEMP/web_search.md"
+      - name: Open or update the web search issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f "$RUNNER_TEMP/web_search.md" ]; then
+            echo "Every row matches its source."
+            exit 0
+          fi
+          title="[runtime] The web search table no longer matches a source"
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$RUNNER_TEMP/web_search.md"
+          else
+            gh issue create --title "$title" --body-file "$RUNNER_TEMP/web_search.md"
+          fi
       - name: Open or update the pull request
         if: github.event_name != 'pull_request'
         env:
