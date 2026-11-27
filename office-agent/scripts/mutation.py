@@ -5,7 +5,8 @@
     python scripts/mutation.py run KEY --out DIR          mutate one module, write DIR/KEY.json
                                                           and DIR/KEY-survivors.txt
     python scripts/mutation.py summary DIR                a markdown table of every DIR/*.json
-    python scripts/mutation.py changed --base SHA --out DIR
+    python scripts/mutation.py changed-list --base SHA    the modules to run, as JSON
+    python scripts/mutation.py changed --base SHA --out DIR [--module PATH]
                                                           mutate only the functions a pull request
                                                           changed, with the tests that reach them
 
@@ -266,12 +267,10 @@ def _git(*args: str) -> str:
     ).stdout
 
 
-def changed(base: str, out: Path) -> int:
-    """Mutate the functions this checkout changed since `base`; a report, like `run`."""
+def _changed_modules(base: str) -> list[tuple[str, list[str], list[str]]]:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import ci_scope
 
-    out.mkdir(parents=True, exist_ok=True)
     paths = _git("diff", "--name-only", "--diff-filter=AM", base, "--", PACKAGE).split()
     graph = ci_scope.Graph.build(ROOT)
     picked = []
@@ -282,11 +281,24 @@ def changed(base: str, out: Path) -> int:
         tests = _own_tests(graph, ci_scope, path)
         if prefixes and tests:
             picked.append((rel.removeprefix(PACKAGE + "/"), prefixes, tests))
+    return picked
+
+
+def changed(base: str, out: Path, only_module: str | None = None) -> int:
+    """Mutate the functions this checkout changed since `base`; a report, like `run`."""
+    out.mkdir(parents=True, exist_ok=True)
+    picked = _changed_modules(base)
+    selected = picked[:CHANGED_MODULES]
+    if only_module is not None:
+        selected = [item for item in selected if item[0] == only_module]
+        if not selected:
+            print(f"Module is outside the selected changes: {only_module}", file=sys.stderr)
+            return 1
     notes = [f"Changed modules with changed functions: {len(picked)}"]
     if len(picked) > CHANGED_MODULES:
         notes.append(f"Only the first {CHANGED_MODULES} were mutated.")
     status = 0
-    for module, prefixes, tests in picked[:CHANGED_MODULES]:
+    for module, prefixes, tests in selected:
         key = module.removesuffix(".py").replace("/", ".")
         dotted = "coscribe." + key
         with tempfile.TemporaryDirectory(prefix="mutation-changed-") as tmp:
@@ -353,9 +365,14 @@ def summary(directory: Path) -> str:
         f"| **Total** | {totals['mutants']} | {totals['killed']} | {totals['survived']} "
         f"| {totals['timeout']} | {totals['no_tests']} |"
     )
-    notes = directory / "notes.txt"
-    if notes.is_file():  # a pull request's `changed` run, which has no fixed module list
-        lines += ["", *notes.read_text(encoding="utf-8").splitlines()]
+    note_files = sorted(directory.glob("**/notes.txt"))
+    if note_files:  # a pull request's `changed` run, which has no fixed module list
+        notes = dict.fromkeys(
+            note
+            for path in note_files
+            for note in path.read_text(encoding="utf-8").splitlines()
+        )
+        lines += ["", *notes]
         return "\n".join(lines) + "\n"
     missing = sorted(set(MODULES) - {p.stem for p in rows})
     if missing:
@@ -378,17 +395,24 @@ def main() -> int:
     run_parser.add_argument("--out", type=Path, required=True)
     summary_parser = sub.add_parser("summary")
     summary_parser.add_argument("directory", type=Path)
+    changed_list_parser = sub.add_parser("changed-list")
+    changed_list_parser.add_argument("--base", required=True)
     changed_parser = sub.add_parser("changed")
     changed_parser.add_argument("--base", required=True)
     changed_parser.add_argument("--out", type=Path, required=True)
+    changed_parser.add_argument("--module")
     args = parser.parse_args()
     if args.command == "list":
         print("\n".join(MODULES))
         return 0
     if args.command == "run":
         return run(args.key, args.out)
+    if args.command == "changed-list":
+        selected = _changed_modules(args.base)[:CHANGED_MODULES]
+        print(json.dumps([module for module, _, _ in selected]))
+        return 0
     if args.command == "changed":
-        return changed(args.base, args.out)
+        return changed(args.base, args.out, args.module)
     sys.stdout.write(summary(args.directory))
     return 0
 
