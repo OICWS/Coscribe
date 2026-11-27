@@ -90,7 +90,7 @@ test("a PDF opens with all pages and a Word document opens its paginated preview
   await docx.click();
   const word = page.getByRole("dialog", { name: "sample.docx" });
   await expect(word.getByText("Page 1 of 2", { exact: true })).toBeVisible();
-  await word.getByRole("button", { name: "Next page" }).click();
+  await word.getByRole("region", { name: "Page 2" }).scrollIntoViewIfNeeded();
   await expect(word.getByText("Page 2 of 2", { exact: true })).toBeVisible();
   await word.getByRole("combobox", { name: "Zoom" }).selectOption("125");
   await page.keyboard.press("Escape");
@@ -128,7 +128,7 @@ test("a Word preview follows an atomic save and keeps its page and zoom", async 
   const dialog = page.getByRole("dialog");
   const zoom = dialog.getByRole("combobox", { name: "Zoom" });
   await zoom.selectOption("125");
-  await dialog.getByRole("button", { name: "Next page" }).click();
+  await dialog.getByRole("region", { name: "Page 2" }).scrollIntoViewIfNeeded();
   await expect(dialog.getByText("Page 2 of 2", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Refresh" })).toHaveCount(0);
   try {

@@ -44,6 +44,17 @@ test("reads a workbook attachment and a generated workbook in the side panel", a
   await expect(grid.locator("[contenteditable]")).toHaveCount(0);
   await grid.press("ArrowDown");
   await expect(formula).toHaveValue("=ROUND(C4*D4*(1+E4),2)");
+  // The row numbers and column letters are in place on the same frame as the scroll, not one
+  // render later: measured synchronously after the scroll, before React can respond to it.
+  const offsets = await grid.evaluate((node) => {
+    node.scrollLeft = 160;
+    node.scrollTop = 120;
+    const box = node.getBoundingClientRect();
+    const row = node.querySelector('[role="rowheader"]')!.getBoundingClientRect();
+    const column = node.querySelector('[role="columnheader"]')!.getBoundingClientRect();
+    return [row.left - box.left, column.top - box.top];
+  });
+  expect(offsets).toEqual([0, 0]);
   await dialog.getByRole("button", { name: "供应商汇总" }).click();
   await expect(dialog.getByRole("figure", { name: "供应商含税报价" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
@@ -53,6 +64,6 @@ test("reads a workbook attachment and a generated workbook in the side panel", a
   await page.getByTitle(`Preview ${name}`).click();
   const preview = page.getByRole("region", { name: "Excel preview" });
   await expect(preview.getByRole("grid")).toBeVisible();
-  await expect(preview.getByText("Read-only")).toBeVisible();
+  await expect(preview.getByText("Read-only")).toHaveCount(0);
   expect(hash()).toBe(before);
 });
