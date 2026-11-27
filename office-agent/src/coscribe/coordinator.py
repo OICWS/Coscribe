@@ -15,7 +15,13 @@ from functools import partial
 from pathlib import Path
 
 from .config import Settings
-from .runtime import Agent, Environments, NetworkGuard, SessionEnvironments
+from .runtime import (
+    Agent,
+    Environments,
+    NetworkGuard,
+    SessionEnvironments,
+    load_custom_providers,
+)
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
     ConversationSource,
@@ -547,6 +553,11 @@ def _thread_folders(settings: Settings, thread_id: str) -> tuple[list[Path], ...
     )
 
 
+def _custom_providers(settings: Settings) -> dict[str, dict[str, str]]:
+    path = settings.providers_config_path
+    return load_custom_providers(path) if path is not None else {}
+
+
 def build_coordinator_agent(
     settings: Settings,
     thread_id: str,
@@ -630,7 +641,7 @@ def build_coordinator_agent(
         + build_design_system_tools(settings.state_dir, root, extra_readable)
         + build_selfwake_tools(thread_id, settings.state_dir)
         + build_scheduled_task_tools(settings.state_dir, thread_id)
-        + build_websearch_tools(network)
+        + build_websearch_tools(network, partial(_custom_providers, settings))
         + build_script_tools(
             root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
             session_env=session_env, detachable=detachable,

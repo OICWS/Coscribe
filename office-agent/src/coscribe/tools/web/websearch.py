@@ -4,23 +4,9 @@ from search_files/search_pdf (which search *local* workspace content) and
 not a RAG/document-retrieval system: this queries the open web directly
 through a search engine, no local index or embedding store involved.
 
-Uses the standalone ``ddgs`` package (not langchain_community's
-DuckDuckGoSearchRun, which is now considered legacy in favor of this
-library) directly, the same "write our own thin tool function" pattern
-every other built-in tool in this package already follows rather than
-pulling in a prebuilt LangChain community tool wrapper wholesale.
-
-Uses ddgs's own "auto" backend selection (the default -- not pinned to a
-single engine) rather than forcing DuckDuckGo specifically: "auto" queries
-several free, no-API-key engines in parallel (duckduckgo, brave, google,
-mojeek, startpage, wikipedia, yahoo, yandex -- confirmed via
-`ddgs.engines.ENGINES["text"]`, none need a key) and returns whichever
-results come back, so one engine's own anti-bot response doesn't fail the
-whole call. Live-reported, not hypothetical: a real run returned DuckDuckGo's
-`html.duckduckgo.com/html/` responding HTTP 202 (a soft anti-bot block, not
-a real result page) -- previously pinning `backend="duckduckgo"` meant that
-single soft-block emptied the whole search; "auto" is the documented
-escape hatch for exactly this, not a fallback that needs building later.
+Uses the standalone ``ddgs`` package's free, no-key engines, each asked on its own and all at
+once (`_search.py`), rather than its "auto" mode, which asks them two at a time and waits out each
+unreachable one's timeout in turn.
 """
 
 from __future__ import annotations
@@ -30,29 +16,16 @@ import re
 import time
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
-from ddgs import DDGS
-from ddgs.exceptions import DDGSException
 
-from ...runtime import NetworkGuard, configured_proxy, tool_metadata
+from ...runtime import NetworkGuard, configured_proxy, tool_metadata, without_credentials
+from . import _search
 from ._network import online_only, request_hooks
-
-# `from ddgs import DDGS` above is actually `ddgs`'s own `_DDGSProxy` (a
-# lazy-loading metaclass-based stand-in, see ddgs/__init__.py) -- calling
-# it dispatches to the real `ddgs.ddgs.DDGS` class, imported on first use.
-# Harmless for real calls, but means tests/test_websearch_tool.py has to
-# monkeypatch "ddgs.ddgs.DDGS.text" (the real class), not
-# "coscribe.tools.websearch.DDGS.text" (the proxy) -- confirmed the
-# hard way when the "obvious" patch target silently made a real network
-# call instead of using the fake.
+from ._provider_search import CustomProviders, ProviderSearchError, provider_search
 
 DEFAULT_MAX_RESULTS = 5
-# The free engines fail a query now and then ("No results found." when
-# every engine they tried came back empty or blocked) and answer it on a
-# second try moments later. Retried here, a failure costs a second or two;
-# handed back, the model spends a whole step rewording a query that was fine.
-_SEARCH_ATTEMPTS = 3
 _SEARCH_RETRY_SECONDS = 1.5
 
 
@@ -67,18 +40,39 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[
         query: what to search for
         max_results: how many results to return (default 5)
     """
-    # DDGS's constructor takes its own proxy= kwarg -- separate from the
-    # DDGS_PROXY env var its docs mention, which a typical corporate
-    # .env/HTTP_PROXY setup won't have. configured_proxy() forwards the
-    # standard HTTP_PROXY/HTTPS_PROXY instead (see runtime/proxy.py).
-    for attempt in range(_SEARCH_ATTEMPTS):
+    return _web_search(query, max_results, None)
+
+
+def _web_search(
+    query: str, max_results: int, custom_providers: CustomProviders | None
+) -> list[dict[str, str]]:
+    try:
+        results = _free_search(query, max_results)
+    except (_search.SearchUnreachableError, _search.SearchEmptyError) as exc:
+        # Looked up only now: the settings and the keychain aren't read while the engines answer.
         try:
-            results = DDGS(proxy=configured_proxy()).text(query, max_results=max_results)
-            break
-        except DDGSException:
-            if attempt == _SEARCH_ATTEMPTS - 1:
+            provider = provider_search(custom_providers)
+        except ProviderSearchError as failure:
+            raise type(exc)(f"{exc} {failure}") from failure
+        if provider is None:
+            if isinstance(exc, _search.SearchEmptyError):
+                # Engines turn a query away now and then and answer it moments later.
+                time.sleep(_SEARCH_RETRY_SECONDS)
+                results = _free_search(query, max_results)
+            else:
                 raise
-            time.sleep(_SEARCH_RETRY_SECONDS)
+        else:
+            # A query the engines turned away goes to the provider at once: Collins's rule is the
+            # provider whenever the free engines fail, and a retry would cost the person seconds.
+            try:
+                found = provider.search(query, max_results)
+            except ProviderSearchError as failure:
+                raise type(exc)(
+                    f"{exc} Searching through {provider.name} failed too: {failure}"
+                ) from failure
+            if not found:
+                raise type(exc)(f"{exc} {provider.name} found nothing either.") from exc
+            return found[:max_results]
     return [
         {
             "title": str(result.get("title", "")),
@@ -89,8 +83,15 @@ def web_search(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[
     ]
 
 
+def _free_search(query: str, max_results: int) -> list[dict[str, Any]]:
+    # ddgs reads only its own proxy= argument (or DDGS_PROXY), not HTTP(S)_PROXY or Windows'
+    # setting, so the proxy is looked up here.
+    return _search.search(query, max_results, configured_proxy())
+
+
 DEFAULT_PAGE_CHARS = 20_000
-_PAGE_TIMEOUT_SECONDS = 20.0
+# A site that answers at all connects within seconds; the longer read timeout is for slow pages.
+_PAGE_TIMEOUT = httpx.Timeout(20.0, connect=6.0)
 # Page chrome that isn't the content, dropped before converting.
 _CHROME_TAGS = ("script", "style", "noscript", "svg", "nav", "footer", "header", "aside", "form")
 _USER_AGENT = "Mozilla/5.0 (compatible; coscribe)"
@@ -112,6 +113,22 @@ def _page_text(html: str) -> tuple[str, str]:
     return title, re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+def _unreachable_page(url: str, proxy: str | None, exc: Exception) -> str:
+    host = urlsplit(url).hostname or url
+    reason = "timed out" if isinstance(exc, httpx.TimeoutException) else f"failed ({exc})"
+    if proxy:
+        return (
+            f"Couldn't connect to {host} through the proxy {without_credentials(proxy)}: the "
+            f"connection {reason}. The proxy may be down or unable to reach this site; the "
+            "browser may still open it, if one is connected."
+        )
+    return (
+        f"Couldn't connect to {host}: the connection {reason}. This network may block the site; "
+        "the browser may still open it, if one is connected. A proxy goes in Settings > General "
+        "> Proxy."
+    )
+
+
 def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS) -> dict[str, Any]:
     """Read a web page's text, as markdown -- an article, documentation, a
     result from web_search. For a page you need to log in to, click
@@ -124,22 +141,65 @@ def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS)
             call's next_start
         max_chars: how much text to return at most (default 20000)
     """
-    return _read_web_page(url, start, max_chars, None)
+    return _read_web_page(url, start, max_chars, None, None)
 
 
 def _read_web_page(
-    url: str, start: int, max_chars: int, network: NetworkGuard | None
+    url: str,
+    start: int,
+    max_chars: int,
+    network: NetworkGuard | None,
+    custom_providers: CustomProviders | None,
 ) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         raise ValueError(f"{url!r} isn't an http(s) address")
+    try:
+        response_url, title, text = _fetch_directly(url, network)
+    except ConnectionError as exc:
+        # The provider fetches on its own servers, where a redirect can't be checked against a
+        # conversation's site list, so a limited conversation doesn't use it.
+        if network is not None and network.sites() is not None:
+            raise
+        try:
+            provider = provider_search(custom_providers)
+        except ProviderSearchError as failure:
+            raise ConnectionError(f"{exc} {failure}") from failure
+        if provider is None:
+            raise
+        try:
+            title, text = provider.fetch(url)
+        except ProviderSearchError as failure:
+            raise ConnectionError(
+                f"{exc} Reading it through {provider.name} failed too: {failure}"
+            ) from failure
+        response_url = url
+    chunk = text[start : start + max_chars]
+    end = start + len(chunk)
+    return {
+        "url": response_url,
+        "title": title,
+        "content": chunk,
+        "total_chars": len(text),
+        "next_start": end if end < len(text) else None,
+    }
+
+
+def _fetch_directly(url: str, network: NetworkGuard | None) -> tuple[str, str, str]:
+    """(the final URL, title, text)."""
+    proxy = configured_proxy(url)
     with httpx.Client(
-        proxy=configured_proxy(url),
+        proxy=proxy,
         follow_redirects=True,
-        timeout=_PAGE_TIMEOUT_SECONDS,
+        timeout=_PAGE_TIMEOUT,
         headers={"User-Agent": _USER_AGENT},
         event_hooks=request_hooks(network),
     ) as client:
-        response = client.get(url)
+        try:
+            response = client.get(url)
+        # A proxy that takes the connection and never answers its CONNECT ends in a read
+        # timeout, so every timeout counts as the page being out of reach.
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.ProxyError) as exc:
+            raise ConnectionError(_unreachable_page(url, proxy, exc)) from exc
     response.raise_for_status()
     content_type = response.headers.get("content-type", "").lower()
     if "html" in content_type or not content_type:
@@ -150,27 +210,27 @@ def _read_web_page(
         raise ValueError(
             f"{url} is {content_type.split(';')[0]}, not a page to read -- download it instead"
         )
-    chunk = text[start : start + max_chars]
-    end = start + len(chunk)
-    return {
-        "url": str(response.url),
-        "title": title,
-        "content": chunk,
-        "total_chars": len(text),
-        "next_start": end if end < len(text) else None,
-    }
+    return str(response.url), title, text
 
 
-def build_websearch_tools(network: NetworkGuard | None = None) -> list[Callable[..., Any]]:
-    """`network`: the conversation's setting, checked at each call and at each redirect."""
+def build_websearch_tools(
+    network: NetworkGuard | None = None, custom_providers: CustomProviders | None = None
+) -> list[Callable[..., Any]]:
+    """`network`: the conversation's setting, checked at each call and at each redirect.
+    `custom_providers`: the person's model providers; one with a search of its own is asked when
+    the free engines fail, and for a page that can't be reached directly."""
+
+    @functools.wraps(web_search)
+    def web_search_with(query: str, max_results: int = DEFAULT_MAX_RESULTS) -> list[dict[str, str]]:
+        return _web_search(query, max_results, custom_providers)
 
     @functools.wraps(read_web_page)
     def read_web_page_within(
         url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS
     ) -> dict[str, Any]:
-        return _read_web_page(url, start, max_chars, network)
+        return _read_web_page(url, start, max_chars, network, custom_providers)
 
     return [
-        tool_metadata(online_only(web_search, network), risk_category="READ", category="web"),
+        tool_metadata(online_only(web_search_with, network), risk_category="READ", category="web"),
         tool_metadata(read_web_page_within, risk_category="READ", category="web"),
     ]

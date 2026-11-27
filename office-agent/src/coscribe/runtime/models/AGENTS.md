@@ -5,12 +5,14 @@ Owns the model catalog of decision 0055: `catalog.json`, a trimmed copy of model
 written by `scripts/update_model_catalog.py`; `overrides.json`, the rows found wrong there, each
 with a source and a date; and `catalog.py`, which finds a coscribe provider's models.dev provider
 by its base URL or built-in name and answers a model's capabilities (input kinds such as images,
-reasoning, effort levels, tools, window, output limit, kind). Does not own the
+reasoning, effort levels, tools, window, output limit, kind); and `web_search.json` with
+`web_search.py`, which providers can search the web with the person's own key (models.dev has no
+such field), each row with a source and a date. Does not own the
 provider settings (`runtime/provider_config.py`, `web/`) or how a chat model is built
 (`runtime_lg/`).
 
 ## Public interface
-`ModelInfo`, `model_info`, `catalog_provider`. Import them from `coscribe.runtime.models`.
+`ModelInfo`, `model_info`, `catalog_provider`, `WebSearchInfo`, `provider_web_search`. Import them from `coscribe.runtime.models`.
 
 ## Depends on
 No other coscribe package.
@@ -22,6 +24,9 @@ No other coscribe package.
 - Nothing is guessed: a provider or model the catalog doesn't list has no `ModelInfo`, and the
   caller uses the conservative default (no images, no effort setting).
 - An override names a model the catalog lists (`tests/test_model_catalog.py`).
+- A web search row names a catalog provider, its source and the phrases that source must still
+  say; the same scheduled job checks them (`scripts/check_web_search_sources.py`) and opens an
+  issue when one is gone, never changing the table itself.
 
 ## Tests
 `tests/test_model_catalog.py`.
