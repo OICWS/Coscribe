@@ -359,6 +359,9 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
                 "base_url": base_url,
                 "default_model": entry.get("default_model", ""),
                 "models": [model_row(m, name, base_url) for m in custom_models(entry)],
+                **{
+                    field: entry[field] for field in ("api_format", "api_version") if field in entry
+                },
                 "masked_key": _mask(api_key) if api_key else None,
                 "builtin": False,
             }

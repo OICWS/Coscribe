@@ -157,7 +157,6 @@ layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/office/pptx/AGENTS.md"
 ignore_imports = [
-    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
     "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
 ]
 

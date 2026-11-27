@@ -75,6 +75,12 @@ C4 '=SUM(C2:C3)' -> 1 | fmt='0.0%' italic font=Calibri,11.0
           <tx>
             <strRef>
               <f>'Sales'!B1</f>
+              <strCache>
+                <ptCount val="1"/>
+                <pt idx="0">
+                  <v>Revenue</v>
+                </pt>
+              </strCache>
             </strRef>
           </tx>
           <spPr>
@@ -94,13 +100,31 @@ C4 '=SUM(C2:C3)' -> 1 | fmt='0.0%' italic font=Calibri,11.0
             </spPr>
           </marker>
           <cat>
-            <numRef>
+            <strRef>
               <f>'Sales'!$A$2:$A$3</f>
-            </numRef>
+              <strCache>
+                <ptCount val="2"/>
+                <pt idx="0">
+                  <v>North</v>
+                </pt>
+                <pt idx="1">
+                  <v>South</v>
+                </pt>
+              </strCache>
+            </strRef>
           </cat>
           <val>
             <numRef>
               <f>'Sales'!$B$2:$B$3</f>
+              <numCache>
+                <ptCount val="2"/>
+                <pt idx="0">
+                  <v>1200</v>
+                </pt>
+                <pt idx="1">
+                  <v>800.5</v>
+                </pt>
+              </numCache>
             </numRef>
           </val>
         </ser>

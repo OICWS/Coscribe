@@ -878,6 +878,22 @@
       },
       "ProviderModelsRequest": {
         "properties": {
+          "api_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "chat_completions",
+                  "responses",
+                  "azure"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Format"
+          },
           "api_key": {
             "default": "",
             "title": "Api Key",
@@ -897,11 +913,107 @@
         "title": "ProviderModelsRequest",
         "type": "object"
       },
+      "ProviderTestRequest": {
+        "properties": {
+          "api_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "chat_completions",
+                  "responses",
+                  "azure"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Format"
+          },
+          "api_key": {
+            "default": "",
+            "title": "Api Key",
+            "type": "string"
+          },
+          "api_version": {
+            "default": "",
+            "title": "Api Version",
+            "type": "string"
+          },
+          "base_url": {
+            "default": "",
+            "title": "Base Url",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "ProviderTestRequest",
+        "type": "object"
+      },
+      "ProviderTestResult": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ProviderTestResult",
+        "type": "object"
+      },
       "ProviderUpdate": {
         "properties": {
+          "api_format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "chat_completions",
+                  "responses",
+                  "azure"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Format"
+          },
           "api_key": {
             "title": "Api Key",
             "type": "string"
+          },
+          "api_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Version"
           },
           "base_url": {
             "default": "",
@@ -4492,6 +4604,44 @@
           }
         },
         "summary": "Get Provider Models"
+      }
+    },
+    "/api/providers/test": {
+      "post": {
+        "operationId": "run_provider_test_api_providers_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Provider Test"
       }
     },
     "/api/providers/{name}": {

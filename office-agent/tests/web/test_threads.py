@@ -1,7 +1,6 @@
 # ruff: noqa: E402
 """Web tests: listing, grouping, renaming, deleting and naming threads."""
 
-import time
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +43,9 @@ def test_closed_outputs_survive_restart_and_other_metadata_updates(
 def test_threads_can_be_grouped_archived_and_their_groups_renamed_and_deleted_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="hi"), AIMessage(content="welcome back")]
+    )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         with client.websocket_connect("/ws/g1") as ws:
             ws.receive_json()
@@ -58,12 +59,9 @@ def test_threads_can_be_grouped_archived_and_their_groups_renamed_and_deleted_lg
         with client.websocket_connect("/ws/g1") as ws:
             ws.receive_json()
             ws.receive_json()
-            # No more scripted replies: the message only has to reach the turn.
             ws.send_json({"type": "user_message", "text": "again"})
-            for _ in range(40):
-                if not ThreadMetaStore(tmp_path / "state").get("g1")["archived"]:
-                    break
-                time.sleep(0.05)
+            # Polling the file could hold it open while Windows replaces it.
+            _receive_until(ws, "tasks_changed")
         revived = ThreadMetaStore(tmp_path / "state").get("g1")["archived"]
         client.post("/api/threads/g1/meta", json={"archived": True})
         listed = {t["thread_id"]: t for t in client.get("/api/threads").json()}

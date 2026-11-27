@@ -14,7 +14,18 @@ export function formProblem(form: ProviderForm, catalog: ProviderCatalogEntry[],
   if (!name) return "Name cannot be blank.";
   if (!form.apiKey.trim() && !hasSavedKey) return "API key cannot be blank.";
   if (!findEntry(catalog, name)?.builtin && !form.baseUrl.trim()) return "Base URL cannot be blank.";
+  if (form.apiFormat === "azure" && !form.apiVersion?.trim()) return "Enter the Azure API version.";
   // The model picker offers only the models turned on.
   if (form.models.length === 0) return "Turn on at least one model.";
   return null;
+}
+
+export function providerConnection(form: ProviderForm) {
+  return {
+    name: form.name.trim(),
+    base_url: form.baseUrl.trim(),
+    api_key: form.apiKey.trim(),
+    api_format: form.apiFormat,
+    api_version: form.apiVersion?.trim(),
+  };
 }

@@ -88,8 +88,8 @@ Then write `design.md` in the pages folder, short, with exactly these parts:
   its job. The accent marks the key figure only.
 - **Type**: the families by role, from fonts every Windows PC has: Chinese titles SimSun (serif,
   authority) or Microsoft YaHei / SimHei (sans); Chinese body Microsoft YaHei or DengXian; Latin
-  and figures Cambria, Georgia or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans);
-  Consolas for code. At most three families. A text sets its own `font-family`
+  and figures Cambria or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans), not Georgia
+  (its digits rise and drop, so amounts look misaligned); Consolas for code. At most three families. A text sets its own `font-family`
   ("SimSun, Cambria") when it differs from the root's. Sizes in px: display 56-80, title 36-44,
   lead 24-28, body as talk or read sets it, annotation 16-18 (14-16 when read), source line
   13-14.
@@ -229,6 +229,8 @@ its data in PowerPoint, and its JSON is shorter than drawing it. The group holds
   sit below the plot instead of on the bars.
 - The text above the chart says the finding with its figure ("位置便利占 41%，居首"), not the
   axis: the reader, and the checks, read the figure there.
+- The preview draws a chart or table from its data, as PowerPoint will; a labelled box in its
+  place is still in the deck. Fix it in its JSON, never by drawing it again as shapes.
 
 ```xml
 <g id="regions" data-pptx-replace-with="table"><metadata type="application/json">

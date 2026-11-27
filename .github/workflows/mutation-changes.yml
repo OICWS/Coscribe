@@ -26,9 +26,31 @@ defaults:
     working-directory: office-agent
 
 jobs:
-  mutate:
+  changed-modules:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 5
+    outputs:
+      modules: ${{ steps.select.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          modules="$(python3 scripts/mutation.py changed-list --base "$(git merge-base "$BASE_SHA" HEAD)")"
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
+
+  mutate:
+    needs: changed-modules
+    if: needs.changed-modules.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.changed-modules.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,9 +77,10 @@ jobs:
       - name: Mutate the changed functions
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MODULE: ${{ matrix.module }}
         run: |
           python scripts/mutation.py changed --base "$(git merge-base "$BASE_SHA" HEAD)" \
-            --out mutation-results
+            --module "$MODULE" --out mutation-results
 
       - name: Table
         if: always()
@@ -66,5 +89,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mutation-changes
+          name: mutation-changes-${{ strategy.job-index }}
           path: office-agent/mutation-results/
+
+  summary:
+    needs: [changed-modules, mutate]
+    if: always() && needs.changed-modules.result == 'success' && needs.changed-modules.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-changes-*
+          path: office-agent/mutation-results
+      - name: Combined table
+        run: python3 scripts/mutation.py summary mutation-results >> "$GITHUB_STEP_SUMMARY"

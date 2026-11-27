@@ -306,6 +306,9 @@ class TaskMemoryUpdate(BaseModel):
     value: Any = None
 
 
+ProviderFormat = Literal["chat_completions", "responses", "azure"]
+
+
 class ProviderUpdate(BaseModel):
     name: str
     # Blank for a built-in (anthropic/openai/gemini) -- their SDKs don't take
@@ -315,6 +318,8 @@ class ProviderUpdate(BaseModel):
     default_model: str = ""
     # The models turned on; blank with a blank default_model keeps the saved ones.
     models: list[str] = []
+    api_format: ProviderFormat | None = None
+    api_version: str | None = None
 
 
 class ProviderModelsRequest(BaseModel):
@@ -322,6 +327,16 @@ class ProviderModelsRequest(BaseModel):
     base_url: str = ""
     # Blank uses the key already saved for `name`.
     api_key: str = ""
+    api_format: ProviderFormat | None = None
+
+
+class ProviderTestRequest(ProviderModelsRequest):
+    model: str
+    api_version: str = ""
+
+
+class ProviderTestResult(BaseModel):
+    error: str | None
 
 
 class ProxyUpdate(BaseModel):

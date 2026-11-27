@@ -49,6 +49,14 @@ refuses.
   sheet in green (`008000`).
 - **Charts**: a chart where a trend or a comparison is the point, with a title, anchored
   beside its table (two columns right of it), never over cells that hold data.
+  - A chart in a workbook is always a native one, from `modify_xlsx`'s `chart` op, so the
+    person can edit it and it follows the data. It is never a picture drawn in a script and
+    inserted, and never a chart a script writes with openpyxl.
+  - Its source is the table the person sees, such as each question's own rows for a chart per
+    question. Use a helper sheet only when the data must be reshaped first.
+  - A reference line (a mean, a target) is one more series of two points, so a quadrant chart
+    is a scatter chart with two such series.
+  - Many charts go in the same single `modify_xlsx` call.
 - **Columns** widen themselves to what they show; set a width only for a long label column.
 - **Print setup**: a report or a sheet with a chart is printed or sent as a PDF, so give it
   `{"op": "print", "sheet": ..., "landscape": true, "fit_width": 1}`, which keeps every column
