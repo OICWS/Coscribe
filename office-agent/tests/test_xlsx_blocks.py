@@ -395,6 +395,62 @@ def test_every_series_of_a_chart_gets_a_colour_so_none_is_drawn_invisibly(tmp_pa
     assert "1F4E79" in chart
 
 
+def test_a_chart_carries_its_values_for_a_reader_that_does_not_recalculate(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "Data", "kind": "pie", "source": "A1:B4", "at": "E2"}]
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        pie = archive.read("xl/charts/chart1.xml").decode()
+    assert "<numCache>" in pie and "<v>1500</v>" in pie and "<v>80</v>" in pie
+    assert "<strCache>" in pie and "<v>Rent</v>" in pie and "<v>Amount</v>" in pie
+
+
+def test_a_series_of_formulas_carries_no_values_it_cannot_know(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+    write_cells(path, [{"sheet": "Data", "at": "C1", "rows": [["Twice"]]}])
+    write_cells(path, [{"sheet": "Data", "at": "C2", "rows": [["=B2*2"]], "fill_down_to": 4}])
+
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "Data", "kind": "column", "source": "A1:C4", "at": "E2"}]
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert chart.count("<numCache>") == 1 and "<v>1500</v>" in chart
+    assert "<v>3000</v>" not in chart
+
+
+def test_a_chart_follows_its_cells_when_they_change_later(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "Data", "kind": "pie", "source": "A1:B4", "at": "E2"}]
+    )
+
+    write_cells(path, [{"sheet": "Data", "at": "B2", "rows": [[1600]]}], overwrite=True)
+    write_cells(path, [{"sheet": "Data", "at": "B3", "rows": [["=B2/5"]]}], overwrite=True)
+
+    with zipfile.ZipFile(path) as archive:
+        pie = archive.read("xl/charts/chart1.xml").decode()
+    assert "<v>1500</v>" not in pie and "<numCache>" not in pie
+
+
+def test_a_chart_on_a_sheet_with_an_apostrophe_in_its_name_is_made(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+    book = load_workbook(path)
+    book["Data"].title = "O'Brien"
+    book.save(path)
+
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "O'Brien", "kind": "pie", "source": "A1:B4", "at": "E2"}]
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        assert "<v>1500</v>" in archive.read("xl/charts/chart1.xml").decode()
+
+
 def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:
     from coscribe.tools.office.xlsx.toolkit import SpreadsheetToolkit
 
