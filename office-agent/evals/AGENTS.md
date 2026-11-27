@@ -5,9 +5,10 @@ about $8. How to run each eval is in `README.md`. This file covers how to keep t
 
 ## Ask first
 
-- Ask the maintainer before any run that is more than a handful of tasks. Say which tasks, how
-  many, and the expected cost. Use the cost per task of the last comparable run in
-  `evals/runs/*/summary.json`.
+- Estimate a run's cost before starting it, from the cost per task of the last comparable run in
+  `evals/runs/*/summary.json`. Under $1, run it and report the result. At $1 or more, or for a
+  full pass over a benchmark, ask the maintainer first: say which tasks, how many, and the
+  expected cost.
 - Use the model and effort of the baseline you compare against (`deepseek-flash`). Never switch
   to a larger model to "see if it helps": that is a different experiment and needs its own ask.
 
