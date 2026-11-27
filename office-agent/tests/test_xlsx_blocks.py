@@ -395,6 +395,34 @@ def test_every_series_of_a_chart_gets_a_colour_so_none_is_drawn_invisibly(tmp_pa
     assert "1F4E79" in chart
 
 
+def test_a_chart_carries_its_values_for_a_reader_that_does_not_recalculate(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "Data", "kind": "pie", "source": "A1:B4", "at": "E2"}]
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        pie = archive.read("xl/charts/chart1.xml").decode()
+    assert "<numCache>" in pie and "<v>1500</v>" in pie and "<v>80</v>" in pie
+    assert "<strCache>" in pie and "<v>Rent</v>" in pie and "<v>Amount</v>" in pie
+
+
+def test_a_series_of_formulas_carries_no_values_it_cannot_know(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+    write_cells(path, [{"sheet": "Data", "at": "C1", "rows": [["Twice"]]}])
+    write_cells(path, [{"sheet": "Data", "at": "C2", "rows": [["=B2*2"]], "fill_down_to": 4}])
+
+    modify_workbook(
+        path, [{"op": "chart", "sheet": "Data", "kind": "column", "source": "A1:C4", "at": "E2"}]
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert chart.count("<numCache>") == 1 and "<v>1500</v>" in chart
+    assert "<v>3000</v>" not in chart
+
+
 def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:
     from coscribe.tools.office.xlsx.toolkit import SpreadsheetToolkit
 

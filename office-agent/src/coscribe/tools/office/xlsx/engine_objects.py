@@ -139,6 +139,51 @@ def _chart_series(chart: Any, source: Worksheet, ref: str, kind: str) -> None:
     chart.set_categories(categories)
 
 
+def _cached(workbook: Workbook, formula: str) -> list[Any] | None:
+    """The values a chart reference names, or None when one is a formula (its value is not known
+    until the workbook is recalculated)."""
+    from openpyxl.utils.cell import range_to_tuple
+
+    name, (min_col, min_row, max_col, max_row) = range_to_tuple(formula)
+    sheet = workbook[name]
+    values = [
+        cell.value for row in sheet.iter_rows(min_row, max_row, min_col, max_col) for cell in row
+    ]
+    if any(isinstance(v, str) and v.startswith("=") for v in values):
+        return None
+    return values
+
+
+def _cache_series(workbook: Workbook, chart: Any) -> None:
+    """Write each series' values and labels into the chart itself, as Excel does. A program that
+    shows a chart without recalculating the workbook (a file preview, a web viewer, a checker
+    that reads the chart part) otherwise finds a chart with no data."""
+    from openpyxl.chart.data_source import NumData, NumVal, StrData, StrVal
+
+    def numbers(ref: Any) -> None:
+        values = _cached(workbook, ref.f) if ref is not None else None
+        if values is None or not all(isinstance(v, int | float) or v is None for v in values):
+            return
+        points = [NumVal(idx=i, v=v) for i, v in enumerate(values) if v is not None]
+        ref.numCache = NumData(pt=points, ptCount=len(values))
+
+    def labels(ref: Any) -> None:
+        values = _cached(workbook, ref.f) if ref is not None else None
+        if values is None:
+            return
+        points = [StrVal(idx=i, v=str(v)) for i, v in enumerate(values) if v is not None]
+        ref.strCache = StrData(pt=points, ptCount=len(values))
+
+    for series in chart.series:
+        for source in (series.val, series.yVal, series.xVal, series.cat):
+            if source is None:
+                continue
+            numbers(getattr(source, "numRef", None))
+            labels(getattr(source, "strRef", None))
+        if series.tx is not None:
+            labels(series.tx.strRef)
+
+
 def _colours(given: list[str], count: int) -> list[str]:
     """The caller's colours, then the palette from where they stop, repeating as needed."""
     rest = _PALETTE[len(given) % len(_PALETTE) :] + _PALETTE[: len(given) % len(_PALETTE)]
@@ -171,6 +216,7 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
     source_name, ref = _split_ref(op["source"], op["sheet"])
     chart = _chart_object(op["kind"], bool(op.get("stacked")), bool(op.get("labels")))
     _chart_series(chart, _sheet(workbook, source_name), ref, op["kind"])
+    _cache_series(workbook, chart)
     chart.title = op.get("title") or None
     if op["kind"] != "pie":
         chart.x_axis.title = op.get("x_title") or None
