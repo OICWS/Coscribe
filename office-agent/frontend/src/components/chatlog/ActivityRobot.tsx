@@ -3,7 +3,7 @@ import type { ConversationActivity } from "../../lib/transcriptGrouping";
 import { DEPARTED, GATHER, eyeAt, poseAt, smooth, wave } from "./activityRobotMotion";
 
 const DOTS = [19, 30, 41];
-const PULSE_PERIOD = 0.91;
+const PULSE_PERIOD = 1.1;
 const DOTS_DURATION = 2 * PULSE_PERIOD;
 const CYCLE = DOTS_DURATION + (DEPARTED - GATHER);
 

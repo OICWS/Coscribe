@@ -35,7 +35,7 @@ describe("activity robot poses", () => {
 
   it("searches in one sweep from lower left to lower right across entrances", () => {
     const phases = [1.35, 1.62, 1.94, 2.24, 2.57];
-    for (const entrance of [0, 4.52, 9.04]) {
+    for (const entrance of [0, 4.9, 9.8]) {
       const poses = phases.map((phase) => poseAt("Searching", phase, entrance + phase));
       expect(poses[0][0]).toBeLessThan(-0.25);
       expect(poses[poses.length - 1][0]).toBeGreaterThan(0.25);
