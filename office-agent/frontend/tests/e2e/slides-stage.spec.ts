@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { WORKSPACE, clickSlide, freshDeckName, openSectionDeck } from "./slides-helpers";
 
-// The Slides stage's scrollbars. Playwright's Chromium hides scrollbars by default, which would
-// hide what these cases are about, so this file runs with them.
+// The Slides stage's scrollbars, and the deck presented full screen. Playwright's Chromium hides
+// scrollbars by default, which would hide what the stage cases are about, so this file runs with them.
 test.skip(!WORKSPACE, "COSCRIBE_E2E_WORKSPACE names the server's workspace folder");
 test.use({
   viewport: { width: 1600, height: 1200 },
@@ -47,4 +47,40 @@ test("a press on the grey beside the slide clears the selection, a press on the 
     await page.mouse.click(box.x + 20, box.y + box.height - 60);
     await expect(selection).toHaveCount(0);
   });
+});
+
+test("presented full screen, the slide takes the whole height and the bar only shows near the bottom", async ({ page }) => {
+  await openSectionDeck(page, freshDeckName());
+  // A screen wider than the deck, so the slide's height is what the bar would take from.
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await page.getByRole("button", { name: "Present", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Present", exact: true }).click();
+  const presenter = page.getByRole("dialog", { name: "Presenting" });
+  await expect(presenter).toBeFocused();
+  await page.keyboard.press("f");
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.getAttribute("aria-label"))).toBe("Presenting");
+
+  const bar = presenter.locator("[data-presenter-bar]");
+  await page.mouse.move(800, 300);
+  await expect(bar).toHaveCSS("opacity", "0");
+  const slide = await presenter.locator("img").boundingBox();
+  expect(slide?.height).toBe(800);
+
+  await page.mouse.move(800, 780);
+  await expect(bar).toHaveCSS("opacity", "1");
+  await bar.getByRole("button", { name: "Next slide" }).click();
+  await expect(bar).toContainText("2 /");
+  expect((await presenter.locator("img").boundingBox())?.height).toBe(800);
+
+  // The button just clicked keeps the focus, but only a keyboard focus keeps the bar up.
+  await page.mouse.move(800, 300);
+  await expect(bar).toHaveCSS("opacity", "0");
+  await page.keyboard.press("Tab");
+  await expect(bar).toHaveCSS("opacity", "1");
+
+  // Out of full screen the bar sits under the slide again.
+  await page.keyboard.press("f");
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect(bar).toHaveCount(0);
+  await expect(presenter.getByRole("button", { name: "Next slide" })).toBeVisible();
 });
