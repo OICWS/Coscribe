@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from dotenv import dotenv_values, set_key
@@ -31,10 +32,13 @@ from ...provider_catalog import (
 )
 from ...schemas import (
     ProviderModelsRequest,
+    ProviderTestRequest,
+    ProviderTestResult,
     ProviderUpdate,
 )
 from ...state import AppState
 from ..shared import _read_providers_raw
+from .provider_checks import check_provider_connection
 
 
 def _save_builtin_key(env_key: str, api_key: str) -> bool:
@@ -88,6 +92,10 @@ _BUILTIN_MODEL_LISTS = {
 }
 
 
+def _builtin_provider(name: str) -> dict[str, str] | None:
+    return next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+
+
 def _list_headers(provider: str, api_key: str) -> dict[str, str]:
     if provider == "anthropic":
         return {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
@@ -116,6 +124,84 @@ def _models_to_save(
     return models, default if default in models else models[0]
 
 
+def _connection_problem(base_url: str, api_format: str, api_version: str) -> str | None:
+    try:
+        url = urlsplit(base_url)
+        if url.scheme not in {"http", "https"} or not url.hostname or url.username is not None:
+            return "Enter an HTTP or HTTPS base URL."
+        port = url.port
+        if port == 0 or url.query or url.fragment:
+            return "Enter a base URL without query parameters or a fragment."
+    except ValueError:
+        return "Enter a valid provider base URL."
+    path = url.path.rstrip("/")
+    if api_format == "azure":
+        if not api_version:
+            return "Enter the Azure API version."
+        if "/openai" in path:
+            return "Enter the Azure resource endpoint, without the /openai deployment path."
+    elif path.endswith(("/chat/completions", "/responses")):
+        return "Enter the base URL without the final /chat/completions or /responses path."
+    return None
+
+
+def _protocol_to_save(payload: ProviderUpdate, existing: dict[str, Any]) -> dict[str, str] | str:
+    api_format = payload.api_format or existing.get("api_format")
+    if api_format is None:
+        return {}
+    api_version = (
+        payload.api_version if payload.api_version is not None else existing.get("api_version", "")
+    )
+    api_version = api_version.strip()
+    if problem := _connection_problem(payload.base_url.strip(), api_format, api_version):
+        return problem
+    options = {"api_format": api_format}
+    if api_format == "azure":
+        options["api_version"] = api_version
+    return options
+
+
+def _saved_key(entry: dict[str, Any]) -> str:
+    try:
+        return resolve_secret(entry.get("api_key")) or ""
+    except RuntimeError:
+        return ""
+
+
+async def _test_provider(
+    payload: ProviderTestRequest, providers_config_path: Path | None
+) -> ProviderTestResult:
+    name = payload.name.strip()
+    if _builtin_provider(name) is not None:
+        return ProviderTestResult(error="Select a custom provider to run this test.")
+    base_url = payload.base_url.strip()
+    api_version = payload.api_version.strip()
+    if problem := _connection_problem(
+        base_url, payload.api_format or "chat_completions", api_version
+    ):
+        return ProviderTestResult(error=problem)
+    model = payload.model.strip()
+    if not model:
+        return ProviderTestResult(error="Select a model to test.")
+    api_key = payload.api_key.strip()
+    if not api_key and providers_config_path is not None:
+        saved = _read_providers_raw(providers_config_path)["providers"].get(name, {})
+        if saved.get("base_url", "").strip().rstrip("/") == base_url.rstrip("/"):
+            api_key = _saved_key(saved)
+    if not api_key:
+        return ProviderTestResult(error="Enter the API key for this URL.")
+    config = {
+        "base_url": base_url,
+        "api_key": api_key,
+        "api_version": api_version,
+    }
+    if payload.api_format is not None:
+        config["api_format"] = payload.api_format
+    return ProviderTestResult(
+        error=await check_provider_connection(config, model, payload.tool_calling)
+    )
+
+
 def _models_target(
     payload: ProviderModelsRequest, providers_config_path: Path | None
 ) -> tuple[str, dict[str, str]] | str:
@@ -123,21 +209,20 @@ def _models_target(
     the saved one; or why it can't be listed."""
     name = payload.name.strip()
     api_key = payload.api_key.strip()
-    builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+    builtin = _builtin_provider(name)
     if builtin is not None:
         url = _BUILTIN_MODEL_LISTS[builtin["key"]]
         api_key = api_key or os.environ.get(builtin["api_key_env"], "")
     else:
+        if payload.api_format == "azure":
+            return "Add the Azure deployment name manually."
         base_url = payload.base_url.strip()
         if not base_url:
             return "Enter the base URL first."
         url = base_url.rstrip("/") + "/models"
         if not api_key and providers_config_path is not None:
             stored = _read_providers_raw(providers_config_path)["providers"].get(name, {})
-            try:
-                api_key = resolve_secret(stored.get("api_key")) or ""
-            except RuntimeError:
-                api_key = ""
+            api_key = _saved_key(stored)
     if not api_key:
         return "Enter the API key first."
     return url, _list_headers(name.lower(), api_key)
@@ -181,10 +266,56 @@ async def _provider_models(
     if isinstance(target, str):
         return {"models": [], "error": target}
     listed = await list_provider_models(*target)
-    builtin = any(p["key"] == name.lower() for p in BUILTIN_PROVIDERS)
+    builtin = _builtin_provider(name) is not None
     lookup_url = "" if builtin else payload.base_url.strip()
     listed["models"] = [model_row(m, name, lookup_url) for m in listed["models"]]
     return listed
+
+
+def _save_custom_provider(
+    state: AppState,
+    path: Path,
+    raw: dict[str, Any],
+    name: str,
+    payload: ProviderUpdate,
+    models: tuple[list[str], str],
+) -> str | None:
+    existing = raw["providers"].get(name) or {}
+    options = _protocol_to_save(payload, existing)
+    if isinstance(options, str):
+        return options
+    keys = _custom_key(name, payload, existing)
+    if isinstance(keys, str):
+        return keys
+    stored_key, api_key = keys
+
+    # Stored on disk via store_secret (keyring ref when available, the
+    # real value as a hardened-permission fallback otherwise) --
+    # context_window_client.register_custom_provider below gets the
+    # real value (api_key), never this.
+    entry: dict[str, Any] = {
+        "base_url": payload.base_url,
+        "api_key": stored_key,
+        "models": models[0],
+        "default_model": models[1],
+        **options,
+    }
+
+    raw["providers"][name] = entry
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    harden_file_permissions(path)
+    if state.settings.providers_config_path is None:
+        state.settings.providers_config_path = path
+        set_key(".env", "COSCRIBE_PROVIDERS_CONFIG_PATH", str(path))
+    # Only context_window_client needs live registration -- the next
+    # new session's own model resolves this provider by re-reading
+    # providers.json fresh (see _get_session above), not through this
+    # client at all.
+    state.context_window_client.register_custom_provider(
+        name, {"base_url": payload.base_url, "api_key": api_key}
+    )
+    return None
 
 
 def router(state: AppState) -> APIRouter:
@@ -212,6 +343,11 @@ def router(state: AppState) -> APIRouter:
     # Registered by call so the dead-code check sees the handler used.
     router.post("/api/providers/models")(get_provider_models)
 
+    async def run_provider_test(payload: ProviderTestRequest) -> ProviderTestResult:
+        return await _test_provider(payload, settings.providers_config_path)
+
+    router.post("/api/providers/test")(run_provider_test)
+
     @router.post("/api/providers")
     async def add_provider(payload: ProviderUpdate) -> dict[str, Any]:
         name = payload.name.strip()
@@ -221,7 +357,8 @@ def router(state: AppState) -> APIRouter:
         # default model or base URL doesn't make the person type the key again.
         blank_key = {"restart_required": False, "rejected": {name: "api_key cannot be blank"}}
 
-        builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+        builtin = _builtin_provider(name)
+        # Persist an absolute path so a later working directory cannot change the config file.
         path = settings.providers_config_path or Path("./providers.json").resolve()
         raw = _read_providers_raw(path)
         models = _models_to_save(builtin, payload, raw["providers"].get(name))
@@ -235,50 +372,12 @@ def router(state: AppState) -> APIRouter:
             # both build their client fresh on every call.
             return {"restart_required": False, "rejected": {}}
 
-        keys = _custom_key(name, payload, raw["providers"].get(name))
-        if isinstance(keys, str):
-            return {"restart_required": False, "rejected": {name: keys}}
-        stored_key, api_key = keys
-
-        # Stored on disk via store_secret (keyring ref when available, the
-        # real value as a hardened-permission fallback otherwise) --
-        # context_window_client.register_custom_provider below gets the
-        # real value (api_key), never this.
-        entry: dict[str, Any] = {
-            "base_url": payload.base_url,
-            "api_key": stored_key,
-            "models": models[0],
-            "default_model": models[1],
-        }
-
-        # .resolve() matters here: this path gets persisted both into
-        # settings.providers_config_path (kept for the rest of the process's
-        # life) and into .env (read back on every future process start) --
-        # a bare relative "providers.json" would silently start pointing at
-        # a different file the moment the process's cwd ever changes.
-        # Confirmed the hard way: a stray real .env in the repo root with a
-        # relative COSCRIBE_PROVIDERS_CONFIG_PATH from a previous manual
-        # run made a batch of unrelated tests fail with FileNotFoundError,
-        # purely because they didn't all chdir the same way.
-        raw["providers"][name] = entry
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
-        harden_file_permissions(path)
-        if settings.providers_config_path is None:
-            settings.providers_config_path = path
-            set_key(".env", "COSCRIBE_PROVIDERS_CONFIG_PATH", str(path))
-        # Only context_window_client needs live registration -- the next
-        # new session's own model resolves this provider by re-reading
-        # providers.json fresh (see _get_session above), not through this
-        # client at all.
-        context_window_client.register_custom_provider(
-            name, {"base_url": payload.base_url, "api_key": api_key}
-        )
-        return {"restart_required": False, "rejected": {}}
+        problem = _save_custom_provider(state, path, raw, name, payload, models)
+        return {"restart_required": False, "rejected": {name: problem} if problem else {}}
 
     @router.delete("/api/providers/{name}")
     async def remove_provider(name: str) -> dict[str, Any]:
-        builtin = next((p for p in BUILTIN_PROVIDERS if p["key"] == name.lower()), None)
+        builtin = _builtin_provider(name)
         if builtin is not None:
             env_delete_secret_if_ref(dotenv_values(".env").get(builtin["api_key_env"]))
             set_key(".env", builtin["api_key_env"], "")

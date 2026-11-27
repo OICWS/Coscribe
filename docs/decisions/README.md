@@ -69,3 +69,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0057](0057-a-scripts-missing-package-is-installed-from-the-chat.md) | A script's missing package is installed from the chat, after the person says yes (accepted) |
 | [0058](0058-a-plugin-is-a-folder-in-the-claude-and-codex-format.md) | A plugin is a folder in the Claude and Codex format; the core is not a plugin (proposed) |
 | [0059](0059-a-pull-request-runs-the-tests-its-change-can-reach.md) | A pull request runs the tests its change can reach; main runs them all (proposed) |
+| [0060](0060-versioned-azure-openai.md) | Custom providers can use versioned Azure OpenAI deployments (proposed) |

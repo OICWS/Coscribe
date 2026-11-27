@@ -1,12 +1,4 @@
-""" "provider:model" string -> LangChain chat model, mirroring
-runtime/llm_client.py's LLMClient._resolve_provider shape and the same
-provider-string convention (so Settings.default_model doesn't need to
-change format if this ever replaces the old runtime).
-
-Phase 1 scope: anthropic, gemini, and one generic OpenAI-compatible path
-(reusing runtime/provider_config.py's existing custom-provider config
-loading, unmodified). Not wired into cli.py/web/coordinator.py yet.
-"""
+"""Resolve provider and model IDs to their LangChain chat adapters."""
 
 from __future__ import annotations
 
@@ -20,10 +12,7 @@ def resolve_chat_model(
 ) -> Any:
     """Return a LangChain BaseChatModel for a "provider:model" string.
 
-    custom_providers is the same {name: {"base_url", "api_key"}} shape
-    runtime/provider_config.py's load_custom_providers already produces --
-    passed through untouched so this can share a config file with the old
-    runtime during any future side-by-side period.
+    Custom connections use the settings returned by load_custom_providers.
     """
     if ":" not in model:
         raise ValueError(f'model must be a "provider:model" string, got {model!r}')
@@ -31,27 +20,7 @@ def resolve_chat_model(
     custom_providers = custom_providers or {}
 
     if provider_key in custom_providers:
-        from langchain_openai import ChatOpenAI
-
-        config = custom_providers[provider_key]
-        model_class = (
-            _deepseek_chat_model_class() if _is_deepseek(config["base_url"]) else ChatOpenAI
-        )
-        return model_class(
-            model=model_name,
-            base_url=config["base_url"],
-            api_key=SecretStr(config["api_key"]),
-            # ChatOpenAI only auto-enables streamed usage_metadata when
-            # base_url is unset (the real OpenAI endpoint) -- confirmed by
-            # reading langchain_openai's own __init__ (its auto-enable
-            # condition checks base_url is None). Any custom
-            # OpenAI-compatible provider (DeepSeek, Kimi, GLM, ...) always
-            # sets base_url, so without this explicit flag the usage bar
-            # (conversation/session.py's _stream_turn) would silently never populate
-            # for these providers specifically, unlike gemini:/anthropic:/
-            # openai: -- see runtime_lg/README.md's "usage bar" section.
-            stream_usage=True,
-        )
+        return _custom_chat_model(model_name, custom_providers[provider_key])
     if provider_key == "anthropic":
         from langchain_anthropic import ChatAnthropic
 
@@ -118,9 +87,54 @@ def resolve_chat_model(
 
         return ChatOpenAI(model=model_name)
 
-    raise ValueError(
-        f"Unsupported provider {provider_key!r} in runtime_lg Phase 1 -- "
-        "only anthropic/gemini/openai/custom-openai-compatible are wired up."
+    raise ValueError(f"Unsupported provider {provider_key!r}.")
+
+
+def _custom_chat_model(model_name: str, config: dict[str, str]) -> Any:
+    from langchain_openai import ChatOpenAI
+
+    api_format = config.get("api_format")
+    if api_format == "azure":
+        from langchain_openai import AzureChatOpenAI
+        from openai import DefaultAsyncHttpxClient, DefaultHttpxClient
+
+        return AzureChatOpenAI(
+            azure_endpoint=config["base_url"],
+            azure_deployment=model_name,
+            model=model_name,
+            api_version=config["api_version"],
+            api_key=SecretStr(config["api_key"]),
+            azure_ad_token=None,
+            base_url=None,
+            use_responses_api=False,
+            # A redirect could forward Azure's custom API-key header to a different host.
+            http_client=DefaultHttpxClient(follow_redirects=False),
+            http_async_client=DefaultAsyncHttpxClient(follow_redirects=False),
+        )
+    if api_format == "responses":
+        return ChatOpenAI(
+            model=model_name,
+            base_url=config["base_url"],
+            api_key=SecretStr(config["api_key"]),
+            use_responses_api=True,
+            store=False,
+        )
+    model_class = _deepseek_chat_model_class() if _is_deepseek(config["base_url"]) else ChatOpenAI
+    return model_class(
+        model=model_name,
+        base_url=config["base_url"],
+        api_key=SecretStr(config["api_key"]),
+        # ChatOpenAI only auto-enables streamed usage_metadata when
+        # base_url is unset (the real OpenAI endpoint) -- confirmed by
+        # reading langchain_openai's own __init__ (its auto-enable
+        # condition checks base_url is None). Any custom
+        # OpenAI-compatible provider (DeepSeek, Kimi, GLM, ...) always
+        # sets base_url, so without this explicit flag the usage bar
+        # (conversation/session.py's _stream_turn) would silently never populate
+        # for these providers specifically, unlike gemini:/anthropic:/
+        # openai: -- see runtime_lg/README.md's "usage bar" section.
+        stream_usage=True,
+        use_responses_api=False if api_format == "chat_completions" else None,
     )
 
 

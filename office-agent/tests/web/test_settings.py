@@ -1339,3 +1339,120 @@ def test_office_conversion_prefers_microsoft_office_and_falls_back_to_libreoffic
 
 async def _model_ok(settings: Any) -> Any:
     return {"id": "model", "name": "Model", "state": "ok", "detail": "", "fix": "", "page": None}
+
+
+@pytest.mark.parametrize(
+    ("api_format", "base_path", "request_path", "auth_header", "auth_value"),
+    [
+        (None, "/v1", "/v1/chat/completions", "authorization", "Bearer stored-key"),
+        ("azure", "", "/openai/deployments/test-model/chat/completions", "api-key", "stored-key"),
+        ("responses", "/v1", "/v1/responses", "authorization", "Bearer stored-key"),
+    ],
+)
+def test_provider_checks_stream_through_the_saved_adapter(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    api_format: str | None,
+    base_path: str,
+    request_path: str,
+    auth_header: str,
+    auth_value: str,
+) -> None:
+    import httpx2 as sdk_httpx
+
+    from coscribe.runtime import load_custom_providers
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    seen: list[tuple[httpx.Request, dict[str, Any]]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((request, body))
+        tools = body.get("tools")
+        event: dict[str, Any]
+        if api_format == "responses":
+            inputs = body["input"]
+            output = next((item for item in inputs if item["type"] == "function_call_output"), None)
+            if tools and not output:
+                event = {
+                    "type": "response.output_item.added",
+                    "sequence_number": 1,
+                    "output_index": 0,
+                    "item": {
+                        "type": "function_call",
+                        "id": "fc_test",
+                        "call_id": "call_test",
+                        "name": "connection_check",
+                        "arguments": "{}",
+                    },
+                }
+            else:
+                event = {
+                    "type": "response.output_text.delta",
+                    "sequence_number": 1,
+                    "item_id": "msg_test",
+                    "output_index": 0,
+                    "content_index": 0,
+                    "delta": output["output"] if output else "OK",
+                    "logprobs": [],
+                }
+        else:
+            messages = body["messages"]
+            delta = {"role": "assistant"}
+            if tools and messages[-1]["role"] != "tool":
+                delta["tool_calls"] = [
+                    {
+                        "index": 0,
+                        "id": "call_test",
+                        "type": "function",
+                        "function": {"name": "connection_check", "arguments": "{}"},
+                    }
+                ]
+            else:
+                delta["content"] = messages[-1]["content"] if tools else "OK"
+            event = {"id": "chatcmpl-test", "choices": [{"index": 0, "delta": delta}]}
+        return sdk_httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text=f"data: {json.dumps(event)}\n\ndata: [DONE]\n\n",
+        )
+
+    transport = sdk_httpx.MockTransport(respond)
+    monkeypatch.setattr(
+        sdk_httpx.AsyncClient, "_transport_for_url", lambda _client, _url: transport
+    )
+    provider = {"name": "test-gateway", "base_url": f"https://example.test{base_path}"}
+    options = {"api_format": api_format} if api_format else {}
+    if api_format == "azure":
+        options["api_version"] = "2024-10-21"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        draft = {**provider, **options, "model": "test-model", "api_key": "stored-key"}
+        assert client.post("/api/providers/test", json=draft).json() == {"error": None}
+        assert client.get("/api/providers").json().get("test-gateway") is None
+
+        saved = client.post(
+            "/api/providers",
+            json={**provider, **options, "api_key": "stored-key", "default_model": "test-model"},
+        )
+        assert saved.json()["rejected"] == {}
+        config = load_custom_providers(tmp_path / "providers.json")["test-gateway"]
+        assert config.get("api_format", "chat_completions") == (api_format or "chat_completions")
+        info = client.get("/api/providers").json()["test-gateway"]
+        assert info.get("api_format") == config.get("api_format") == api_format
+
+        request = {**draft, "api_key": "", "tool_calling": True}
+        assert client.post("/api/providers/test", json=request).json() == {"error": None}
+        different_url = {**request, "base_url": "https://other.example.test"}
+        assert client.post("/api/providers/test", json=different_url).json()["error"]
+
+    assert len(seen) == 3
+    for http_request, body in seen:
+        assert http_request.url.path == request_path
+        assert http_request.headers[auth_header] == auth_value
+        assert body["stream"] is True
+        assert body["model"] == "test-model"
+        if api_format == "azure":
+            assert http_request.url.params["api-version"] == config["api_version"] == "2024-10-21"
+        if api_format == "responses":
+            assert body["store"] is False

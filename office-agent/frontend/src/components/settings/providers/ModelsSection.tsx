@@ -7,6 +7,7 @@ import { ModelTip, type ModelTipAnchor } from "../../ModelTip";
 import { ToggleSwitch } from "../../ToggleSwitch";
 import { fieldClass, secondaryButtonClass } from "../SettingRow";
 import type { ProviderForm } from "./ProviderPage";
+import { providerConnection } from "./catalog";
 
 type Listing = { state: "idle" | "loading" } | { state: "listed"; rows: ModelRow[] } | { state: "failed"; error: string };
 
@@ -41,10 +42,11 @@ export function ModelsSection({
   const [filter, setFilter] = useState("");
   const [tip, setTip] = useState<ModelTipAnchor | null>(null);
 
+  const azure = form.apiFormat === "azure";
   const list = async () => {
     setListing({ state: "loading" });
     try {
-      const result = await listProviderModels(form.name.trim(), form.baseUrl.trim(), form.apiKey.trim());
+      const result = await listProviderModels(providerConnection(form));
       setListing(result.error ? { state: "failed", error: result.error } : { state: "listed", rows: result.models });
     } catch (err) {
       setListing({ state: "failed", error: err instanceof Error ? err.message : "Couldn't list the models." });
@@ -62,7 +64,7 @@ export function ModelsSection({
   };
   const toggle = (id: string) => setModels(form.models.includes(id) ? form.models.filter((m) => m !== id) : [...form.models, id]);
 
-  const rows = mergeRows(saved, listing.state === "listed" ? listing.rows : [], form.models);
+  const rows = mergeRows(saved, !azure && listing.state === "listed" ? listing.rows : [], form.models);
   const q = filter.trim().toLowerCase();
   const shown = rows.filter((r) => !q || `${r.id} ${r.name}`.toLowerCase().includes(q));
 
@@ -70,19 +72,19 @@ export function ModelsSection({
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-[17px] font-medium">Models</h3>
-        <button
+        {!azure && <button
           type="button"
           className="text-[13px] text-[var(--accent)] underline-offset-2 hover:underline disabled:opacity-50"
           disabled={listing.state === "loading"}
           onClick={() => void list()}
         >
           {listing.state === "loading" ? "Listing..." : listing.state === "listed" ? "Refresh" : "List models"}
-        </button>
+        </button>}
       </div>
       <p className="text-[13px] text-[var(--muted)]">
-        {rows.length > 0
+        {azure ? "Add the Azure deployment name for each model you want to use." : rows.length > 0
           ? "Switch on the models you want in the model picker. Hover one to see what it can do."
-          : "Enter the API key, then list the models it can use."}
+          : "List the available models or enter a model ID."}
       </p>
 
       {rows.length > FILTER_FROM && (
@@ -104,12 +106,10 @@ export function ModelsSection({
           ))}
         </ul>
       )}
-      {listing.state === "failed" && (
-        <>
-          <span className="text-[13px] text-[var(--danger)]">{listing.error}</span>
-          <ModelIdField onAdd={(id) => !form.models.includes(id) && setModels([...form.models, id])} />
-        </>
+      {!azure && listing.state === "failed" && (
+        <span role="status" className="text-[13px] text-[var(--muted)]">{listing.error}</span>
       )}
+      <ModelIdField azure={azure} onAdd={(id) => !form.models.includes(id) && setModels([...form.models, id])} />
       <ModelTip tip={tip} />
     </section>
   );
@@ -162,8 +162,7 @@ function ModelSwitchRow({
   );
 }
 
-/** For a provider that can't list its models: its model ID, typed in. */
-function ModelIdField({ onAdd }: { onAdd: (id: string) => void }) {
+function ModelIdField({ azure, onAdd }: { azure: boolean; onAdd: (id: string) => void }) {
   const [typed, setTyped] = useState("");
   const add = () => {
     if (typed.trim()) onAdd(typed.trim());
@@ -172,9 +171,9 @@ function ModelIdField({ onAdd }: { onAdd: (id: string) => void }) {
   return (
     <div className="flex gap-2">
       <input
-        aria-label="Model ID"
+        aria-label={azure ? "Deployment name" : "Model ID"}
         className={`${fieldClass} min-w-0 flex-1`}
-        placeholder="Or type a model ID the provider accepts"
+        placeholder={azure ? "Deployment name" : "Model ID"}
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         onKeyDown={(e) => {
