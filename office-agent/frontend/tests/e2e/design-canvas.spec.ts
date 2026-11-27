@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
 const workspace = process.env.COSCRIBE_E2E_WORKSPACE ?? "";
@@ -9,6 +9,12 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 
 const CANVAS = '{\\"boards\\": [{\\"id\\": \\"home\\", \\"title\\": \\"Home\\", \\"file\\": \\"home.html\\"}, {\\"id\\": \\"phone\\", \\"title\\": \\"Phone\\", \\"file\\": \\"phone.html\\", \\"width\\": 390, \\"height\\": 800}]}';
 
+
+// Once the turn ends, the notice above the message box opens the same file under the same title
+// as the card in the reply; either opens it, so the first (the reply's card) is clicked.
+async function openDesign(page: Page, name: string): Promise<void> {
+  await page.getByTitle(`Open ${name}.design.json`).first().click();
+}
 test("a canvas shows its artboards; a board moves and a note is left, and both are saved", async ({ page }) => {
   const name = `canvas-${Math.random().toString(36).slice(2, 8)}`;
   mkdirSync(join(workspace, `${name}.design`), { recursive: true });
@@ -20,7 +26,7 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${CANVAS}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
 
   await expect(page.locator('iframe[title="Home"]')).toBeVisible();
   await expect(page.locator('iframe[title="Phone"]')).toBeVisible();
@@ -91,7 +97,7 @@ test("a canvas's variables are set from the panel into every artboard, and the b
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${THEMED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
 
   const frame = page.frameLocator('iframe[title="Card"]');
   await expect(frame.locator("h1")).toHaveCSS("color", "rgb(37, 87, 214)");
@@ -121,7 +127,7 @@ test("a link from a played artboard to another shows that artboard, played too",
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${LINKED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   await expect(page.locator('iframe[title="Checkout"]')).toBeAttached();
 
   await page.getByRole("button", { name: "Play", exact: true }).first().click();
@@ -155,7 +161,7 @@ test("the properties panel shows an artboard's elements and the style of the one
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toBeVisible();
 
   await page.getByRole("button", { name: "Properties", exact: true }).click();
@@ -220,7 +226,7 @@ test("the properties panel shows an artboard's elements and the style of the one
   await panel.getByRole("button", { name: "Redo" }).click();
   await expect(heading).toHaveCSS("font-size", "30px");
   await page.reload();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   await page.getByRole("button", { name: "Properties", exact: true }).click();
   const again = (await page.getByTestId("board-card").boundingBox())!;
   await page.mouse.click(again.x + again.width * 0.12, again.y + again.height * 0.15);
@@ -243,7 +249,7 @@ test("a double click on an artboard's text edits it where it is drawn and writes
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
   await expect(heading).toBeVisible();
 
@@ -292,7 +298,7 @@ test("a part several artboards place is drawn in each, and an edit of it from on
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${PARTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Home");
 
   // A text of the part is edited in place; it is written into the part, so both boards show it.
@@ -337,7 +343,7 @@ test("the canvas's Export saves the selected artboard as a PNG, and offers an ic
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page.getByTitle(`Open ${name}.design.json`).click();
+  await openDesign(page, name);
   await expect(page.frameLocator('iframe[title="Card"]').locator("body")).toBeAttached();
 
   await page.locator(`button[aria-haspopup="menu"][title="${name}.design.json"]`).click();
