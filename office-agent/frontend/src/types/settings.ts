@@ -315,6 +315,8 @@ export interface ModelRow {
   known: boolean;
 }
 
+export type ProviderFormat = "chat_completions" | "responses" | "azure";
+
 export interface ProviderInfo {
   /** The name people know it by: the catalog's title, else the name it was added as. */
   title: string;
@@ -322,25 +324,13 @@ export interface ProviderInfo {
   default_model: string;
   masked_key: string | null;
   builtin: boolean;
+  api_format?: ProviderFormat;
+  api_version?: string;
   /** The models turned on, the default one first. */
   models: ModelRow[];
 }
 
 export type ProvidersResponse = Record<string, ProviderInfo>;
-
-export interface ProviderUpdateResult {
-  restart_required: boolean;
-  rejected: Record<string, string>;
-}
-
-export interface ProviderModelsResult {
-  models: ModelRow[];
-  error: string | null;
-}
-
-export interface ProviderDeleteResult {
-  restart_required: boolean;
-}
 
 // ---------------------------------------------------------------------
 // Environment tab (script-env packages for run_python_script)

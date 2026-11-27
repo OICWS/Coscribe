@@ -12,7 +12,7 @@ from typing import Any
 from .blocks import parse_blocks, parse_ops
 from .calc import recalculate
 from .column_layout import explicit_width_starts, widen_after_recalc, widen_for_values
-from .engine_objects import apply_ops
+from .engine_objects import apply_ops, refresh_chart_caches
 from .engine_openpyxl import conflicts, write_block
 from .findings import Written, check
 from .guard import copy_path, inventory, load_watching, losses
@@ -40,6 +40,7 @@ def _open(path: Path) -> tuple[Any, list[str], Written]:
 
 def _save(workbook: Any, path: Path) -> Path:
     workbook.calculation.fullCalcOnLoad = True
+    refresh_chart_caches(workbook)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".~{path.stem}.coscribe{path.suffix}")
     workbook.save(str(temporary))

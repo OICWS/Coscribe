@@ -75,6 +75,7 @@ export interface SteerEntry {
   text: string;
   images?: string[];
   files?: string[];
+  sent_at?: string;
 }
 
 export interface AgentEntry {
@@ -540,6 +541,7 @@ export interface SkillSavedEvent {
 export interface SteersDeliveredEvent {
   type: "steers_delivered";
   ids: string[];
+  sent_at_by_id?: Record<string, string>;
 }
 
 /** Notes the turn ended before reading: sent as the next message, `text`. */

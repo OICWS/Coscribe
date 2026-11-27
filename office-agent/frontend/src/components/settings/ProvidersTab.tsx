@@ -8,7 +8,7 @@ import { DiscoverGrid } from "./providers/DiscoverGrid";
 import { ProviderPage, type ProviderForm, type ProviderStatus } from "./providers/ProviderPage";
 import { ProvidersHeader, type ProvidersView } from "./providers/ProvidersHeader";
 import { YoursList, type ProviderRow } from "./providers/YoursList";
-import { findEntry, formProblem } from "./providers/catalog";
+import { findEntry, formProblem, providerConnection } from "./providers/catalog";
 
 const EMPTY: { catalog: ProviderCatalogEntry[]; configured: ProvidersResponse } = { catalog: [], configured: {} };
 
@@ -16,7 +16,7 @@ const loadProviders = () =>
   Promise.all([getProvidersCatalog(), getProviders()]).then(([catalog, configured]) => ({ catalog, configured }));
 
 /** The open page: a provider by its name, or the form for a new custom one. */
-type Opened = { name: string } | "custom" | null;
+type Opened = { name: string; savedForm?: ProviderForm } | "custom" | null;
 
 /** Settings > Providers: the providers added (Yours), the ones Coscribe knows
  * (Discover), and a provider's own page with its key and models. */
@@ -45,7 +45,7 @@ export function ProvidersTab({ active }: { active: boolean }) {
     }
     const name = form.name.trim();
     try {
-      const result = await addProvider(name, form.baseUrl.trim(), form.apiKey.trim(), form.models, form.defaultModel);
+      const result = await addProvider(providerConnection(form), form.models, form.defaultModel);
       const rejected = Object.values(result.rejected);
       if (rejected.length > 0) {
         setStatus({ text: `Not saved -- ${rejected[0]}`, error: true });
@@ -56,7 +56,7 @@ export function ProvidersTab({ active }: { active: boolean }) {
       setStatus({ text: err instanceof Error ? err.message : "Not saved.", error: true });
       return false;
     }
-    setOpened({ name });
+    setOpened({ name, savedForm: { ...form, name, apiKey: "" } });
     refresh();
     return true;
   };
@@ -94,6 +94,7 @@ export function ProvidersTab({ active }: { active: boolean }) {
           entry={entry}
           name={entry ? null : name}
           info={added ? configured[added] : null}
+          savedForm={opened === "custom" ? undefined : opened.savedForm}
           status={status}
           onBack={() => open(null)}
           onSave={save}

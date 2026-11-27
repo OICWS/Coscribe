@@ -3,6 +3,7 @@ its middleware and every tool run for real on the answers a model once gave. No 
 
 from __future__ import annotations
 
+import contextvars
 import json
 from pathlib import Path
 
@@ -129,8 +130,6 @@ def test_a_long_script_output_is_kept_compressed_and_names_no_folder(tmp_path: P
 
 
 def test_a_call_outside_its_tasks_context_finds_the_one_tape_running() -> None:
-    import contextvars
-
     tape, other = replay.Tape("t"), replay.Tape("u")
     tape.add("agent", _answer("from the reviewer"))
     contextvars.Context().run(replay.use, tape)
@@ -192,7 +191,10 @@ def test_the_agent_is_told_from_a_side_job_by_how_many_tools_it_is_given() -> No
     tape = replay.Tape("t")
     tape.add("side", _answer("verdict"))
     tape.add("agent", _answer("reply"))
-    replay.use(tape)
-
-    assert model.bind_tools([object()] * 40).invoke("hi").content == "reply"
-    assert model.bind_tools([object()]).invoke("hi").content == "verdict"
+    context = contextvars.Context()
+    context.run(replay.use, tape)
+    try:
+        assert context.run(model.bind_tools([object()] * 40).invoke, "hi").content == "reply"
+        assert context.run(model.bind_tools([object()]).invoke, "hi").content == "verdict"
+    finally:
+        replay.release(tape)
