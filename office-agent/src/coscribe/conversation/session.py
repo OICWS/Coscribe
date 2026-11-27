@@ -253,7 +253,7 @@ class ChatSessionLG:
         # shared state (_pending_tool_args, _stop_requested). resolve_approval/request_stop
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
-        # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
+        # Notes stay queued until the next model step can take them.
         self._steers: list[QueuedSteer] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's

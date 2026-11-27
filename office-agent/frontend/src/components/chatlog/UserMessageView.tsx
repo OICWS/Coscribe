@@ -209,10 +209,14 @@ export function UserMessageView({
         text={item.text}
         sentAt={item.sentAt}
         now={now}
-        blocked={actions ? actions.blocked : undefined}
         leavesChanges={leavesChanges}
-        onRewind={() => actions?.rewind(item.turnIndex, item.text)}
-        onEdit={() => setEditing(true)}
+        {...(actions?.blocked === null
+          ? {
+              blocked: null,
+              onRewind: () => actions.rewind(item.turnIndex, item.text),
+              onEdit: () => setEditing(true),
+            }
+          : { blocked: actions?.blocked })}
       />
     </div>
   );

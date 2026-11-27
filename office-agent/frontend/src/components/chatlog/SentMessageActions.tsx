@@ -9,6 +9,10 @@ const LEAVES_CHANGES = " Files changed and commands run after it stay as they ar
 const REWIND_TAKES_OUT = "Takes this message and everything after it out of the conversation.";
 const EDIT_RESTARTS = "Saving sends this as your latest message and restarts from here.";
 
+type RewindAndEdit =
+  | { blocked: null; onRewind: () => void; onEdit: () => void }
+  | { blocked: string | undefined; onRewind?: never; onEdit?: never };
+
 /** The row under a sent message: when it was sent, Rewind and Edit (absent where `blocked` is
  * undefined, disabled with the reason where it is a string) and Copy. `leavesChanges` adds to
  * their tooltips that what later turns did outside the conversation stays. */
@@ -26,11 +30,8 @@ export function SentMessageActions({
   sentAt?: string;
   timeDetail?: string;
   now: number;
-  blocked: string | null | undefined;
   leavesChanges: boolean;
-  onRewind?: () => void;
-  onEdit?: () => void;
-}) {
+} & RewindAndEdit) {
   return (
     <div className="flex items-center gap-0.5 text-xs text-[var(--muted)] opacity-0 transition-opacity focus-within:opacity-100 group-hover/msg:opacity-100">
       {sentAt && (
