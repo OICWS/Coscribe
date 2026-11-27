@@ -85,3 +85,8 @@ def test_a_decorated_function_is_not_asked_for_since_mutmut_leaves_it_alone(
     )
 
     assert mutation.mutant_prefixes(source, {3, 9, 13}) == ["xǁBoxǁmake__mutmut_"]
+
+
+def test_protocol_method_declarations_have_no_mutants(mutation: ModuleType) -> None:
+    source = "class Host(Protocol):\n    async def deliver(self) -> None: ...\n"
+    assert mutation.mutant_prefixes(source, {2}) == []

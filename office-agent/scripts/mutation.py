@@ -104,6 +104,11 @@ def mutant_prefixes(source: str, lines: set[int]) -> list[str]:
     def mutated(node: ast.AST) -> TypeGuard[ast.FunctionDef | ast.AsyncFunctionDef]:
         if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or not touched(node):
             return False
+        if len(node.body) == 1:
+            statement = node.body[0]
+            if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant):
+                if statement.value.value is Ellipsis:
+                    return False
         names = [d.id for d in node.decorator_list if isinstance(d, ast.Name)]
         lone = len(node.decorator_list) == 1 and names in (["staticmethod"], ["classmethod"])
         return not node.decorator_list or lone
@@ -146,7 +151,10 @@ def _prepare_module(work: Path, module: str, pytest_args: list[str]) -> None:
     static = work / PACKAGE / "web" / "static"
     if not static.exists():
         static.mkdir(parents=True)
-        (static / "index.html").write_text("<!doctype html>\n", encoding="utf-8")
+        (static / "index.html").write_text(
+            "<!doctype html><html><head></head><body></body></html>\n",
+            encoding="utf-8",
+        )
     copied = [
         "src",
         *(folder for folder in ("evals", "scripts", "frontend") if (work / folder).is_dir()),
@@ -286,9 +294,9 @@ def changed(base: str, out: Path) -> int:
             _prepare_module(work, module, tests)
             result = _mutmut(work, "run", *(f"{dotted}.{prefix}*" for prefix in prefixes))
             sys.stdout.write(result.stdout[-2000:])
-            if "failed to" in result.stdout + result.stderr:
+            if result.returncode or "failed to" in (result.stdout + result.stderr).lower():
                 status = 1
-                notes.append(f"`{PACKAGE}/{module}`: the tests failed before any mutation")
+                notes.append(f"`{PACKAGE}/{module}`: mutmut exited before producing results")
                 sys.stderr.write(result.stderr[-2000:])
                 continue
             listing = _mutmut(work, "results", "--all", "true").stdout
