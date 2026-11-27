@@ -29,9 +29,9 @@ test("the Simple activity robot finishes each gesture before using the latest ac
   const robot = status.getByTestId("activity-robot");
 
   await expect(status.getByText("Thinking", { exact: true })).toBeVisible();
-  await page.clock.runFor(1_150);
+  await page.clock.runFor(1_450);
   await expect(robot).not.toHaveAttribute("data-gesture");
-  await page.clock.runFor(980);
+  await page.clock.runFor(1_280);
   await expect(robot).not.toHaveAttribute("data-gesture");
   await expect(robot.locator("[data-part=head]")).toHaveAttribute("opacity", "0");
   await page.clock.runFor(840);
@@ -58,7 +58,7 @@ test("the Simple activity robot finishes each gesture before using the latest ac
     await page.clock.runFor(800);
     await expect(robot).toHaveAttribute("data-gesture", previous);
     if (previous === "Thinking") await expect(eye).not.toHaveAttribute("d", atEntrance!);
-    await page.clock.runFor(3_180);
+    await page.clock.runFor(3_780);
     await expect(robot).not.toHaveAttribute("data-gesture");
     await page.clock.runFor(920);
     await expect(robot).toHaveAttribute("data-gesture", label);

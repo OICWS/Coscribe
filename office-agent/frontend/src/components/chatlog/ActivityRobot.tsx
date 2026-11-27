@@ -3,7 +3,7 @@ import type { ConversationActivity } from "../../lib/transcriptGrouping";
 import { DEPARTED, GATHER, eyeAt, poseAt, smooth, wave } from "./activityRobotMotion";
 
 const DOTS = [19, 30, 41];
-const PULSE_PERIOD = 1.1;
+const PULSE_PERIOD = 1.4;
 const DOTS_DURATION = 2 * PULSE_PERIOD;
 const CYCLE = DOTS_DURATION + (DEPARTED - GATHER);
 
@@ -35,7 +35,7 @@ function animateRobot(svg: SVGSVGElement, currentActivity: () => ConversationAct
     const shape = smooth(GATHER, 0.92, phase) * (1 - smooth(2.94, DEPARTED, phase));
     const appear = smooth(0.07, 0.92, shape);
     circles.forEach((dot, index) => {
-      const pulse = 0.5 + 0.5 * wave(time, PULSE_PERIOD, -index * 1.85);
+      const pulse = 0.5 + 0.5 * wave(time, PULSE_PERIOD, -index * 2 * Math.PI / DOTS.length);
       dot.setAttribute("cx", String(30 + (DOTS[index] - 30) * (1 - 0.95 * shape)));
       dot.setAttribute("r", String(2.85 + 1.02 * pulse + 1.3 * shape));
       dot.setAttribute("opacity", String((0.48 + 0.46 * pulse) * (1 - smooth(0.45, 0.94, shape))));
