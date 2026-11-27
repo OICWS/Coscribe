@@ -15,6 +15,7 @@ const EDIT_RESTARTS = "Saving sends this as your latest message and restarts fro
 export function SentMessageActions({
   text,
   sentAt,
+  timeDetail,
   now,
   blocked,
   leavesChanges,
@@ -23,16 +24,17 @@ export function SentMessageActions({
 }: {
   text: string;
   sentAt?: string;
+  timeDetail?: string;
   now: number;
   blocked: string | null | undefined;
   leavesChanges: boolean;
-  onRewind: () => void;
-  onEdit: () => void;
+  onRewind?: () => void;
+  onEdit?: () => void;
 }) {
   return (
     <div className="flex items-center gap-0.5 text-xs text-[var(--muted)] opacity-0 transition-opacity focus-within:opacity-100 group-hover/msg:opacity-100">
       {sentAt && (
-        <HoverTip below label={fullTime(sentAt)}>
+        <HoverTip below label={fullTime(sentAt)} detail={timeDetail}>
           <span className="mr-1 cursor-default">{timeAgo(sentAt, now)}</span>
         </HoverTip>
       )}

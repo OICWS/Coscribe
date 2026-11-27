@@ -222,7 +222,16 @@ def test_a_note_sent_mid_turn_reaches_the_model_at_its_next_step_lg(
             ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
             messages = _receive_until(ws, "tasks_changed")
 
-    assert {"type": "steers_delivered", "ids": ["s1"]} in messages
+        with client.websocket_connect("/ws/t_steer1") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    delivered = next(m for m in messages if m["type"] == "steers_delivered")
+    assert delivered["ids"] == ["s1"]
+    sent_at = delivered["sent_at_by_id"]["s1"]
+    assert sent_at.endswith("+00:00")
+    entry = next(item for item in history["entries"] if item["kind"] == "steer")
+    assert entry == {"kind": "steer", "text": "and make it a list", "sent_at": sent_at}
     assert not any(m["type"] == "steers_requeued" for m in messages)
     last = fake_model.received[-1][-1]
     assert isinstance(last, HumanMessage)
@@ -298,7 +307,7 @@ def test_a_note_sent_mid_turn_brings_its_pictures_to_the_model_lg(
             ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
             messages = _receive_until(ws, "tasks_changed")
 
-    assert {"type": "steers_delivered", "ids": ["s1"]} in messages
+    assert next(m for m in messages if m["type"] == "steers_delivered")["ids"] == ["s1"]
     last = fake_model.received[-1][-1]
     assert is_steer(last)
     assert last.content == [

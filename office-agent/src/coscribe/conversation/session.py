@@ -43,7 +43,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages.ai import UsageMetadata
@@ -123,6 +123,13 @@ from .user_edits import user_edits_note
 from .workflow_drafting import WorkflowDrafting
 
 logger = logging.getLogger(__name__)
+
+
+class _QueuedSteer(NamedTuple):
+    id: str
+    text: str
+    images: list[str]
+    sent_at: str
 
 
 def _marks(notice: bool) -> dict[str, Any]:
@@ -254,7 +261,7 @@ class ChatSessionLG:
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
         # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
-        self._steers: list[tuple[str, str, list[str]]] = []
+        self._steers: list[_QueuedSteer] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's
         # docstring for why this exists: a turn lock alone would let an
@@ -504,22 +511,32 @@ class ChatSessionLG:
         """A note for the turn in progress, with its pictures, read before its next step (a script
         it waits on moves to the background). With no turn running, it is sent as a message."""
         key = str(steer_id)
-        self._steers = [s for s in self._steers if s[0] != key]
+        self._steers = [note for note in self._steers if note.id != key]
         if text is not None:
-            self._steers.append((key, text, list(images or [])))
+            self._steers.append(
+                _QueuedSteer(
+                    key, text, list(images or []), datetime.now(UTC).isoformat(timespec="seconds")
+                )
+            )
             if not self._turn_lock.locked():
                 asyncio.get_running_loop().create_task(self._send_unread_steers())
             request_detach(self.thread_id, None, asyncio.get_running_loop(), "steer")
 
-    async def _take_steers(self) -> list[tuple[str, list[str]]]:
+    async def _take_steers(self) -> list[tuple[str, list[str], str]]:
         if not self._steers:
             return []
         steers, self._steers = self._steers, []
         socket = self._live_websocket or self._turn_websocket
         if socket is not None:
             with contextlib.suppress(Exception):  # the tab went away; the model still has them
-                await socket.send_json({"type": "steers_delivered", "ids": [s[0] for s in steers]})
-        return [(text, images) for _, text, images in steers]
+                await socket.send_json(
+                    {
+                        "type": "steers_delivered",
+                        "ids": [note.id for note in steers],
+                        "sent_at_by_id": {note.id: note.sent_at for note in steers},
+                    }
+                )
+        return [(note.text, note.images, note.sent_at) for note in steers]
 
     def _turn_lock_changed(self, active: bool) -> None:
         BROWSER_HOST.set_active(self.thread_id, active)
@@ -531,17 +548,19 @@ class ChatSessionLG:
         if not self._steers or self._turn_lock.locked():
             return
         steers, self._steers = self._steers, []
-        text = "\n\n".join(note for _, note, _ in steers)
+        text = "\n\n".join(note.text for note in steers)
         websocket: Any = self._live_websocket
         if websocket is not None:
             try:
                 await websocket.send_json(
-                    {"type": "steers_requeued", "ids": [s[0] for s in steers], "text": text}
+                    {"type": "steers_requeued", "ids": [note.id for note in steers], "text": text}
                 )
             except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
                 websocket = None
         socket: Any = websocket or SilentSocket()
-        await self.handle_user_message(text, socket, [u for s in steers for u in s[2]] or None)
+        await self.handle_user_message(
+            text, socket, [image for note in steers for image in note.images] or None
+        )
 
     def detach_command(self, script: str) -> bool:
         """From the running loop, which the background task announces itself to later."""
