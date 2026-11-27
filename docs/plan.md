@@ -15,8 +15,8 @@ preview while Microsoft Excel has the workbook open.
 Unified Files previews and live Doc drafts (#1082) are in review. Desktop verification covers
 Office conversion engines and reading during writes.
 
-The Simple conversation activity robot (#1085) is in review. Desktop verification covers
-the indicator at normal Windows display scaling.
+Desktop verification for the Simple conversation activity robot (#1085) covers the
+indicator at normal Windows display scaling.
 
 ## Next, in order
 

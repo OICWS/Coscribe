@@ -1,8 +1,11 @@
 import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import type { ConversationActivity } from "../../lib/transcriptGrouping";
-import { CYCLE, DEPARTED, GATHER, eyeAt, poseAt, smooth, wave } from "./activityRobotMotion";
+import { DEPARTED, GATHER, eyeAt, poseAt, smooth, wave } from "./activityRobotMotion";
 
 const DOTS = [19, 30, 41];
+const PULSE_PERIOD = 0.91;
+const DOTS_DURATION = 2 * PULSE_PERIOD;
+const CYCLE = DOTS_DURATION + (DEPARTED - GATHER);
 
 function animateRobot(svg: SVGSVGElement, currentActivity: () => ConversationActivity) {
   const [shadow, dots, head] = svg.querySelectorAll<SVGGraphicsElement>("[data-part]");
@@ -20,18 +23,19 @@ function animateRobot(svg: SVGSVGElement, currentActivity: () => ConversationAct
     if (previous !== undefined) time += Math.min((now - previous) / 1000, 0.1);
     previous = now;
     const cycle = Math.floor(time / CYCLE);
-    const phase = time - cycle * CYCLE;
-    if (phase >= GATHER && selectedCycle !== cycle) {
+    const inCycle = time - cycle * CYCLE;
+    const phase = GATHER + (inCycle - DOTS_DURATION);
+    if (inCycle >= DOTS_DURATION && selectedCycle !== cycle) {
       selectedCycle = cycle;
       gesture = currentActivity();
       svg.dataset.gesture = gesture;
     }
-    if (phase >= DEPARTED && svg.dataset.gesture) delete svg.dataset.gesture;
+    if (inCycle < DOTS_DURATION && svg.dataset.gesture) delete svg.dataset.gesture;
 
     const shape = smooth(GATHER, 0.92, phase) * (1 - smooth(2.94, DEPARTED, phase));
     const appear = smooth(0.07, 0.92, shape);
     circles.forEach((dot, index) => {
-      const pulse = 0.5 + 0.5 * wave(time, 0.91, -index * 1.85);
+      const pulse = 0.5 + 0.5 * wave(time, PULSE_PERIOD, -index * 1.85);
       dot.setAttribute("cx", String(30 + (DOTS[index] - 30) * (1 - 0.95 * shape)));
       dot.setAttribute("r", String(2.85 + 1.02 * pulse + 1.3 * shape));
       dot.setAttribute("opacity", String((0.48 + 0.46 * pulse) * (1 - smooth(0.45, 0.94, shape))));

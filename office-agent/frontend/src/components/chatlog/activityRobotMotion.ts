@@ -3,7 +3,6 @@ import type { ConversationActivity } from "../../lib/transcriptGrouping";
 type Pose = readonly [yaw: number, pitch: number, roll: number, eyeHeight: number, eyeWidth: number];
 type Keyframe = readonly [at: number, ...Pose];
 
-export const CYCLE = 3.56;
 export const GATHER = 0.58;
 export const DEPARTED = 3.28;
 
