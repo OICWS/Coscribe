@@ -13,7 +13,8 @@ misaligned; the PPTX Pages skill listed Georgia as a figure font.
   wrote, and a template slide's shapes are drawn beneath. `_svg_preview.py` lost its placeholder
   code and its import exception into the engine.
 - The deck check warns when a text sets figures in Georgia (`_old_style_figures` in
-  `engine/checker.py`), naming the text.
+  `engine/checker.py`), naming the text, and when a native chart sets its labels in Georgia
+  (`_old_style_chart_figures`).
 - The PPTX Pages skill and the sections guide no longer offer Georgia for figures; the skill says
   a chart in the preview is drawn from its data and is fixed in its JSON, never redrawn as shapes.
 
