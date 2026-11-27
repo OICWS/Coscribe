@@ -19,6 +19,21 @@ from .flaky_policy import (  # noqa: F401
 )
 
 
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_protocol() -> Iterator[None]:
+    # App startup loads its .env into the process, and settings routes can change it live.
+    # Mutmut can rerun the same tests in a different order in one process.
+    original = os.environ.copy()
+    try:
+        yield
+    finally:
+        for name in os.environ.keys() - original:
+            del os.environ[name]
+        for name, value in original.items():
+            if os.environ.get(name) != value:
+                os.environ[name] = value
+
+
 @pytest.fixture(autouse=True)
 def _no_carried_over_blanking(monkeypatch: pytest.MonkeyPatch) -> None:
     """What a connector's credentials or sign-in tokens add to the redaction lives for the
