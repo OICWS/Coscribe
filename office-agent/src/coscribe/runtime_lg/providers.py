@@ -107,6 +107,8 @@ def _custom_chat_model(model_name: str, config: dict[str, str]) -> Any:
             azure_ad_token=None,
             base_url=None,
             use_responses_api=False,
+            # Passing http clients turns off LangChain's automatic streamed usage for Azure.
+            stream_usage=True,
             # A redirect could forward Azure's custom API-key header to a different host.
             http_client=DefaultHttpxClient(follow_redirects=False),
             http_async_client=DefaultAsyncHttpxClient(follow_redirects=False),

@@ -1454,6 +1454,8 @@ def test_provider_checks_stream_through_the_saved_adapter(
         assert http_request.headers[auth_header] == auth_value
         assert body["stream"] is True
         assert body["model"] == "test-model"
+        if api_format != "responses":
+            assert body["stream_options"] == {"include_usage": True}
         if api_format == "azure":
             assert http_request.url.params["api-version"] == config["api_version"] == "2024-10-21"
         if api_format == "responses":
