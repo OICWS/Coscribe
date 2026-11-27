@@ -199,7 +199,8 @@ function ProviderFields({
       {!builtin && form.apiFormat === "azure" && (
         <label className={labelClass}>
           <span className={labelText}>Azure API version</span>
-          <input className={fieldClass} value={form.apiVersion ?? ""} onChange={set("apiVersion")} />
+          <input className={fieldClass} placeholder="2024-10-21" value={form.apiVersion ?? ""} onChange={set("apiVersion")} />
+          <span className="text-[13px] text-[var(--muted)]">For an endpoint ending in /openai/v1, choose OpenAI compatible instead. It needs no API version.</span>
         </label>
       )}
     </div>

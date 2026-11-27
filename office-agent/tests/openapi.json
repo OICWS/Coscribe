@@ -954,11 +954,6 @@
             "default": "",
             "title": "Name",
             "type": "string"
-          },
-          "tool_calling": {
-            "default": false,
-            "title": "Tool Calling",
-            "type": "boolean"
           }
         },
         "required": [

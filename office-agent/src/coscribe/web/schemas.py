@@ -333,7 +333,6 @@ class ProviderModelsRequest(BaseModel):
 class ProviderTestRequest(ProviderModelsRequest):
     model: str
     api_version: str = ""
-    tool_calling: bool = False
 
 
 class ProviderTestResult(BaseModel):

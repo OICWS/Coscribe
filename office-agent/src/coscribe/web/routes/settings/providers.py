@@ -138,8 +138,11 @@ def _connection_problem(base_url: str, api_format: str, api_version: str) -> str
     if api_format == "azure":
         if not api_version:
             return "Enter the Azure API version."
-        if "/openai" in path:
-            return "Enter the Azure resource endpoint, without the /openai deployment path."
+        if "openai" in path.split("/"):
+            return (
+                "Enter the Azure resource endpoint without the /openai path. "
+                "For an /openai/v1 endpoint, choose OpenAI compatible instead."
+            )
     elif path.endswith(("/chat/completions", "/responses")):
         return "Enter the base URL without the final /chat/completions or /responses path."
     return None
@@ -198,7 +201,7 @@ async def _test_provider(
     if payload.api_format is not None:
         config["api_format"] = payload.api_format
     return ProviderTestResult(
-        error=await check_provider_connection(config, model, payload.tool_calling)
+        error=await check_provider_connection(config, model)
     )
 
 

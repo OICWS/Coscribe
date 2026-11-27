@@ -411,8 +411,8 @@ export const providerModelIds = (providers: ProvidersResponse) =>
 /** A blank key lists with the key already saved for `name`. */
 export const listProviderModels = (connection: ProviderConnection) =>
   postJson<ProviderModelsResult>("/api/providers/models", connection);
-export const testProvider = (connection: ProviderConnection, model: string, toolCalling: boolean) =>
-  postJson<{ error: string | null }>("/api/providers/test", { ...connection, model, tool_calling: toolCalling });
+export const testProvider = (connection: ProviderConnection, model: string) =>
+  postJson<{ error: string | null }>("/api/providers/test", { ...connection, model });
 export const removeProvider = (name: string) => del<ProviderDeleteResult>(`/api/providers/${encodeURIComponent(name)}`);
 
 // -- Environment (script-env packages) -------------------------------------

@@ -1441,12 +1441,14 @@ def test_provider_checks_stream_through_the_saved_adapter(
         info = client.get("/api/providers").json()["test-gateway"]
         assert info.get("api_format") == config.get("api_format") == api_format
 
-        request = {**draft, "api_key": "", "tool_calling": True}
+        request = {**draft, "api_key": ""}
         assert client.post("/api/providers/test", json=request).json() == {"error": None}
         different_url = {**request, "base_url": "https://other.example.test"}
         assert client.post("/api/providers/test", json=different_url).json()["error"]
 
-    assert len(seen) == 3
+    # Each test is the tool call and then the reply that uses its result.
+    assert len(seen) == 4
+    assert [bool(body.get("tools")) for _, body in seen] == [True] * 4
     for http_request, body in seen:
         assert http_request.url.path == request_path
         assert http_request.headers[auth_header] == auth_value
@@ -1456,3 +1458,50 @@ def test_provider_checks_stream_through_the_saved_adapter(
             assert http_request.url.params["api-version"] == config["api_version"] == "2024-10-21"
         if api_format == "responses":
             assert body["store"] is False
+
+
+@pytest.mark.parametrize(
+    ("base_url", "rejected"),
+    [
+        ("https://res.openai.azure.com", False),
+        ("https://gw.example.test/openai-proxy", False),
+        ("https://res.openai.azure.com/openai", True),
+        ("https://res.openai.azure.com/openai/v1/", True),
+    ],
+)
+def test_azure_endpoint_rejects_only_an_openai_path_segment(base_url: str, rejected: bool) -> None:
+    from coscribe.web.routes.settings.providers import _connection_problem
+
+    problem = _connection_problem(base_url, "azure", "2024-10-21")
+    assert (problem is not None) == rejected
+    if rejected:
+        assert problem is not None and "OpenAI compatible" in problem
+
+
+@pytest.mark.parametrize(
+    ("responses", "expected"),
+    [
+        ([AIMessage(content="OK")], "supports tool calling"),
+        (
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "connection_check", "args": {}, "id": "call_1"}],
+                ),
+                AIMessage(content="I could not read it."),
+            ],
+            "did not use its result",
+        ),
+    ],
+)
+def test_provider_check_names_the_step_a_model_fails(
+    monkeypatch: pytest.MonkeyPatch, responses: list[AIMessage], expected: str
+) -> None:
+    import asyncio
+
+    from coscribe.web.routes.settings import provider_checks
+
+    fake = FakeToolCallingChatModel(responses=responses)
+    monkeypatch.setattr(provider_checks, "resolve_chat_model", lambda _model, _config: fake)
+    error = asyncio.run(provider_checks.check_provider_connection({}, "test-model"))
+    assert error is not None and expected in error

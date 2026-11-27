@@ -1217,10 +1217,10 @@ new conversation's model. Hovering a model shows what the bundled catalog says
 it can do: its native input and output (vision, PDF, audio, video), effort
 levels, context window, no tool calls; or that the catalog doesn't list it
 (decision 0055). You can enter a model ID at any time. For versioned Azure,
-enter the deployment name manually. **Test connection** verifies a streamed
-text reply for a custom provider, and **Test tool calling** verifies a tool
-call and the model's reply after receiving its result. Tests use the current
-form without saving it. The pill shows four models (the
+enter the deployment name manually. For a custom provider, **Test** streams a
+tool call and then the model's reply using the tool's result (`POST
+/api/providers/test`), and says which step failed. It uses the current form
+without saving it. The pill shows four models (the
 current one and the most recently picked, in this browser) and the rest under
 **More models**, with the same hover tip.
 
