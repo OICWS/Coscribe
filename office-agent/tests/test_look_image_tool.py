@@ -135,3 +135,19 @@ def test_a_region_that_is_not_a_box_inside_the_picture_is_refused(tmp_path: Path
 
     with pytest.raises(ValueError, match="region"):
         _tools(tmp_path)["look_at_image"]("chart.png", region=region)
+
+
+def test_a_turned_photo_reports_the_size_its_region_is_measured_against(tmp_path: Path):
+    photo = Image.new("RGB", (400, 200), "white")
+    exif = photo.getexif()
+    exif[0x0112] = 6
+    photo.save(tmp_path / "photo.jpg", exif=exif)
+
+    note, _ = _tools(tmp_path)["look_at_image"]("photo.jpg", region="0,0,1,0.5")
+
+    assert json.loads(note["text"]) | {"shown": None} == {
+        "path": "photo.jpg",
+        "size": "200x400",
+        "shown": None,
+        "region": "0,0,200,200",
+    }

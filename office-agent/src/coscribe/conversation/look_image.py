@@ -45,11 +45,14 @@ def image_blocks(file: Path, shown_as: str, region: str = "") -> list[dict[str, 
         raise ValueError(f"{shown_as} is over 50 MB; save a smaller copy and look at that.")
     try:
         with Image.open(file) as opened:
-            width, height = opened.size
-            if width * height > _MAX_PIXELS:
-                raise ValueError(f"{shown_as} is {width}x{height} pixels, too large to look at.")
+            if opened.size[0] * opened.size[1] > _MAX_PIXELS:
+                raise ValueError(
+                    f"{shown_as} is {opened.size[0]}x{opened.size[1]} pixels, too large to look at."
+                )
             # A phone photo's pixels are stored sideways with a note to turn them.
             picture = ImageOps.exif_transpose(opened)
+            # The size as seen, so a region's pixel box is measured against the same picture.
+            width, height = picture.size
             # A palette PNG or GIF keeps its transparency in `info`, not in a band.
             clear = "A" in picture.getbands() or "transparency" in picture.info
             picture = picture.convert("RGBA" if clear else "RGB")
