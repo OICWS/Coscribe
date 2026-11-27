@@ -14,3 +14,8 @@ next replay can still find its own tape from a background task.
 
 The slow-tool regressions give the fake model time to answer on a busy Windows
 runner. Their tools still take longer than the model stall limit.
+
+The changed-function selector compares the executable code before and after the PR.
+A type-only edit to an instance attribute in a function skips mutation of that
+unchanged function. This removes the session constructor from the run while retaining
+the three conversation methods whose behavior changed.
