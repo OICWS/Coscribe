@@ -68,11 +68,16 @@ test("a message added while working has its time and Copy after delivery and rel
     const approve = page.getByRole("button", { name: "Approve", exact: true });
     await expect(approve).toBeVisible();
 
+    // Plain text answers the pending approval. An attachment queues the message for the next step.
+    await page.getByTestId("composer").locator("input[type=file]").setInputFiles({
+      name: "steer-note.txt", mimeType: "text/plain", buffer: Buffer.from("Supporting figures"),
+    });
+    await expect(page.getByText("steer-note.txt", { exact: true })).toBeVisible();
     const note = "Also check the numbers.";
     await composer.fill(note);
     await page.keyboard.press("Enter");
-    const row = page.locator('[class~="group/msg"]').filter({ has: bubble(page, note) });
-    await expect(row.getByRole("button", { name: "Send now" })).toBeVisible();
+    const row = page.locator('[class~="group/msg"]').filter({ has: page.getByText(note, { exact: true }) });
+    await expect(row.getByRole("button", { name: "Interrupt the reply and send this now" })).toBeVisible();
     await approve.click();
     await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
 

@@ -43,7 +43,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any, NamedTuple, cast
+from typing import Any, cast
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.messages.ai import UsageMetadata
@@ -100,7 +100,7 @@ from .agent_assembly import AgentAssembly, ConnectorDirectory, RebuiltOnUse, ris
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .edit_preview import build_document_edit_preview
-from .events import EventSink, TurnSocket, keeps_running
+from .events import EventSink, QueuedSteer, TurnSocket, deliver_steers, keeps_running
 from .history import ConversationHistory
 from .prompts import INIT_PROMPT
 from .reconfigure import SessionReconfigurer
@@ -123,13 +123,6 @@ from .user_edits import user_edits_note
 from .workflow_drafting import WorkflowDrafting
 
 logger = logging.getLogger(__name__)
-
-
-class _QueuedSteer(NamedTuple):
-    id: str
-    text: str
-    images: list[str]
-    sent_at: str
 
 
 def _marks(notice: bool) -> dict[str, Any]:
@@ -261,7 +254,7 @@ class ChatSessionLG:
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
         # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
-        self._steers: list[_QueuedSteer] = []
+        self._steers: list[QueuedSteer] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's
         # docstring for why this exists: a turn lock alone would let an
@@ -513,11 +506,7 @@ class ChatSessionLG:
         key = str(steer_id)
         self._steers = [note for note in self._steers if note.id != key]
         if text is not None:
-            self._steers.append(
-                _QueuedSteer(
-                    key, text, list(images or []), datetime.now(UTC).isoformat(timespec="seconds")
-                )
-            )
+            self._steers.append(QueuedSteer.capture(key, text, images))
             if not self._turn_lock.locked():
                 asyncio.get_running_loop().create_task(self._send_unread_steers())
             request_detach(self.thread_id, None, asyncio.get_running_loop(), "steer")
@@ -526,17 +515,7 @@ class ChatSessionLG:
         if not self._steers:
             return []
         steers, self._steers = self._steers, []
-        socket = self._live_websocket or self._turn_websocket
-        if socket is not None:
-            with contextlib.suppress(Exception):  # the tab went away; the model still has them
-                await socket.send_json(
-                    {
-                        "type": "steers_delivered",
-                        "ids": [note.id for note in steers],
-                        "sent_at_by_id": {note.id: note.sent_at for note in steers},
-                    }
-                )
-        return [(note.text, note.images, note.sent_at) for note in steers]
+        return await deliver_steers(self._live_websocket or self._turn_websocket, steers)
 
     def _turn_lock_changed(self, active: bool) -> None:
         BROWSER_HOST.set_active(self.thread_id, active)
