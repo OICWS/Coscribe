@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 27216 chars, ~6804 tokens, sha256 cabd56218a
+system prompt: 27246 chars, ~6811 tokens, sha256 efcb82dc52
 
 bound to the model: 24 tools, ~5498 tokens
   answer_question_card (answers:array) desc 920 chars sha256 986a8d060c

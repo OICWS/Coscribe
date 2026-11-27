@@ -108,6 +108,10 @@ Desktop verification for messages added while working (#1101) covers copying one
   SpreadsheetBench and our own tasks in batches on `deepseek-flash`, each approved first. Reuse
   the baseline for targeted reruns of dev tasks; freeze the implementation for the final run and
   report the held-out tasks apart (`office-agent/evals/README.md`, `external_splits.json`).
+  Open from the dev tasks:
+  - Pictures redrawn as editable slides lose the most points (055, 056, 051 and others).
+  - Asked only to "draw" a chart of workbook data, the agent makes a PNG instead of a chart in the
+    workbook (098, `docs/log/2026-11-27-xlsx-native-charts.md`).
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in

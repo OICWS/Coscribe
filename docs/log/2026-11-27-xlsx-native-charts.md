@@ -17,9 +17,17 @@ in a file preview.
   - a reference line is a two-point series;
   - many charts go in one call.
 
+## Measured
+On the OfficeVal dev tasks with charts, one run each, deepseek-flash:
+- 097: 0.03 to 0.69. The 16 charts are native, made with `modify_xlsx`.
+- 098: still 0 in two runs. Asked only to "draw" a chart, the agent made a PNG (and once a Word
+  file) and never opened the Excel tools.
+
+091 (0.87) and 082 are not chart tasks.
+
 ## Not verified
 - Excel on Windows opening the cached charts. LibreOffice opens and draws them (checked by hand).
-- The effect on 097, 098, 082 and 091, measured in a rerun the maintainer approves.
 
 ## Follow-ups
-- None.
+- 098: the agent does not take a chart of workbook data as a workbook job when the request
+  doesn't say where the chart goes (`docs/plan.md`).

@@ -162,9 +162,9 @@ returns matching page numbers without spending context on pages you don't \
 need. Excel: read with read_xlsx; build or change a workbook with \
 write_xlsx_cells (blocks of cells with their formulas and styles, a whole \
 table or workbook per call) and modify_xlsx (charts, layout, rules, print \
-setup), after loading the "Excel Spreadsheets" skill. A chart in a \
-workbook is a native chart from modify_xlsx, never a picture drawn in a \
-script and inserted. Analysis over large \
+setup), after loading the "Excel Spreadsheets" skill. A chart of data \
+that lives in a workbook goes into that workbook as a native chart from \
+modify_xlsx, never a picture drawn in a script. Analysis over large \
 or messy data (groupby, pivots, joins) goes through run_python_script, \
 whose environment has pandas and openpyxl; its results go into the \
 workbook as formulas through those two tools. \
