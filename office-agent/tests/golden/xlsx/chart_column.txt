@@ -93,9 +93,18 @@ C4 '=SUM(C2:C3)' -> 1 | fmt='0.0%' italic font=Calibri,11.0
             </a:ln>
           </spPr>
           <cat>
-            <numRef>
+            <strRef>
               <f>'Sales'!$A$2:$A$3</f>
-            </numRef>
+              <strCache>
+                <ptCount val="2"/>
+                <pt idx="0">
+                  <v>North</v>
+                </pt>
+                <pt idx="1">
+                  <v>South</v>
+                </pt>
+              </strCache>
+            </strRef>
           </cat>
           <val>
             <numRef>

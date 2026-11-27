@@ -7,8 +7,10 @@ in the chart part. A person gets the same faults: a picture they cannot edit, an
 in a file preview.
 
 ## Shipped
-- `modify_xlsx` charts write each series' values and labels into the chart (the cache Excel
-  writes), unless a series is formulas, whose values are unknown until recalculation.
+- Every save of a workbook (`write_xlsx_cells` or `modify_xlsx`) writes each chart's values and
+  labels into the chart, the cache Excel writes, so a chart follows a later change to its cells.
+  A series of formulas gets none, since its values wait for recalculation. Text categories are
+  written as text.
 - The Excel skill and the coordinator prompt:
   - a workbook's chart is native, from `modify_xlsx`;
   - its source is the table the person sees;

@@ -140,41 +140,64 @@ def _chart_series(chart: Any, source: Worksheet, ref: str, kind: str) -> None:
 
 
 def _cached(workbook: Workbook, formula: str) -> list[Any] | None:
-    """The values a chart reference names, or None when one is a formula (its value is not known
-    until the workbook is recalculated)."""
+    """The values a chart reference names, or None when they are not known here: a formula's
+    value waits for recalculation, and a reference may name a sheet that is gone."""
     from openpyxl.utils.cell import range_to_tuple
 
     name, (min_col, min_row, max_col, max_row) = range_to_tuple(formula)
-    sheet = workbook[name]
-    values = [
-        cell.value for row in sheet.iter_rows(min_row, max_row, min_col, max_col) for cell in row
-    ]
+    # The reference writes O'Brien as 'O''Brien'; range_to_tuple drops the outer quotes only.
+    name = name.replace("''", "'")
+    if name not in workbook.sheetnames:
+        return None
+    rows = workbook[name].iter_rows(min_row, max_row, min_col, max_col)
+    values = [cell.value for row in rows for cell in row]
     if any(isinstance(v, str) and v.startswith("=") for v in values):
         return None
     return values
 
 
+def _text_categories(workbook: Workbook, series: Any) -> None:
+    """openpyxl names categories as numbers even when they are labels; Excel writes labels as
+    text, and a reader that takes the reference's kind at its word shows none."""
+    from openpyxl.chart.data_source import AxDataSource, StrRef
+
+    ref = getattr(series.cat, "numRef", None)
+    if ref is None:
+        return
+    values = _cached(workbook, ref.f)
+    if values is not None and any(isinstance(v, str) for v in values):
+        series.cat = AxDataSource(strRef=StrRef(f=ref.f))
+
+
 def _cache_series(workbook: Workbook, chart: Any) -> None:
     """Write each series' values and labels into the chart itself, as Excel does. A program that
     shows a chart without recalculating the workbook (a file preview, a web viewer, a checker
-    that reads the chart part) otherwise finds a chart with no data."""
+    that reads the chart part) otherwise finds a chart with no data. A cache that can't be known
+    is dropped rather than left showing values the cells no longer hold."""
     from openpyxl.chart.data_source import NumData, NumVal, StrData, StrVal
 
     def numbers(ref: Any) -> None:
-        values = _cached(workbook, ref.f) if ref is not None else None
+        if ref is None:
+            return
+        values = _cached(workbook, ref.f)
         if values is None or not all(isinstance(v, int | float) or v is None for v in values):
+            ref.numCache = None
             return
         points = [NumVal(idx=i, v=v) for i, v in enumerate(values) if v is not None]
         ref.numCache = NumData(pt=points, ptCount=len(values))
 
     def labels(ref: Any) -> None:
-        values = _cached(workbook, ref.f) if ref is not None else None
+        if ref is None:
+            return
+        values = _cached(workbook, ref.f)
         if values is None:
+            ref.strCache = None
             return
         points = [StrVal(idx=i, v=str(v)) for i, v in enumerate(values) if v is not None]
         ref.strCache = StrData(pt=points, ptCount=len(values))
 
     for series in chart.series:
+        _text_categories(workbook, series)
         for source in (series.val, series.yVal, series.xVal, series.cat):
             if source is None:
                 continue
@@ -182,6 +205,14 @@ def _cache_series(workbook: Workbook, chart: Any) -> None:
             labels(getattr(source, "strRef", None))
         if series.tx is not None:
             labels(series.tx.strRef)
+
+
+def refresh_chart_caches(workbook: Workbook) -> None:
+    """Bring every chart's cached values in line with its cells, before each save: a cell that a
+    later write changed would otherwise leave its chart showing the old value."""
+    for sheet in workbook.worksheets:
+        for chart in getattr(sheet, "_charts", []):
+            _cache_series(workbook, chart)
 
 
 def _colours(given: list[str], count: int) -> list[str]:
@@ -216,7 +247,6 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
     source_name, ref = _split_ref(op["source"], op["sheet"])
     chart = _chart_object(op["kind"], bool(op.get("stacked")), bool(op.get("labels")))
     _chart_series(chart, _sheet(workbook, source_name), ref, op["kind"])
-    _cache_series(workbook, chart)
     chart.title = op.get("title") or None
     if op["kind"] != "pie":
         chart.x_axis.title = op.get("x_title") or None
