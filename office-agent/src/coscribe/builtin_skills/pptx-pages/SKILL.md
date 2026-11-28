@@ -57,6 +57,37 @@ explicit approval. Leave the original in place while waiting.
 Not for this way: a few words in a deck the user brought (use the edit tools); for their
 template, see "Changing the template's own slides".
 
+## Redrawing a picture as an editable slide
+
+When the user gives a picture (a flowchart, a process diagram, an infographic, a slide screenshot)
+to turn into an editable slide ("做成可编辑的 PPT", "不要图片"), the picture is the spec. Skip the
+plan and the design spec and copy it:
+
+1. **Measure it.** Open it with look_at_image, which reports its real size. Map the picture's
+   frame onto the whole canvas, each axis on its own: x × 1280 / width and y × 720 / height.
+   Every box, line and label then sits at the same fraction of the slide as in the picture, with
+   the same margins, never shrunk into a corner or centred with bands beside it. Where the
+   picture is not 16:9, keep circles, icons and text unstretched at the smaller of the two
+   scales, centred on their mapped spot. One picture is one slide, unless the user asks
+   otherwise.
+2. **Copy every element.** Each box, circle, diamond, label and icon in the picture gets its own
+   shape, with the same text word for word, the same fill and outline colours, and font sizes
+   in the same ratio to each other. Count them against the picture before building.
+3. **An arrow is one element with an arrowhead.** Draw it as one `<line>`, `<polyline>` or
+   `<path>` with `marker-end="url(#arrow)"` (a `<marker>` in `<defs>`). The build makes it a
+   native PowerPoint line with an arrowhead. An elbow or a loop back is one polyline, not
+   several lines. Never draw a line and a separate triangle: PowerPoint then has no arrow, only
+   two shapes.
+4. **A dashed line** is one element with `stroke-dasharray`, never a row of short lines.
+5. **Every icon in the picture is drawn.** Use the nearest `data-icon` from icons.md. Where none
+   is close, build it from a few simple shapes (a laptop is a rounded screen and a base bar). An
+   icon is never left out or replaced by text.
+6. **Leave only the deck.** A helper file (an empty template, a test build) is deleted before
+   the reply, so the folder holds one deck: the answer.
+7. **Compare once.** After the build, look at the preview and the original picture one after
+   the other. List every difference at once: a missing element, an arrow's direction, an offset,
+   a colour, a size. Fix all of them in one edit, then build again.
+
 ## Design spec
 
 A deck looks designed when one decision runs through every page. Before any page, choose:
