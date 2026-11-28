@@ -82,6 +82,9 @@ class AgentRequest:
     go_on: bool = False
     # How many sub-agents the agent may start (decision 0051); 0 for none.
     sub_agents: int = 0
+    # What the person saved this step to do, when a call `decide` asks about goes to Auto mode's
+    # reviewer first (a high or full step of an "auto" task, decision 0062); None: it waits.
+    review_as: str | None = None
 
 
 @dataclass
@@ -145,6 +148,15 @@ def decide(step: AgentStep, approval_mode: str, workspace: str, call: AgentCall)
     if approval_mode == "auto" and call.risk == "WRITE_LOCAL":
         return "approve"
     return "ask"
+
+
+def _review_as(step: AgentStep, approval_mode: str, guard: CallGuard) -> str | None:
+    """The step's own words as saved, not as rendered: a value an earlier step brought in may
+    hold outside text, which the reviewer must not take for the person's request. A bounded
+    step's limits and a guard that wants a person are consent no reviewer gives."""
+    if approval_mode != "auto" or step.autonomy == "bounded" or guard.confirm:
+        return None
+    return f"{step.title}: {step.goal}"
 
 
 AGENT_STEP_INSTRUCTIONS = (
@@ -344,6 +356,7 @@ async def run_agent_step(
         decide=decide_call,
         max_tokens=max_tokens,
         sub_agents=sub_agents_for(step),
+        review_as=_review_as(step, approval_mode, guard),
     )
     while True:
         reply = await runner(request)

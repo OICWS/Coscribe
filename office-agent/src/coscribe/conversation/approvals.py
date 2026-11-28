@@ -11,7 +11,7 @@ import uuid
 from asyncio import Future, get_running_loop, to_thread
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from ..code_runtime import CodePermissions
 from ..config import Settings
@@ -390,8 +390,8 @@ class ApprovalDecider:
             return await self._ask_person_only(
                 audit_log, name, args, websocket, "workspace_rule", note
             )
-        if self._bypass_active():
-            return await self._approved(audit_log, name, args, websocket, "bypass")
+        if (bypass := self._bypass()) is not None:
+            return await self._approved(audit_log, name, args, websocket, bypass)
         similar = similar_call(name, args)
         if similar is not None and similar.key in self._host._similar_allowances:
             return await self._approved(audit_log, name, args, websocket, "allowed_similar")
@@ -529,11 +529,8 @@ class ApprovalDecider:
             self._host._subagent_request_ids.add(request_id)
             if name in CODE_APPROVAL_RISKS:
                 self._host._code_requests[request_id] = (websocket.task_id, name)
-        # Only worth building for a socket that can actually show it to
-        # someone -- for an unattended selfwake/Scheduled Task turn (see
-        # _can_resolve_approvals's own docstring), this would just spend a
-        # real office-program conversion + dry-run edit on a prompt nobody is
-        # ever going to see resolved live.
+        # The preview costs an office-program conversion and a dry-run edit: only worth it for
+        # a card someone can see.
         before_preview, after_preview = (
             await self._host._build_document_edit_preview(name, args)
             if can_resolve_approvals(websocket)
@@ -723,16 +720,16 @@ class ApprovalDecider:
         local = self._host._gated_tool_risks.get(name) == "WRITE_LOCAL"
         if self._host.accept_edits and local:
             return "accept_edits"
-        category = getattr(self._host.tool_catalog().get(name), "category", None)
-        # A delete or a move takes away a file that was there before: the reviewer sees those.
-        edits = category in ("filesystem", "documents") and name not in ("delete_file", "move_file")
-        if self._auto_review_active() and local and edits:
-            return "auto_mode_edit"
         mode = self._effective_run_approval_mode()
         if mode == "skip":
             return "approval_mode_skip"
         if mode == "auto" and local:
             return "approval_mode_auto"
+        category = getattr(self._host.tool_catalog().get(name), "category", None)
+        # A delete or a move takes away a file that was there before: the reviewer sees those.
+        edits = category in ("filesystem", "documents") and name not in ("delete_file", "move_file")
+        if self._auto_review_active() and local and edits:
+            return "auto_mode_edit"
         return None
 
     def _effective_run_approval_mode(self) -> str | None:
@@ -751,7 +748,7 @@ class ApprovalDecider:
         run = trigger.find_run(parsed[1])
         if run is None or run.status != "needs_approval":
             return None
-        return trigger.approval_mode
+        return trigger.tier(trigger.approval_mode, self._host.settings.allow_bypass_mode)
 
     def _code_allows(self, name: str, websocket: Any) -> bool:
         """Whether the user has allowed this kind of code-module action: on
@@ -769,32 +766,33 @@ class ApprovalDecider:
         return permissions.policy(name) == "allow"
 
     def _auto_review_active(self) -> bool:
-        """A scheduled run keeps the approval tier its task was saved with;
-        the conversation's Auto mode applies only outside one."""
-        return (
-            self._host.auto_mode
-            and not self._host._auto_paused
-            and self._effective_run_approval_mode() is None
-        )
+        """The reviewer decides in the conversation's Auto mode, or in a run whose task approves
+        "auto": the run's prompt is the person's request in its thread (decision 0062). A run
+        keeps its task's tier, whatever the conversation's mode."""
+        if self._host._auto_paused:
+            return False
+        mode = self._effective_run_approval_mode()
+        return self._host.auto_mode if mode is None else mode == "auto"
 
     async def _auto_review(
         self, name: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
         return await review_call(self._host, name, args, delegated_task, where)
 
-    def _bypass_active(self) -> bool:
-        """Bypass mode holds only while Settings allows it, and never in a scheduled run."""
-        return (
-            self._host.bypass_mode
-            and self._host.settings.allow_bypass_mode
-            and self._effective_run_approval_mode() is None
-        )
+    def _bypass(self) -> Literal["bypass", "approval_mode_skip"] | None:
+        """Bypass mode holds only while Settings allows it. A run keeps its task's tier, and a
+        task's "skip" is Bypass's equal: `ScheduledTrigger.tier` holds it to the same setting."""
+        mode = self._effective_run_approval_mode()
+        if mode is not None:
+            return "approval_mode_skip" if mode == "skip" else None
+        on = self._host.bypass_mode and self._host.settings.allow_bypass_mode
+        return "bypass" if on else None
 
     def _auto_approval_active(self) -> bool:
         return (
             self._host.accept_edits
             or bool(self._host.preapproved_tools)
             or self._auto_review_active()
-            or self._bypass_active()
-            or self._effective_run_approval_mode() in ("auto", "skip")
+            or self._bypass() is not None
+            or self._effective_run_approval_mode() == "auto"
         )

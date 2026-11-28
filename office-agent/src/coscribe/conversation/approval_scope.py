@@ -4,6 +4,7 @@ about where a command runs (decision 0062)."""
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from typing import Any
@@ -20,6 +21,7 @@ from ..runtime_lg import (
     strip_mode_note,
 )
 from ..tools import sandbox_codex, sandbox_mode
+from ..workflows import AgentCall
 from .wire import AskReason
 
 _COMMAND_TOOLS = ("run_background_command",)
@@ -88,6 +90,29 @@ def similar_call(name: str, args: dict[str, Any]) -> SimilarCall | None:
     return SimilarCall(name, f"Allow {name} in this chat")
 
 
+def _folders(host: Any) -> list[str]:
+    return [str(folder) for folder in (host.folders or [host.workspace_root])]
+
+
+def step_reviewer(host: Any) -> Callable[[AgentCall, str], Awaitable[Verdict | None]]:
+    """Auto mode's reviewer for a workflow's agent step, where what the person saved the step
+    to do stands in for what they said (decision 0062)."""
+
+    async def review(call: AgentCall, saved: str) -> Verdict | None:
+        rule = command_rule(host.settings.state_dir, host.thread_id)
+        return await review_action(
+            host._assembly.side_model(),
+            tool_name=call.tool,
+            arguments=call.args,
+            risk=call.risk,
+            folders=_folders(host),
+            user_requests=saved,
+            where=reviewer_where(rule) if call.tool in _COMMAND_TOOLS else "",
+        )
+
+    return review
+
+
 async def review_call(
     host: Any, name: str, args: dict[str, Any], delegated_task: str, where: str
 ) -> Verdict | None:
@@ -99,7 +124,7 @@ async def review_call(
         tool_name=name,
         arguments=args,
         risk=host._gated_tool_risks.get(name, "WRITE_LOCAL"),
-        folders=[str(folder) for folder in (host.folders or [host.workspace_root])],
+        folders=_folders(host),
         user_requests=recent_user_requests(
             [
                 HumanMessage(strip_mode_note(extract_text(m.content)))

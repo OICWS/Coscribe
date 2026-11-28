@@ -16,6 +16,7 @@ import pytest
 from coscribe.conversation import approval_scope
 from coscribe.conversation.approval_scope import SimilarCall, similar_call
 from coscribe.runtime_lg.audit import AuditLog
+from coscribe.tools import ScheduledTrigger as _Trigger
 from coscribe.tools.exec import commands as commands_module
 from tests.test_approval_decisions import (
     COMMAND,
@@ -262,3 +263,71 @@ def test_bypass_mode_comes_on_only_while_settings_allow_it(
     session._toggle_mode("bypass")
 
     assert (refused, on, session.permission_mode) == ("manual", "bypass", "manual")
+
+
+TIERS = {
+    ("manual", False): "manual",
+    ("auto", False): "auto",
+    ("skip", False): "auto",
+    ("skip", True): "skip",
+    ("auto", True): "auto",
+}
+
+
+@pytest.mark.parametrize(("saved", "allowed"), sorted(TIERS))
+def test_a_tasks_never_ask_tier_holds_only_while_settings_allow_bypass(
+    saved: str, allowed: bool
+) -> None:
+    assert _Trigger.tier(saved, allowed) == TIERS[saved, allowed]
+
+
+class _RunSession:
+    """What a prompt run needs of its conversation, keeping the tier the turn ran under."""
+
+    def __init__(self, allowed: bool) -> None:
+        self.settings = type("S", (), {"allow_bypass_mode": allowed})()
+        self.config: dict[str, Any] = {}
+        self.ran_under: str | None = None
+        self.active_run_prompt: str | None = None
+        self.run_approval_mode: str | None = None
+        state = type("State", (), {"tasks": []})()
+
+        async def aget_state(config: Any) -> Any:
+            return state
+
+        self.lg_agent = type("Agent", (), {"aget_state": staticmethod(aget_state)})()
+
+    async def handle_user_message(self, prompt: str, socket: Any) -> None:
+        self.ran_under = self.run_approval_mode
+
+
+@pytest.mark.parametrize("allowed", [False, True])
+async def test_a_prompt_run_takes_its_tier_through_the_setting(
+    allowed: bool, tmp_path: Path
+) -> None:
+    from datetime import datetime
+
+    from coscribe.runtime_lg import scheduled_tasks
+    from coscribe.tools import ScheduledRun, ScheduledTrigger
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduleRule
+
+    trigger = ScheduledTrigger(
+        trigger_id="t",
+        name="Task",
+        schedule=ScheduleRule(kind="manual", at=""),
+        enabled=True,
+        created_at=datetime.now().isoformat(),
+        next_run_at=None,
+        prompt="Do it",
+        approval_mode="skip",
+    )
+    run = ScheduledRun(
+        run_id="r", thread_id="th", started_at=datetime.now().isoformat(), source="manual"
+    )
+    session = _RunSession(allowed)
+
+    status = await scheduled_tasks._run_in_session(trigger, run, "", session)
+
+    assert status == ("completed", None)
+    assert session.ran_under == ("skip" if allowed else "auto")
+    assert session.run_approval_mode is None

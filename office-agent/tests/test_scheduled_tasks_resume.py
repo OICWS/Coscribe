@@ -593,13 +593,15 @@ def _audit(settings: Settings) -> list[tuple[str, str, str]]:
     return [(e.tool_name, e.decision, e.reason) for e in AuditLog(settings.state_dir).read_all()]
 
 
-async def test_approval_mode_auto_approves_edits_but_parks_running_code(
+async def test_approval_mode_auto_approves_edits_and_hands_code_to_the_reviewer(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The line between the two tiers: "auto" approves a local file edit,
-    then parks before a script runs -- rather than rejecting it and letting
-    the run carry on without it."""
+    """The line between the two tiers: "auto" approves a local file edit on its own, and a
+    script goes to Auto mode's reviewer, whose block the run goes on without (decision 0062)."""
     from langchain_core.messages import ToolCall
+
+    from coscribe.conversation import approval_scope
+    from coscribe.runtime_lg import Verdict
 
     _stub_script_env(monkeypatch)
     settings = _settings(tmp_path)
@@ -608,8 +610,16 @@ async def test_approval_mode_auto_approves_edits_but_parks_running_code(
         responses=[
             AIMessage(content="", tool_calls=[write]),
             AIMessage(content="", tool_calls=[_script_call("call_2", "print('ran')")]),
+            AIMessage(content="done"),
         ]
     )
+    reviewed: list[str] = []
+
+    async def review_action(model: Any, **kwargs: Any) -> Verdict:
+        reviewed.append(kwargs["user_requests"])
+        return Verdict(False, "the task never asks for a script")
+
+    monkeypatch.setattr(approval_scope, "review_action", review_action)
     async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "cp.sqlite")) as checkpointer:
         get_session = await _make_get_session(settings, checkpointer, fake_model, monkeypatch)
         ScheduledTriggerStore(settings.state_dir).save(
@@ -619,16 +629,22 @@ async def test_approval_mode_auto_approves_edits_but_parks_running_code(
             fire_trigger_now(settings.state_dir, "trig-auto", get_session), timeout=30
         )
 
-    assert run is not None and run.status == "needs_approval"
+    assert run is not None and run.status == "completed"
     assert (tmp_path / "workspace" / "note.txt").read_text() == "hi"
-    assert _audit(settings) == [("write_file", "approve", "approval_mode_auto")]
+    assert _audit(settings) == [
+        ("write_file", "approve", "approval_mode_auto"),
+        ("run_python_script", "reject", "auto_review_block"),
+    ]
+    # The run's prompt is the person's request the reviewer weighs the script against.
+    assert len(reviewed) == 1 and "Do it" in reviewed[0]
 
 
 async def test_approval_mode_skip_runs_code_without_asking(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _stub_script_env(monkeypatch)
-    settings = _settings(tmp_path)
+    # "Never ask" is Bypass mode's equal, behind the same setting (decision 0062).
+    settings = _settings(tmp_path, allow_bypass_mode=True)
     fake_model = FakeToolCallingChatModel(
         responses=[
             AIMessage(content="", tool_calls=[_script_call("call_1", "print('ran')")]),
@@ -689,8 +705,8 @@ async def test_approval_mode_skip_still_obeys_a_forbidding_exec_policy(
 async def test_finishing_a_parked_auto_run_keeps_its_tier(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A person approves the script an "auto" run parked on; the file edit
-    that follows is still approved automatically, not put to them too."""
+    """A person approves the script a run parked on; the file edit that follows is approved
+    under the task's tier as it is now ("auto", saved while the run waited), not put to them."""
     from langchain_core.messages import ToolCall
 
     _stub_script_env(monkeypatch)
@@ -717,7 +733,7 @@ async def test_finishing_a_parked_auto_run_keeps_its_tier(
     async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "cp.sqlite")) as checkpointer:
         get_session = await _make_get_session(settings, checkpointer, fake_model, monkeypatch)
         store = ScheduledTriggerStore(settings.state_dir)
-        store.save(_trigger("trig-resume", approval_mode="auto", notes_enabled=False))
+        store.save(_trigger("trig-resume", approval_mode="manual", notes_enabled=False))
 
         async def get_watched_session(thread_id: str) -> Any:
             session = await get_session(thread_id)
@@ -731,6 +747,10 @@ async def test_finishing_a_parked_auto_run_keeps_its_tier(
                 break
             await asyncio.sleep(0.02)
         approval = next(e for e in tab.events if e["type"] == "approval_required")
+        saved = store.load("trig-resume")
+        assert saved is not None
+        saved.approval_mode = "auto"
+        store.save(saved)
         sessions[0].resolve_approval(approval["id"], True)
         await asyncio.wait_for(sessions[0]._offer_task, timeout=10)
 

@@ -49,6 +49,7 @@ from ..workflows import (
     uses_browser,
     walk,
 )
+from .approval_scope import step_reviewer
 from .events import EventSink
 from .turn_lock import TurnLock
 from .turn_record import run_recorder
@@ -430,6 +431,7 @@ class WorkflowDrafting:
             keeps_tool_list_fixed=lambda m: keeps_tool_list_fixed(m, host._custom_providers),
             pre_tool_use=hooks,
             record_run=run_recorder(host.settings.state_dir, host.thread_id),
+            review=step_reviewer(host),
         )
 
     async def draft_workflow(self, name_hint: str = "") -> WorkflowDraft:

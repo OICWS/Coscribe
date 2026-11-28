@@ -172,7 +172,9 @@ async def _run_in_session(
         await session.switch_model(trigger.model, socket)
 
     prompt = build_run_prompt(trigger, run, notes)
-    session.run_approval_mode = trigger.approval_mode
+    session.run_approval_mode = trigger.tier(
+        trigger.approval_mode, session.settings.allow_bypass_mode
+    )
     session.active_run_prompt = prompt
     try:
         await socket.send_json({"type": "scheduled_run_started", "text": prompt})
@@ -218,7 +220,8 @@ async def _run_workflow(
     ctx = session.workflow_context(trigger.model)
     # A run may stop for an answer; a test in a conversation just fails.
     ctx.ask_permission = True
-    ctx.approval_mode = trigger.approval_mode
+    ctx.allow_bypass = session.settings.allow_bypass_mode
+    ctx.approval_mode = trigger.tier(trigger.approval_mode, ctx.allow_bypass)
     ctx.tasks = _task_source(store, trigger, run)
     ctx.budget = _budget(store, trigger, run)
     workflow_run = WorkflowRun(

@@ -128,6 +128,8 @@ class StepContext:
     waits: bool = True
     # The task's approval mode, which high and full agent steps run under.
     approval_mode: str = "manual"
+    # Settings' "Allow bypass permissions mode": a called task's "skip" holds only under it.
+    allow_bypass: bool = False
     # Tools whose results come from outside: an agent step that reads one
     # through its references gets read-only tools.
     outside_tools: frozenset[str] = frozenset()

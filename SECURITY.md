@@ -21,10 +21,13 @@ coscribe runs on your own computer.
   where Settings set it up: they write only the conversation's read-write folders, have network
   only when the conversation's workspace allows it, and your private folders are hidden by
   default. Elsewhere a command runs as you, and only after you allowed that and approve each one,
-  or, in Auto mode, after its reviewer model allowed it (decision 0062).
+  or, in Auto mode or a scheduled task set to "Automatically approve", after its reviewer
+  model allowed it (decision 0062).
 - **Bypass mode** runs every action without asking. It is off the mode menu until you turn on
   "Allow bypass permissions mode" in Settings › General; hooks, exec policy's forbidden rules, the
   workspace's deny and ask rules and the sandbox still hold, and the audit log keeps every call.
+  A scheduled task set to "Never ask" is the same, behind the same setting; while it is off the
+  task runs as "Automatically approve".
 - **What the sandbox does not cover.** Off Windows, and in a conversation let out of isolation,
   code runs as you and can read any file you can and use the network. coscribe's own process and
   its built-in tools (file tools, Office, the web tools) run as you and keep to the folder
