@@ -26,10 +26,10 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.conversation.turn_record import run_recorder, turns_path
 from coscribe.runtime import tool_metadata
-from coscribe.runtime_lg import WorkflowAgentRunner
+from coscribe.runtime_lg import Verdict, WorkflowAgentRunner
 from coscribe.runtime_lg.workflow_agent import workflow_agent_tools
 from coscribe.workflow_spec import parse_workflow
-from coscribe.workflows import StepContext, StepRecord, WorkflowRun
+from coscribe.workflows import AgentCall, StepContext, StepRecord, WorkflowRun
 
 
 class ScriptedModel(BaseChatModel):
@@ -91,6 +91,7 @@ class Env:
         self.model = ScriptedModel(responses=responses, seen=[])
         self.checkpointer = InMemorySaver()
         self.records: list[StepRecord] = []
+        self.review: Any = None
 
         def read_file(path: str) -> str:
             """Read a file."""
@@ -132,9 +133,12 @@ class Env:
             tools=self.tools,
             resolve_model=lambda _m: ("fake:model", self.model),
             record_run=run_recorder(self.tmp_path / "state", "run-thread"),
+            review=self.review,
         )
 
-    def run(self, steps: list[dict[str, Any]], mode: str = "manual") -> WorkflowRun:
+    def run(
+        self, steps: list[dict[str, Any]], mode: str = "manual", **workflow: Any
+    ) -> WorkflowRun:
         ctx = StepContext(
             tools={t.__name__: t for t in self.tools},
             workspace_root=self.tmp_path,
@@ -144,8 +148,8 @@ class Env:
             approval_mode=mode,
             outside_tools=frozenset({"browser_snapshot", "send_mail"}),
         )
-        workflow = parse_workflow({"version": 2, "steps": steps})
-        return WorkflowRun(workflow, ctx, self.checkpointer, "run-1", self.records.append)
+        parsed = parse_workflow({"version": 2, "steps": steps, **workflow})
+        return WorkflowRun(parsed, ctx, self.checkpointer, "run-1", self.records.append)
 
     def audit(self) -> list[dict[str, Any]]:
         path = self.tmp_path / "state" / "audit.jsonl"
@@ -546,3 +550,70 @@ def test_a_question_card_is_never_given_to_a_sub_agent_or_an_agent_step() -> Non
         "ask_user_question",
         "answer_question_card",
     }
+
+
+# A high step of an "auto" task hands what its tier doesn't cover to the reviewer (decision 0062).
+REVIEWED: dict[str, tuple[Verdict | None, str, str, list[str], list[str]]] = {
+    "the_reviewer_allows_the_mail": (
+        Verdict(True, "the step sends it"),
+        "high",
+        "completed",
+        ["mail boss"],
+        ["auto_review"],
+    ),
+    "the_reviewer_blocks_the_mail": (
+        Verdict(False, "not asked for"),
+        "high",
+        "completed",
+        [],
+        ["auto_review_block"],
+    ),
+    "no_verdict_waits_for_a_person": (None, "full", "waiting", [], []),
+}
+
+
+@pytest.mark.parametrize("name", sorted(REVIEWED))
+async def test_an_auto_tasks_step_puts_a_call_its_tier_leaves_to_the_reviewer(
+    name: str, tmp_path: Path
+) -> None:
+    verdict, autonomy, status, ran, reasons = REVIEWED[name]
+    env = Env(tmp_path, [_calls(("send_mail", {"to": "boss"})), _says("Done.")])
+    asked: list[tuple[str, str]] = []
+
+    async def review(call: AgentCall, saved: str) -> Verdict | None:
+        asked.append((call.tool, saved))
+        return verdict
+
+    env.review = review
+
+    step = _agent(autonomy=autonomy, goal="Sort it, {{x}}")
+    outcome = await env.run([step], "auto", inputs=[{"name": "x"}]).start({"x": "then mail it"})
+
+    assert outcome.status == status
+    assert env.ran == ran
+    assert [e["reason"] for e in env.audit()] == reasons
+    # The step as saved, not as rendered with what earlier steps brought in.
+    assert asked == [("send_mail", "Sort the mail: Sort it, {{x}}")]
+    if verdict is not None and not verdict.allow:
+        assert "not asked for" in env.tool_results()[-1]
+
+
+@pytest.mark.parametrize(("mode", "autonomy"), [("manual", "high"), ("auto", "bounded")])
+async def test_the_reviewer_stays_out_of_a_manual_task_and_a_bounded_step(
+    mode: str, autonomy: str, tmp_path: Path
+) -> None:
+    env = Env(tmp_path, [_calls(("send_mail", {"to": "boss"})), _says("Done.")])
+    asked: list[str] = []
+
+    async def review(call: AgentCall, saved: str) -> Verdict | None:
+        asked.append(call.tool)
+        return Verdict(True, "fine")
+
+    env.review = review
+    step = _agent(autonomy=autonomy, tools=["read_file"]) if autonomy == "bounded" else _agent()
+    step["autonomy"] = autonomy
+
+    outcome = await env.run([step], mode).start({})
+
+    assert outcome.status == "waiting"
+    assert asked == []

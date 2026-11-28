@@ -30,8 +30,8 @@ Nobody watches a run, so a task sets its own **Permissions**:
 | Setting | What happens |
 |---|---|
 | **Ask before every action** | The run pauses and waits for your approval before any action that needs it. |
-| **Automatically approve** | The run creates and edits files on its own, but pauses before running code or using connectors. |
-| **Never ask** | The run never pauses for approval, including for running code and using connectors. Your blocking rules still apply. |
+| **Automatically approve** | The run creates and edits files on its own. Before it runs code or uses a connector, a reviewer checks the action against the task: what the task needs goes ahead, the rest is skipped. |
+| **Never ask** | The run never pauses for approval, including for running code and using connectors. Your blocking rules still apply. It needs **Allow bypass permissions mode** in **Settings** › **General**; while that is off, the task runs as **Automatically approve**. |
 
 **Most steps** ends a run after that many steps, so a run that goes wrong can't go on for long.
 

@@ -32,6 +32,7 @@ from .agent import build_langgraph_agent, tool_name
 from .agent_stream import MODEL_STALL_SECONDS, ModelStalled, RunRecord, no_record, stream_turn
 from .audit import AuditLog, record_decision
 from .audit import Reason as AuditReason
+from .auto_review import Verdict
 from .messages import extract_text
 from .subagents import LIMIT_MESSAGE_PREFIX, for_subagents, wrap_up
 from .token_limit import TOKEN_LIMIT_PREFIX
@@ -109,6 +110,9 @@ class WorkflowAgentRunner:
     model_stall_seconds: float = MODEL_STALL_SECONDS
     # A record of how each pass of a step went, from what the pass is (its step and model).
     record_run: Callable[[dict[str, Any]], RunRecord] = no_record
+    # Auto mode's reviewer on a call, weighed against what the step was saved to do
+    # (`AgentRequest.review_as`); None when it gave no verdict.
+    review: Callable[[AgentCall, str], Awaitable[Verdict | None]] | None = None
 
     def __post_init__(self) -> None:
         self._tools = workflow_agent_tools(self.tools)
@@ -118,6 +122,8 @@ class WorkflowAgentRunner:
         # A step's sub-agents (decision 0051): the tool is on every step's list, so the list
         # stays the same (decision 0001); a step that may start none is refused the call.
         self._risks[SUB_AGENT_TOOL] = "READ"
+        # A pass decides every pending call again after one waited: asked once per call.
+        self._verdicts: dict[str, Verdict | None] = {}
 
     async def __call__(self, request: AgentRequest) -> AgentReply:
         # A fresh context: run inside a workflow node, the agent's graph
@@ -312,7 +318,21 @@ class WorkflowAgentRunner:
             return _Decided({"type": "approve"}, None if call.risk == "READ" else "workflow_step")
         if decision == "reject":
             return _Decided.reject("workflow_step", "Not allowed in this run.")
-        return None
+        return await self._reviewed(call, request)
+
+    async def _reviewed(self, call: AgentCall, request: AgentRequest) -> _Decided | None:
+        """The reviewer's verdict on a call the step would put to a person, or None to wait."""
+        if request.review_as is None or self.review is None:
+            return None
+        if call.call_id not in self._verdicts:
+            self._verdicts[call.call_id] = await self.review(call, request.review_as)
+        verdict = self._verdicts[call.call_id]
+        if verdict is None:
+            return None
+        if verdict.allow:
+            return _Decided({"type": "approve"}, "auto_review")
+        message = f"The reviewer blocked this: {verdict.reason} Find another way."
+        return _Decided.reject("auto_review_block", message)
 
     def _audit(self, call: AgentCall, outcome: _Decided) -> None:
         assert outcome.reason is not None

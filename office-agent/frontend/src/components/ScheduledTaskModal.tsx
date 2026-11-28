@@ -31,8 +31,8 @@ const APPROVAL_OPTIONS: { value: ApprovalMode; label: string }[] = [
 // "Claude" -- this app's own product name, not a verbatim copy of the
 // reference's own wording (that screenshot is Claude Cowork's own UI).
 const APPROVAL_BANNER: Partial<Record<ApprovalMode, string>> = {
-  auto: "For this task, Coscribe will create and edit files without asking, but pause before running code or using connectors.",
-  skip: "For this task, Coscribe will never pause for approval -- it runs code and uses connectors on its own. Only your blocking rules still apply. Use with caution.",
+  auto: "For this task, Coscribe will create and edit files without asking. Before it runs code or uses connectors, a reviewer checks the action against this task and skips what it doesn't need.",
+  skip: "For this task, Coscribe will never pause for approval -- it runs code and uses connectors on its own. Only your blocking rules still apply. This needs \"Allow bypass permissions mode\" in Settings; without it the task runs as \"Automatically approve\".",
 };
 
 const APPROVAL_VALUES = new Set<string>(APPROVAL_OPTIONS.map((o) => o.value));

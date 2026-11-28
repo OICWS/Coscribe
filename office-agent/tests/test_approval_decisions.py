@@ -220,10 +220,11 @@ ROWS: dict[str, Row] = {
     "a_run_in_auto_approves_a_local_write": Row(
         LOCAL, "approve", "approval_mode_auto", run_mode="auto", announced=True
     ),
-    "a_run_in_auto_still_asks_for_a_script": Row(
+    # The reviewer (decision 0062) gives no answer here: the person decides, as in Auto mode.
+    "a_run_in_auto_asks_for_a_script_its_reviewer_left": Row(
         EXEC, "reject", "human", run_mode="auto", human=False, asked=True
     ),
-    "a_run_in_auto_refuses_a_script_when_nobody_is_there": Row(
+    "a_run_in_auto_refuses_a_script_its_reviewer_left_when_nobody_is_there": Row(
         EXEC, "reject", "unattended", run_mode="auto", attended=False
     ),
     # -- nothing decided it: ask a person, or refuse when nobody can answer
@@ -237,8 +238,9 @@ ROWS: dict[str, Row] = {
     "a_command_outside_the_sandbox_asks_under_accept_edits": Row(
         COMMAND, "reject", "human", accept_edits=True, human=False, asked=True
     ),
-    "a_command_outside_the_sandbox_is_refused_in_a_run_that_skips_approval": Row(
-        COMMAND, "reject", "unattended", run_mode="skip", attended=False
+    # A run's "skip" is Bypass mode's equal (decision 0062), behind its setting.
+    "a_command_outside_the_sandbox_runs_in_a_run_that_skips_approval": Row(
+        COMMAND, "approve", "approval_mode_skip", run_mode="skip", attended=False, announced=True
     ),
     "a_sandboxed_command_follows_the_standing_approvals": Row(
         COMMAND, "approve", "preapproved", preapproved=True, sandboxed=True, announced=True
@@ -288,11 +290,14 @@ ROWS: dict[str, Row] = {
 ASKED_BECAUSE: dict[str, str] = {
     "a_command_outside_the_sandbox_asks_even_when_preapproved": "command_unsandboxed",
     "a_command_outside_the_sandbox_asks_under_accept_edits": "command_unsandboxed",
-    "a_command_outside_the_sandbox_is_refused_in_a_run_that_skips_approval": "command_unsandboxed",
     "a_folder_allow_does_not_approve_a_command_outside_the_sandbox": "command_unsandboxed",
     "an_unelevated_sandboxed_command_asks_even_when_preapproved": "command_unsandboxed",
     "an_online_sandboxed_command_asks_even_when_preapproved": "command_online",
     "a_folder_ask_beats_preapproved": "workspace_rule",
+    "a_run_in_auto_asks_for_a_script_its_reviewer_left": "auto_review_no_answer",
+    "a_run_in_auto_refuses_a_script_its_reviewer_left_when_nobody_is_there": (
+        "auto_review_no_answer"
+    ),
 }
 
 
@@ -404,9 +409,12 @@ async def test_the_decision_for_one_situation(
     assert ("tool_started" in sent) is row.announced
     assert ("approval_required" in sent) is row.asked
     assert not session._pending_approvals
-    # Only a command approved without the person counts on the sandbox; a rejected one or one
-    # the person approved leaves nothing for a later command to inherit.
+    # Only a command approved without the person counts on the sandbox; a rejected one, one
+    # the person approved or one approved knowing it runs outside it leaves nothing for a later
+    # command to inherit.
+    held = row.sandboxed and not row.unelevated and not row.online
     by_sandbox = row.tool == COMMAND and row.decision == "approve" and row.reason != "human"
+    by_sandbox = by_sandbox and held
     assert assumed["t1"] == (1 if by_sandbox else 0)
 
 
@@ -629,8 +637,12 @@ AUTO_ROWS: dict[str, AutoRow] = {
     "a_hook_veto_comes_before_the_reviewer": AutoRow(
         LOCAL, "reject", ["hook_veto"], "allow", veto="no"
     ),
-    "a_scheduled_run_keeps_its_own_tier_and_skips_the_reviewer": AutoRow(
-        EXEC, "reject", ["human"], "allow", run_mode="auto", human=False, asked=True
+    # -- a run whose task approves "auto" hands the reviewer what its tier doesn't cover
+    "a_scheduled_auto_run_hands_code_to_the_reviewer": AutoRow(
+        EXEC, "approve", ["auto_review"], "allow", run_mode="auto", consulted=True, announced=True
+    ),
+    "a_scheduled_manual_run_keeps_its_tier_and_skips_the_reviewer": AutoRow(
+        EXEC, "reject", ["human"], "allow", run_mode="manual", human=False, asked=True
     ),
     # -- nobody is there: the reviewer still answers, and a refusal is the last resort
     "reviewer_allows_when_unattended": AutoRow(

@@ -42,6 +42,7 @@ from .task_versions import TaskVersions
 from .webhook_events import WebhookEvents
 
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
+
 DEFAULT_MAX_STEPS, _MOST_STEPS = 150, 1000
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
 
@@ -96,30 +97,31 @@ class ScheduledTrigger:
     last_run_status: str | None = None  # "completed" | "failed" | "stopped"
     # "provider:model"; None is the app's configured default model.
     model: str | None = None
-    # One of VALID_APPROVAL_MODES. "manual" is how triggers saved before this field ran, so
-    # loading one without it must not change its behavior.
+    # One of VALID_APPROVAL_MODES; "manual", how triggers saved before it ran, keeps theirs.
     approval_mode: str = "manual"
     # The most model calls one run of `prompt` makes: nobody is watching to stop it.
     max_steps: int = DEFAULT_MAX_STEPS
     notes_enabled: bool = True
     runs: list[ScheduledRun] = field(default_factory=list)  # oldest first
-    # A workflow_spec Workflow as JSON: when set, a run executes these
-    # steps instead of handing `prompt` to the model.
+    # A workflow_spec Workflow as JSON: a run executes it instead of handing over `prompt`.
     workflow: dict[str, Any] | None = None
     # The environment a run works in: its folders, network, secrets and what may run.
     environment: str = DEFAULT_ENVIRONMENT
     # A task's folder from before environments, until the startup migration moves it into one.
     legacy_workspace: str | None = None
-    # The conversation drafts (draft_workflow/revise_workflow ids) saved
-    # into this task, so a conversation can show a draft as saved.
+    # The conversation drafts saved into this task, so a conversation can show one as saved.
     drafts: list[str] = field(default_factory=list)
     # The conversation the task was saved from, if any.
     source_thread: str | None = None
     # After a failed run, open a conversation that looks into it.
     auto_investigate: bool = False
-    # What a run was allowed while it waited, beyond what the workflow's
-    # steps name themselves: {"folders": [...], "sites": [...]}.
+    # What a run was allowed while it waited, beyond what its steps name: {"folders", "sites"}.
     permissions: dict[str, list[str]] = field(default_factory=dict)
+
+    @staticmethod
+    def tier(approval_mode: str, allow_bypass: bool) -> str:
+        """ "skip" holds only while Settings allows Bypass mode, else "auto" (decision 0062)."""
+        return "auto" if approval_mode == "skip" and not allow_bypass else approval_mode
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -150,9 +152,8 @@ class ScheduledTrigger:
     def from_dict(cls, data: dict[str, Any]) -> ScheduledTrigger:
         runs = [ScheduledRun.from_dict(r) for r in data.get("runs", [])]
         if "runs" not in data and data.get("last_run_at") and data.get("thread_id"):
-            # A trigger from before per-run conversations ran every time
-            # in one shared thread -- surfaced as a single run so its
-            # history stays reachable.
+            # A trigger from before per-run conversations ran in one shared thread: one run
+            # keeps its history reachable.
             runs = [
                 ScheduledRun(
                     run_id="earlier",
@@ -719,10 +720,10 @@ def build_scheduled_task_tools(
                 app's own configured default model.
             approval_mode: "manual" (pauses for every action needing
                 approval -- the default), "auto" (creates and edits
-                local files without asking, but pauses before running
-                code or using connectors/downloads), or "skip" (never
-                pauses, including for running code -- use with real
-                caution for an unattended task).
+                local files without asking; a reviewer checks code and
+                connectors/downloads against the task), or "skip" (never
+                pauses, including for running code, while Settings allows
+                bypass permissions mode; otherwise it runs as "auto").
         """
         trigger = create_trigger(
             store,

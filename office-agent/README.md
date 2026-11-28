@@ -378,8 +378,14 @@ tier (see `ARCHITECTURE.md`'s risk taxonomy):
 | Permissions | `WRITE_LOCAL` (create/edit local files) | `EXEC` (run scripts) / `EXTERNAL` (MCP connectors, downloads) |
 |---|---|---|
 | Ask before every action (`"manual"`, default) | asks | asks |
-| Automatically approve (`"auto"`) | approved | asks |
+| Automatically approve (`"auto"`) | approved | the reviewer decides |
 | Never ask (`"skip"`) | approved | approved |
+
+"The reviewer decides" is Auto mode's reviewer (decision 0062), weighing the call against the
+task: the run's prompt, or a high or full agent step's title and goal as saved. What it blocks
+is refused to the agent; a call it gives no answer on asks. "Never ask" holds only while
+Settings › General's "Allow bypass permissions mode" is on; otherwise the task runs as
+"Automatically approve".
 
 "Asks" never blocks a run: the call parks durably in the run's
 conversation, the run ends as `needs_approval`, and the approval is
@@ -388,7 +394,7 @@ already watching it). Resolving it finishes the run under the same
 permissions and updates its record. Under every tier, your own blocking
 rules still win: a PreToolUse hook veto or an exec-policy `forbidden`
 rule rejects the call. Every automatic approval is recorded in the audit
-log (`approval_mode_auto` / `approval_mode_skip`). If Coscribe exits
+log (`approval_mode_auto` / `approval_mode_skip`, `auto_review` / `auto_review_block`). If Coscribe exits
 mid-run, that run is marked `failed` on the next start.
 
 ### Workflows -- fixed steps instead of a prompt

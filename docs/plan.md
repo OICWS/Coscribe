@@ -108,9 +108,11 @@ Desktop verification for messages added while working (#1101) covers copying one
   workspace skips the reviewer, and a reviewer with no answer is tried again, then the
   conversation's model, before a person is asked; Auto mode's reviewer decides command lines, a
   card offers "allow similar in this chat", and "Allow bypass permissions mode" unlocks Bypass
-  mode (decision 0062, `docs/log/2026-11-27-approval-ask-reasons.md`). Next, block 3: a task's auto tier goes to the reviewer with the task
-  as the request, its skip tier is Bypass behind the same setting, and a call out of scope with
-  nobody there is parked or skipped with the reason recorded.
+  mode (decision 0062, `docs/log/2026-11-27-approval-ask-reasons.md`); a task's "Automatically
+  approve" hands code and connectors to the same reviewer, weighed against the task, and "Never
+  ask" is Bypass's equal behind the same setting (`docs/log/2026-11-28-workflow-approvals.md`).
+  Open: a prompt run can't yet park a call its reviewer gave no answer on (it is refused and
+  recorded), and the six-task measurement has not been run again on scheduled tasks.
 
 - **Public office benchmarks** (#1072): `office-agent/evals/external.py` runs OmegaUse-OfficeVal
   and SpreadsheetBench Verified (`docs/log/2026-11-25-external-benchmarks.md`). OfficeVal: 93
