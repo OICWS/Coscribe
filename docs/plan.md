@@ -118,6 +118,8 @@ Desktop verification for messages added while working (#1101) covers copying one
   SpreadsheetBench and our own tasks in batches on `deepseek-flash`, each approved first. Reuse
   the baseline for targeted reruns of dev tasks; freeze the implementation for the final run and
   report the held-out tasks apart (`office-agent/evals/README.md`, `external_splits.json`).
+  SpreadsheetBench dev: 34 of the first 40 pass
+  (`docs/log/2026-11-28-spreadsheetbench-dev-baseline.md`).
   Open from the dev tasks:
   - Pictures redrawn as editable slides: the skill's redraw section lifted six dev tasks from
     0.33 to 0.58 on average. Fine geometry (exact cm positions, small icons) still loses points
