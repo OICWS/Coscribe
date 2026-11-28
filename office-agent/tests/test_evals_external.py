@@ -135,6 +135,41 @@ def test_a_spreadsheet_task_names_the_sheet_of_its_answer(tmp_path: Path):
     assert "''Sheet1'" not in second.brief
 
 
+def test_a_spreadsheet_task_whose_files_lack_its_id_finds_them(tmp_path: Path):
+    entry = {
+        "id": 56274,
+        "instruction": "Fill B.",
+        "spreadsheet_path": "spreadsheet/56274",
+        "instruction_type": "Cell-Level Manipulation",
+        "answer_position": "B2:B5",
+    }
+    (tmp_path / "dataset.json").write_text(json.dumps([entry]), "utf-8")
+    folder = tmp_path / "spreadsheet/56274"
+    folder.mkdir(parents=True)
+    (folder / "initial.xlsx").write_bytes(b"x")
+
+    (task,) = external.spreadsheet_tasks(tmp_path, tmp_path, ["56274"], "python")
+
+    assert task.inputs == [folder / "initial.xlsx"]
+
+
+def test_a_spreadsheet_grader_that_cannot_run_leaves_the_task_ungraded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    workspace, task_out = tmp_path / "w", tmp_path / "out"
+    workspace.mkdir()
+    task_out.mkdir()
+    (workspace / "output.xlsx").write_bytes(b"x")
+    monkeypatch.setattr(external, "recalculate", lambda source, target: None)
+    entry = {"instruction_type": "Cell-Level Manipulation", "answer_position": "B2:B5"}
+    grade = external._spreadsheet_grader(entry, tmp_path / "g.xlsx", tmp_path, sys.executable)
+
+    report = grade(workspace, task_out)
+
+    assert "No module named 'evaluation'" in report["grader_error"]
+    assert report["score_fraction"] is None
+
+
 def test_a_summary_averages_only_the_graded_tasks():
     rows = [
         {

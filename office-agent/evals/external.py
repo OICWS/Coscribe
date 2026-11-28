@@ -144,6 +144,9 @@ def spreadsheet_tasks(
         folder = data / entry["spreadsheet_path"]
         source = folder / f"1_{task_id}_init.xlsx"
         golden = folder / f"1_{task_id}_golden.xlsx"
+        if not source.is_file() and (folder / "initial.xlsx").is_file():
+            # A few tasks of the dataset name their two files without the task's id.
+            source, golden = folder / "initial.xlsx", folder / "golden.xlsx"
         position = entry["answer_position"]
         if entry.get("answer_sheet") and "!" not in position:
             position = f"'{entry['answer_sheet']}'!{position}"
@@ -197,7 +200,9 @@ def _spreadsheet_grader(
             grader,
         )
         report["graded_file"] = output.name
-        report["score_fraction"] = 1.0 if report.get("passed") else 0.0
+        # A grader that could not run says nothing about the answer: not graded, not a fail.
+        failed = "grader_error" in report
+        report["score_fraction"] = None if failed else (1.0 if report.get("passed") else 0.0)
         return report
 
     return grade
