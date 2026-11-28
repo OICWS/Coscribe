@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .format_match import FormatMatchMixin
 from .image_tools import ImageToolsMixin
 from .review_tools import ReviewToolsMixin
 from .shape_tools import ShapeToolsMixin
@@ -14,6 +15,7 @@ class PresentationToolkit(
     ReviewToolsMixin,
     TemplateToolsMixin,
     ShapeToolsMixin,
+    FormatMatchMixin,
     XmlAnimationMixin,
     ImageToolsMixin,
     ToolkitBase,

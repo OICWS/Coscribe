@@ -119,6 +119,9 @@ Desktop verification for messages added while working (#1101) covers copying one
   the baseline for targeted reruns of dev tasks; freeze the implementation for the final run and
   report the held-out tasks apart (`office-agent/evals/README.md`, `external_splits.json`).
   Open from the dev tasks:
+  - "Make these boxes match that one": `match_pptx_shape_format` copies size, outline, fill,
+    border and text format. The agent found it in one of six runs of dev task 069; it reaches for a
+    script instead (`docs/log/2026-11-28-pptx-match-format.md`).
   - Pictures redrawn as editable slides: the skill's redraw section lifted six dev tasks from
     0.33 to 0.58 on average. Fine geometry (exact cm positions, small icons) still loses points
     (`docs/log/2026-11-27-redraw-picture-slides.md`).

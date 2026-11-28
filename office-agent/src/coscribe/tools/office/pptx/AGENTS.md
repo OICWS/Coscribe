@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns the PowerPoint tools: the deck engine that compiles whole-page sources into a deck
-(`engine/`), the object tools (shapes, text, images, notes, layouts, themes, animation and
+(`engine/`), the object tools (shapes and copying one shape's format onto others, text, images, notes, layouts, themes, animation and
 transitions, SmartArt, XML-level edits and review), reading a deck and the QA checks (`qa.py`).
 `presentations.py` and `pptx_templates.py` in `tools/`, and `_pptx_*`, `_svg_*`, `_native_*`
 there, belong here too until they move. Does not own Word, Excel or PDF, or how the viewer draws

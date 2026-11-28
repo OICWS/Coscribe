@@ -65,7 +65,9 @@ def _shapes_tools_1(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any
 
         Call this before edit_pptx_shape/delete_pptx_shape (or before
         editing a table's cells) on any slide you haven't already
-        inspected. `shape_index` takes this list's `index`, a group
+        inspected. To make shapes look like another one (same size,
+        fill, border, text format), call match_pptx_shape_format, not a
+        script. `shape_index` takes this list's `index`, a group
         member's `path` ("3/1": member 1 of the group at index 3, listed
         under its `members`) or a `name` only one shape has.
 
@@ -466,6 +468,33 @@ def _shapes_tools_6(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any
     }
 
 
+def _shapes_tools_7(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+    def match_pptx_shape_format(
+        path: str, slide: int, source: str, targets: list[str], parts: list[str] | None = None
+    ) -> dict[str, object]:
+        """Make shapes look like another shape on the same slide, as PowerPoint's Format
+        Painter does: the targets take the source's size, outline shape (a rounded rectangle
+        with its corner radius, say), fill, line and text format (font, size, bold, colour,
+        alignment, margins and vertical anchoring). Their text, position and everything else on
+        the slide stay as they are. Use it when a person asks for boxes or text to match
+        another one, rather than a script.
+
+        Args:
+            path: the .pptx file to edit, relative to the workspace root
+            slide: 1-based slide number holding all the shapes
+            source: the shape to copy from, as `list_pptx_shapes` names it (its index, a
+                group member's path such as "3/1", or a name only one shape has)
+            targets: the shapes to change, named the same way
+            parts: which of "size", "shape", "fill", "line" and "text" to copy; all when
+                omitted
+        """
+        return toolkit.match_pptx_shape_format(
+            path=path, slide=slide, source=source, targets=targets, parts=parts
+        )
+
+    return {"match_pptx_shape_format": match_pptx_shape_format}
+
+
 def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     return {
         **_shapes_tools_1(toolkit),
@@ -474,4 +503,5 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         **_shapes_tools_4(toolkit),
         **_shapes_tools_5(toolkit),
         **_shapes_tools_6(toolkit),
+        **_shapes_tools_7(toolkit),
     }

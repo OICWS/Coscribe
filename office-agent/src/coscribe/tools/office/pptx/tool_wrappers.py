@@ -28,6 +28,7 @@ _TOOLS: tuple[tuple[str, Literal["READ", "WRITE_LOCAL"]], ...] = (
     ("reorder_pptx_slide", "WRITE_LOCAL"),
     ("list_pptx_shapes", "READ"),
     ("edit_pptx_shape", "WRITE_LOCAL"),
+    ("match_pptx_shape_format", "WRITE_LOCAL"),
     ("delete_pptx_shape", "WRITE_LOCAL"),
     ("list_pptx_shape_types", "READ"),
     ("add_pptx_shape", "WRITE_LOCAL"),
