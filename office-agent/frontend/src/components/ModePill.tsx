@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useClickOutside } from "../lib/useClickOutside";
 import { CheckIcon } from "./icons";
 
-type Mode = "manual" | "accept-edits" | "plan" | "auto";
+type Mode = "manual" | "accept-edits" | "plan" | "auto" | "bypass";
 
-// Claude Code's four permission modes, in its own order and wording.
+// Claude Code's permission modes, in its own order and wording; Bypass only when Settings allows it.
 const MODES: { mode: Mode; label: string; description: string }[] = [
   { mode: "manual", label: "Manual", description: "Asks before every change, script or outside action" },
   {
@@ -18,29 +18,38 @@ const MODES: { mode: Mode; label: string; description: string }[] = [
     label: "Auto",
     description: "A reviewer model approves routine actions and blocks risky ones instead of asking you",
   },
+  {
+    mode: "bypass",
+    label: "Bypass permissions",
+    description: "Runs everything without asking; only hooks, forbidden rules, workspace rules and the sandbox still hold",
+  },
 ];
 
 interface ModePillProps {
   planMode: boolean;
   acceptEdits: boolean;
   autoMode: boolean;
+  bypassMode: boolean;
+  /** Settings › General's "Allow bypass permissions mode". */
+  bypassAllowed: boolean;
   /** Sends a bare user_message with no chat-log bubble -- the backend's
    * "state" reply is the visible confirmation. */
   sendRaw: (text: string) => void;
 }
 
-function currentMode({ planMode, acceptEdits, autoMode }: Omit<ModePillProps, "sendRaw">): Mode {
+function currentMode({ planMode, acceptEdits, autoMode, bypassMode }: Omit<ModePillProps, "sendRaw" | "bypassAllowed">): Mode {
   if (planMode) return "plan";
   if (acceptEdits) return "accept-edits";
   if (autoMode) return "auto";
-  return "manual";
+  return bypassMode ? "bypass" : "manual";
 }
 
-export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillProps) {
+export function ModePill({ planMode, acceptEdits, autoMode, bypassMode, bypassAllowed, sendRaw }: ModePillProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useClickOutside(rootRef, () => setOpen(false), open);
-  const current = currentMode({ planMode, acceptEdits, autoMode });
+  const current = currentMode({ planMode, acceptEdits, autoMode, bypassMode });
+  const offered = MODES.filter(({ mode }) => mode !== "bypass" || bypassAllowed || current === "bypass");
   // During a reply the server applies a change only when the reply ends.
   const [switchingFrom, setSwitchingFrom] = useState<Mode | null>(null);
   if (switchingFrom !== null && switchingFrom !== current) setSwitchingFrom(null);
@@ -70,7 +79,7 @@ export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillP
           role="menu"
           className="absolute bottom-full left-0 z-20 mb-1 w-80 whitespace-normal rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
         >
-          {MODES.map(({ mode, label, description }) => (
+          {offered.map(({ mode, label, description }) => (
             <button
               key={mode}
               type="button"

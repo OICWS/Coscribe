@@ -13,6 +13,8 @@ import { commandOf } from "../../lib/toolFields";
 import { RunInBackground } from "./RunInBackground";
 import { ScriptIsolationNote } from "./ScriptIsolationNote";
 import { ArgLines, CommandBox, CommandOutput, RawFold, ResultText } from "./ToolFields";
+import { askedBecauseText } from "../../lib/askedBecause";
+import type { ApprovalScope } from "../../types/session";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
  * it; opened, a bordered list with a row per call, each opening to its
@@ -28,7 +30,7 @@ export function ToolRunGroupView({
 }: {
   group: ToolRunGroup;
   live: boolean;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -131,7 +133,7 @@ function ToolStepRow({
   first: boolean;
   open: boolean;
   onToggle: () => void;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   return (
@@ -170,7 +172,7 @@ function ToolDetail({
   onPptxShapePicked,
 }: {
   item: ToolOrApprovalItem;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   if (item.kind === "approval") {
@@ -218,7 +220,7 @@ function ToolCallRow({
   onPptxShapePicked,
 }: {
   item: ToolOrApprovalItem;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   const [open, setOpen] = useState(() => item.kind === "approval" && item.status === "pending");
@@ -274,7 +276,7 @@ function ApprovalDetail({
   onPptxShapePicked,
 }: {
   item: Extract<LogItem, { kind: "approval" }>;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   const isScript =
@@ -290,11 +292,13 @@ function ApprovalDetail({
   const pptxTarget = pptxOverlayTargetOf(item.arguments);
   // The code module's actions can be allowed for the rest of their task.
   const codeAction = item.toolName === "run_code_command" || item.toolName === "apply_code_change";
+  const askedLine = askedBecauseText(item.askedBecause, item.reviewerNote);
   return (
     <>
       {item.reviewerNote && item.status === "pending" && (
         <p className="mb-1.5 text-[13px] text-[var(--muted)]">{item.reviewerNote}</p>
       )}
+      {askedLine && item.status === "pending" && <p className="mb-1.5 text-[13px] text-[var(--muted)]">{askedLine}</p>}
       {hasPreview && (
         <ApprovalPreview
           beforePreview={item.beforePreview}
@@ -318,31 +322,7 @@ function ApprovalDetail({
         <ArgLines args={item.arguments} pad={false} />
       )}
       {item.status === "pending" ? (
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            className="rounded-md bg-[var(--accent)] px-3 py-1 text-sm text-[var(--accent-fg)]"
-            onClick={() => onApprove(item.id, true)}
-          >
-            Approve
-          </button>
-          {codeAction && (
-            <button
-              type="button"
-              className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
-              onClick={() => onApprove(item.id, true, "task")}
-            >
-              Allow for this task
-            </button>
-          )}
-          <button
-            type="button"
-            className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
-            onClick={() => onApprove(item.id, false)}
-          >
-            Deny
-          </button>
-        </div>
+        <ApprovalButtons item={item} codeAction={codeAction} onApprove={onApprove} />
       ) : (
         <>
           <div className="mt-1 text-xs text-[var(--muted)]">{item.status === "approved" ? "Approved" : item.reply ? "Denied, with your reply:" : "Denied"}</div>
@@ -356,5 +336,54 @@ function ApprovalDetail({
         </>
       )}
     </>
+  );
+}
+
+/** A pending card's answers: approve, allow for the rest of a code task or for calls like it in
+ * this chat (decision 0062), or deny. */
+function ApprovalButtons({
+  item,
+  codeAction,
+  onApprove,
+}: {
+  item: Extract<LogItem, { kind: "approval" }>;
+  codeAction: boolean;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
+}) {
+  return (
+    <div className="mt-2 flex gap-2">
+      <button
+        type="button"
+        className="rounded-md bg-[var(--accent)] px-3 py-1 text-sm text-[var(--accent-fg)]"
+        onClick={() => onApprove(item.id, true)}
+      >
+        Approve
+      </button>
+      {codeAction && (
+        <button
+          type="button"
+          className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
+          onClick={() => onApprove(item.id, true, "task")}
+        >
+          Allow for this task
+        </button>
+      )}
+      {item.allowSimilar && (
+        <button
+          type="button"
+          className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
+          onClick={() => onApprove(item.id, true, "similar")}
+        >
+          {item.allowSimilar}
+        </button>
+      )}
+      <button
+        type="button"
+        className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
+        onClick={() => onApprove(item.id, false)}
+      >
+        Deny
+      </button>
+    </div>
   );
 }

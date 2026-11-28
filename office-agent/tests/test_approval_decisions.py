@@ -22,6 +22,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -32,8 +33,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.code_runtime import CodePermissions
 from coscribe.config import Settings
-from coscribe.conversation import WorkspaceFolders, question_answer
-from coscribe.conversation import approvals as approvals_module
+from coscribe.conversation import WorkspaceFolders, approval_scope, question_answer
 from coscribe.conversation import session as session_module
 from coscribe.conversation.approvals import PLAN_TASKS_MARKER
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
@@ -48,7 +48,7 @@ from tests.environment_helpers import in_environment
 
 from .wire_check import check_event
 
-READ, LOCAL, EXEC, EXTERNAL = "read_file", "write_file", "run_python_script", "send_email"
+READ, LOCAL, EXEC, EXTERNAL = "read_file", "delete_file", "run_python_script", "send_email"
 CODE_COMMAND, CODE_CHANGE = "run_code_command", "apply_code_change"
 COMMAND = "run_background_command"
 RISKS = {
@@ -283,6 +283,25 @@ ROWS: dict[str, Row] = {
 }
 
 
+# The rule that sent a row's call to a person, for the rows where it isn't the approval mode
+# in force; a row that asks no one has none.
+ASKED_BECAUSE: dict[str, str] = {
+    "a_command_outside_the_sandbox_asks_even_when_preapproved": "command_unsandboxed",
+    "a_command_outside_the_sandbox_asks_under_accept_edits": "command_unsandboxed",
+    "a_command_outside_the_sandbox_is_refused_in_a_run_that_skips_approval": "command_unsandboxed",
+    "a_folder_allow_does_not_approve_a_command_outside_the_sandbox": "command_unsandboxed",
+    "an_unelevated_sandboxed_command_asks_even_when_preapproved": "command_unsandboxed",
+    "an_online_sandboxed_command_asks_even_when_preapproved": "command_online",
+    "a_folder_ask_beats_preapproved": "workspace_rule",
+}
+
+
+def _asked_because(name: str, row: Row) -> str | None:
+    if row.reason not in ("human", "unattended"):
+        return None
+    return ASKED_BECAUSE.get(name, "approval_mode")
+
+
 async def _decide(
     session: ChatSessionLG,
     tool: str,
@@ -362,9 +381,9 @@ async def test_the_decision_for_one_situation(
     _write_folder_rule(session, row)
     _veto(monkeypatch, session, row.veto)
     sandbox = Path("codex.exe") if row.sandboxed else None
-    monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: sandbox)
+    monkeypatch.setattr(approval_scope, "sandbox_codex", lambda state_dir: sandbox)
     mode = "unelevated" if row.unelevated else "elevated"
-    monkeypatch.setattr(approvals_module, "sandbox_mode", lambda state_dir: mode)
+    monkeypatch.setattr(approval_scope, "sandbox_mode", lambda state_dir: mode)
     assumed: Counter[str] = Counter()
     monkeypatch.setattr(commands_module, "_SANDBOX_ASSUMED", assumed)
     if row.online:
@@ -377,6 +396,10 @@ async def test_the_decision_for_one_situation(
     logged = AuditLog(session.settings.state_dir).read_all()
     assert [entry.reason for entry in logged] == ([row.reason] if row.reason else [])
     assert [entry.decision for entry in logged] == ([row.decision] if row.reason else [])
+    asked_because = _asked_because(name, row)
+    assert [entry.asked_because for entry in logged] == ([asked_because] if row.reason else [])
+    cards = [message for message in socket.sent if message["type"] == "approval_required"]
+    assert [card["asked_because"] for card in cards] == ([asked_because] if row.asked else [])
     sent = [message["type"] for message in socket.sent]
     assert ("tool_started" in sent) is row.announced
     assert ("approval_required" in sent) is row.asked
@@ -673,7 +696,7 @@ async def test_the_decision_under_auto_mode(
     asked_reviewer: list[str] = []
 
     async def reviewer(
-        tool: str, args: dict[str, Any], *, delegated_task: str = ""
+        tool: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
         asked_reviewer.append(tool)
         return verdicts[row.reviewer]
@@ -869,9 +892,9 @@ async def test_the_decision_for_a_code_module_call(
             DAMAGED_SETTINGS[row.setting], encoding="utf-8"
         )
     _veto(monkeypatch, session, row.veto)
-    monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: Path("codex.exe"))
+    monkeypatch.setattr(approval_scope, "sandbox_codex", lambda state_dir: Path("codex.exe"))
     mode = "unelevated" if row.unelevated else "elevated"
-    monkeypatch.setattr(approvals_module, "sandbox_mode", lambda state_dir: mode)
+    monkeypatch.setattr(approval_scope, "sandbox_mode", lambda state_dir: mode)
     if row.online:
         in_environment(session.settings.state_dir, "t1", network={"mode": "full", "domains": []})
     socket = _Socket(row.attended)
@@ -1387,8 +1410,122 @@ async def test_the_reviewer_runs_on_the_side_job_model_and_on_the_chats_when_it_
 
     assert built == ["fake:small"]
     assert result["type"] == ("approve" if picked_works else "reject")
-    assert picked.asked_at == [0]
+    # A failing model gets a second try before the conversation's is asked.
+    assert picked.asked_at == ([0] if picked_works else [0, 0])
     assert main.asked_at == ([] if picked_works else [0])
+
+
+@dataclass
+class TryRow:
+    """What the side-job model answers on each try, what the conversation's then answers, and
+    who decided."""
+
+    picked: list[str]
+    main: str
+    outcome: str  # "allow", "block" or "ask"
+    main_asked: bool
+
+
+TRY_ROWS: dict[str, TryRow] = {
+    "a_second_try_reads_what_the_first_did_not": TryRow(
+        ["Looks fine to me.", _verdict("allow")], _verdict("block"), "allow", False
+    ),
+    "the_conversations_model_answers_after_two_tries": TryRow(
+        ["fine", "still fine"], _verdict("block"), "block", True
+    ),
+    "a_person_is_asked_only_when_none_answers": TryRow(["fine", "fine"], "ok", "ask", True),
+}
+
+
+class _Replies(BaseChatModel):
+    """A chat model that gives `replies` in turn, the last one again once they run out."""
+
+    replies: list[str]
+    asked: int = 0
+
+    def _generate(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kwargs: Any
+    ) -> ChatResult:
+        reply = self.replies[min(self.asked, len(self.replies) - 1)]
+        self.asked += 1
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=reply))])
+
+    @property
+    def _llm_type(self) -> str:
+        return "replies"
+
+
+@pytest.mark.parametrize("name", sorted(TRY_ROWS))
+async def test_the_reviewer_is_tried_again_before_a_person_is_asked(
+    name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import agent_assembly
+
+    row = TRY_ROWS[name]
+    session = _session(tmp_path, monkeypatch)
+    picked, main = _Replies(replies=row.picked), _Replies(replies=[row.main])
+    monkeypatch.setattr(agent_assembly, "resolve_chat_model", lambda name, cp=None: picked)
+    session.settings.side_model = "fake:small"
+    session.model = main
+    session.lg_agent = _Agent([])
+    session.auto_mode = True
+    socket = _Socket(True)
+
+    result = await _decide(session, LOCAL, socket, answer=True)
+
+    cards = [m for m in socket.sent if m["type"] == "approval_required"]
+    assert picked.asked == 2 if row.main_asked else picked.asked >= 1
+    assert main.asked == (1 if row.main_asked else 0)
+    if row.outcome == "ask":
+        assert [c["asked_because"] for c in cards] == ["auto_review_no_answer"]
+    else:
+        assert not cards
+        assert result["type"] == ("approve" if row.outcome == "allow" else "reject")
+
+
+@dataclass
+class EditRow:
+    """A local write in Auto mode and whether the reviewer is asked about it."""
+
+    tool: str
+    reviewed: bool
+    category: str | None = None  # stands in for the tool's own, when it has none here
+    mode: str = "auto"  # "auto": the chat's Auto mode; "run": a scheduled run's auto tier
+
+
+EDIT_ROWS: dict[str, EditRow] = {
+    "a_file_write_goes_ahead_unreviewed": EditRow("write_file", False),
+    "a_file_edit_goes_ahead_unreviewed": EditRow("edit_file", False),
+    "a_document_edit_goes_ahead_unreviewed": EditRow("edit_pptx_text", False, "documents"),
+    "a_delete_is_still_reviewed": EditRow("delete_file", True),
+    "a_move_is_still_reviewed": EditRow("move_file", True),
+    "another_local_change_is_still_reviewed": EditRow("pause_scheduled_task", True, "tasks"),
+    "a_run_keeps_its_own_tier": EditRow("write_file", False, mode="run"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(EDIT_ROWS))
+async def test_auto_mode_lets_a_file_edit_through_without_its_reviewer(
+    name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = EDIT_ROWS[name]
+    session = _session(tmp_path, monkeypatch)
+    session._gated_tool_risks[row.tool] = "WRITE_LOCAL"
+    if row.category is not None:
+        catalog = session.tool_catalog()
+        stand_in = SimpleNamespace(category=row.category, risk_category="WRITE_LOCAL")
+        monkeypatch.setattr(session, "tool_catalog", lambda: {**catalog, row.tool: stand_in})
+    reviewer = _use_reviewer(session, _verdict("allow"))
+    if row.mode == "run":
+        session.run_approval_mode = "auto"
+
+    result = await _decide(session, row.tool, _Socket(True), answer=False)
+
+    logged = [entry.reason for entry in AuditLog(session.settings.state_dir).read_all()]
+    assert result["type"] == "approve"
+    assert len(reviewer.asked) == (1 if row.reviewed else 0)
+    unreviewed = "approval_mode_auto" if row.mode == "run" else "auto_mode_edit"
+    assert logged == ["auto_review" if row.reviewed else unreviewed]
 
 
 @dataclass
@@ -1410,7 +1547,7 @@ def _said(text: str) -> HumanMessage:
 
 ASKED_ROWS: dict[str, AskedRow] = {
     "the_action_and_its_risk": AskedRow(
-        ["write_file(", '"path": "a.txt"', "Its kind: WRITE_LOCAL"]
+        ["delete_file(", '"path": "a.txt"', "Its kind: WRITE_LOCAL"]
     ),
     "a_script_is_exec": AskedRow(["Its kind: EXEC"], tool=EXEC),
     "an_external_action": AskedRow(["Its kind: EXTERNAL"], tool=EXTERNAL),

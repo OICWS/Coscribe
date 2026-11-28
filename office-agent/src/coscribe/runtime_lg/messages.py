@@ -39,6 +39,18 @@ AUTO_MODE_NOTE = (
     "or ask the user to allow that specific action] "
 )
 NORMAL_MODE_NOTE = "[normal mode: risky tool calls ask for approval as usual] "
+BYPASS_MODE_NOTE = (
+    "[bypass mode is ON: tool calls run without asking anyone, so take care with what "
+    "cannot be undone; a workspace rule or a hook can still refuse one] "
+)
+# By the mode pill's name for each mode.
+MODE_NOTES = {
+    "plan": PLAN_MODE_NOTE,
+    "accept-edits": ACCEPT_EDITS_MODE_NOTE,
+    "auto": AUTO_MODE_NOTE,
+    "bypass": BYPASS_MODE_NOTE,
+    "manual": NORMAL_MODE_NOTE,
+}
 # Earlier wordings, still at the front of checkpointed messages.
 _OLD_MODE_NOTES = (
     "[plan mode is ON: only read-only/task-tracking tools will run, everything else is blocked] ",
@@ -49,6 +61,7 @@ _MODE_NOTES = (
     ACCEPT_EDITS_MODE_NOTE,
     AUTO_MODE_NOTE,
     NORMAL_MODE_NOTE,
+    BYPASS_MODE_NOTE,
     *_OLD_MODE_NOTES,
 )
 

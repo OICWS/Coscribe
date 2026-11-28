@@ -21,6 +21,22 @@ from typing import Any, Literal, NotRequired, TypedDict, get_args, get_type_hint
 # How hard the model thinks (runtime_lg/effort.py LEVELS; a test keeps the two equal).
 Effort = Literal["low", "medium", "high", "extra", "max", "ultra"]
 
+# Why a call went to a person rather than being decided without one: the one rule that sent it
+# there, so a count of these says which rule makes the most cards.
+AskReason = Literal[
+    # A command runs as the person, or in a sandbox that still reads their files (decision 0022).
+    "command_unsandboxed",
+    # A sandboxed command whose network is on could send what it reads out (decision 0022).
+    "command_online",
+    "workspace_rule",
+    # Auto mode's reviewer blocked several in a row and handed the choice back.
+    "auto_review_blocked",
+    "auto_review_no_answer",
+    # The approval mode in force approves this risk tier only with a person: Normal mode,
+    # Accept Edits beyond a local edit, or a scheduled run's saved tier.
+    "approval_mode",
+]
+
 
 class StateEvent(TypedDict):
     """The conversation's settings, sent on connect and after each change."""
@@ -30,6 +46,9 @@ class StateEvent(TypedDict):
     accept_edits: bool
     # A reviewer model decides risky calls instead of the user.
     auto_mode: bool
+    # Every gated call runs without asking; offered only while Settings allows it (decision 0062).
+    bypass_mode: bool
+    allow_bypass_mode: bool
     model: str
     effort: Effort
     # The model's own level that `effort` runs as (`xhigh` for extra, for example); None when the
@@ -182,6 +201,10 @@ class ApprovalRequiredEvent(TypedDict):
     after_preview: str | None
     # Why auto mode handed this one to the user.
     reviewer_note: str | None
+    # The rule that sent this call to a person.
+    asked_because: AskReason
+    # The words of the card's "allow similar in this chat" button; None when it has none.
+    allow_similar: str | None
     # Set when a sub-agent is the one asking: the Background tasks panel shows it,
     # not the chat.
     subagent_id: NotRequired[str]
@@ -620,8 +643,9 @@ class ApprovalResponseOut(TypedDict):
     type: Literal["approval_response"]
     id: str
     approved: bool
-    # "task": allow this kind of action for the rest of the code task.
-    scope: NotRequired[Literal["task"]]
+    # "task": allow this kind of action for the rest of the code task. "similar": allow calls
+    # like this one for the rest of the conversation.
+    scope: NotRequired[Literal["task", "similar"]]
     # Written in the chat while the card was open: the call is denied, the words go to the model.
     reply: NotRequired[str]
 

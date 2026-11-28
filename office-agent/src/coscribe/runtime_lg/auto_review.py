@@ -6,7 +6,9 @@ the reviewer allows routine work inside the conversation's folders and
 blocks the kinds of action that are hard to take back or reach outside the
 computer, unless the user asked for that specific action in the
 conversation. A blocked action is refused back to the model with the
-reason; the session falls back to asking the user after repeated blocks.
+reason; the session falls back to asking the user after repeated blocks,
+or when neither try of the reviewer nor the conversation's model gives a
+verdict.
 """
 
 from __future__ import annotations
@@ -35,6 +37,8 @@ action (naming what makes it risky -- "you can delete old.xlsx", not just \
 "go ahead"):
 - downloading code or programs and running them, or installing software \
 system-wide
+- a command line that runs outside the sandbox and changes things beyond the \
+conversation's folders, or one with network that could send the user's files out
 - sending the user's files or information outside this computer (email, \
 upload, posting, a form) when the user didn't ask for that send
 - deleting or overwriting files that existed before this conversation, or \
@@ -112,6 +116,7 @@ async def review_action(
     folders: list[str],
     user_requests: str,
     delegated_task: str = "",
+    where: str = "",
 ) -> Verdict | None:
     """The reviewer's verdict, or None when it gave none it could read.
     `delegated_task` is set when a sub-agent takes the action: the user's
@@ -128,19 +133,33 @@ async def review_action(
         if delegated_task
         else ""
     )
+    place = f"{where}\n" if where else ""
     request = (
         f"The conversation's folders: {', '.join(folders) or '(none)'}\n\n"
         f"What the user has said, oldest first:\n{user_requests or '(nothing yet)'}\n\n"
         f"{delegation}"
         f"The action: {tool_name}({action})\n"
+        f"{place}"
         f"Its kind: {risk} (WRITE_LOCAL changes this computer's files or data, EXEC runs "
         "code, EXTERNAL acts outside this computer)"
     )
-    try:
-        reply = await model.ainvoke(
-            [SystemMessage(REVIEWER_INSTRUCTIONS), HumanMessage(request)],
-            config={"tags": [TAG_NOSTREAM]},
-        )
-    except Exception:  # noqa: BLE001 -- no verdict; the caller asks the user instead
-        return None
-    return _parse(extract_text(reply.content))
+    messages = [SystemMessage(REVIEWER_INSTRUCTIONS), HumanMessage(request)]
+    for reviewer in _attempts(model):
+        try:
+            reply = await reviewer.ainvoke(messages, config={"tags": [TAG_NOSTREAM]})
+        except Exception:  # noqa: BLE001 -- no verdict from this one; the next may give one
+            continue
+        verdict = _parse(extract_text(reply.content))
+        if verdict is not None:
+            return verdict
+    return None
+
+
+def _attempts(model: Any) -> list[Any]:
+    """Who is asked, in turn, until one gives a verdict it can read: the side-job model twice,
+    since a small model that answers in prose once often answers in JSON the next time, then
+    each fallback (the conversation's own model) once. Each attempt that gives none would
+    otherwise put the action to the person."""
+    if isinstance(model, RunnableWithFallbacks):
+        return [model.runnable, model.runnable, *model.fallbacks]
+    return [model, model]

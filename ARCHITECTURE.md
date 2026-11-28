@@ -129,7 +129,8 @@ offline unless the workspace's network is Full. It can't read the person's priva
 (Documents, Desktop, Downloads, AppData and the like, and another drive's `Users` folder) unless
 the person turns that off, but it still reads the rest of another drive and Windows' own folders,
 so an online command is approved by the person. Without it, a command runs as the user only after a second
-confirmation, and the person approves every one. The UI and docs say which one holds. No
+confirmation, and the person approves every one. In Auto mode such a command goes to the
+reviewer instead, and Bypass mode, which Settings must allow, runs it without asking (decision 0062). The UI and docs say which one holds. No
 import allow/deny lists: they are easy to bypass and only look like safety.
 
 ### Office formats are built in, not MCP

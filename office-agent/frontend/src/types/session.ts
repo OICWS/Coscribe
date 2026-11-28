@@ -4,6 +4,9 @@
 
 /** What a conversation is doing for the sidebar: working on a reply,
  * waiting on a person, finished while nobody was looking, or at rest. */
+/** What an approval card's answer also allows: the rest of a code task, or calls like it in this chat. */
+export type ApprovalScope = "task" | "similar";
+
 export type ThreadStatus = "working" | "needs_input" | "ready" | "idle";
 
 export interface ThreadSummary {
@@ -177,6 +180,14 @@ export interface ThreadActivity {
   skills: string[];
   /** The conversation's folders, each with what its file names say it holds. */
   folders?: FolderBrief[];
+  /** How often its gated calls went to the person and why (the audit log). */
+  approvals?: ApprovalSummary;
+}
+
+export interface ApprovalSummary {
+  asked: number;
+  asked_because: { reason: string; count: number }[];
+  approved_without_asking: number;
 }
 
 export interface FolderBrief {

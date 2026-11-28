@@ -34,7 +34,16 @@ from typing import Any, Literal
 
 Decision = Literal["approve", "reject"]
 AutoApproveReason = Literal[
-    "accept_edits", "approval_mode_auto", "approval_mode_skip", "auto_review", "preapproved"
+    "accept_edits",
+    "approval_mode_auto",
+    "approval_mode_skip",
+    "auto_review",
+    # Auto mode let a file or document edit in the conversation's folders through unreviewed.
+    "auto_mode_edit",
+    # The person allowed calls like this one on an earlier card, or Bypass mode (decision 0062).
+    "allowed_similar",
+    "bypass",
+    "preapproved",
 ]
 Reason = Literal[
     "hook_veto",
@@ -133,6 +142,27 @@ class AuditEntry:
     # accept_edits/human/stopped, which are self-explanatory from
     # decision+reason alone.
     detail: str | None = None
+    # The rule that put the call to a person (conversation/approvals.py's AskReason), also when
+    # nobody was there to answer; None when no person was asked.
+    asked_because: str | None = None
+
+
+_DECIDED_WITHOUT_A_PERSON = frozenset(
+    {
+        "accept_edits",
+        "approval_mode_auto",
+        "approval_mode_skip",
+        "auto_review",
+        "auto_mode_edit",
+        "allowed_similar",
+        "bypass",
+        "preapproved",
+        "exec_policy",
+        "workspace_settings",
+        "code_allowed",
+        "workflow_step",
+    }
+)
 
 
 class AuditLog:
@@ -153,12 +183,8 @@ class AuditLog:
             handle.write(json.dumps(asdict(entry), ensure_ascii=False) + "\n")
 
     def read_all(self) -> list[AuditEntry]:
-        """Every entry, oldest first. No live caller today (no UI surfaces
-        this log yet, see this module's own docstring) -- exists so tests
-        (and a future Settings panel, if one gets built) have a real
-        read-back instead of only being able to assert "the file exists".
-        A line that fails to parse (a hand-edited or truncated file) is
-        skipped rather than raising -- reading history shouldn't break
+        """Every entry, oldest first. A line that fails to parse (a hand-edited or
+        truncated file) is skipped rather than raising: reading history shouldn't break
         because of one bad line."""
         if not self.path.is_file():
             return []
@@ -174,6 +200,42 @@ class AuditLog:
                     continue
         return entries
 
+    def for_thread(self, thread_id: str) -> list[AuditEntry]:
+        """The entries of one conversation, oldest first; a line naming another thread is
+        not parsed, since the file holds every conversation's."""
+        if not self.path.is_file():
+            return []
+        needle = json.dumps(thread_id)
+        entries = []
+        with self.path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if needle not in line:
+                    continue
+                try:
+                    entry = AuditEntry(**json.loads(line))
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if entry.thread_id == thread_id:
+                    entries.append(entry)
+        return entries
+
+    def summary(self, thread_id: str) -> dict[str, Any]:
+        """How often a conversation's gated calls went to a person and why, against how many
+        went ahead without one."""
+        entries = self.for_thread(thread_id)
+        asked: dict[str, int] = {}
+        for entry in entries:
+            if entry.asked_because is not None:
+                asked[entry.asked_because] = asked.get(entry.asked_because, 0) + 1
+        approved_alone = sum(
+            1 for e in entries if e.decision == "approve" and e.reason in _DECIDED_WITHOUT_A_PERSON
+        )
+        return {
+            "asked": sum(asked.values()),
+            "asked_because": [{"reason": r, "count": c} for r, c in asked.items()],
+            "approved_without_asking": approved_alone,
+        }
+
 
 def record_decision(
     audit_log: AuditLog,
@@ -184,6 +246,7 @@ def record_decision(
     decision: Decision,
     reason: Reason,
     detail: str | None = None,
+    asked_because: str | None = None,
 ) -> None:
     """Thin convenience wrapper around AuditLog.append -- builds the
     timestamp and AuditEntry so the one real call site
@@ -198,5 +261,6 @@ def record_decision(
             decision=decision,
             reason=reason,
             detail=redact_secrets(detail) if detail is not None else None,
+            asked_because=asked_because,
         )
     )

@@ -47,6 +47,8 @@ export const KEEP_AWAKE_KEY = "COSCRIBE_KEEP_AWAKE";
 export const KEEP_AWAKE_ON_BATTERY_KEY = "COSCRIBE_KEEP_AWAKE_ON_BATTERY";
 
 export const PERMISSION_MODE_KEY = "COSCRIBE_DEFAULT_PERMISSION_MODE";
+/** Absent means off: Bypass mode stays off the mode pill until the person turns this on. */
+export const ALLOW_BYPASS_KEY = "COSCRIBE_ALLOW_BYPASS_MODE";
 export const PERMISSION_MODES = [
   { value: "manual", label: "Manual" },
   { value: "accept-edits", label: "Accept Edits" },

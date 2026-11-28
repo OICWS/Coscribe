@@ -25,7 +25,6 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${CANVAS}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
 
   await expect(page.locator('iframe[title="Home"]')).toBeVisible();
@@ -96,7 +95,6 @@ test("a canvas's variables are set from the panel into every artboard, and the b
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${THEMED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
 
   const frame = page.frameLocator('iframe[title="Card"]');
@@ -126,7 +124,6 @@ test("a link from a played artboard to another shows that artboard, played too",
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${LINKED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
   await expect(page.locator('iframe[title="Checkout"]')).toBeAttached();
 
@@ -160,7 +157,6 @@ test("the properties panel shows an artboard's elements and the style of the one
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
   await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toBeVisible();
 
@@ -248,7 +244,6 @@ test("a double click on an artboard's text edits it where it is drawn and writes
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
   const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
   await expect(heading).toBeVisible();
@@ -297,7 +292,6 @@ test("a part several artboards place is drawn in each, and an edit of it from on
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${PARTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
   for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Home");
 
@@ -342,7 +336,6 @@ test("the canvas's Export saves the selected artboard as a PNG, and offers an ic
   await waitForConnected(page);
   await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await openDesign(page, name);
   await expect(page.frameLocator('iframe[title="Card"]').locator("body")).toBeAttached();
 

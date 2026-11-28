@@ -1,5 +1,6 @@
 """Small helpers of a conversation's turns: reply and title text, the usage event, the design
-system a Slides conversation starts with, and the note that a question card is still open."""
+system a Slides conversation starts with, the note that a question card is still open, and the
+mode pill's state with the note each mode puts in front of a turn."""
 
 from __future__ import annotations
 
@@ -10,11 +11,9 @@ from typing import Any, Protocol
 
 from langchain_core.messages.ai import UsageMetadata
 
+from ..config import Settings
 from ..runtime_lg import (
-    ACCEPT_EDITS_MODE_NOTE,
-    AUTO_MODE_NOTE,
-    NORMAL_MODE_NOTE,
-    PLAN_MODE_NOTE,
+    MODE_NOTES,
     extract_text,
     is_steer,
     strip_mode_note,
@@ -67,15 +66,6 @@ def build_instructions(agent_instructions: str | None, *, defer_tools: bool) -> 
     if not agent_instructions:
         return "\n\n".join(notes)
     return "\n\n".join([agent_instructions, *notes])
-
-
-def turn_mode_note(plan_mode: bool, accept_edits: bool, auto_mode: bool) -> str:
-    """The note in front of a turn's message that says how risky tool calls are handled."""
-    if plan_mode:
-        return PLAN_MODE_NOTE
-    if accept_edits:
-        return ACCEPT_EDITS_MODE_NOTE
-    return AUTO_MODE_NOTE if auto_mode else NORMAL_MODE_NOTE
 
 
 def usage_event(usage: UsageMetadata) -> dict[str, Any]:
@@ -259,3 +249,57 @@ def open_question_note(messages: Sequence[Any], text: str) -> str:
     if not questions:
         return ""
     return OPEN_QUESTION_NOTE.format(questions="\n".join(f"- {q}" for q in questions))
+
+
+class PermissionModes:
+    """The mode pill's state for one conversation, and what Auto mode and the cards' "allow
+    similar" remember while it lasts (decision 0062)."""
+
+    settings: Settings
+
+    def _init_modes(self) -> None:
+        self.plan_mode = False
+        self.accept_edits = False
+        # Auto mode: a reviewer model decides risky calls in the user's
+        # place. After 3 blocks in a row or 20 in all it pauses and the
+        # user is asked, as in Claude Code; the user approving one resumes it.
+        self.auto_mode = False
+        # Bypass mode approves every gated call, only while Settings allows it.
+        self.bypass_mode = False
+        self._auto_blocks_in_row = 0
+        self._auto_blocks_total = 0
+        self._auto_paused = False
+        # What the person allowed on a card for the rest of the conversation, and the cards
+        # answered that way whose call is still to be keyed (approval_scope.similar_call).
+        self._similar_allowances: set[str] = set()
+        self._similar_requests: set[str] = set()
+
+    @property
+    def permission_mode(self) -> str:
+        """The mode pill's name for the mode in force."""
+        if self.plan_mode:
+            return "plan"
+        if self.accept_edits:
+            return "accept-edits"
+        if self.auto_mode:
+            return "auto"
+        return "bypass" if self.bypass_mode else "manual"
+
+    @property
+    def mode_note(self) -> str:
+        """The note in front of a turn's message that says how risky tool calls are handled."""
+        return MODE_NOTES[self.permission_mode]
+
+    def _toggle_mode(self, mode: str) -> None:
+        """One mode at a time; toggling the current one returns to Manual. Bypass needs
+        Settings' consent to come on."""
+        if mode == "bypass" and not self.bypass_mode and not self.settings.allow_bypass_mode:
+            return
+        turning_on = mode != self.permission_mode
+        self.plan_mode = turning_on and mode == "plan"
+        self.accept_edits = turning_on and mode == "accept-edits"
+        self.auto_mode = turning_on and mode == "auto"
+        self.bypass_mode = turning_on and mode == "bypass"
+        if self.auto_mode:
+            self._auto_blocks_in_row = 0
+            self._auto_paused = False

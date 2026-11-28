@@ -21,6 +21,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "general", label: "What should Coscribe call you?", keywords: "name profile" },
   { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_DEFAULT_MODEL") },
   { category: "general", label: "Default mode", keywords: "permission manual auto plan accept edits" },
+  { category: "general", label: "Allow bypass permissions mode", keywords: "permission skip approvals ask nothing" },
   { category: "general", label: "Global instructions", keywords: "memory preferences" },
   { category: "general", label: "Keep running in the background", keywords: "tray close window" },
   { category: "general", label: "Notifications" },

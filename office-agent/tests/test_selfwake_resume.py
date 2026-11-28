@@ -223,16 +223,19 @@ async def test_wake_hitting_a_gated_tool_call_resolves_promptly_not_hangs(
     assert not (tmp_path / "workspace" / "note.txt").exists()
 
 
-@pytest.mark.parametrize(("decision", "written"), [("allow", True), ("block", False)])
+@pytest.mark.parametrize(("decision", "deleted"), [("allow", True), ("block", False)])
 async def test_unattended_wake_in_auto_mode_lets_the_reviewer_decide(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, decision: str, written: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, decision: str, deleted: bool
 ) -> None:
     import json
 
     from langchain_core.messages import ToolCall
 
     settings = _settings(tmp_path)
-    call = ToolCall(name="write_file", args={"path": "note.txt", "content": "hi"}, id="call_1")
+    # A file edit goes ahead in Auto mode without its reviewer; a delete still goes to it.
+    (tmp_path / "workspace").mkdir(exist_ok=True)
+    (tmp_path / "workspace" / "note.txt").write_text("hi", encoding="utf-8")
+    call = ToolCall(name="delete_file", args={"path": "note.txt"}, id="call_1")
     fake_model = FakeToolCallingChatModel(
         responses=[
             AIMessage(content="", tool_calls=[call]),
@@ -254,7 +257,7 @@ async def test_unattended_wake_in_auto_mode_lets_the_reviewer_decide(
                 wake_id="wake-auto",
                 thread_id="thread-1",
                 kind="timer",
-                reason="write a note",
+                reason="delete the note",
                 created_at=datetime.now(UTC).isoformat(),
                 status="pending",
                 wake_at=(datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
@@ -264,7 +267,7 @@ async def test_unattended_wake_in_auto_mode_lets_the_reviewer_decide(
         fired = await asyncio.wait_for(poll_due_wakes(settings.state_dir, get_session), timeout=30)
 
     assert [w.wake_id for w in fired] == ["wake-auto"]
-    assert (tmp_path / "workspace" / "note.txt").exists() is written
+    assert (tmp_path / "workspace" / "note.txt").exists() is not deleted
     assert fake_model.i == 3
 
 

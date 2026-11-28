@@ -40,6 +40,7 @@ export interface ConfigResponse {
   COSCRIBE_SIDE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
   COSCRIBE_PROMPT_SUGGESTIONS: string | null;
+  COSCRIBE_ALLOW_BYPASS_MODE: string | null;
   COSCRIBE_BACKGROUND_AGENTS: string | null;
   COSCRIBE_ARCHIVE_INACTIVE_DAYS: string | null;
   COSCRIBE_WEBHOOK_PORT: string | null;

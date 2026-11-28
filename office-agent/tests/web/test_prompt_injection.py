@@ -154,7 +154,7 @@ def test_the_auto_reviewer_does_not_take_another_conversations_message_for_the_u
             AIMessage(content="ok"),
             AIMessage(
                 content="",
-                tool_calls=[_tool_call("c1", "write_file", {"path": "n", "content": "x"})],
+                tool_calls=[_tool_call("c1", "move_file", {"source": "n", "destination": "m"})],
             ),
             AIMessage(content='{"decision": "block", "reason": "not asked for"}'),
             AIMessage(content="not written"),
@@ -175,7 +175,7 @@ def test_the_auto_reviewer_does_not_take_another_conversations_message_for_the_u
     reviewer_input = next(
         str(call[-1].content)
         for call in fake_model.received
-        if "write_file(" in str(call[-1].content)
+        if "move_file(" in str(call[-1].content)
     )
     assert "hello, nothing to do yet" in reviewer_input
     assert "pre-approved" not in reviewer_input

@@ -25,11 +25,11 @@ from .helpers import (
     ConcurrentSpawnFakeModel,
     FakeToolCallingChatModel,
     _client_lg,
+    _move_call,
     _receive_until,
     _start_mode,
     _tool_call,
     _verdict,
-    _write_call,
 )
 
 
@@ -333,7 +333,7 @@ class RoutedChatModel(FakeToolCallingChatModel):
 def test_a_background_sub_agent_is_reviewed_against_its_task_and_reports_back_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    child_prompt = "Write hi to note.txt."
+    child_prompt = "Rename draft.txt to note.txt."
     reviews: list[str] = []
 
     def route(messages: list[BaseMessage]) -> AIMessage:
@@ -345,7 +345,7 @@ def test_a_background_sub_agent_is_reviewed_against_its_task_and_reports_back_lg
         if "delegated to you by another assistant" in system:
             if last.type == "tool":
                 return AIMessage(content="wrote note.txt")
-            return AIMessage(content="", tool_calls=[_write_call("w1", "note.txt")])
+            return AIMessage(content="", tool_calls=[_move_call("w1", "draft.txt", "note.txt")])
         if last.type == "human" and "[Sub-agent finished]" in str(last.content):
             return AIMessage(content="The sub-agent wrote the note.")
         if last.type == "tool":
@@ -362,11 +362,16 @@ def test_a_background_sub_agent_is_reviewed_against_its_task_and_reports_back_lg
         )
 
     fake_model = RoutedChatModel(responses=[], route=route)
+    (tmp_path / "workspace").mkdir(exist_ok=True)
+    (tmp_path / "workspace" / "draft.txt").write_text("hi")
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         with client.websocket_connect("/ws/t_sub_report") as ws:
             _start_mode(ws, "/auto")
             ws.send_json(
-                {"type": "user_message", "text": "Use a sub-agent to write the note, not yourself."}
+                {
+                    "type": "user_message",
+                    "text": "Use a sub-agent to rename the note, not yourself.",
+                }
             )
             _receive_until(ws, "tasks_changed")
             started = _receive_until(ws, "turn_started")[-1]

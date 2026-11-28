@@ -27,7 +27,6 @@ test("a dashboard says when its data was made, refreshes, and shows where a figu
   await waitForConnected(page);
   await page.locator("textarea").fill(`make it [[stub-tool write_file {"path":"${name}.html","content":"${PAGE}"}]] [[stub-say I wrote ${name}.html.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByTitle(`Open ${name}.html`).click();
 
   await expect(page.getByText(/^Data from /)).toBeVisible();

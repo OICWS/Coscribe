@@ -102,6 +102,16 @@ Desktop verification for messages added while working (#1101) covers copying one
 
 ## Open, smaller
 
+- **Fewer confirmations in Auto mode and workflows** (#1106, design agreed 2026-11-27): the
+  goal is as few asks as safety allows, with an opt-in to skip them all. Shipped: every card says
+  which rule asked and the side panel counts them; in Auto mode a file or document edit in the
+  workspace skips the reviewer, and a reviewer with no answer is tried again, then the
+  conversation's model, before a person is asked; Auto mode's reviewer decides command lines, a
+  card offers "allow similar in this chat", and "Allow bypass permissions mode" unlocks Bypass
+  mode (decision 0062, `docs/log/2026-11-27-approval-ask-reasons.md`). Next, block 3: a task's auto tier goes to the reviewer with the task
+  as the request, its skip tier is Bypass behind the same setting, and a call out of scope with
+  nobody there is parked or skipped with the reason recorded.
+
 - **Public office benchmarks** (#1072): `office-agent/evals/external.py` runs OmegaUse-OfficeVal
   and SpreadsheetBench Verified (`docs/log/2026-11-25-external-benchmarks.md`). OfficeVal: 93
   tasks, mean 0.48 (PowerPoint 0.39 the lowest); seeing pictures (#1088) is the first fix. Next:

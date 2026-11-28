@@ -55,6 +55,8 @@ describe("state", () => {
     plan_mode: true,
     accept_edits: true,
     auto_mode: true,
+    bypass_mode: false,
+    allow_bypass_mode: true,
     model: "m1",
     effort: "medium",
     effort_runs_as: "low",
@@ -74,6 +76,8 @@ describe("state", () => {
       planMode: true,
       acceptEdits: true,
       autoMode: true,
+      bypassMode: false,
+      bypassAllowed: true,
       model: "m1",
       effort: "medium",
       effortRunsAs: "low",
@@ -540,6 +544,8 @@ describe("approvals", () => {
       before_preview: "b.png",
       after_preview: "a.png",
       reviewer_note: "touches a shared folder",
+      asked_because: "auto_review_blocked",
+      allow_similar: "Allow write_file in this chat",
     });
     expect(next.items[0]).toMatchObject({ streaming: false });
     expect(next.items[1]).toEqual({
@@ -551,6 +557,8 @@ describe("approvals", () => {
       beforePreview: "b.png",
       afterPreview: "a.png",
       reviewerNote: "touches a shared folder",
+      askedBecause: "auto_review_blocked",
+      allowSimilar: "Allow write_file in this chat",
     });
   });
 
@@ -576,6 +584,8 @@ describe("approvals", () => {
       before_preview: null,
       after_preview: null,
       reviewer_note: null,
+      asked_because: "approval_mode",
+      allow_similar: null,
       subagent_id: "sub-1",
     });
     expect(next).toBe(base);

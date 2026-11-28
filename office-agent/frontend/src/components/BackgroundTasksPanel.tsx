@@ -20,7 +20,7 @@ import {
 import { followUpOf, orderFollowUps } from "../lib/subagentOrder";
 import { summarizeItemParts } from "../lib/transcriptGrouping";
 import { historyToItems, type LogItem } from "../state/reducer";
-import type { BackgroundScriptLog, BackgroundScriptTask, SubAgentTask } from "../types/session";
+import type { ApprovalScope, BackgroundScriptLog, BackgroundScriptTask, SubAgentTask } from "../types/session";
 import { TranscriptItems } from "./ChatLog";
 import {
   AlertCircleIcon,
@@ -266,7 +266,7 @@ function SubAgentDetail({
   refreshKey: number;
   busy: boolean;
   onStop: (task: SubAgentTask) => void;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
 }) {
   const [task, setTask] = useState<SubAgentTask | null>(null);
   const [items, setItems] = useState<LogItem[]>([]);
@@ -400,7 +400,7 @@ interface BackgroundTasksPanelProps {
   refreshKey: number;
   /** A run to open, e.g. one that just asked for approval. */
   focusTaskId: string | null;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
 }
 
 /** What this conversation runs in the background: the running ones as cards

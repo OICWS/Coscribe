@@ -8,6 +8,12 @@ export interface StateEvent {
   accept_edits: boolean;
   /** A reviewer model decides risky calls instead of the user. */
   auto_mode: boolean;
+  /**
+   * Every gated call runs without asking; offered only while Settings allows it
+   * (decision 0062).
+   */
+  bypass_mode: boolean;
+  allow_bypass_mode: boolean;
   model: string;
   effort: "low" | "medium" | "high" | "extra" | "max" | "ultra";
   /**
@@ -186,6 +192,13 @@ export interface ApprovalRequiredEvent {
   after_preview: string | null;
   /** Why auto mode handed this one to the user. */
   reviewer_note: string | null;
+  /** The rule that sent this call to a person. */
+  asked_because: "command_unsandboxed" | "command_online" | "workspace_rule" | "auto_review_blocked" | "auto_review_no_answer" | "approval_mode";
+  /**
+   * The words of the card's "allow similar in this chat" button; None when it has
+   * none.
+   */
+  allow_similar: string | null;
   /**
    * Set when a sub-agent is the one asking: the Background tasks panel shows it, not
    * the chat.
@@ -629,8 +642,11 @@ export interface ApprovalResponseOut {
   type: "approval_response";
   id: string;
   approved: boolean;
-  /** "task": allow this kind of action for the rest of the code task. */
-  scope?: "task";
+  /**
+   * "task": allow this kind of action for the rest of the code task. "similar":
+   * allow calls like this one for the rest of the conversation.
+   */
+  scope?: "task" | "similar";
   /**
    * Written in the chat while the card was open: the call is denied, the words go to
    * the model.

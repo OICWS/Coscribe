@@ -13,6 +13,7 @@ from langchain_core.messages import (
 )
 from PIL import Image
 
+from coscribe.runtime_lg.audit import AuditLog, record_decision
 from coscribe.web.routes import threads as threads_routes
 
 from .helpers import (
@@ -517,3 +518,33 @@ def test_a_folders_own_notes_wait_in_activity_until_the_person_uses_them_lg(
     assert used.json()["workspace"]["trusted"] is True
     assert after[0]["workspace"]["trusted"] is True
     assert elsewhere.status_code == 404
+
+
+def test_thread_activity_counts_the_approvals_of_that_conversation_only_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = AuditLog(tmp_path / "state")
+    for thread_id, reason, asked_because in [
+        ("t_asks", "human", "command_unsandboxed"),
+        ("t_asks", "human", "command_unsandboxed"),
+        ("t_asks", "auto_review", None),
+        ("t_other", "human", "approval_mode"),
+    ]:
+        record_decision(
+            log,
+            thread_id=thread_id,
+            tool_name="run_background_command",
+            arguments={},
+            decision="approve",
+            reason=reason,  # type: ignore[arg-type]
+            asked_because=asked_because,  # type: ignore[arg-type]
+        )
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="done")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        activity = client.get("/api/threads/t_asks/activity").json()
+
+    assert activity["approvals"] == {
+        "asked": 2,
+        "asked_because": [{"reason": "command_unsandboxed", "count": 2}],
+        "approved_without_asking": 1,
+    }

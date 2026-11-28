@@ -6,6 +6,7 @@
 import type { CommentLink } from "./slideComments";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BrowserCapture } from "./browserCapture";
+import type { ApprovalScope } from "../types/session";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
 import type { PanelId, Rect } from "./dockLayout";
 import { PANEL_IDS } from "./dockLayout";
@@ -52,7 +53,7 @@ export type PanelWindowAction =
   | { type: "sendComment"; text: string; link?: CommentLink }
   | PlanPanelAction
   | { type: "stopAgent" }
-  | { type: "approve"; id: string; approved: boolean; scope?: "task" };
+  | { type: "approve"; id: string; approved: boolean; scope?: ApprovalScope };
 
 /** The panel this page shows on its own, when it is a panel's window. */
 export const PANEL_WINDOW: PanelId | null = (() => {

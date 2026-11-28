@@ -39,6 +39,7 @@ import { StoppedNote } from "./StoppedNote";
 import { HoverTip } from "./HoverTip";
 import { fullTime } from "../../lib/messageActions";
 import { timeAgo } from "../../lib/sessionList";
+import type { ApprovalScope } from "../../types/session";
 
 /** react-markdown + remark/rehype + katex is the single biggest dependency
  * added to this app (roughly triples the production bundle) -- code-split
@@ -66,7 +67,7 @@ export function TurnView({
   compactAfter?: boolean;
   /** This turn is the one a reply is still being generated for. */
   live?: boolean;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
   onOpenPlan?: () => void;
   onReviewTaskDraft?: (item: TaskDraftItem) => void;
