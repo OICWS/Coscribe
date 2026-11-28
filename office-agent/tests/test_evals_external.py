@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -74,6 +75,33 @@ def test_an_officeval_task_whose_files_are_missing_is_refused(tmp_path: Path):
 
     with pytest.raises(FileNotFoundError, match="not downloaded"):
         external.officeval_tasks(tmp_path, tmp_path, ["004"], "python")
+
+
+def test_a_verifier_that_defines_a_dataclass_grades(tmp_path: Path):
+    # With string annotations, a dataclass looks its module up in sys.modules while it loads.
+    (tmp_path / "verifiers").mkdir()
+    (tmp_path / "verifiers" / "officeval_005_verifier.py").write_text(
+        "from __future__ import annotations\n"
+        "from dataclasses import dataclass\n"
+        "@dataclass\n"
+        "class Item:\n"
+        "    score: int\n"
+        "def evaluate(path):\n"
+        "    return {'status': 'ok', 'dim1_pass': True, 'total_score': Item(3).score,"
+        " 'max_score': 4}\n",
+        "utf-8",
+    )
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "deck.pptx").write_bytes(b"deck")
+    task_out = tmp_path / "out"
+    task_out.mkdir()
+    (task_out / "inputs.json").write_text("{}", "utf-8")
+    grade = external._officeval_grader("officeval_005", tmp_path, sys.executable)
+
+    report = grade(workspace, task_out)
+
+    assert report["score_fraction"] == 0.75
 
 
 def test_a_spreadsheet_task_names_the_sheet_of_its_answer(tmp_path: Path):

@@ -107,6 +107,7 @@ def _officeval_grader(task_id: str, grader: Path, python: str) -> Callable[[Path
             "import importlib.util, json, sys\n"
             "spec = importlib.util.spec_from_file_location('verifier', sys.argv[1])\n"
             "module = importlib.util.module_from_spec(spec)\n"
+            "sys.modules['verifier'] = module\n"
             "spec.loader.exec_module(module)\n"
             "print(json.dumps(module.evaluate(sys.argv[2]), ensure_ascii=False, default=str))\n"
         )
