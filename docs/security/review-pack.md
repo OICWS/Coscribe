@@ -43,8 +43,11 @@ runs, is refused or waits for a person. The precedence is one table, `ROWS` in
 7. Accept Edits approves local writes only; scripts and external actions still ask. Auto mode
    lets a file or document edit through without its reviewer the same way (`auto_mode_edit`),
    but not a delete or a move of a file, nor another local change.
-8. A scheduled run's approval mode: `skip` approves every tier, `auto` approves local writes and
-   still asks for scripts; an unattended run that would ask refuses instead of waiting.
+8. A scheduled run's approval mode (decision 0062): `skip` approves every tier, as Bypass mode
+   does, only while Settings allows Bypass mode, and runs as `auto` otherwise; `auto` approves
+   local writes and hands scripts, connectors and commands to Auto mode's reviewer, weighed
+   against the run's prompt or a high or full agent step's goal as saved (never a value an
+   earlier step brought in); an unattended run that would ask refuses instead of waiting.
 9. Anything else asks the person, and refuses when nobody can answer.
 
 Every decision is written to the audit log (`runtime_lg/audit.py`, `tests/test_audit_log.py`) with
