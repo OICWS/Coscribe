@@ -27,6 +27,9 @@ the tool for "make this title a different color", not edit_pptx_theme_colors, se
 guess shape_index without calling list_pptx_shapes first on a slide you haven't already inspected.
 To remove a shape entirely (any type -- a plain shape, a picture, a table, or real SmartArt), call
 delete_pptx_shape(path, slide, shape_index) with that same shape_index; this can't be undone.
+To make shapes look like another one ("match the format of", "same style as"), call
+match_pptx_shape_format with the model shape and the targets, never a script: it copies only the
+named parts and keeps each target's text and position.
 list_pptx_shapes also flags real SmartArt (is_smartart: true) and lists each of its nodes' own text
 (smartart_text). Neither this tool nor python-pptx can generate a *new* SmartArt diagram or change
 its layout (the layout algorithm lives in PowerPoint itself, not the file format) -- if the user

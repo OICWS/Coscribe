@@ -81,6 +81,7 @@ _FOUND = [
     ("add a chart to the slides", "add_pptx_chart"),
     ("presentation template", "fill_pptx_template"),
     ("change slide text", "edit_pptx_text"),
+    ("make boxes match another shape's format", "match_pptx_shape_format"),
     ("animation", "add_pptx_animation"),
     ("slide transition", "set_pptx_transition"),
     ("icons", "add_pptx_icon"),
