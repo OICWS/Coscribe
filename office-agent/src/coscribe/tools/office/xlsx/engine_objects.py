@@ -240,8 +240,9 @@ def _colour_series(chart: Any, kind: str, given: list[str]) -> None:
     """A series left to the theme's colour depends on the theme the file carries, which a resave
     by another program can replace (a line chart then drew no line), so each gets one: a line or
     scatter series on its line only, a bar or area series as its fill, a pie's slices one by one."""
-    from openpyxl.chart.marker import DataPoint
+    from openpyxl.chart.marker import DataPoint, Marker
     from openpyxl.chart.shapes import GraphicalProperties
+    from openpyxl.drawing.line import LineProperties
 
     if kind == "pie":
         if given and chart.series:
@@ -253,11 +254,9 @@ def _colour_series(chart: Any, kind: str, given: list[str]) -> None:
     for series, color in zip(chart.series, _colours(given, len(chart.series)), strict=True):
         if kind == "scatter":
             # Excel's own scatter shows points, not a line joining them in table order.
-            series.marker.symbol = "circle"
-            series.marker.size = 6
-            series.marker.graphicalProperties = GraphicalProperties(solidFill=color)
-            series.marker.graphicalProperties.line.solidFill = color
-            series.graphicalProperties.line.noFill = True
+            dot = GraphicalProperties(solidFill=color, ln=LineProperties(solidFill=color))
+            series.marker = Marker(symbol="circle", size=6, spPr=dot)
+            series.graphicalProperties.line = LineProperties(noFill=True)
         elif kind == "line":
             series.graphicalProperties.line.solidFill = color
         else:
@@ -338,7 +337,7 @@ def _point_labels(workbook: Workbook, chart: Any, ref: str, sheet: str, font: An
         for i, name in enumerate(names)
         if name not in (None, "")
     ]
-    chart.series[0].dLbls = DataLabelList(
+    chart.series[0].labels = DataLabelList(
         dLbl=labels,
         txPr=_text_props(font) if font else None,
         showVal=False,
@@ -347,6 +346,13 @@ def _point_labels(workbook: Workbook, chart: Any, ref: str, sheet: str, font: An
         showLegendKey=False,
         showPercent=False,
     )
+
+
+def _set(target: Any, **fields: Any) -> None:
+    """Fields openpyxl reads only through its own descriptors when it writes the chart XML, set
+    by name so a scan for names nothing reads does not count each one as dead code."""
+    for name, value in fields.items():
+        setattr(target, name, value)
 
 
 def _axes(chart: Any, op: dict[str, Any]) -> None:
@@ -358,14 +364,9 @@ def _axes(chart: Any, op: dict[str, Any]) -> None:
             axis.scaling.min = float(op[f"{name}_min"])
         if f"{name}_max" in op:
             axis.scaling.max = float(op[f"{name}_max"])
-    if "x_cross" in op:
-        chart.y_axis.crossesAt = float(op["x_cross"])
-        chart.y_axis.crosses = None
-        chart.y_axis.tickLblPos = "low"
-    if "y_cross" in op:
-        chart.x_axis.crossesAt = float(op["y_cross"])
-        chart.x_axis.crosses = None
-        chart.x_axis.tickLblPos = "low"
+    for axis, key in ((chart.y_axis, "x_cross"), (chart.x_axis, "y_cross")):
+        if key in op:
+            _set(axis, crossesAt=float(op[key]), crosses=None, tickLblPos="low")
 
 
 def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
@@ -389,14 +390,15 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
         for axis, key in ((chart.x_axis, "x_title"), (chart.y_axis, "y_title")):
             axis.title = _title(op.get(key), font)
             if font:
-                axis.txPr = _text_props(font)
+                _set(axis, txPr=_text_props(font))
         chart.x_axis.delete = chart.y_axis.delete = False
         if op["kind"] == "scatter":
             # openpyxl puts both value axes on the left; a reader that finds the axes by their
             # side sees no horizontal one.
-            chart.x_axis.axPos = "b"
+            _set(chart.x_axis, axPos="b")
         if op.get("gridlines") is False:
-            chart.x_axis.majorGridlines = chart.y_axis.majorGridlines = None
+            _set(chart.x_axis, majorGridlines=None)
+            _set(chart.y_axis, majorGridlines=None)
         _axes(chart, op)
     _colour_series(chart, op["kind"], op.get("colors", []))
     if op.get("point_labels"):

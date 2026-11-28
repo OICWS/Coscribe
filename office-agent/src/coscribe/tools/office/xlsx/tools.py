@@ -128,24 +128,18 @@ def build_spreadsheet_tools(
           or "Data!A1:C13", "at": "E2", "title"?, "x_title"?, "y_title"?, "colors"?: [hex per
           series], "stacked"?, "labels"?, "size"?: [width_cm, height_cm], "legend"?: false,
           "gridlines"?: false, "font"?: {"size", "latin", "east_asian"}, "x_min"?, "x_max"?,
-          "y_min"?, "y_max"?, "x_cross"?, "y_cross"?}. The source's first row names the series
-          and its first column holds the categories. A scatter may take its x values from
-          another column ("x": "C2:C21"); then every source column is a series of y values.
-          "point_labels": "A2:A21" names each point of the first series. "x_cross" is the x
-          value where the vertical axis stands, "y_cross" the y value of the horizontal axis:
-          crossing both at the means draws a quadrant chart. "font" sets every text of the
-          chart. Place a chart beside its table, not over it.
+          "y_min"?, "y_max"?, "x_cross"?/"y_cross"? (where each axis crosses the other), "x"?: a
+          scatter's x column (each source column a y series), "point_labels"?: names per point}.
+          Row 1 names the series, column 1 the categories. Place it beside its table, not over.
         - {"op": "conditional", "sheet", "range", "rule": color_scale|data_bar|cell|formula|top,
           "colors"?, "operator"? (greaterThan, lessThan, between, equal...), "values"?,
           "formula"?, "fill"?, "color"?, "rank"?}
         - {"op": "validation", "sheet", "range", "list": ["Open", "Done"] or
           "source": "=Lists!A1:A5", "message"?}
-        - {"op": "print", "sheet", "landscape"?, "fit_width"?: 1, "repeat_rows"?: "1:1",
-          "area"?}
+        - {"op": "print", "sheet", "landscape"?, "fit_width"?: 1, "repeat_rows"?: "1:1", "area"?}
         - {"op": "name", "name", "ref": "Sheet1!$B$2:$B$9"}
 
-        Returns the same `recalc` and `findings` as write_xlsx_cells, with the same rule for a
-        user's workbook that would lose something.
+        Returns `recalc` and `findings`, and keeps a user's workbook as write_xlsx_cells does.
 
         Args:
             path: the .xlsx file, relative to the workspace root

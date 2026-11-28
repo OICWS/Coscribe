@@ -33,10 +33,9 @@ def label_class() -> Any:
         return _label_class
     from openpyxl.chart.label import DataLabel, DataLabelList
     from openpyxl.chart.text import Text
-    from openpyxl.descriptors import Typed
+    from openpyxl.descriptors import Sequence, Typed
 
     class NamedLabel(DataLabel):
-        tagname = "dLbl"
         tx = Typed(expected_type=Text, allow_none=True)
         __elements__ = _ELEMENTS
         # The class builder lists only this class's own nested values; the rest are inherited.
@@ -47,6 +46,9 @@ def label_class() -> Any:
             self.tx = tx
             super().__init__(idx=idx, **rest)
 
-    DataLabelList.dLbl.expected_type = NamedLabel
+    # A new descriptor in place of the list's own, so each label it reads or writes is this class.
+    field = Sequence(expected_type=NamedLabel, allow_none=True)
+    field.name = "dLbl"
+    setattr(DataLabelList, field.name, field)
     _label_class = NamedLabel
     return NamedLabel
