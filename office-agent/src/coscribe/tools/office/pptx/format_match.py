@@ -9,6 +9,7 @@ import copy
 from typing import Any
 
 from ..._file_locks import locked_by_path
+from ..._ooxml_validate import assert_ooxml_valid
 from . import toolkit_helpers as th
 from .shape_description import describe_shape
 from .toolkit_base import ToolkitBase
@@ -87,7 +88,7 @@ def _copy_style(source: Any, target: Any) -> None:
         return
     if old is not None:
         target._element.remove(old)
-    target._element.append(copy.deepcopy(new))
+    target._element.find(_q(_P, "spPr")).addnext(copy.deepcopy(new))
 
 
 def _first_run_props(shape: Any) -> tuple[Any, Any, Any]:
@@ -183,6 +184,7 @@ class FormatMatchMixin(ToolkitBase):
             raise ValueError("The source is among the targets; name the shapes to change only.")
         for _, shape in shapes:
             match_format(model, shape, chosen)
+        assert_ooxml_valid(target_slide.element, "match_pptx_shape_format")
         prs.save(str(file_path))
         return {
             "path": self._scope.relative(file_path),
