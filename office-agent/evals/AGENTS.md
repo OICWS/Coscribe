@@ -5,9 +5,10 @@ about $8. How to run each eval is in `README.md`. This file covers how to keep t
 
 ## Ask first
 
-- Ask the maintainer before any run that is more than a handful of tasks. Say which tasks, how
-  many, and the expected cost. Use the cost per task of the last comparable run in
-  `evals/runs/*/summary.json`.
+- Estimate a run's cost before starting it, from the cost per task of the last comparable run in
+  `evals/runs/*/summary.json`. Under $1, run it and report the result. At $1 or more, or for a
+  full pass over a benchmark, ask the maintainer first: say which tasks, how many, and the
+  expected cost.
 - Use the model and effort of the baseline you compare against (`deepseek-flash`). Never switch
   to a larger model to "see if it helps": that is a different experiment and needs its own ask.
 
@@ -25,14 +26,32 @@ about $8. How to run each eval is in `README.md`. This file covers how to keep t
 ## Where the money goes
 
 On the OfficeVal runs (#1078), a task took about 60 model calls, and each call resent the whole
-conversation (about 100k tokens). Caching made the resent input cheap; about half the bill was
-the model's own output. Most calls were small scripts that each checked or zoomed in on one
-thing. To lower the cost:
+conversation (about 100k tokens). Splitting the bill of 20 dev task runs by token type:
 
-- Cut the number of calls per task rather than tokens per call. A change that makes the agent
-  check once and in full, or see something directly (`look_at_image` with a region) instead of
-  measuring it in a script, saves a whole conversation resend for every call it removes.
+| Part | Share | Note |
+|---|---:|---|
+| Model output | 49% | about two thirds of it reasoning |
+| Input missing the cache | 22% | |
+| Resent context hitting the cache | 29% | about 50 times cheaper per token than a miss |
+
 - Compare cost per task and model calls per task, not only the score, when two runs are compared.
   `summary.json` has both.
 - Run off-peak. The provider's discount hours are noted in `prices.py`; check the vendor's
   pricing page again before relying on them.
+
+## Tried and rejected
+
+Don't retry these without a new reason.
+
+- **Prompting the agent to check once and in full, plus a zoom `region` for `look_at_image`**
+  (#1112, closed). On the same 10 dev tasks, score went from 0.382 to 0.384, cost from $0.84 to
+  $0.87 and calls from 772 to 796. The model never used the region. Single tasks swung by up to
+  0.7 between runs, so one run of 10 tasks can't detect a change this small.
+- **Trimming old tool results from the context** (analysed, not built):
+  - It can only reach the 29% cached share above.
+  - The provider caches a prompt by its unchanged beginning. Cutting anything earlier turns the
+    rest into cache misses, which cost about 50 times more.
+  - A result the agent needs again costs a new call to read it back.
+- **What would move the bill** is output, mostly reasoning: a lower reasoning effort. That
+  changes the model's behaviour, so it is an experiment the maintainer approves first. It is
+  measured on dev tasks against the score.
