@@ -98,3 +98,20 @@ def test_an_attribute_annotation_alone_does_not_mutate_a_method(mutation: Module
     assert mutation.mutant_prefixes(after, {3}, before) == []
     changed = after.replace("= []", "= [Note()]")
     assert mutation.mutant_prefixes(changed, {3}, before) == ["xǁSessionǁ__init____mutmut_"]
+
+
+def test_mutmut_runs_its_tests_in_the_same_order_every_time(
+    mutation: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    seen: dict[str, object] = {}
+
+    def run(command: list[str], **kwargs: object) -> object:
+        seen.update(kwargs)
+        return None
+
+    monkeypatch.setenv("PYTHONHASHSEED", "random")
+    monkeypatch.setattr(mutation.subprocess, "run", run)
+    mutation._mutmut(tmp_path, "run")
+    env = seen["env"]
+    assert isinstance(env, dict) and env["PYTHONHASHSEED"] == "0"
+    assert env["PATH"] == mutation.os.environ["PATH"]
