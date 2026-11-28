@@ -109,7 +109,7 @@ export function ModelPicker({ currentModel, onSwitch }: ModelPickerProps) {
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 mb-1 w-64 rounded-[12px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
+          className="absolute bottom-full left-0 z-20 mb-1 w-64 rounded-[12px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
         >
           {top.map((choice, index) => row(choice, index + 1))}
           {choices.length === 0 && <div className="px-3 py-2 text-sm text-[var(--muted)]">No models turned on. Add a provider in Settings.</div>}
