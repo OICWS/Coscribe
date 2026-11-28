@@ -210,7 +210,28 @@ OPS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "merge": (frozenset({"sheet", "range"}), frozenset({"undo"})),
     "chart": (
         frozenset({"sheet", "kind", "source", "at"}),
-        frozenset({"title", "x_title", "y_title", "colors", "stacked", "labels", "size"}),
+        frozenset(
+            {
+                "title",
+                "x_title",
+                "y_title",
+                "colors",
+                "stacked",
+                "labels",
+                "size",
+                "point_labels",
+                "font",
+                "x",
+                "legend",
+                "gridlines",
+                "x_min",
+                "x_max",
+                "y_min",
+                "y_max",
+                "x_cross",
+                "y_cross",
+            }
+        ),
     ),
     "conditional": (
         frozenset({"sheet", "range", "rule"}),

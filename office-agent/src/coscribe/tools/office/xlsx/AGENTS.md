@@ -3,7 +3,7 @@
 ## Purpose
 Owns the spreadsheet tools: reading each sheet with its layout, writing engine-neutral blocks
 of cells (`blocks.py`, `csv_blocks.py`) through openpyxl (`engine_openpyxl.py`,
-`engine_objects.py`), column widths and layout, the guard that stops a user's workbook losing
+`engine_objects.py`, with `chart_labels.py` for data labels that carry their own text), column widths and layout, the guard that stops a user's workbook losing
 content (`guard.py`), the findings checks (`findings.py`) and formula recalculation with IronCalc
 (`calc.py`). Does not own Word, PDF or PowerPoint, or how the viewer draws a workbook.
 
