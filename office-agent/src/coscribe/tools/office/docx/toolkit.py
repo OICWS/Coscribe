@@ -284,6 +284,22 @@ class DocxToolkit(WorkspaceToolkit):
         self._place_after(document, paragraph, after_text, caption)
         return self._save_tracked_edit(file_path, document)
 
+    @locked_by_path
+    def embed_docx_file(
+        self, path: str, file_path: str, after_text: str = "", in_cell_beside: str = ""
+    ) -> dict[str, object]:
+        from docx import Document
+
+        from ._embed import embed_file
+
+        if after_text and in_cell_beside:
+            raise ValueError("Give after_text or in_cell_beside, not both.")
+        source = self._check_readable(file_path)
+        target = self._check_editable(path)
+        document = Document(str(target))
+        placed = embed_file(document, source.name, source.read_bytes(), after_text, in_cell_beside)
+        return {**self._save_tracked_edit(target, document), **placed}
+
     @staticmethod
     def _place_after(document: Any, paragraph: Any, after_text: str, caption: str) -> None:
         """Centre `paragraph`, add its caption, and move both after the

@@ -119,6 +119,12 @@ file alone. Writing the document again with `write_docx` discards them, so
 make text changes with `replace_docx_text`/`insert_docx_text` afterwards.
 Give a caption when the text refers to the figure.
 
+When the person wants a file (a deck, a workbook, a PDF) inserted so that clicking it opens it,
+use `embed_docx_file`: the file goes inside the document as an icon with its name, and opens in
+its own program from Word. For a form's blank answer cell, `in_cell_beside="<the label>"` puts
+it in the cell beside that label. Don't add a picture of the file's first page, a link to a path
+on this computer or a note saying where the file is instead; keep the file's own name.
+
 ## Before finishing
 
 For a document with real structure (a TOC, multiple sections, a template

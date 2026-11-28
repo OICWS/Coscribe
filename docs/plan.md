@@ -116,6 +116,8 @@ Desktop verification for messages added while working (#1101) covers copying one
     or a deck instead of a chart in the workbook (098). `modify_xlsx` can now make the quadrant
     chart it asks for (45 of 45 when called), so what is left is the choice of deliverable
     (`docs/log/2026-11-28-xlsx-quadrant-chart.md`).
+  - A file embedded in Word as an icon that opens it ships with `embed_docx_file` (059,
+    `docs/log/2026-11-28-docx-embed-file.md`). The same in a slide or a sheet is still open.
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in

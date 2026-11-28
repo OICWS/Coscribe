@@ -406,8 +406,37 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         *_docx_tools_4(toolkit),
         *_docx_tools_5(toolkit),
         _edit_docx_structure_tool(toolkit),
+        _embed_docx_file_tool(toolkit),
         *_docx_review_tools(toolkit),
     ]
+
+
+def _embed_docx_file_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
+    def embed_docx_file(
+        path: str, file_path: str, after_text: str = "", in_cell_beside: str = ""
+    ) -> dict[str, object]:
+        """Put a file (a deck, workbook, PDF, anything) inside a Word (.docx) file as an icon
+        with the file's name: double-clicking it in Word opens the file in its own program. The
+        file's bytes are stored in the document, so it still opens after the document is moved
+        or sent on its own. Use this when a person asks to insert or attach a file so that
+        clicking it opens it; `add_docx_image` only shows a picture. Everything else in the
+        document is left as it is. The icon is finished as it comes: no script, no resizing
+        and no explanatory text are needed after it.
+
+        Args:
+            path: the .docx file to edit, relative to the workspace root
+            file_path: the file to put inside it, relative to the workspace root; it keeps its
+                name and bytes
+            after_text: text of the paragraph to put the icon after; empty with no
+                in_cell_beside puts it at the end
+            in_cell_beside: text of a table cell, such as a form's label; the icon goes into
+                the first empty line of the cell to its right, centred, in that column's font
+        """
+        return toolkit.embed_docx_file(
+            path=path, file_path=file_path, after_text=after_text, in_cell_beside=in_cell_beside
+        )
+
+    return tool_metadata(embed_docx_file, risk_category="WRITE_LOCAL", category="documents")
 
 
 def _docx_review_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
