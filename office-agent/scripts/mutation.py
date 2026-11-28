@@ -33,6 +33,7 @@ import argparse
 import ast
 import copy
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -199,9 +200,13 @@ def _prepare_module(work: Path, module: str, pytest_args: list[str]) -> None:
 
 
 def _mutmut(work: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    # mutmut hands pytest its tests as a set of strings, so their order follows the string
+    # hash. A fixed seed runs them in the same order on every run, so a test that leaks state
+    # into the next fails every time and the same command reproduces it.
     return subprocess.run(
         [sys.executable, "-m", "mutmut", *args],
         cwd=work,
+        env={**os.environ, "PYTHONHASHSEED": "0"},
         text=True,
         capture_output=True,
         check=False,
