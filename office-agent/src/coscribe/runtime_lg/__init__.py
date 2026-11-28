@@ -27,10 +27,7 @@ from .mcp_oauth import (
     NeedsSignIn,
 )
 from .messages import (
-    ACCEPT_EDITS_MODE_NOTE,
-    AUTO_MODE_NOTE,
-    NORMAL_MODE_NOTE,
-    PLAN_MODE_NOTE,
+    MODE_NOTES,
     artifact_note,
     context_note,
     current_date_note,
@@ -77,9 +74,7 @@ if TYPE_CHECKING:
     from .mcp import McpServerConnection, connect_mcp_tools_lg, connect_one_mcp_server_lg
 
 __all__ = [
-    "ACCEPT_EDITS_MODE_NOTE",
     "APP_REDIRECT_URI",
-    "AUTO_MODE_NOTE",
     "CODE_TASK_TOOL",
     "CallbackPortBusy",
     "CheckpointConversations",
@@ -87,9 +82,8 @@ __all__ = [
     "LoopbackCallback",
     "McpOAuth",
     "McpServerConnection",
-    "NORMAL_MODE_NOTE",
     "NeedsSignIn",
-    "PLAN_MODE_NOTE",
+    "MODE_NOTES",
     "SIGN_IN_TIMEOUT_SECONDS",
     "bound_tool_names",
     "build_code_task_tool",

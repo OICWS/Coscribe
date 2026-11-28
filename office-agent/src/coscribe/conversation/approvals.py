@@ -13,11 +13,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
-from langchain_core.messages import HumanMessage
-
 from ..code_runtime import CodePermissions
 from ..config import Settings
-from ..runtime import NetworkGuard
 from ..runtime_lg import (
     CODE_APPROVAL_RISKS,
     CODE_COMMAND_TOOL,
@@ -28,12 +25,8 @@ from ..runtime_lg import (
     AutoApproveReason,
     ExecPolicy,
     Verdict,
-    recent_user_requests,
     record_decision,
-    review_action,
-    strip_mode_note,
 )
-from ..runtime_lg import extract_text as _extract_text
 from ..tools import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
@@ -49,13 +42,13 @@ from ..tools import (
     format_question_answers,
     normalize_questions,
     parse_run_thread_id,
-    sandbox_codex,
-    sandbox_mode,
 )
+from .approval_scope import command_rule, review_call, reviewer_where, similar_call
 from .capability_guard import capability_refusal, plugin_refusal
 from .events import EventSink
 from .folder_access import decide_folder_request
 from .package_install import decide_package_install
+from .wire import AskReason
 from .workspace_folder import WorkspaceFolders
 from .workspace_permissions import FolderVerdict, WorkspacePermissions
 
@@ -190,6 +183,7 @@ class ApprovalHost(Protocol):
     plan_mode: bool
     accept_edits: bool
     auto_mode: bool
+    bypass_mode: bool
     run_approval_mode: str | None
     preapproved_tools: frozenset[str]
     enabled_skill_names: set[str]
@@ -203,6 +197,8 @@ class ApprovalHost(Protocol):
     _subagent_request_ids: set[str]
     _code_requests: dict[str, tuple[str, str]]
     _code_task_allowances: set[tuple[str, str]]
+    _similar_allowances: set[str]
+    _similar_requests: set[str]
 
     @property
     def folders(self) -> Sequence[Path]: ...
@@ -230,7 +226,7 @@ class ApprovalHost(Protocol):
     ) -> tuple[str | None, str | None]: ...
 
     async def _auto_review(
-        self, name: str, args: dict[str, Any], *, delegated_task: str = ""
+        self, name: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None: ...
 
     def _load_exec_policy(self) -> ExecPolicy: ...
@@ -270,26 +266,10 @@ class ApprovalDecider:
         denies it through `_denied`, whose message the model reads as the tool's result. A card
         that changes something (a folder, a package) audits the person's answer itself.
 
-        A stop already requested (see request_stop) short-circuits straight
-        to reject, before ever prompting -- request_stop already denies any
-        *existing* pending approval future directly, but this covers a
-        request that's only decided *after* the stop flag was set (e.g. the
-        next task in _resolve_pending_approvals's per-task loop).
-
-        Audit logging (ROADMAP.md's Phase 4 "Audit logging" item, via
-        runtime_lg/audit.py): every branch below that decides a genuinely
-        risky action -- a hook veto (even for a tool outside
-        self._gated_tool_risks, since a hook denying something is
-        inherently security-relevant regardless of that tool's own base
-        risk tier), an exec-policy rule forbidding or auto-allowing a
-        script call, plan mode blocking a gated call, accept-edits
-        auto-approving one with nobody actually looking, or a real human
-        approving/denying one live -- gets a durable record, whether this
-        turn was attended or a selfwake/scheduled-task run nobody was
-        watching. The one branch deliberately *not* logged is the
-        stop-requested short-circuit right below: that's always a live
-        human's own explicit action with an obvious "why", not the
-        was-anyone-watching gap this feature exists to close."""
+        A stop already requested refuses before any card: request_stop denies the futures
+        already waiting, and this covers a request decided after it (the next task of
+        _resolve_pending_approvals's loop). Every other branch that decides a gated call,
+        attended or not, leaves an audit record (runtime_lg/audit.py), a hook veto too."""
         name = request["name"]
         is_draft = name in TASK_DRAFT_TOOL_NAMES
         is_question = name in QUESTION_TOOL_NAMES or is_draft
@@ -342,6 +322,7 @@ class ApprovalDecider:
         decision: AuditDecision,
         reason: AuditReason,
         detail: str | None = None,
+        asked_because: AskReason | None = None,
     ) -> None:
         record_decision(
             audit_log,
@@ -351,6 +332,7 @@ class ApprovalDecider:
             decision=decision,
             reason=reason,
             detail=detail,
+            asked_because=asked_because,
         )
 
     async def _approved(
@@ -363,20 +345,21 @@ class ApprovalDecider:
         detail: str | None = None,
     ) -> dict[str, Any]:
         self._audit(audit_log, name, args, "approve", reason, detail)
-        if name == _COMMAND_TOOL:
-            # Approved without the person, on the ground that the sandbox holds it; counted only
-            # here, so a rejected command leaves nothing for a later one to inherit.
-            expect_sandbox(self._host.thread_id)
+        state_dir, thread = self._host.settings.state_dir, self._host.thread_id
+        if name == _COMMAND_TOOL and command_rule(state_dir, thread) is None:
+            # Approved on the ground that the sandbox holds it; counted only here, so a rejected
+            # command leaves nothing for a later one to inherit (one approved without it, 0062).
+            expect_sandbox(thread)
         await self._host._send_tool_started(name, args, websocket)
         return {"type": "approve"}
 
     async def _decide_gated_request(
         self, name: str, args: dict[str, Any], websocket: Any, audit_log: AuditLog
     ) -> Any:
-        """The precedence for a gated tool once no hook has vetoed it: exec
-        policy forbids, its switch is off, plan mode, exec policy allows, a code-module
-        allowance, accept-edits or auto mode, the auto reviewer, and last
-        a person. The workspace's own rules come after exec policy's, which are the person's."""
+        """The precedence for a gated tool once no hook has vetoed it: exec policy forbids, the
+        workspace denies, its switch is off, plan mode, the workspace asks, Bypass mode, an
+        "allow similar", a command the person approves outside Auto mode (0022), exec policy or
+        the workspace allows, then `_decide_by_mode`."""
         exec_policy_decision, exec_policy_detail = "prompt", None
         if name in EXEC_POLICY_TOOL_NAMES:
             exec_policy = self._host._load_exec_policy()
@@ -402,34 +385,60 @@ class ApprovalDecider:
             )
             self._audit(audit_log, name, args, "reject", "plan_mode", message)
             return {"type": "reject", "message": message}
+        if folder_rule is not None and folder_rule[0] == "ask":
+            note = f"The workspace's settings ask for this ({folder_rule[1]})."
+            return await self._ask_person_only(
+                audit_log, name, args, websocket, "workspace_rule", note
+            )
+        if self._bypass_active():
+            return await self._approved(audit_log, name, args, websocket, "bypass")
+        similar = similar_call(name, args)
+        if similar is not None and similar.key in self._host._similar_allowances:
+            return await self._approved(audit_log, name, args, websocket, "allowed_similar")
         # A code task's commands, approved once for the task, run in the same sandbox (#616).
+        rule = None
         if name in (_COMMAND_TOOL, CODE_COMMAND_TOOL):
-            if self._command_needs_the_person():
-                return await self._ask_person_only(audit_log, name, args, websocket)
+            rule = command_rule(self._host.settings.state_dir, self._host.thread_id)
+            if rule is not None and not self._auto_review_active():
+                return await self._ask_person_only(audit_log, name, args, websocket, rule)
+        if rule is not None:  # allow rules count on the sandbox: the reviewer decides this one
+            return await self._decide_by_mode(audit_log, name, args, websocket, rule)
         if exec_policy_decision == "allow":
             return await self._approved(
                 audit_log, name, args, websocket, "exec_policy", exec_policy_detail
             )
-        if folder_rule is not None and folder_rule[0] == "ask":
-            note = f"The workspace's settings ask for this ({folder_rule[1]})."
-            return await self._ask_person_only(audit_log, name, args, websocket, note)
         if folder_rule is not None:
             return await self._approved(
                 audit_log, name, args, websocket, "workspace_settings", folder_rule[1]
             )
+        return await self._decide_by_mode(audit_log, name, args, websocket, rule)
+
+    async def _decide_by_mode(
+        self,
+        audit_log: AuditLog,
+        name: str,
+        args: dict[str, Any],
+        websocket: Any,
+        rule: AskReason | None,
+    ) -> Any:
+        """A call no rule decided: an allowance, the mode, Auto mode's reviewer, or a person."""
         if self._code_allows(name, websocket):
             return await self._approved(audit_log, name, args, websocket, "code_allowed")
-        auto_reason = self._auto_approves(name)
+        # A command 0022 keeps from the person's own approvals goes to Auto mode's reviewer.
+        auto_reason = None if rule is not None else self._auto_approves(name)
         if auto_reason is not None:
             return await self._approved(audit_log, name, args, websocket, auto_reason)
         reviewer_note: str | None = None
+        because: AskReason = rule or "approval_mode"
         if self._auto_review_active():
             decision, reviewer_note = await self._auto_review_decision(
-                audit_log, name, args, websocket
+                audit_log, name, args, websocket, reviewer_where(rule)
             )
             if decision is not None:
                 return decision
-        return await self._ask_person_only(audit_log, name, args, websocket, reviewer_note)
+            # Only a run of blocks pauses Auto mode; a reviewer with no answer leaves it on.
+            because = "auto_review_blocked" if self._host._auto_paused else "auto_review_no_answer"
+        return await self._ask_person_only(audit_log, name, args, websocket, because, reviewer_note)
 
     def _folder_rule(self, name: str, args: dict[str, Any]) -> tuple[FolderVerdict, str] | None:
         root = Path(self._host.workspace_root)
@@ -451,22 +460,13 @@ class ApprovalDecider:
         state_dir = self._host.settings.state_dir
         return capability_refusal(state_dir, name, metadata, args, self._host.workspace_scope)
 
-    def _command_needs_the_person(self) -> bool:
-        """Outside the sandbox a command runs as the person; inside it, it still reads most of
-        their files, which an online command could send out. Either way only the person approves
-        it, in every mode (decision 0022). The unelevated sandbox reads everything and keeps a
-        command offline only by its environment, so it never counts as holding one."""
-        state_dir = self._host.settings.state_dir
-        if sandbox_codex(state_dir) is None or sandbox_mode(state_dir) != "elevated":
-            return True
-        return NetworkGuard(state_dir, self._host.thread_id).scripts_online()
-
     async def _ask_person_only(
         self,
         audit_log: AuditLog,
         name: str,
         args: dict[str, Any],
         websocket: Any,
+        because: AskReason,
         reviewer_note: str | None = None,
     ) -> Any:
         if not can_resolve_approvals(websocket):
@@ -474,18 +474,17 @@ class ApprovalDecider:
             # checkpointer); an unattended run with accept_edits or auto mode on does, and a
             # Future would wait on a person nobody is present to be.
             message = "No one is available to approve this -- this is an unattended run."
-            self._audit(audit_log, name, args, "reject", "unattended", message)
+            self._audit(audit_log, name, args, "reject", "unattended", message, because)
             return self._denied(name, message)
-        return await self._ask_person(audit_log, name, args, websocket, reviewer_note)
+        return await self._ask_person(audit_log, name, args, websocket, because, reviewer_note)
 
     async def _auto_review_decision(
-        self, audit_log: AuditLog, name: str, args: dict[str, Any], websocket: Any
+        self, audit_log: AuditLog, name: str, args: dict[str, Any], websocket: Any, where: str
     ) -> tuple[dict[str, Any] | None, str | None]:
         """The auto reviewer's verdict: a decision to return now, or None
         to fall through to a person, with the note that explains why."""
-        verdict = await self._host._auto_review(
-            name, args, delegated_task=getattr(websocket, "delegated_task", "")
-        )
+        task = getattr(websocket, "delegated_task", "")
+        verdict = await self._host._auto_review(name, args, delegated_task=task, where=where)
         if verdict is None:
             return None, "Auto mode's reviewer gave no answer for this, so it's asking you."
         if verdict.allow:
@@ -519,6 +518,7 @@ class ApprovalDecider:
         name: str,
         args: dict[str, Any],
         websocket: Any,
+        because: AskReason,
         reviewer_note: str | None,
     ) -> dict[str, Any]:
         request_id = uuid.uuid4().hex
@@ -549,6 +549,10 @@ class ApprovalDecider:
                 "before_preview": before_preview,
                 "after_preview": after_preview,
                 "reviewer_note": reviewer_note,
+                "asked_because": because,
+                "allow_similar": similar.allow_similar
+                if (similar := similar_call(name, args))
+                else None,
             },
         )
         try:
@@ -559,14 +563,19 @@ class ApprovalDecider:
             self._host._subagent_request_ids.discard(request_id)
             self._host._code_requests.pop(request_id, None)
         if isinstance(decision, str):
-            self._audit(audit_log, name, args, "reject", "human", decision)
+            self._audit(audit_log, name, args, "reject", "human", decision, because)
             return {"type": "reject", "message": _REPLIED_INSTEAD.format(reply=decision)}
         approved = decision
+        if request_id in self._host._similar_requests:
+            self._host._similar_requests.discard(request_id)
+            if approved and (similar := similar_call(name, args)) is not None:
+                self._host._similar_allowances.add(similar.key)
         if approved and self._host._auto_paused:
             self._host._auto_paused = False
             self._host._auto_blocks_in_row = 0
-        self._audit(audit_log, name, args, "approve" if approved else "reject", "human")
-        return {"type": "approve" if approved else "reject"}
+        decided: AuditDecision = "approve" if approved else "reject"
+        self._audit(audit_log, name, args, decided, "human", asked_because=because)
+        return {"type": decided}
 
     async def _decide_question_request(
         self, args: dict[str, Any], websocket: EventSink
@@ -705,23 +714,24 @@ class ApprovalDecider:
         return {"type": "respond", "message": answer}
 
     def _auto_approves(self, name: str) -> AutoApproveReason | None:
-        """Why a gated call may go ahead without asking anyone, or None.
-
-        "skip" approves every risk tier. "auto" approves only WRITE_LOCAL:
-        a local file edit stays on this machine and can be redone, while
-        running code (EXEC) or acting outside this machine (EXTERNAL) can't
-        be taken back, so those still wait for a person. A hook veto or an
-        exec-policy "forbidden" rule is checked before this and still wins
-        under either tier -- those are the user's own standing rules, not
-        approvals."""
+        """Why a gated call may go ahead without asking anyone, or None. A run's "skip" approves
+        every risk tier, its "auto" only WRITE_LOCAL: a local edit can be redone, running code or
+        acting outside this machine can't. Auto mode lets a file or document edit through without
+        its reviewer, as Accept Edits does: the tools keep it inside the conversation's folders."""
         if name in self._host.preapproved_tools:
             return "preapproved"
-        if self._host.accept_edits and self._host._gated_tool_risks.get(name) == "WRITE_LOCAL":
+        local = self._host._gated_tool_risks.get(name) == "WRITE_LOCAL"
+        if self._host.accept_edits and local:
             return "accept_edits"
+        category = getattr(self._host.tool_catalog().get(name), "category", None)
+        # A delete or a move takes away a file that was there before: the reviewer sees those.
+        edits = category in ("filesystem", "documents") and name not in ("delete_file", "move_file")
+        if self._auto_review_active() and local and edits:
+            return "auto_mode_edit"
         mode = self._effective_run_approval_mode()
         if mode == "skip":
             return "approval_mode_skip"
-        if mode == "auto" and self._host._gated_tool_risks.get(name) == "WRITE_LOCAL":
+        if mode == "auto" and local:
             return "approval_mode_auto"
         return None
 
@@ -768,26 +778,16 @@ class ApprovalDecider:
         )
 
     async def _auto_review(
-        self, name: str, args: dict[str, Any], *, delegated_task: str = ""
+        self, name: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
-        state = await self._host.lg_agent.aget_state(self._host.config)
-        messages = list(state.values.get("messages", [])) if state.values else []
-        return await review_action(
-            self._host._assembly.side_model(),
-            tool_name=name,
-            arguments=args,
-            risk=self._host._gated_tool_risks.get(name, "WRITE_LOCAL"),
-            folders=[str(folder) for folder in (self._host.folders or [self._host.workspace_root])],
-            user_requests=recent_user_requests(
-                [
-                    HumanMessage(strip_mode_note(_extract_text(m.content)))
-                    for m in messages
-                    # A message from another conversation or a sub-agent's report is stored as a
-                    # human message but is not what the user said.
-                    if m.type == "human" and not m.additional_kwargs.get("notice")
-                ]
-            ),
-            delegated_task=delegated_task,
+        return await review_call(self._host, name, args, delegated_task, where)
+
+    def _bypass_active(self) -> bool:
+        """Bypass mode holds only while Settings allows it, and never in a scheduled run."""
+        return (
+            self._host.bypass_mode
+            and self._host.settings.allow_bypass_mode
+            and self._effective_run_approval_mode() is None
         )
 
     def _auto_approval_active(self) -> bool:
@@ -795,5 +795,6 @@ class ApprovalDecider:
             self._host.accept_edits
             or bool(self._host.preapproved_tools)
             or self._auto_review_active()
+            or self._bypass_active()
             or self._effective_run_approval_mode() in ("auto", "skip")
         )

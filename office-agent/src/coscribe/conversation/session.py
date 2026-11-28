@@ -113,10 +113,10 @@ from .turn_lock import TurnLock
 from .turn_stream import TurnStreamer, recorded_turn
 from .turn_text import (
     TITLE_INSTRUCTIONS,
+    PermissionModes,
     clean_title,
     design_system_for_start,
     open_question_note,
-    turn_mode_note,
     usage_event,
 )
 from .user_edits import user_edits_note
@@ -161,7 +161,7 @@ _GRPC_METADATA_OVERFLOW_SIGNATURE = "metadata size exceeds soft limit"
 _EffortFit = tuple[str | None, tuple[str, ...] | None]
 
 
-class ChatSessionLG:
+class ChatSessionLG(PermissionModes):
     lg_agent = RebuiltOnUse()
     _gated_tool_risks = RebuiltOnUse()
     _extra_tools = RebuiltOnUse()
@@ -228,15 +228,7 @@ class ChatSessionLG:
         # A question's answer: see question_answer; a plan, a draft and a stop answer with a string.
         self._pending_questions: dict[str, Future[Any]] = {}
         self.hooks_config: dict[str, list[str]] = hooks_config or empty_hooks_config()
-        self.plan_mode = False
-        self.accept_edits = False
-        # Auto mode: a reviewer model decides risky calls in the user's
-        # place. After 3 blocks in a row or 20 in all it pauses and the
-        # user is asked, as in Claude Code; the user approving one resumes it.
-        self.auto_mode = False
-        self._auto_blocks_in_row = 0
-        self._auto_blocks_total = 0
-        self._auto_paused = False
+        self._init_modes()
         if settings.default_permission_mode != "manual" and parse_run_thread_id(thread_id) is None:
             self._toggle_mode(settings.default_permission_mode)
         # Reset at the top of every handle_user_message call -- see _stream_turn's docstring
@@ -490,6 +482,8 @@ class ChatSessionLG:
         code_request = self._code_requests.get(request_id)
         if approved and scope == "task" and code_request is not None:
             self._code_task_allowances.add(code_request)
+        if approved and scope == "similar":
+            self._similar_requests.add(request_id)
         future = self._pending_approvals.get(request_id)
         if future is not None and not future.done():
             # Words written in the chat instead of choosing deny the call and go to the model.
@@ -762,6 +756,8 @@ class ChatSessionLG:
             "plan_mode": self.plan_mode,
             "accept_edits": self.accept_edits,
             "auto_mode": self.auto_mode,
+            "bypass_mode": self.bypass_mode,
+            "allow_bypass_mode": self.settings.allow_bypass_mode,
             "model": self._model_string,
             "effort": self._effort,
             "effort_runs_as": self._effort_fit[0],
@@ -927,28 +923,14 @@ class ChatSessionLG:
     def _auto_approves(self, name: str) -> AutoApproveReason | None:
         return self._approvals._auto_approves(name)
 
-    def _toggle_mode(self, mode: str) -> None:
-        """Plan, Accept Edits and Auto are one mode at a time; none of them is
-        Manual. Toggling the current one returns to Manual."""
-        turning_on = not {
-            "plan": self.plan_mode,
-            "accept-edits": self.accept_edits,
-            "auto": self.auto_mode,
-        }[mode]
-        self.plan_mode = turning_on and mode == "plan"
-        self.accept_edits = turning_on and mode == "accept-edits"
-        self.auto_mode = turning_on and mode == "auto"
-        if self.auto_mode:
-            self._auto_blocks_in_row = 0
-            self._auto_paused = False
-
     def _auto_review_active(self) -> bool:
         return self._approvals._auto_review_active()
 
     async def _auto_review(
-        self, name: str, args: dict[str, Any], *, delegated_task: str = ""
+        self, name: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
-        return await self._approvals._auto_review(name, args, delegated_task=delegated_task)
+        review = self._approvals._auto_review
+        return await review(name, args, delegated_task=delegated_task, where=where)
 
     def _auto_approval_active(self) -> bool:
         return self._approvals._auto_approval_active()
@@ -1096,7 +1078,7 @@ class ChatSessionLG:
             await self._handle_pending_skill_save_proposal(text, websocket)
             return
 
-        if stripped_lower in ("/plan", "/accept-edits", "/auto"):
+        if stripped_lower in ("/plan", "/accept-edits", "/auto", "/bypass"):
             self._toggle_mode(stripped_lower[1:])
             await self.send_state(websocket)
             return
@@ -1148,7 +1130,7 @@ class ChatSessionLG:
                 )
                 return
 
-        mode_note = turn_mode_note(self.plan_mode, self.accept_edits, self.auto_mode)
+        mode_note = self.mode_note
         # Notes here, not in the system prompt: see current_date_note()'s docstring (caching).
         described = conversation_context(self.settings, self.workspace_root, self.extra_folders)
         context = self._assembly.context(described)

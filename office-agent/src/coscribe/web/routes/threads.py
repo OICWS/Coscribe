@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -23,6 +24,7 @@ from ...conversation import (
 )
 from ...runtime import DEFAULT_ENVIRONMENT, Environments
 from ...runtime_lg import (
+    AuditLog,
     extract_text,
     strip_mode_note,
 )
@@ -352,6 +354,7 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
             "tasks": TaskToolkit(thread_id, settings.state_dir).list_tasks(),
             **activity,
             "closed_outputs": state.meta_store.get(thread_id).get("closed_outputs", {}),
+            "approvals": await asyncio.to_thread(AuditLog(settings.state_dir).summary, thread_id),
         }
 
     async def reread_folder_brief(

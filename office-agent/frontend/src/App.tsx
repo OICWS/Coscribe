@@ -92,7 +92,7 @@ import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowPro
 import { connect, resolveThreadId, type AgentSocket, type ConnectionStatus } from "./lib/ws";
 import { cardAnswers } from "./components/folderActions";
 import { chatReducer, initialChatState, TASK_DRAFT_SAVED_PREFIX, type LogItem } from "./state/reducer";
-import type { ThreadSummary } from "./types/session";
+import type { ApprovalScope, ThreadSummary } from "./types/session";
 import type { ScheduledRun, ScheduledTask } from "./types/settings";
 import type { StepRecord, Workflow } from "./types/workflow";
 
@@ -680,7 +680,7 @@ function App() {
   const onLocalError = (message: string) => dispatch({ type: "error", message });
   const onFork = (name: string) => forkAndOpen(threadId, current?.preview || sessionLabel, name, refreshThreads, onLocalError);
 
-  const onApprove = (id: string, approved: boolean, scope?: "task") => {
+  const onApprove = (id: string, approved: boolean, scope?: ApprovalScope) => {
     dispatch({ type: "local_approval_resolved", id, approved });
     socketRef.current?.send({ type: "approval_response", id, approved, ...(scope ? { scope } : {}) });
   };
@@ -800,6 +800,8 @@ function App() {
             planMode={state.planMode}
             acceptEdits={state.acceptEdits}
             autoMode={state.autoMode}
+            bypassMode={state.bypassMode}
+            bypassAllowed={state.bypassAllowed}
             sendRaw={sendRaw}
           />
         )

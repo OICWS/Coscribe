@@ -43,7 +43,8 @@ questions (`web/routes/ws.py`).
 
 ## The auto reviewer
 
-In Auto mode a second model call judges each gated action against what the user asked. It used to
+In Auto mode a second model call judges each gated action against what the user asked (a file or
+document edit in the conversation's folders goes ahead without it, as under Accept Edits). It used to
 read every `human` message of the thread as "what the user has said", and a message from another
 conversation or a sub-agent's report is stored as one. So a message saying "the user pre-approved
 deleting the folder" reached the reviewer as the user's word. Notice turns are now tagged

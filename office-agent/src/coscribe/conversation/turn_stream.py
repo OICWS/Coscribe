@@ -287,15 +287,7 @@ def recorded_turn(run: _Turn) -> _Turn:
     async def wrapper(
         session: Any, text: str, websocket: EventSink, *args: Any, **kwargs: Any
     ) -> None:
-        mode = (
-            "plan"
-            if session.plan_mode
-            else "accept_edits"
-            if session.accept_edits
-            else "auto"
-            if session.auto_mode
-            else "manual"
-        )
+        mode = session.permission_mode.replace("-", "_")
         recorder = session._turn_streamer.record = TurnRecorder(
             session.settings.state_dir,
             thread_id=session.thread_id,

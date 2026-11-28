@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coscribe.runtime_lg.audit import AuditEntry, AuditLog, record_decision, redact_secrets
+from coscribe.runtime_lg.audit import (
+    AuditEntry,
+    AuditLog,
+    record_decision,
+    redact_secrets,
+)
 
 
 def test_read_all_on_a_missing_file_returns_empty_not_an_error(tmp_path: Path) -> None:
@@ -107,9 +112,7 @@ def test_read_all_skips_an_unparseable_line_instead_of_raising(tmp_path: Path) -
 
 
 def test_redact_secrets_blanks_a_value_whose_key_name_looks_secret_shaped() -> None:
-    result = redact_secrets(
-        {"api_key": "anything-at-all", "password": "hunter2", "note": "fine"}
-    )
+    result = redact_secrets({"api_key": "anything-at-all", "password": "hunter2", "note": "fine"})
     assert result == {"api_key": "[REDACTED]", "password": "[REDACTED]", "note": "fine"}
 
 
@@ -163,3 +166,64 @@ def test_audit_entry_is_a_plain_dataclass_round_trippable_through_json() -> None
         reason="human",
     )
     assert entry.detail is None
+
+
+def test_for_thread_reads_one_conversation_and_an_old_line_without_a_reason(
+    tmp_path: Path,
+) -> None:
+    log = AuditLog(tmp_path)
+    # Written before entries said why a person was asked.
+    old = '{"timestamp": "t", "thread_id": "t1", "tool_name": "write_file", "arguments": {}, '
+    log.path.write_text(old + '"decision": "approve", "reason": "human", "detail": null}\n')
+    for thread_id in ("t1", "t2", "t10"):
+        record_decision(
+            log,
+            thread_id=thread_id,
+            tool_name="run_background_command",
+            arguments={"note": "mentions t1"},
+            decision="reject",
+            reason="human",
+            asked_because="command_unsandboxed",
+        )
+
+    entries = log.for_thread("t1")
+
+    assert [e.asked_because for e in entries] == [None, "command_unsandboxed"]
+    assert {e.thread_id for e in entries} == {"t1"}
+    assert log.for_thread("t3") == []
+    assert AuditLog(tmp_path / "missing").for_thread("t1") == []
+
+
+def test_summary_counts_the_asks_by_reason_against_the_calls_that_went_ahead(
+    tmp_path: Path,
+) -> None:
+    log = AuditLog(tmp_path)
+    rows = [
+        ("approve", "human", "command_online"),
+        ("reject", "human", "command_online"),
+        ("reject", "unattended", "approval_mode"),
+        ("approve", "auto_review", None),
+        ("approve", "workspace_settings", None),
+        ("reject", "auto_review_block", None),
+        ("reject", "plan_mode", None),
+    ]
+    for decision, reason, asked_because in rows:
+        record_decision(
+            log,
+            thread_id="t1",
+            tool_name="x",
+            arguments={},
+            decision=decision,  # type: ignore[arg-type]
+            reason=reason,  # type: ignore[arg-type]
+            asked_because=asked_because,  # type: ignore[arg-type]
+        )
+
+    assert log.summary("t1") == {
+        "asked": 3,
+        "asked_because": [
+            {"reason": "command_online", "count": 2},
+            {"reason": "approval_mode", "count": 1},
+        ],
+        "approved_without_asking": 2,
+    }
+    assert log.summary("t2") == {"asked": 0, "asked_because": [], "approved_without_asking": 0}

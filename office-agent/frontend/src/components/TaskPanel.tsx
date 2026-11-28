@@ -13,7 +13,14 @@ import { primaryButton } from "../lib/formStyles";
 import { ruleSentence } from "../lib/folderRules";
 import { readStored, writeStored } from "../lib/storage";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
-import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity, WorkspaceNotes } from "../types/session";
+import { ApprovalCounts, Chip, ContextGroup, hasApprovals } from "./contextParts";
+import type {
+  ActivityFile,
+  ActivityToolUse,
+  FolderBrief,
+  ThreadActivity,
+  WorkspaceNotes,
+} from "../types/session";
 import type { ProgressItem, ProgressStatus } from "../lib/workflowProgress";
 import {
   CheckIcon,
@@ -158,13 +165,7 @@ export function TaskPanel({
   const dock = useDockPanel();
   const progressItems: ProgressItem[] | null = workflowSteps ?? (activity?.tasks.length ? activity.tasks : null);
 
-  const contextEmpty =
-    activity !== null &&
-    activity.references.length === 0 &&
-    activity.tools.length === 0 &&
-    activity.connectors.length === 0 &&
-    activity.skills.length === 0 &&
-    shownBriefs(activity).length === 0;
+  const contextEmpty = activity !== null && isContextEmpty(activity);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -487,21 +488,14 @@ function FileRow({
 
 // -- Context ------------------------------------------------------------------
 
-function Chip({ label, count }: { label: string; count?: number }) {
+function isContextEmpty(activity: ThreadActivity): boolean {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs">
-      <span className="truncate">{label}</span>
-      {count !== undefined && count > 1 && <span className="tabular-nums text-[var(--muted)]">×{count}</span>}
-    </span>
-  );
-}
-
-function ContextGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">{label}</div>
-      {children}
-    </div>
+    activity.references.length === 0 &&
+    activity.tools.length === 0 &&
+    activity.connectors.length === 0 &&
+    activity.skills.length === 0 &&
+    !hasApprovals(activity) &&
+    shownBriefs(activity).length === 0
   );
 }
 
@@ -734,6 +728,7 @@ function ContextView({
           </div>
         </ContextGroup>
       )}
+      {activity.approvals && hasApprovals(activity) && <ApprovalCounts approvals={activity.approvals} />}
       {tools.length > 0 && (
         <ContextGroup label="Tools">
           <div className="flex flex-wrap gap-1.5">

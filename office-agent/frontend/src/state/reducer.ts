@@ -52,6 +52,10 @@ export type LogItem =
       afterPreview?: string | null;
       /** Why auto mode asked instead of deciding. */
       reviewerNote?: string | null;
+      /** The rule that sent this call to a person; see askedBecauseText. */
+      askedBecause?: string;
+      /** The words of the card's "allow similar in this chat" button; null when it has none. */
+      allowSimilar?: string | null;
       /** Set once the approved call actually executes -- the
        * "tool_result" reducer case merges it onto this same item rather
        * than pushing a separate "tool" one (see that case's own
@@ -105,6 +109,9 @@ export interface ChatState {
   planMode: boolean;
   acceptEdits: boolean;
   autoMode: boolean;
+  /** Bypass mode, and whether Settings offers it (decision 0062). */
+  bypassMode: boolean;
+  bypassAllowed: boolean;
   model: string;
   /** See StateEvent.effort / effort_runs_as / effort_levels. */
   effort: StateEvent["effort"];
@@ -187,6 +194,8 @@ export const initialChatState: ChatState = {
   planMode: false,
   acceptEdits: false,
   autoMode: false,
+  bypassMode: false,
+  bypassAllowed: false,
   model: "",
   effort: "medium",
   effortRunsAs: null,
@@ -513,6 +522,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         planMode: action.plan_mode,
         acceptEdits: action.accept_edits,
         autoMode: action.auto_mode ?? false,
+        bypassMode: action.bypass_mode ?? false,
+        bypassAllowed: action.allow_bypass_mode ?? false,
         model: action.model,
         effort: action.effort,
         effortRunsAs: action.effort_runs_as,
@@ -599,6 +610,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             status: "pending",
             beforePreview: action.before_preview,
             reviewerNote: action.reviewer_note ?? null,
+            askedBecause: action.asked_because,
+            allowSimilar: action.allow_similar ?? null,
             afterPreview: action.after_preview,
           },
         ],

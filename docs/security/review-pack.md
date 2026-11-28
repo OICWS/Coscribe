@@ -40,14 +40,17 @@ runs, is refused or waits for a person. The precedence is one table, `ROWS` in
    only the person may approve); a file not accepted changes nothing. Logged as
    `workspace_settings`.
 6. A standing approval (`preapproved`) approves any risk tier and is logged as such.
-7. Accept Edits approves local writes only; scripts and external actions still ask.
+7. Accept Edits approves local writes only; scripts and external actions still ask. Auto mode
+   lets a file or document edit through without its reviewer the same way (`auto_mode_edit`),
+   but not a delete or a move of a file, nor another local change.
 8. A scheduled run's approval mode: `skip` approves every tier, `auto` approves local writes and
    still asks for scripts; an unattended run that would ask refuses instead of waiting.
 9. Anything else asks the person, and refuses when nobody can answer.
 
 Every decision is written to the audit log (`runtime_lg/audit.py`, `tests/test_audit_log.py`) with
 its reason. Auto mode adds a reviewer model (`runtime_lg/auto_review.py`); its three-blocks-in-a-row
-rule falls back to asking. Risk tiers (`READ`, `WRITE_LOCAL`, `EXEC`, `EXTERNAL`) come from tool
+rule falls back to asking, and so does a reviewer that gives no verdict it can read after two tries
+and one of the conversation's own model. Risk tiers (`READ`, `WRITE_LOCAL`, `EXEC`, `EXTERNAL`) come from tool
 metadata, so a new tool without one is not gated: check this on every new tool.
 
 ## 3. How secrets flow

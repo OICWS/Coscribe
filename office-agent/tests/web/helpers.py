@@ -509,6 +509,11 @@ def _write_call(call_id: str, path: str) -> Any:
     return _tool_call(call_id, "write_file", {"path": path, "content": "hi"})
 
 
+def _move_call(call_id: str, source: str, destination: str) -> Any:
+    """A local change Auto mode's reviewer still sees (a file write goes ahead without it)."""
+    return _tool_call(call_id, "move_file", {"source": source, "destination": destination})
+
+
 def _verdict(decision: str, reason: str) -> AIMessage:
     return AIMessage(content=json.dumps({"decision": decision, "reason": reason}))
 

@@ -197,6 +197,11 @@ class Settings(BaseSettings):
     stops risky actions. A scheduled task's run thread ignores this and
     follows the task's own approval setting."""
 
+    allow_bypass_mode: bool = False
+    """Offer Bypass mode on the mode pill: every gated tool call runs without asking anyone,
+    held only by hooks, exec policy's forbidden rules, the workspace's deny and ask rules, a
+    switched-off capability and the sandbox (decision 0062). Off by default."""
+
     auto_title_threads: bool = True
     """Name a conversation from its first exchange (a short model call in
     the background after the first finished turn), unless it already has

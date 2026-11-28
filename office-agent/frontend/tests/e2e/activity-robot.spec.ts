@@ -69,7 +69,7 @@ test("the Simple activity robot finishes each gesture before using the latest ac
 
   send({
     type: "approval_required", id: "confirm", tool_name: "run_python_script", arguments: {},
-    before_preview: null, after_preview: null, reviewer_note: null,
+    before_preview: null, after_preview: null, reviewer_note: null, asked_because: "approval_mode",
   });
   await expect(robot).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible();

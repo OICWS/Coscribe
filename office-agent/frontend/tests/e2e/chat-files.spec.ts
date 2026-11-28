@@ -15,7 +15,6 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   await waitForConnected(page);
   await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"---\\ncoscribe: doc\\n---\\n\\n# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.md for you.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
 
   const chip = page.locator("p").getByRole("button", { name });
   await expect(chip).toBeVisible();
@@ -54,7 +53,6 @@ test("a Word file card opens the preview and its menu opens the original in Word
   await waitForConnected(page);
   await page.locator("textarea").fill(`write it [[stub-tool write_docx {"path":"${name}.docx","content":"# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.docx for you.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
 
   const card = page.getByTitle(`Open ${name}.docx`);
   await expect(card).toBeVisible();
@@ -75,7 +73,6 @@ test("a Markdown file that is not a Doc gets no card that leads nowhere", async 
   await waitForConnected(page);
   await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"# Notes\\n\\nJust notes."}]] [[stub-say I wrote ${name}.md for you.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(page.getByText(`I wrote ${name}.md for you.`, { exact: true })).toBeVisible();
 
   // The lookups have long answered by now; no chip, no card.

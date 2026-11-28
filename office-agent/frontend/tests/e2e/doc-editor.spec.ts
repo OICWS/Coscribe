@@ -13,7 +13,6 @@ async function openDoc(page: import("@playwright/test").Page, name: string) {
   await waitForConnected(page);
   await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"${BODY}"}]] [[stub-say I wrote ${name}.md for you.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByTitle(`Open ${name}.md`).click();
   await expect(page.locator('.doc-editor[contenteditable="true"] li').nth(1)).toBeAttached();
 }
@@ -53,7 +52,6 @@ test("a table's number columns line up on the right and its total row is bold, a
   const body = "---\\ncoscribe: doc\\n---\\n\\n# Orders\\n\\n| 渠道 | 订单 |\\n| --- | --- |\\n| 自然搜索 | 1,240 |\\n| 信息流 | 860 |\\n| 合计 | 2,100 |\\n";
   await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"${body}"}]] [[stub-say done]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByTitle(`Open ${name}.md`).click();
   const number = page.locator(".doc-editor td", { hasText: "1,240" });
   await expect(number).toHaveCSS("text-align", "right");
@@ -69,7 +67,6 @@ test("a chart shows as a chart, and its numbers only once it is clicked", async 
   const body = `---\\ncoscribe: doc\\n---\\n\\n# Orders\\n\\n${chart}\\n\\n- one\\n- two\\n`;
   await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"${body}"}]] [[stub-say I wrote ${name}.md for you.]]`);
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByTitle(`Open ${name}.md`).click();
   const drawn = page.locator(".doc-editor .doc-chart svg");
   await expect(drawn).toBeVisible();

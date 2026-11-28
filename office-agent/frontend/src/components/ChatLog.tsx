@@ -12,6 +12,7 @@ import { useMessageActions } from "../lib/messageActions";
 import { ChatContexts } from "./chatlog/index";
 import { ToolRunGroupView } from "./chatlog/index";
 import { TurnView, LogItemView } from "./chatlog/index";
+import type { ApprovalScope } from "../types/session";
 
 interface ChatLogProps {
   items: LogItem[];
@@ -20,7 +21,7 @@ interface ChatLogProps {
   turnInFlight?: boolean;
   /** The connected connectors' tool names, counted as "used N tools". */
   connectorTools?: ReadonlySet<string>;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
   onOpenPlan?: () => void;
   /** Edit a sent message and run from it. Undefined while a turn is in flight, which it would race. */
@@ -209,7 +210,7 @@ export function TranscriptItems({
 }: {
   items: LogItem[];
   live: boolean;
-  onApprove: (id: string, approved: boolean, scope?: "task") => void;
+  onApprove: (id: string, approved: boolean, scope?: ApprovalScope) => void;
 }) {
   const entries = groupToolRuns(items);
   return (

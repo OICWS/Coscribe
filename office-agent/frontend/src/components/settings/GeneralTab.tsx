@@ -2,7 +2,7 @@ import { setAppearance, useAppearance } from "../../lib/appearance";
 import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { MonitorIcon, MoonIcon, SunIcon } from "../icons";
 import { ToggleSwitch } from "../ToggleSwitch";
-import { BACKGROUND_ON_CLOSE_KEY, NOTIFICATION_LEVELS, NOTIFICATIONS_KEY, GENERAL_FIELDS, PERMISSION_MODE_KEY, PERMISSION_MODES, USER_NAME_KEY } from "./fields";
+import { ALLOW_BYPASS_KEY, BACKGROUND_ON_CLOSE_KEY, NOTIFICATION_LEVELS, NOTIFICATIONS_KEY, GENERAL_FIELDS, PERMISSION_MODE_KEY, PERMISSION_MODES, USER_NAME_KEY } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
 import { SessionsTab } from "./SessionsTab";
 import { ProxySection } from "./ProxySection";
@@ -132,6 +132,17 @@ export function GeneralTab({ values, onChange, onStatus }: GeneralTabProps) {
             label="Default mode"
             description="The permission mode a new conversation starts in. Auto lets a reviewer model approve routine work and stop risky actions; Manual asks before every change."
             control={<SegmentedControl value={currentPermissionMode(values[PERMISSION_MODE_KEY])} options={PERMISSION_MODES} onChange={(v) => onChange(PERMISSION_MODE_KEY, v)} />}
+          />
+          <SettingRow
+            label="Allow bypass permissions mode"
+            description="Adds Bypass to the mode menu: every action runs without asking anyone, commands without the sandbox too. Hooks, forbidden rules, the workspace's deny and ask rules and the sandbox still hold. Turning this off ends Bypass at once."
+            control={
+              <ToggleSwitch
+                label="Allow bypass permissions mode"
+                on={values[ALLOW_BYPASS_KEY] === "true"}
+                onClick={() => onChange(ALLOW_BYPASS_KEY, values[ALLOW_BYPASS_KEY] === "true" ? "false" : "true")}
+              />
+            }
           />
         </SettingRows>
       </SettingsSection>

@@ -11,8 +11,8 @@ for the full design and `runtime_lg/README.md` for why/how that changed.
 A single Coordinator agent with built-in file, document/spreadsheet/
 presentation, task-tracking, Skill, and subagent-delegation tools, plus
 optional MCP server tools and Hooks -- runnable from the CLI (`coscribe`)
-or a full web UI (`coscribe-web`), with Claude Code's four permission
-modes -- Manual, Accept Edits, Plan and Auto -- switchable mid-session.
+or a full web UI (`coscribe-web`), with Claude Code's permission
+modes -- Manual, Accept Edits, Plan, Auto and, once Settings allows it, Bypass -- switchable mid-session.
 
 ## Setup
 
@@ -158,7 +158,18 @@ task's run follows the task's own approval setting instead.
   is asked instead, with a note saying why; approving resumes Auto. With
   nobody watching (a self-wake turn), the reviewer still decides, and what
   would have been asked is refused instead. Hooks and exec-policy rules
-  still come first, as in every mode.
+  still come first, as in every mode. A file or document edit in the
+  conversation's folders skips the reviewer, as in Accept Edits; a command
+  line without the elevated sandbox, or with network, goes to the reviewer,
+  told where it runs (decision 0062).
+- `/bypass` -- Bypass: every gated call runs without asking anyone, audited
+  as `bypass`. Offered only while Settings › General's "Allow bypass
+  permissions mode" is on (`COSCRIBE_ALLOW_BYPASS_MODE`, off by default);
+  hooks, exec policy's forbidden rules, the workspace's deny and ask rules,
+  a switched-off capability and the sandbox still hold. A card's "Allow
+  similar in this chat" button is the narrower choice: it lets the same
+  tool, or a command line with the same program, run without asking for the
+  rest of the conversation.
 - `/compact` -- summarize the current thread's message history down to a
   single note, freeing up context for the rest of a long-running session.
   Does nothing if there's not much yet to compact. This also happens
@@ -640,7 +651,8 @@ under the permission mode.
 - Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
   (decision 0022): they write only the conversation's read-write folders, are offline unless the
   workspace lets scripts reach the internet (Sites: Any site), and the person's private folders are hidden by default. Without
-  it, a command runs as the user only after the person allowed that, and each one is approved.
+  it, a command runs as the user only after the person allowed that, and each one is approved by
+  the person, by Auto mode's reviewer, or by nobody in Bypass mode (decision 0062).
 - Off Windows, or let out of isolation, code runs as the user; a folder guard then catches
   mistaken writes and is not a security boundary.
 - Python and npm package installs (pip, npm) are not scripts: they start from the server's full
@@ -1318,8 +1330,8 @@ that serves the frontend and a `/ws/<thread-id>` WebSocket per
 conversation; opening `/` generates a thread id and puts it in the URL
 (`?thread=...`), so reloading or revisiting that URL resumes the same
 thread, same as `coscribe --thread <id>`. The mode pill (bottom-left of
-the message box) covers Manual/Accept Edits/Plan/Auto -- it just sends the
-same `/accept-edits`/`/plan`/`/auto` text the CLI understands, no separate
+the message box) covers Manual/Accept Edits/Plan/Auto/Bypass -- it just sends the
+same `/accept-edits`/`/plan`/`/auto`/`/bypass` text the CLI understands, no separate
 protocol.
 
 The server answers only requests whose `Host` is `localhost`, `127.0.0.1` or `::1` and, when a

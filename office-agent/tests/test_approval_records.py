@@ -40,6 +40,8 @@ CARD_KEYS = {
     "before_preview",
     "after_preview",
     "reviewer_note",
+    "asked_because",
+    "allow_similar",
 }
 
 
@@ -209,7 +211,7 @@ async def test_the_card_carries_the_call_and_its_reviewer_note(
     session.auto_mode = True
 
     async def reviewer(
-        tool: str, args: dict[str, Any], *, delegated_task: str = ""
+        tool: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
         return None
 
@@ -225,7 +227,32 @@ async def test_the_card_carries_the_call_and_its_reviewer_note(
     assert card["arguments"] == args
     assert card["before_preview"] is None and card["after_preview"] is None
     assert "gave no answer" in card["reviewer_note"]
+    assert card["asked_because"] == "auto_review_no_answer"
     assert isinstance(card["id"], str) and card["id"]
+
+
+async def test_a_run_of_blocks_hands_the_card_over_as_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.auto_mode = True
+
+    async def reviewer(
+        tool: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
+    ) -> Verdict | None:
+        return Verdict(False, "reaches out")
+
+    monkeypatch.setattr(session, "_auto_review", reviewer)
+    socket = _Socket(True)
+
+    for _ in range(3):
+        await _decide(session, LOCAL, socket, answer=True)
+
+    [card] = [m for m in socket.sent if m["type"] == "approval_required"]
+    assert card["asked_because"] == "auto_review_blocked"
+    asked = [e.asked_because for e in AuditLog(session.settings.state_dir).read_all()]
+    # The third block is recorded, then the person's answer to the card it handed over.
+    assert asked == [None, None, None, "auto_review_blocked"]
 
 
 async def test_two_cards_have_different_ids(
@@ -333,7 +360,7 @@ async def test_the_audit_record_for_one_decision(
     session.auto_mode = case.verdict is not None
 
     async def reviewer(
-        tool: str, args: dict[str, Any], *, delegated_task: str = ""
+        tool: str, args: dict[str, Any], *, delegated_task: str = "", where: str = ""
     ) -> Verdict | None:
         return case.verdict
 

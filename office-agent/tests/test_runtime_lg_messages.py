@@ -5,7 +5,7 @@ full WS-round-trip regression test this complements."""
 from langchain_core.messages import AIMessage, HumanMessage
 
 from coscribe.runtime_lg.messages import (
-    AUTO_MODE_NOTE,
+    MODE_NOTES,
     artifact_note,
     extract_images,
     language_note,
@@ -84,7 +84,7 @@ def test_language_note_names_the_language_of_a_cjk_message() -> None:
 
 def test_strip_mode_note_also_removes_the_language_note() -> None:
     sent = "Today's real date is 2026-10-05 (Monday); local time 09:00 (UTC+08:00). "
-    sent += AUTO_MODE_NOTE + language_note("帮我做 Q3 经营回顾") + "帮我做 Q3 经营回顾"
+    sent += MODE_NOTES["auto"] + language_note("帮我做 Q3 经营回顾") + "帮我做 Q3 经营回顾"
 
     assert strip_mode_note(sent) == "帮我做 Q3 经营回顾"
 
@@ -106,7 +106,8 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
     assert strip_mode_note(system + "a calm look for a law firm") == "a calm look for a law firm"
     # After the date and mode notes, ahead of the language note, as the session writes them.
     asked = "做一个关于茶的演示"
-    full = f"Today's real date is 2026-10-22. {AUTO_MODE_NOTE}{note}{language_note(asked)}{asked}"
+    auto = MODE_NOTES["auto"]
+    full = f"Today's real date is 2026-10-22. {auto}{note}{language_note(asked)}{asked}"
     assert strip_mode_note(full) == asked
 
 
