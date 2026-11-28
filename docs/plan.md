@@ -112,10 +112,8 @@ Desktop verification for messages added while working (#1101) covers copying one
   - Pictures redrawn as editable slides: the skill's redraw section lifted six dev tasks from
     0.33 to 0.58 on average. Fine geometry (exact cm positions, small icons) still loses points
     (`docs/log/2026-11-27-redraw-picture-slides.md`).
-  - Asked only to "draw" a chart of workbook data, the agent draws a picture into a Word document
-    or a deck instead of a chart in the workbook (098). `modify_xlsx` can now make the quadrant
-    chart it asks for (45 of 45 when called), so what is left is the choice of deliverable
-    (`docs/log/2026-11-28-xlsx-quadrant-chart.md`).
+  - A chart of workbook data now lands in the workbook (098: 0 to 0.87 in two runs,
+    `docs/log/2026-11-28-xlsx-chart-in-workbook.md`).
   - A file embedded in Word as an icon that opens it ships with `embed_docx_file` (059,
     `docs/log/2026-11-28-docx-embed-file.md`). The same in a slide or a sheet is still open.
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):

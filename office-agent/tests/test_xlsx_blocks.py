@@ -656,3 +656,34 @@ def test_a_workbook_saved_without_calculation_settings_can_be_changed(tmp_path: 
     modify_workbook(path, [{"op": "freeze", "sheet": "Data", "at": "A2"}])
 
     assert load_workbook(path).active.freeze_panes == "A2"
+
+
+def _charts(path: Path) -> list[str]:
+    with zipfile.ZipFile(path) as archive:
+        return sorted(n for n in archive.namelist() if n.startswith("xl/charts/chart"))
+
+
+def test_a_chart_redone_at_the_same_cell_replaces_the_one_there(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+    modify_workbook(path, [_QUADRANT])
+
+    modify_workbook(path, [{**_QUADRANT, "x_title": "Satisfaction (points)"}])
+    modify_workbook(path, [{**_QUADRANT, "at": "E20"}])
+
+    assert len(_charts(path)) == 2
+    with zipfile.ZipFile(path) as archive:
+        texts = "".join(archive.read(n).decode() for n in _charts(path))
+    assert "Satisfaction (points)" in texts and texts.count("<a:t>Satisfaction</a:t>") == 1
+
+
+def test_delete_chart_removes_one_chart_or_every_chart_on_a_sheet(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+    modify_workbook(path, [_QUADRANT, {**_QUADRANT, "at": "E20"}])
+
+    modify_workbook(path, [{"op": "delete_chart", "sheet": "Data", "at": "$E$20"}])
+    assert len(_charts(path)) == 1
+    with pytest.raises(ValueError, match=r"No chart on 'Data' at H1; its charts stand at \['E2'\]"):
+        modify_workbook(path, [{"op": "delete_chart", "sheet": "Data", "at": "H1"}])
+
+    modify_workbook(path, [{"op": "delete_chart", "sheet": "Data"}])
+    assert _charts(path) == []

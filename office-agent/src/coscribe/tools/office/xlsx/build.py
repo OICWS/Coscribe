@@ -6,6 +6,7 @@ formula's value into the file, so every viewer shows numbers and the checks read
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +93,12 @@ def _results(workbook: Any, values: Any, written: Written) -> dict[str, Any]:
 
 
 def _finish(
-    path: Path, workbook: Any, dropped: list[str], written: Written, deleted: bool
+    path: Path,
+    workbook: Any,
+    dropped: list[str],
+    written: Written,
+    deleted: bool,
+    removed: Counter[str] | None = None,
 ) -> dict[str, Any]:
     from openpyxl import load_workbook
 
@@ -100,7 +106,11 @@ def _finish(
     before = inventory(path) if existed else None
     temporary = _save(workbook, path)
     try:
-        lost = [] if before is None else losses(before, inventory(temporary), dropped, deleted)
+        lost = (
+            []
+            if before is None
+            else losses(before, inventory(temporary), dropped, deleted, removed)
+        )
         target = _place(temporary, path, existed, lost)
     finally:
         temporary.unlink(missing_ok=True)
@@ -153,9 +163,29 @@ def modify_workbook(path: Path, ops: Any) -> dict[str, Any]:
     if not path.exists() and not any(op["op"] == "add_sheet" for op in parsed):
         raise ValueError(f"{path.name} does not exist; write cells to it first")
     workbook, dropped, written = _open(path)
+    drawn = _drawn(workbook)
     apply_ops(workbook, parsed)
     for op in parsed:
         if op.get("sheet") in workbook.sheetnames:
             written.cells.setdefault(op["sheet"], [])
     deleted = any(op["op"] == "delete_sheet" for op in parsed)
-    return _finish(path, workbook, dropped, written, deleted)
+    return _finish(path, workbook, dropped, written, deleted, _undrawn(drawn, workbook))
+
+
+def _drawn(workbook: Any) -> dict[str, tuple[int, int]]:
+    return {s.title: (len(s._charts), len(s._images)) for s in workbook.worksheets}
+
+
+def _undrawn(before: dict[str, tuple[int, int]], workbook: Any) -> Counter[str]:
+    """The charts a `delete_chart` took out, and the drawing of a sheet left with none: the
+    edit removed them, so the file is not short of them."""
+    removed: Counter[str] = Counter()
+    after = _drawn(workbook)
+    for sheet, (charts, images) in before.items():
+        if sheet not in after:
+            continue
+        now_charts, now_images = after[sheet]
+        removed["charts"] += max(0, charts - now_charts)
+        if charts + images and not now_charts + now_images:
+            removed["drawings"] += 1
+    return removed

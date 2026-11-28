@@ -68,16 +68,21 @@ def load_watching(path: Path) -> tuple[Any, list[str]]:
 
 
 def losses(
-    before: Counter[str], after: Counter[str], dropped: list[str], deleted_sheets: bool
+    before: Counter[str],
+    after: Counter[str],
+    dropped: list[str],
+    deleted_sheets: bool,
+    removed: Counter[str] | None = None,
 ) -> list[str]:
     """What the saved file lacks. Deleting a sheet removes its parts on purpose, so only
-    openpyxl's own warnings count then."""
+    openpyxl's own warnings count then; `removed` is what the edit itself took out."""
     lost = [f"{name} (openpyxl cannot keep it)" for name in dropped]
     if not deleted_sheets:
+        removed = removed or Counter()
         lost += [
             f"{kind}: {before[kind]} -> {after[kind]}"
             for kind in sorted(before)
-            if after[kind] < before[kind]
+            if after[kind] + removed[kind] < before[kind]
         ]
     return lost
 

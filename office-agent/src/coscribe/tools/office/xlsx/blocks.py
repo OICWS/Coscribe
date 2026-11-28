@@ -233,6 +233,7 @@ OPS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
             }
         ),
     ),
+    "delete_chart": (frozenset({"sheet"}), frozenset({"at"})),
     "conditional": (
         frozenset({"sheet", "range", "rule"}),
         frozenset({"colors", "operator", "values", "formula", "fill", "color", "rank"}),
