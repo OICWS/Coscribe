@@ -8,6 +8,21 @@ from ....runtime import tool_metadata
 from ..._output_truncation import cap_read_output
 from .toolkit import SpreadsheetToolkit
 
+_LARGE = (
+    "read one sheet with the sheet argument; to count, filter or total a large sheet, use a "
+    "script with pandas instead of reading it"
+)
+# Asked to "draw" a chart of a workbook's data, the model reached for a plotting script and
+# handed back a picture in a new document; at the moment it has the data in hand it hears that
+# the chart belongs in this workbook, editable and tied to the cells.
+_CHART_NOTE = (
+    "\n\nA chart or graph of this data goes into this workbook as a native Excel chart "
+    "(modify_xlsx's chart op: column, bar, line, pie, area, scatter, with axis ranges, "
+    'reference lines, point labels and fonts; the "Excel Spreadsheets" skill shows how), '
+    "not a picture drawn by a script or a copy in another file, unless the person asked for "
+    "one."
+)
+
 
 def build_spreadsheet_tools(
     root: str | Path,
@@ -40,11 +55,7 @@ def build_spreadsheet_tools(
             path: file to read, relative to the workspace root
             sheet: sheet name to read; omit to read every sheet
         """
-        return cap_read_output(
-            toolkit.read_xlsx(path=path, sheet=sheet),
-            "read one sheet with the sheet argument; to count, filter or total a large "
-            "sheet, use a script with pandas instead of reading it",
-        )
+        return cap_read_output(toolkit.read_xlsx(path=path, sheet=sheet), _LARGE) + _CHART_NOTE
 
     def recalc_xlsx(path: str) -> dict[str, object]:
         """Recalculate every formula in an existing Excel (.xlsx) file and
@@ -137,7 +148,7 @@ def build_spreadsheet_tools(
         - {"op": "validation", "sheet", "range", "list": ["Open", "Done"] or
           "source": "=Lists!A1:A5", "message"?}
         - {"op": "print", "sheet", "landscape"?, "fit_width"?: 1, "repeat_rows"?: "1:1", "area"?}
-        - {"op": "name", "name", "ref": "Sheet1!$B$2:$B$9"}
+        - {"op": "name", "name", "ref": "Sheet1!$B$2:$B$9"}, {"op": "delete_chart", "sheet", "at"?}
 
         Returns `recalc` and `findings`, and keeps a user's workbook as write_xlsx_cells does.
 

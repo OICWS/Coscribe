@@ -405,7 +405,36 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
         _point_labels(workbook, chart, op["point_labels"], source_name, font)
     width, height = op.get("size", [16, 8])
     chart.width, chart.height = float(width), float(height)
+    # A chart already standing at that cell is the one being redone, not a second to stack on it.
+    _remove_charts(sheet, op["at"])
     sheet.add_chart(chart, op["at"])
+
+
+def _anchor_cell(chart: Any) -> str:
+    from openpyxl.utils.cell import get_column_letter
+
+    anchor = chart.anchor
+    if isinstance(anchor, str):
+        return anchor.replace("$", "").upper()
+    start = getattr(anchor, "_from", None)
+    return "" if start is None else f"{get_column_letter(start.col + 1)}{start.row + 1}"
+
+
+def _remove_charts(sheet: Any, at: str) -> int:
+    """Remove the charts whose top-left corner is the cell `at`, or every chart when it is empty."""
+    wanted = at.replace("$", "").upper()
+    kept = [c for c in sheet._charts if wanted and _anchor_cell(c) != wanted]
+    removed = len(sheet._charts) - len(kept)
+    sheet._charts = kept
+    return removed
+
+
+def _delete_chart(workbook: Workbook, op: dict[str, Any]) -> None:
+    sheet: Any = _sheet(workbook, op["sheet"])
+    if not _remove_charts(sheet, str(op.get("at", ""))):
+        where = f" at {op['at']}" if op.get("at") else ""
+        cells = sorted(filter(None, map(_anchor_cell, sheet._charts)))
+        raise ValueError(f"No chart on {op['sheet']!r}{where}; its charts stand at {cells}")
 
 
 def _scale(colors: list[str]) -> Any:
@@ -500,6 +529,7 @@ APPLY: dict[str, Callable[[Workbook, dict[str, Any]], None]] = {
     "freeze": _freeze,
     "merge": _merge,
     "chart": _chart,
+    "delete_chart": _delete_chart,
     "conditional": _conditional,
     "validation": _validation,
     "print": _print,

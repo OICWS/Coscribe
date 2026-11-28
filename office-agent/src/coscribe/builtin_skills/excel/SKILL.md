@@ -66,6 +66,9 @@ refuses.
   - Fonts and sizes the request names for the chart's text go in `font`, such as
     `{"size": 9, "latin": "Times New Roman", "east_asian": "宋体"}`.
   - Many charts go in the same single `modify_xlsx` call.
+  - To redo a chart, run the `chart` op again with the same `at`: it replaces the chart there.
+    `delete_chart` removes one (every chart on the sheet without `at`). A script that loads the
+    workbook with openpyxl to move or clear charts loses their labels and fonts.
 - **Columns** widen themselves to what they show; set a width only for a long label column.
 - **Print setup**: a report or a sheet with a chart is printed or sent as a PDF, so give it
   `{"op": "print", "sheet": ..., "landscape": true, "fit_width": 1}`, which keeps every column
