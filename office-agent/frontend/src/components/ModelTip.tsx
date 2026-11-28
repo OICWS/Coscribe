@@ -1,8 +1,8 @@
 import type { ComponentType, SVGProps } from "react";
 import { createPortal } from "react-dom";
-import { inputCards, modelFacts, outputCards } from "../lib/modelMarks";
+import { inputCards, modelFacts, outputCards, providerCards } from "../lib/modelMarks";
 import type { ModelRow } from "../types/settings";
-import { EyeIcon, FileTextIcon } from "./icons";
+import { EyeIcon, FileTextIcon, GlobeIcon } from "./icons";
 import { ImageIcon, MicIcon, VideoIcon } from "./modelIcons";
 
 export interface ModelTipAnchor {
@@ -23,6 +23,7 @@ const CARD_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   Audio: MicIcon,
   Video: VideoIcon,
   Image: ImageIcon,
+  "Web search": GlobeIcon,
 };
 
 function Cards({ title, labels }: { title: string; labels: string[] }) {
@@ -83,6 +84,7 @@ export function ModelTip({ tip }: { tip: ModelTipAnchor | null }) {
       ) : (
         <div className="opacity-80">Not in the bundled catalog, so what it can do is unknown.</div>
       )}
+      <Cards title="Through the provider" labels={providerCards(row)} />
     </div>,
     document.body,
   );

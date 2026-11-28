@@ -13,6 +13,8 @@ const OUTPUT_LABELS: Record<string, string> = { image: "Image", audio: "Audio", 
 /** The modalities as card labels, in the catalog's order; one the labels don't know keeps its name. */
 export const inputCards = (row: ModelRow) => row.inputs.map((m) => INPUT_LABELS[m] ?? m);
 export const outputCards = (row: ModelRow) => row.outputs.map((m) => OUTPUT_LABELS[m] ?? m);
+/** What the provider does beyond the model, with the same key. */
+export const providerCards = (row: ModelRow) => (row.web_search ? ["Web search"] : []);
 
 /** The plain lines under the cards: effort levels, context window, and no tool calls. */
 export function modelFacts(row: ModelRow): string[] {
@@ -25,5 +27,5 @@ export function modelFacts(row: ModelRow): string[] {
 
 /** A row for a model the server hasn't described: one saved but no longer listed. */
 export function typedModelRow(id: string): ModelRow {
-  return { id, name: id, inputs: [], outputs: [], effort_levels: [], context: null, tools: false, kind: "chat", known: false };
+  return { id, name: id, inputs: [], outputs: [], effort_levels: [], context: null, tools: false, kind: "chat", known: false, web_search: false };
 }

@@ -451,7 +451,9 @@ def test_a_provider_saves_its_models_and_keeps_them_when_none_are_sent(
         "tools": False,
         "kind": "chat",
         "known": False,
+        "web_search": True,
     }
+    assert not any(m["web_search"] for m in providers["openai"]["models"])
     assert [m["id"] for m in providers["openai"]["models"]] == ["gpt-5.5", "o-x"]
     assert providers["openai"]["default_model"] == "gpt-5.5"
     assert dotenv_values(tmp_path / ".env")["COSCRIBE_OPENAI_MODELS"] == "gpt-5.5,o-x"

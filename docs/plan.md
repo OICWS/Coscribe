@@ -131,8 +131,7 @@ Desktop verification for messages added while working (#1101) covers copying one
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in
-  `runtime/models/web_search.json`; and web search shown as a capability in Settings > Providers
-  and the model picker (a frontend PR). Free engines stay first for every provider (Collins,
+  `runtime/models/web_search.json`. Free engines stay first for every provider (Collins,
   2026-11-26).
 
 - **Growth to 1M lines** (#1051, decision 0009): test selection, the gate on loosening a limit,

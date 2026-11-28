@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..runtime.models import ModelInfo, model_info
+from ..runtime.models import ModelInfo, model_info, provider_web_search
 
 # Well-known OpenAI-compatible services, offered so nobody types a base_url;
 # any other endpoint is added by hand. No entry guesses a default model: a
@@ -255,7 +255,8 @@ def model_row(
     model: str, provider: str, base_url: str = "", info: ModelInfo | None = None
 ) -> dict[str, Any]:
     """One model as the Providers page and the model picker show it: its ID and what the
-    bundled catalog says it can do; `known` is False when the catalog doesn't list it."""
+    bundled catalog says it can do; `known` is False when the catalog doesn't list it.
+    `web_search` is the provider's: web search falls back to it with the person's key."""
     info = info or model_info(model, provider=provider, base_url=base_url)
     return {
         "id": model,
@@ -267,4 +268,5 @@ def model_row(
         "tools": bool(info and info.tools),
         "kind": info.kind if info else "chat",
         "known": info is not None,
+        "web_search": provider_web_search(provider, base_url) is not None,
     }
