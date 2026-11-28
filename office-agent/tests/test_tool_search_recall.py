@@ -35,6 +35,8 @@ _FOUND = [
     ("word comment", "edit_docx_review"),
     ("find and replace in word", "replace_docx_text"),
     ("insert picture into document", "add_docx_image"),
+    ("embed ppt in word document", "embed_docx_file"),
+    ("attach file to word document", "embed_docx_file"),
     ("create presentation", "write_pptx"),
     ("make slides", "write_pptx"),
     ("powerpoint", "write_pptx"),

@@ -114,6 +114,8 @@ Desktop verification for messages added while working (#1101) covers copying one
     (`docs/log/2026-11-27-redraw-picture-slides.md`).
   - Asked only to "draw" a chart of workbook data, the agent makes a PNG instead of a chart in the
     workbook (098, `docs/log/2026-11-27-xlsx-native-charts.md`).
+  - A file embedded in Word as an icon that opens it ships with `embed_docx_file` (059,
+    `docs/log/2026-11-28-docx-embed-file.md`). The same in a slide or a sheet is still open.
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in

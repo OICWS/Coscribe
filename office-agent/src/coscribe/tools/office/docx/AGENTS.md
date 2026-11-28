@@ -3,8 +3,9 @@
 ## Purpose
 Owns the Word tools and their toolkit: reading a document as markdown, writing one from the
 shared markdown subset, structure edits (headings, tables, styles, TOC; `_structure.py`,
-`_style.py`), tracked-change edits and the review tools (`_review.py`), and the raw XML helpers
-(`_xml.py`). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
+`_style.py`), tracked-change edits and the review tools (`_review.py`), a file embedded as an
+icon that opens it (`_embed.py`, with the OLE Package in `_ole.py` and the icon in `_icon.py`),
+and the raw XML helpers (`_xml.py`). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
 implementation in `toolkit.py`; a changed signature also changes `tests/tool_schemas.txt`. Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
 layout (`tools/office/`), or an editor for a Word file: the app has none (decision 0027).
 
@@ -30,11 +31,11 @@ reaches them through `coscribe.tools.office.document_tools`.
 
 ## Tests
 `tests/test_documents_tool.py`, `tests/test_docx_structure_tool.py`, `tests/test_docx_review_tool.py`,
-`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_evals_docx.py`.
+`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_evals_docx.py`, `tests/test_docx_embed.py`.
 
 ## Verify by hand
 A written and an edited document opened in the real Word on Windows, tracked changes shown and
-accepted there.
+accepted there; an embedded file's icon double-clicked there opens the file.
 
 ## Reviewed
 2026-10-17 (first card).
