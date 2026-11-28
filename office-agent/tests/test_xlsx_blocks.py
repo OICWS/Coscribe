@@ -577,3 +577,82 @@ def test_the_layout_of_a_sheet_without_values_or_with_a_theme_fill_reads(tmp_pat
     text = SpreadsheetToolkit(tmp_path).read_xlsx("x.xlsx")
 
     assert "fill theme colour 4" in text
+
+
+def _survey(path: Path) -> Path:
+    """Items scored twice, the x values in the later column, as a quadrant chart's data."""
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "Data"
+    sheet.append(["Item", "Importance", "Satisfaction"])
+    for row in [("Cleaning", 4.2, 3.7), ("Repairs", 4.0, 3.5), ("Signs", 3.7, 3.8)]:
+        sheet.append(list(row))
+    book.calculation = None
+    book.save(path)
+    return path
+
+
+_QUADRANT = {
+    "op": "chart",
+    "sheet": "Data",
+    "kind": "scatter",
+    "source": "B1:B4",
+    "x": "C2:C4",
+    "at": "E2",
+    "x_title": "Satisfaction",
+    "y_title": "Importance",
+    "point_labels": "A2:A4",
+    "legend": False,
+    "gridlines": False,
+    "font": {"size": 9, "latin": "Times New Roman", "east_asian": "SimSun"},
+    "x_min": 3.4,
+    "x_max": 3.9,
+    "y_min": 3.6,
+    "y_max": 4.3,
+    "x_cross": 3.6,
+    "y_cross": 3.95,
+}
+
+
+def test_a_quadrant_chart_names_its_points_and_crosses_its_axes_at_the_means(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+
+    modify_workbook(path, [_QUADRANT])
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert "<xVal><numRef><f>'Data'!$C$2:$C$4</f>" in chart
+    assert "<yVal><numRef><f>'Data'!$B$2:$B$4</f>" in chart
+    assert all(f"<a:t>{name}</a:t>" in chart for name in ("Cleaning", "Repairs", "Signs"))
+    assert '<crossesAt val="3.6"' in chart and '<crossesAt val="3.95"' in chart
+    assert '<axPos val="b"' in chart and "<legend>" not in chart and "majorGridlines" not in chart
+    assert 'typeface="Times New Roman"' in chart and 'sz="900"' in chart
+    assert '<symbol val="circle"' in chart
+
+
+def test_point_names_survive_a_later_change_to_the_workbook(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+    modify_workbook(path, [_QUADRANT])
+
+    write_cells(path, [{"sheet": "Data", "at": "A6", "rows": [["note"]]}])
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert "<a:t>Cleaning</a:t>" in chart and "<a:t>Signs</a:t>" in chart
+
+
+def test_x_values_are_only_for_a_scatter_chart_and_must_match_its_length(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+    with pytest.raises(ValueError, match="scatter"):
+        modify_workbook(path, [{**_QUADRANT, "kind": "line"}])
+    with pytest.raises(ValueError, match="as long as"):
+        modify_workbook(path, [{**_QUADRANT, "x": "C2:C3"}])
+
+
+def test_a_workbook_saved_without_calculation_settings_can_be_changed(tmp_path: Path):
+    path = _survey(tmp_path / "s.xlsx")
+    assert load_workbook(path).calculation is None
+
+    modify_workbook(path, [{"op": "freeze", "sheet": "Data", "at": "A2"}])
+
+    assert load_workbook(path).active.freeze_panes == "A2"

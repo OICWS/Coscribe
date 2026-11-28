@@ -29,7 +29,7 @@ bound to the model: 24 tools, ~5497 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 127 tools, ~39354 tokens (the ones not bound are found through search_tools)
+registered: 127 tools, ~39402 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -98,7 +98,7 @@ registered: 127 tools, ~39354 tokens (the ones not bound are found through searc
   look_at_image | READ | documents | deferred | sha256 7383123e97
   look_at_page | READ | documents | deferred | sha256 55d7a94738
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
-  modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
+  modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 e6ce1a3b4c
   move_file | WRITE_LOCAL | filesystem | deferred | sha256 75892076be
   pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
   react_to_message | READ | interaction | core | sha256 505298271d

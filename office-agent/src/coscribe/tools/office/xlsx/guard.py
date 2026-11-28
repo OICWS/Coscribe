@@ -51,6 +51,9 @@ def load_watching(path: Path) -> tuple[Any, list[str]]:
     """The workbook, and the features openpyxl says it will drop when it saves."""
     from openpyxl import load_workbook
 
+    from .chart_labels import label_class
+
+    label_class()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         workbook = load_workbook(str(path), keep_vba=path.suffix.lower() == ".xlsm")
