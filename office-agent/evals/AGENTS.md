@@ -52,6 +52,12 @@ Don't retry these without a new reason.
   - The provider caches a prompt by its unchanged beginning. Cutting anything earlier turns the
     rest into cache misses, which cost about 50 times more.
   - A result the agent needs again costs a new call to read it back.
+- **Listing what a script changed in a file the agent had opened** (built, not shipped): after
+  each script, the tool result listed the shapes, cells and formulas that now differed from the
+  file as first seen. On 069, 070 and 091, two runs each: mean 0.26 against 0.31 without it,
+  penalties about the same, cost slightly up. 070 rose (0.48 and 0.52 to 0.81 and 0.67), but 069
+  loses points by misreading which boxes the reference image marks, which a list of changes
+  cannot show, and 091 swung between 0 and 0.48 either way.
 - **What would move the bill** is output, mostly reasoning: a lower reasoning effort. That
   changes the model's behaviour, so it is an experiment the maintainer approves first. It is
   measured on dev tasks against the score.
