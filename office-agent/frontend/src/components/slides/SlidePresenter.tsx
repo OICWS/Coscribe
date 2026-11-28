@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import type { SlideInfo } from "../../lib/slides";
 import { BookOpenIcon, ChevronRightIcon, CloseIcon, ExpandIcon, ShrinkIcon } from "../icons";
 import { ChevronLeftIcon } from "./slideIcons";
@@ -6,6 +6,8 @@ import { SlideThumb } from "./SlideStrip";
 
 const NEXT_KEYS = ["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"];
 const PREVIOUS_KEYS = ["ArrowLeft", "ArrowUp", "PageUp", "Backspace"];
+/** In full screen the bar floats over the slide; the pointer this close to the bottom brings it up. */
+const BAR_REVEAL_PX = 96;
 
 /** CSS animations for PowerPoint's transitions; Magic move has no browser equivalent here, so it
  * fades like PowerPoint does where it finds nothing to move. */
@@ -65,6 +67,19 @@ export function SlidePresenter({
     e.preventDefault();
   };
 
+  const bar = (
+    <PresenterBar
+      index={index}
+      count={slides.length}
+      notesShown={notesShown}
+      fullScreen={fullScreen}
+      onGo={go}
+      onToggleNotes={() => setNotesShown((shown) => !shown)}
+      onToggleFullScreen={toggleFullScreen}
+      onExit={exit}
+    />
+  );
+
   return (
     <div
       ref={rootRef}
@@ -74,13 +89,13 @@ export function SlidePresenter({
       className="absolute inset-0 z-30 flex flex-col bg-black outline-none"
       onKeyDown={onKeyDown}
     >
-      <div className="relative min-h-0 flex-1" onClick={() => go(1)}>
+      <PresenterStage fullScreen={fullScreen} bar={bar} onNext={() => go(1)}>
         {slide && (
           <div key={index} className={`absolute inset-0 ${ENTRANCE[slide.transition ?? ""] ?? ""}`}>
             <SlideThumb src={srcOf(index)} />
           </div>
         )}
-      </div>
+      </PresenterStage>
       {notesShown && slide && (
         <div
           aria-label="Speaker notes"
@@ -89,16 +104,49 @@ export function SlidePresenter({
           {slide.notes || <span className="text-white/45">No speaker notes on this slide.</span>}
         </div>
       )}
-      <PresenterBar
-        index={index}
-        count={slides.length}
-        notesShown={notesShown}
-        fullScreen={fullScreen}
-        onGo={go}
-        onToggleNotes={() => setNotesShown((shown) => !shown)}
-        onToggleFullScreen={toggleFullScreen}
-        onExit={exit}
-      />
+      {!fullScreen && bar}
+    </div>
+  );
+}
+
+/** The slide, a click on it the next one. In full screen the bar floats over its bottom edge,
+ * hidden until the pointer comes near or a bar button has the keyboard focus, so it takes no room
+ * from the slide. */
+function PresenterStage({
+  fullScreen,
+  bar,
+  onNext,
+  children,
+}: {
+  fullScreen: boolean;
+  bar: ReactNode;
+  onNext: () => void;
+  children: ReactNode;
+}) {
+  const [pointerNearBottom, setPointerNearBottom] = useState(false);
+  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const bottom = e.currentTarget.getBoundingClientRect().bottom;
+    setPointerNearBottom(e.clientY >= bottom - BAR_REVEAL_PX);
+  };
+  return (
+    <div
+      className="relative min-h-0 flex-1"
+      onMouseMove={fullScreen ? onMouseMove : undefined}
+      onMouseLeave={() => setPointerNearBottom(false)}
+    >
+      <div className="absolute inset-0" onClick={onNext}>
+        {children}
+      </div>
+      {fullScreen && (
+        <div
+          data-presenter-bar
+          className={`absolute inset-x-0 bottom-0 transition-opacity duration-200 has-[:focus-visible]:pointer-events-auto has-[:focus-visible]:opacity-100 ${
+            pointerNearBottom ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          {bar}
+        </div>
+      )}
     </div>
   );
 }
@@ -106,7 +154,7 @@ export function SlidePresenter({
 const barButton =
   "flex h-8 w-8 items-center justify-center rounded-lg text-white/85 hover:bg-white/10 hover:text-white disabled:opacity-35 disabled:hover:bg-transparent";
 
-/** Previous, the page, next, notes, full screen and stop, under the slide. */
+/** Previous, the page, next, notes, full screen and stop, under the slide (over it in full screen). */
 function PresenterBar({
   index,
   count,
