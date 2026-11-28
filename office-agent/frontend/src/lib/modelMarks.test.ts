@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelRow } from "../types/settings";
-import { contextLabel, inputCards, modelFacts, outputCards } from "./modelMarks";
+import { contextLabel, inputCards, modelFacts, outputCards, providerCards } from "./modelMarks";
 
 const row = (over: Partial<ModelRow>): ModelRow => ({
   id: "m",
@@ -12,6 +12,7 @@ const row = (over: Partial<ModelRow>): ModelRow => ({
   tools: true,
   kind: "chat",
   known: true,
+  web_search: false,
   ...over,
 });
 
@@ -32,5 +33,10 @@ describe("modelMarks", () => {
   it("lists effort levels, context and missing tool calls as plain lines", () => {
     expect(modelFacts(row({ effort_levels: ["low", "high"], context: 200_000 }))).toEqual(["Effort: low · high", "200K context"]);
     expect(modelFacts(row({ tools: false }))).toEqual(["No tool calls"]);
+  });
+
+  it("shows the provider's web search as a card of its own", () => {
+    expect(providerCards(row({ web_search: true }))).toEqual(["Web search"]);
+    expect(providerCards(row({}))).toEqual([]);
   });
 });

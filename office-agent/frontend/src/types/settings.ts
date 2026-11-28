@@ -314,6 +314,8 @@ export interface ModelRow {
   kind: string;
   /** False when neither the catalog nor the overrides list it. */
   known: boolean;
+  /** The provider's, not the model's: web search falls back to it with the person's key. */
+  web_search: boolean;
 }
 
 export type ProviderFormat = "chat_completions" | "responses" | "azure";

@@ -3,7 +3,7 @@ import { freshThreadPath, waitForConnected } from "./helpers";
 
 test.use({ viewport: { width: 1100, height: 700 } });
 
-const row = (id: string) => ({ id, name: id, inputs: [], outputs: [], effort_levels: [], context: null, tools: true, kind: "chat", known: false });
+const row = (id: string) => ({ id, name: id, inputs: [], outputs: [], effort_levels: [], context: null, tools: true, kind: "chat", known: false, web_search: false });
 
 test("the model menu opens over the notices above the message box", async ({ page }) => {
   // Enough models that the open menu reaches up past the notice row.
