@@ -47,7 +47,7 @@ def label_class() -> Any:
             super().__init__(idx=idx, **rest)
 
     # A new descriptor in place of the list's own, so each label it reads or writes is this class.
-    field = Sequence(expected_type=NamedLabel, allow_none=True)
+    field: Any = Sequence(expected_type=NamedLabel, allow_none=True)
     field.name = "dLbl"
     setattr(DataLabelList, field.name, field)
     _label_class = NamedLabel
