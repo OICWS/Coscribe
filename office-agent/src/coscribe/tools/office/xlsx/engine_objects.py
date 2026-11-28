@@ -122,10 +122,25 @@ def _chart_object(kind: str, stacked: bool, labels: bool) -> Any:
     return kinds[kind](dLbls=shown)
 
 
-def _chart_series(chart: Any, source: Worksheet, ref: str, kind: str) -> None:
+def _chart_series(
+    chart: Any, source: Worksheet, ref: str, kind: str, x: Worksheet | None = None, x_ref: str = ""
+) -> None:
     from openpyxl.chart import Reference, Series
 
     min_col, min_row, max_col, max_row = _bounds(ref)
+    if x is not None:
+        # A scatter whose x values are another column than the first: every source column is a
+        # series of y values over them.
+        if kind != "scatter":
+            raise ValueError("`x` names a scatter chart's x values; other charts use `source`")
+        x_col, x_top, x_last_col, x_bottom = _bounds(x_ref)
+        if x_col != x_last_col or x_bottom - x_top != max_row - min_row - 1:
+            raise ValueError(f"`x` {x_ref!r} is one column as long as the source's values")
+        xs = Reference(x, min_col=x_col, min_row=x_top, max_row=x_bottom)
+        for col in range(min_col, max_col + 1):
+            values = Reference(source, min_col=col, min_row=min_row, max_row=max_row)
+            chart.series.append(Series(values, xs, title_from_data=True))
+        return
     if max_col <= min_col or max_row <= min_row:
         raise ValueError(f"A chart's source {ref!r} needs a header row, categories and a series")
     categories = Reference(source, min_col=min_col, min_row=min_row + 1, max_row=max_row)
@@ -236,23 +251,156 @@ def _colour_series(chart: Any, kind: str, given: list[str]) -> None:
             )
         return
     for series, color in zip(chart.series, _colours(given, len(chart.series)), strict=True):
-        if kind in ("line", "scatter"):
+        if kind == "scatter":
+            # Excel's own scatter shows points, not a line joining them in table order.
+            series.marker.symbol = "circle"
+            series.marker.size = 6
+            series.marker.graphicalProperties = GraphicalProperties(solidFill=color)
+            series.marker.graphicalProperties.line.solidFill = color
+            series.graphicalProperties.line.noFill = True
+        elif kind == "line":
             series.graphicalProperties.line.solidFill = color
         else:
             series.graphicalProperties.solidFill = color
+
+
+def _rich(text: str | None, font: dict[str, Any] | None, bold: bool = False) -> Any:
+    """A title or label as rich text in the chart's font: a title openpyxl writes from a plain
+    string keeps the theme font, whatever the chart's own text properties say."""
+    from openpyxl.chart.text import RichText, Text
+    from openpyxl.drawing.text import Paragraph, ParagraphProperties, RegularTextRun
+
+    run = RegularTextRun(t=text or "", rPr=_run_font(font, bold))
+    body = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=_run_font(font, bold)), r=[run])])
+    return Text(rich=body)
+
+
+def _title(text: str | None, font: dict[str, Any] | None, bold: bool = False) -> Any:
+    from openpyxl.chart.title import Title
+
+    if not text:
+        return None
+    return Title(tx=_rich(text, font, bold), overlay=False) if font else text
+
+
+def _run_font(font: dict[str, Any] | None, bold: bool = False) -> Any:
+    from openpyxl.drawing.text import CharacterProperties, Font
+
+    props = CharacterProperties(b=bold)
+    if font:
+        if font.get("size"):
+            props.sz = int(float(font["size"]) * 100)
+        if font.get("latin"):
+            props.latin = Font(typeface=font["latin"])
+        if font.get("east_asian"):
+            props.ea = Font(typeface=font["east_asian"])
+    return props
+
+
+def _text_props(font: dict[str, Any]) -> Any:
+    from openpyxl.chart.text import RichText
+    from openpyxl.drawing.text import Paragraph, ParagraphProperties
+
+    return RichText(
+        p=[Paragraph(pPr=ParagraphProperties(defRPr=_run_font(font)), endParaRPr=_run_font(font))]
+    )
+
+
+def _point_labels(workbook: Workbook, chart: Any, ref: str, sheet: str, font: Any) -> None:
+    """Each point of the first series named by the cell beside it (a quadrant chart's items),
+    written as each label's own text so every reader shows the name, not the value."""
+    from openpyxl.chart.label import DataLabelList
+
+    from .chart_labels import label_class
+
+    DataLabel = label_class()
+
+    if not chart.series:
+        return
+    source_name, cells = _split_ref(ref, sheet)
+    min_col, min_row, max_col, max_row = _bounds(cells)
+    names = [
+        cell.value
+        for row in _sheet(workbook, source_name).iter_rows(min_row, max_row, min_col, max_col)
+        for cell in row
+    ]
+    labels = [
+        DataLabel(
+            idx=i,
+            tx=_rich(str(name), font),
+            dLblPos="r",
+            showVal=False,
+            showSerName=False,
+            showCatName=False,
+            showLegendKey=False,
+            showPercent=False,
+        )
+        for i, name in enumerate(names)
+        if name not in (None, "")
+    ]
+    chart.series[0].dLbls = DataLabelList(
+        dLbl=labels,
+        txPr=_text_props(font) if font else None,
+        showVal=False,
+        showSerName=False,
+        showCatName=False,
+        showLegendKey=False,
+        showPercent=False,
+    )
+
+
+def _axes(chart: Any, op: dict[str, Any]) -> None:
+    """Fixed axis ends, and where each axis crosses the other: a quadrant chart crosses them at
+    the two means, which draws its dividing lines. Tick labels then stay at the plot's edge
+    rather than following the axis into the middle."""
+    for axis, name in ((chart.x_axis, "x"), (chart.y_axis, "y")):
+        if f"{name}_min" in op:
+            axis.scaling.min = float(op[f"{name}_min"])
+        if f"{name}_max" in op:
+            axis.scaling.max = float(op[f"{name}_max"])
+    if "x_cross" in op:
+        chart.y_axis.crossesAt = float(op["x_cross"])
+        chart.y_axis.crosses = None
+        chart.y_axis.tickLblPos = "low"
+    if "y_cross" in op:
+        chart.x_axis.crossesAt = float(op["y_cross"])
+        chart.x_axis.crosses = None
+        chart.x_axis.tickLblPos = "low"
 
 
 def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
     sheet = _sheet(workbook, op["sheet"])
     source_name, ref = _split_ref(op["source"], op["sheet"])
     chart = _chart_object(op["kind"], bool(op.get("stacked")), bool(op.get("labels")))
-    _chart_series(chart, _sheet(workbook, source_name), ref, op["kind"])
-    chart.title = op.get("title") or None
+    x_sheet, x_ref = _split_ref(op["x"], op["sheet"]) if op.get("x") else (None, "")
+    _chart_series(
+        chart,
+        _sheet(workbook, source_name),
+        ref,
+        op["kind"],
+        _sheet(workbook, x_sheet) if x_sheet else None,
+        x_ref,
+    )
+    if op.get("legend") is False:
+        chart.legend = None
+    font = op.get("font")
+    chart.title = _title(op.get("title"), font, bold=True)
     if op["kind"] != "pie":
-        chart.x_axis.title = op.get("x_title") or None
-        chart.y_axis.title = op.get("y_title") or None
+        for axis, key in ((chart.x_axis, "x_title"), (chart.y_axis, "y_title")):
+            axis.title = _title(op.get(key), font)
+            if font:
+                axis.txPr = _text_props(font)
         chart.x_axis.delete = chart.y_axis.delete = False
+        if op["kind"] == "scatter":
+            # openpyxl puts both value axes on the left; a reader that finds the axes by their
+            # side sees no horizontal one.
+            chart.x_axis.axPos = "b"
+        if op.get("gridlines") is False:
+            chart.x_axis.majorGridlines = chart.y_axis.majorGridlines = None
+        _axes(chart, op)
     _colour_series(chart, op["kind"], op.get("colors", []))
+    if op.get("point_labels"):
+        _point_labels(workbook, chart, op["point_labels"], source_name, font)
     width, height = op.get("size", [16, 8])
     chart.width, chart.height = float(width), float(height)
     sheet.add_chart(chart, op["at"])

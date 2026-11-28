@@ -54,8 +54,17 @@ refuses.
     inserted, and never a chart a script writes with openpyxl.
   - Its source is the table the person sees, such as each question's own rows for a chart per
     question. Use a helper sheet only when the data must be reshaped first.
-  - A reference line (a mean, a target) is one more series of two points, so a quadrant chart
-    is a scatter chart with two such series.
+  - A chart of the person's workbook goes into that workbook, beside their table, charting
+    their cells as they are. Never copy the data into a new workbook to chart it there, and
+    never split, rename or retype their columns for the chart.
+  - A reference line (a mean, a target) across a line or column chart is one more series of
+    two points.
+  - A quadrant chart (importance against satisfaction, impact against effort) is a scatter
+    whose axes cross at the two means (`x_cross`, `y_cross`): the x column with `x`, the y
+    column as `source`, each point named from its label column with `point_labels`, the axis
+    ends set close around the data, and no legend or gridlines.
+  - Fonts and sizes the request names for the chart's text go in `font`, such as
+    `{"size": 9, "latin": "Times New Roman", "east_asian": "宋体"}`.
   - Many charts go in the same single `modify_xlsx` call.
 - **Columns** widen themselves to what they show; set a width only for a long label column.
 - **Print setup**: a report or a sheet with a chart is printed or sent as a PDF, so give it

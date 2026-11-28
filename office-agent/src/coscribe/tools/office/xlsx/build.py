@@ -39,6 +39,11 @@ def _open(path: Path) -> tuple[Any, list[str], Written]:
 
 
 def _save(workbook: Any, path: Path) -> Path:
+    if workbook.calculation is None:
+        # A workbook another program wrote without calculation properties loads without them.
+        from openpyxl.workbook.properties import CalcProperties
+
+        workbook.calculation = CalcProperties()
     workbook.calculation.fullCalcOnLoad = True
     refresh_chart_caches(workbook)
     path.parent.mkdir(parents=True, exist_ok=True)

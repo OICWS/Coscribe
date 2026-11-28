@@ -112,8 +112,10 @@ Desktop verification for messages added while working (#1101) covers copying one
   - Pictures redrawn as editable slides: the skill's redraw section lifted six dev tasks from
     0.33 to 0.58 on average. Fine geometry (exact cm positions, small icons) still loses points
     (`docs/log/2026-11-27-redraw-picture-slides.md`).
-  - Asked only to "draw" a chart of workbook data, the agent makes a PNG instead of a chart in the
-    workbook (098, `docs/log/2026-11-27-xlsx-native-charts.md`).
+  - Asked only to "draw" a chart of workbook data, the agent draws a picture into a Word document
+    or a deck instead of a chart in the workbook (098). `modify_xlsx` can now make the quadrant
+    chart it asks for (45 of 45 when called), so what is left is the choice of deliverable
+    (`docs/log/2026-11-28-xlsx-quadrant-chart.md`).
 - **Search through every provider that can** (`docs/log/2026-11-26-web-search-fail-fast.md`):
   DeepSeek's search API is the fallback when the free engines fail. Still open: Anthropic, OpenAI
   and Gemini, whose search runs only inside a model call, as a second kind in

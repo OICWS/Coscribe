@@ -126,9 +126,15 @@ def build_spreadsheet_tools(
           "range": "A1:D1", "undo"?}
         - {"op": "chart", "sheet", "kind": column|bar|line|pie|area|scatter, "source": "A1:C13"
           or "Data!A1:C13", "at": "E2", "title"?, "x_title"?, "y_title"?, "colors"?: [hex per
-          series], "stacked"?, "labels"?, "size"?: [width_cm, height_cm]}. The source's first row
-          names the series and its first column holds the categories. Place a chart beside its
-          table, not over it.
+          series], "stacked"?, "labels"?, "size"?: [width_cm, height_cm], "legend"?: false,
+          "gridlines"?: false, "font"?: {"size", "latin", "east_asian"}, "x_min"?, "x_max"?,
+          "y_min"?, "y_max"?, "x_cross"?, "y_cross"?}. The source's first row names the series
+          and its first column holds the categories. A scatter may take its x values from
+          another column ("x": "C2:C21"); then every source column is a series of y values.
+          "point_labels": "A2:A21" names each point of the first series. "x_cross" is the x
+          value where the vertical axis stands, "y_cross" the y value of the horizontal axis:
+          crossing both at the means draws a quadrant chart. "font" sets every text of the
+          chart. Place a chart beside its table, not over it.
         - {"op": "conditional", "sheet", "range", "rule": color_scale|data_bar|cell|formula|top,
           "colors"?, "operator"? (greaterThan, lessThan, between, equal...), "values"?,
           "formula"?, "fill"?, "color"?, "rank"?}
